@@ -64,15 +64,11 @@ fit_to_longest_item = false
 [node name="RefreshModelsBtn" type="Button" parent="MainLayout/ModelBar"]
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 11
-text = "🔄"
 flat = true
 
 [node name="SettingsBtn" type="Button" parent="MainLayout/ModelBar"]
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 11
-text = "⚙"
 flat = true
 
 [node name="ChatScroll" type="ScrollContainer" parent="MainLayout"]
@@ -129,7 +125,7 @@ flat = true
 layout_mode = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 11
-text = "Send ➤"
+text = "Send"
 
 [node name="SettingsDialog" parent="." instance=ExtResource("2_settings_dlg")]
 visible = false

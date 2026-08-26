@@ -23,6 +23,7 @@ const AISidebarApprovalCard = preload("res://addons/godot_sidebar_ai/ui/componen
 const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -129,19 +130,24 @@ func update_ui_language() -> void:
 		model_selector.tooltip_text = AISidebarI18n.get_text("tooltip_model")
 	if refresh_models_btn:
 		refresh_models_btn.tooltip_text = AISidebarI18n.get_text("tooltip_refresh")
+		AISidebarIconHelper.apply_icon(refresh_models_btn, "refresh")
 	if settings_btn:
 		settings_btn.tooltip_text = AISidebarI18n.get_text("tooltip_settings")
+		AISidebarIconHelper.apply_icon(settings_btn, "settings")
 	if input_field:
 		input_field.placeholder_text = AISidebarI18n.get_text("input_placeholder")
 	if clear_btn:
 		clear_btn.text = AISidebarI18n.get_text("btn_clear")
+		AISidebarIconHelper.apply_icon(clear_btn, "trash")
 		
 	if send_btn:
 		if agent_runner and agent_runner.is_running():
-			send_btn.text = "⏹ Stop"
+			send_btn.text = "Stop"
+			AISidebarIconHelper.apply_icon(send_btn, "stop")
 			send_btn.tooltip_text = "Görevi Durdur"
 		else:
-			send_btn.text = "Send ➤"
+			send_btn.text = "Send"
+			AISidebarIconHelper.apply_icon(send_btn, "send")
 			send_btn.tooltip_text = ""
 
 func _load_cached_models() -> void:

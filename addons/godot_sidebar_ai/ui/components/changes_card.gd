@@ -2,16 +2,18 @@
 extends PanelContainer
 class_name AISidebarChangesCard
 
-## Görsel Değişiklik Kartı (Changes Card & File Deltas) (SRP).
-## Dosya delta farklarını (+12 -2) listeler, View Diff ve Undo butonlarını sunar.
-
-const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
+## Değişiklik Kartı Bileşeni (Changes Card) (SRP).
+## Dosya delta farklarını (+eklenen -silinen) kompakt rozetlerle gösterir,
+## [View Diff] ve [Undo] butonları sunar.
 
 signal view_diff_requested(change_set: AISidebarChangeSet)
 signal undo_requested(change_set: AISidebarChangeSet)
-signal meta_clicked(meta: Variant)
+
+const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 var change_set: AISidebarChangeSet
+var is_expanded: bool = true
 
 var _vbox: VBoxContainer
 var _header_lbl: RichTextLabel
@@ -32,8 +34,8 @@ func _ready() -> void:
 func _setup_ui() -> void:
 	var style = StyleBoxFlat.new()
 	style.set_corner_radius_all(6)
-	style.bg_color = Color(0.12, 0.16, 0.20, 0.9)
-	style.border_color = Color(0.3, 0.5, 0.65, 0.5)
+	style.bg_color = Color(0.14, 0.16, 0.20, 0.95)
+	style.border_color = Color(0.3, 0.4, 0.55, 0.6)
 	style.set_border_width_all(1)
 	style.content_margin_left = 10
 	style.content_margin_top = 8
@@ -65,56 +67,63 @@ func _setup_ui() -> void:
 	_vbox.add_child(_actions_bar)
 	
 	_diff_btn = Button.new()
-	_diff_btn.text = "🔍 View Diff"
+	_diff_btn.text = "View Diff"
+	AISidebarIconHelper.apply_icon(_diff_btn, "diff")
 	_diff_btn.focus_mode = Control.FOCUS_NONE
 	_diff_btn.add_theme_font_size_override("font_size", 11)
 	_diff_btn.pressed.connect(_on_diff_pressed)
 	_actions_bar.add_child(_diff_btn)
 	
 	_undo_btn = Button.new()
-	_undo_btn.text = "↩ Undo"
+	_undo_btn.text = "Undo"
+	AISidebarIconHelper.apply_icon(_undo_btn, "undo")
 	_undo_btn.focus_mode = Control.FOCUS_NONE
 	_undo_btn.add_theme_font_size_override("font_size", 11)
 	_undo_btn.pressed.connect(_on_undo_pressed)
 	_actions_bar.add_child(_undo_btn)
-
-func _on_diff_pressed() -> void:
-	view_diff_requested.emit(change_set)
-
-func _on_undo_pressed() -> void:
-	undo_requested.emit(change_set)
 
 func render_changes(cs: AISidebarChangeSet) -> void:
 	change_set = cs
 	if not _header_lbl or not _files_list:
 		return
 		
-	for child in _files_list.get_children():
-		child.queue_free()
+	for c in _files_list.get_children():
+		c.queue_free()
 		
 	var deltas = cs.get_file_deltas()
-	_header_lbl.text = "[b][color=#88c0d0]▾ Changes (" + str(deltas.size()) + " files)[/color][/b]"
+	var total_files = deltas.size()
+	
+	_header_lbl.text = "[color=#88c0d0][b]▾ Changes (" + str(total_files) + " " + ("file" if total_files == 1 else "files") + ")[/b][/color]"
 	
 	for d in deltas:
 		var row = HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_files_list.add_child(row)
+		row.add_theme_constant_override("separation", 6)
 		
-		var name_lbl = RichTextLabel.new()
+		var name_lbl = Label.new()
+		name_lbl.text = "• " + str(d["path"])
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_lbl.bbcode_enabled = true
-		name_lbl.fit_content = true
-		name_lbl.scroll_active = false
-		name_lbl.selection_enabled = true
-		name_lbl.add_theme_font_size_override("normal_font_size", 11)
-		name_lbl.text = "  • [url=file:" + d["path"] + "][color=#d8dee9]" + d["file_name"] + "[/color][/url]"
-		name_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
+		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 		row.add_child(name_lbl)
 		
 		var delta_lbl = RichTextLabel.new()
 		delta_lbl.bbcode_enabled = true
 		delta_lbl.fit_content = true
 		delta_lbl.scroll_active = false
+		delta_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
 		delta_lbl.add_theme_font_size_override("normal_font_size", 11)
-		delta_lbl.text = "[color=#a3be8c]+" + str(d["added"]) + "[/color]  [color=#bf616a]-" + str(d["removed"]) + "[/color]"
+		delta_lbl.text = "[color=#a3be8c]+" + str(d["added"]) + "[/color] [color=#bf616a]-" + str(d["removed"]) + "[/color]"
 		row.add_child(delta_lbl)
+		
+		_files_list.add_child(row)
+
+func _on_diff_pressed() -> void:
+	view_diff_requested.emit(change_set)
+
+func _on_undo_pressed() -> void:
+	_undo_btn.disabled = true
+	_undo_btn.text = "Undone"
+	undo_requested.emit(change_set)
