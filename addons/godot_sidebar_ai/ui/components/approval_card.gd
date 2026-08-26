@@ -3,7 +3,8 @@ extends PanelContainer
 class_name AISidebarApprovalCard
 
 ## İzin ve Onay Kartı Bileşeni (Approval Card) (SRP).
-## Riskli işlemler (dosya silme, sahne mutasyonu vb.) için şık onay kartı.
+## Riskli işlemler (dosya silme, script ezme, sahne mutasyonu) için TEK YETKİLİ etkileşim kartıdır.
+## Modal popup açılmaz; onay doğrudan bu kart üzerinden yönetilir.
 
 signal action_approved()
 signal action_rejected()
@@ -15,6 +16,7 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 var tool_name: String = ""
 var args: Dictionary = {}
 var change_set: AISidebarChangeSet = null
+var is_resolved: bool = false
 
 var _vbox: VBoxContainer
 var _title_lbl: Label
@@ -60,6 +62,10 @@ func _setup_ui() -> void:
 	var action_desc = tool_name
 	if tool_name == "delete_node":
 		action_desc = "Delete node: " + args.get("node_path", "")
+	elif tool_name == "delete_file":
+		action_desc = "Delete file: " + args.get("file_path", "")
+	elif tool_name == "create_or_update_script":
+		action_desc = "Update file: " + args.get("file_path", "")
 	_desc_lbl.text = action_desc
 	_desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_desc_lbl.add_theme_font_size_override("font_size", 11)
@@ -96,12 +102,38 @@ func _setup_ui() -> void:
 		_diff_btn.pressed.connect(func(): view_diff_requested.emit(change_set))
 		_buttons_bar.add_child(_diff_btn)
 
+func mark_approved() -> void:
+	is_resolved = true
+	if _title_lbl:
+		_title_lbl.text = "✓ Approved"
+		_title_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.4))
+	if _approve_btn:
+		_approve_btn.disabled = true
+		_approve_btn.visible = false
+	if _reject_btn:
+		_reject_btn.disabled = true
+		_reject_btn.visible = false
+
+func mark_rejected() -> void:
+	is_resolved = true
+	if _title_lbl:
+		_title_lbl.text = "✕ Rejected"
+		_title_lbl.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
+	if _approve_btn:
+		_approve_btn.disabled = true
+		_approve_btn.visible = false
+	if _reject_btn:
+		_reject_btn.disabled = true
+		_reject_btn.visible = false
+
 func _on_approve() -> void:
-	_approve_btn.disabled = true
-	_reject_btn.disabled = true
+	if is_resolved:
+		return
+	mark_approved()
 	action_approved.emit()
 
 func _on_reject() -> void:
-	_approve_btn.disabled = true
-	_reject_btn.disabled = true
+	if is_resolved:
+		return
+	mark_rejected()
 	action_rejected.emit()

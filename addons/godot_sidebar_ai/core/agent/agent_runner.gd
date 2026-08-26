@@ -53,6 +53,8 @@ var current_step: int = 0
 var max_steps: int = 10
 var max_recovery_attempts: int = 3
 var _recovery_attempt_count: int = 0
+var max_empty_response_retries: int = 1
+var _empty_response_retry_count: int = 0
 var _last_error_signature: String = ""
 var _last_tool_signature: String = ""
 var _stagnation_count: int = 0
@@ -311,12 +313,21 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		llm_time_msec += delta_req
 		_llm_step_start_time = 0
 		
-	# Boş Yanıt Kontrolü (Empty Response Guard)
+	# Boş Yanıt Kontrolü (Empty Response Guard & Controlled Retry)
 	if text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty():
-		_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
-		error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE).")
-		_finish_task(false)
-		return
+		if _empty_response_retry_count < max_empty_response_retries:
+			_empty_response_retry_count += 1
+			print("[TIMING] %s | PROVIDER_EMPTY_RESPONSE_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
+			_set_state(AgentState.RECOVERING, "Geçici boş yanıt alındı, tekrar deneniyor...")
+			_run_next_step()
+			return
+		else:
+			_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
+			error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE).")
+			_finish_task(false)
+			return
+			
+	_empty_response_retry_count = 0
 		
 	# 1. Thinking
 	if not thinking_content.is_empty():
@@ -492,6 +503,16 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 	_run_next_step()
 
 func _on_provider_error(error_message: String) -> void:
+	if not is_running():
+		return
+		
+	if ("PROVIDER_EMPTY_RESPONSE" in error_message or "boş yanıt" in error_message) and _empty_response_retry_count < max_empty_response_retries:
+		_empty_response_retry_count += 1
+		print("[TIMING] %s | PROVIDER_EMPTY_ERROR_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
+		_set_state(AgentState.RECOVERING, "Geçici ağ/boş yanıt hatası, tekrar deneniyor...")
+		_run_next_step()
+		return
+		
 	_set_state(AgentState.ERROR, error_message)
 	print("[TIMING] %s | PROVIDER_ERROR | err=%s" % [get_ts(), error_message])
 	error_occurred.emit(error_message)

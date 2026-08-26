@@ -402,6 +402,11 @@ func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
 			return tool_name
 
 func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISidebarChangeSet) -> void:
+	# Duplicate approval request deduping: Aynı bekleyen işlem için ikinci kart oluşturma
+	if _current_approval_card != null and is_instance_valid(_current_approval_card) and not _current_approval_card.is_resolved:
+		if pending_tool_name == tool_name and pending_tool_args == args:
+			return
+			
 	pending_tool_name = tool_name
 	pending_tool_args = args
 	pending_change_set = cs
@@ -411,17 +416,19 @@ func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISid
 	_current_approval_card.action_rejected.connect(_on_reject_pressed)
 	_current_approval_card.view_diff_requested.connect(_on_view_diff_pressed)
 	_add_stream_component(_current_approval_card)
-	
-	if change_set_dialog:
-		change_set_dialog.show_change_set(tool_name, args, cs)
+	# NOT: change_set_dialog otomatik AÇILMAZ; yalnızca kullanıcı karttaki [View Diff] butonuna basarsa açılır.
 
 func _on_approve_pressed() -> void:
+	if _current_approval_card and is_instance_valid(_current_approval_card):
+		_current_approval_card.mark_approved()
 	if pending_change_set:
 		last_applied_change_set = pending_change_set
 	if agent_runner:
 		agent_runner.approve_pending_action()
 
 func _on_reject_pressed() -> void:
+	if _current_approval_card and is_instance_valid(_current_approval_card):
+		_current_approval_card.mark_rejected()
 	if agent_runner:
 		agent_runner.reject_pending_action()
 
