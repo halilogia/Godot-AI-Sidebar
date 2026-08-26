@@ -3,7 +3,7 @@ extends PanelContainer
 class_name AISidebarTelemetryCard
 
 ## Minimal Görev Tamamlama ve Telemetri Kartı (Telemetry Footer Card) (SRP).
-## Ana görünümde temiz tek satır özet, tıklandığında detaylı süre dökümü sunar.
+## Ana görünümde temiz tek satır özet (Adım / Max Adım dahil), tıklandığında detaylı süre dökümü sunar.
 
 var metrics: Dictionary = {}
 var is_expanded: bool = false
@@ -64,14 +64,14 @@ func render_metrics(m: Dictionary) -> void:
 		
 	var is_ok = m.get("success", true)
 	var elapsed = str(m.get("elapsed_seconds", 0.0)) + "s"
-	var turns = str(m.get("llm_turns", 1))
+	var used_steps = m.get("used_steps", m.get("llm_turns", 1))
+	var max_steps = m.get("max_steps", 20)
 	var tools = str(m.get("tool_calls", 0))
 	var files = str(m.get("file_ops", 0))
 	
 	var icon = "✓" if is_ok else "✕"
-	var color_name = "#a3be8c" if is_ok else "#bf616a"
 	
-	_header_btn.text = icon + " Completed in " + elapsed + " · " + turns + " LLM turns · " + tools + " tools · " + files + " files"
+	_header_btn.text = icon + " Completed in " + elapsed + " · Steps: " + str(used_steps) + "/" + str(max_steps) + " · " + tools + " tools · " + files + " files"
 	_header_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
 	
 	var llm_s = str(m.get("llm_time_s", 0.0)) + "s"
@@ -79,7 +79,7 @@ func render_metrics(m: Dictionary) -> void:
 	var file_s = str(m.get("file_time_s", 0.0)) + "s"
 	var wait_s = str(m.get("waiting_time_s", 0.0)) + "s"
 	
-	_details_lbl.text = "[color=#717c91]• Breakdown: LLM: " + llm_s + " | Tools: " + tool_s + " (File: " + file_s + ") | Waiting: " + wait_s + "[/color]"
+	_details_lbl.text = "[color=#717c91]• Steps: " + str(used_steps) + " used / " + str(max_steps) + " safety limit | LLM: " + llm_s + " | Tools: " + tool_s + " (File: " + file_s + ") | Waiting: " + wait_s + "[/color]"
 
 func _on_header_pressed() -> void:
 	is_expanded = not is_expanded

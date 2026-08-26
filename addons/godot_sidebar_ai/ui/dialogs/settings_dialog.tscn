@@ -62,13 +62,13 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="VBox/MaxIterContainer"]
 layout_mode = 2
-text = "Maksimum Ajan Adım Sayısı:"
+text = "Maksimum Ajan Adım Sayısı (Güvenlik Sınırı):"
 
 [node name="MaxIterSpin" type="SpinBox" parent="VBox/MaxIterContainer"]
 layout_mode = 2
 min_value = 1.0
 max_value = 50.0
-value = 10.0
+value = 20.0
 
 [node name="PromptContainer" type="VBoxContainer" parent="VBox"]
 layout_mode = 2

@@ -39,6 +39,7 @@ const TestChatExporter = preload("res://tests/test_chat_exporter.gd")
 const TestFileDeletionAndSignals = preload("res://tests/test_file_deletion_and_signals.gd")
 const TestRuntimeStateMachine = preload("res://tests/test_runtime_state_machine.gd")
 const TestApprovalAndSelfHealing = preload("res://tests/test_approval_and_self_healing.gd")
+const TestMaxStepsAndTelemetry = preload("res://tests/test_max_steps_and_telemetry.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -83,7 +84,8 @@ func _init() -> void:
 		TestChatExporter,
 		TestFileDeletionAndSignals,
 		TestRuntimeStateMachine,
-		TestApprovalAndSelfHealing
+		TestApprovalAndSelfHealing,
+		TestMaxStepsAndTelemetry
 	]
 	
 	var total_passed = 0

@@ -88,6 +88,7 @@ func _ready() -> void:
 	agent_runner.debugging_started.connect(_on_agent_debugging_started)
 	agent_runner.error_occurred.connect(_on_agent_error)
 	agent_runner.task_completed.connect(_on_agent_task_completed)
+	agent_runner.step_progress.connect(_on_agent_step_progress)
 	provider.models_fetched.connect(_on_models_fetched)
 
 	# 2. UI Olayları
@@ -479,6 +480,9 @@ func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 func _on_agent_debugging_started(summary: String) -> void:
 	var grp = _ensure_activity_group()
 	grp.add_activity("🐞", "Auto-diagnosing runtime error: " + summary, -1)
+
+func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
+	set_status_badge("⚡ Agent Step " + str(current_step) + " / " + str(max_steps), Color(1.0, 0.8, 0.2))
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
 	if _current_activity_group:

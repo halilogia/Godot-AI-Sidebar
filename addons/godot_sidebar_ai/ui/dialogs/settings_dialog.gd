@@ -62,7 +62,7 @@ func open_settings() -> void:
 		temp_slider.value = config.get("temperature", 0.2)
 		_on_temp_changed(temp_slider.value)
 	if max_iter_spin:
-		max_iter_spin.value = config.get("max_iterations", 10)
+		max_iter_spin.value = config.get("max_agent_steps", config.get("max_iterations", 20))
 	if sys_prompt_edit:
 		sys_prompt_edit.text = config.get("system_prompt", "")
 		
@@ -81,7 +81,9 @@ func _on_confirmed() -> void:
 	if temp_slider:
 		config["temperature"] = snappedf(temp_slider.value, 0.05)
 	if max_iter_spin:
-		config["max_iterations"] = int(max_iter_spin.value)
+		var steps_val = int(max_iter_spin.value)
+		config["max_agent_steps"] = steps_val
+		config["max_iterations"] = steps_val
 	if sys_prompt_edit:
 		config["system_prompt"] = sys_prompt_edit.text
 		

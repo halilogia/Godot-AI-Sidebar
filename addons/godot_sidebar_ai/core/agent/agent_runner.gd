@@ -45,12 +45,13 @@ signal debugging_started(error_summary: String)
 signal error_occurred(error_message: String)
 signal loop_finished()
 signal task_completed(metrics: Dictionary)
+signal step_progress(current_step: int, max_steps: int)
 
 var provider: AISidebarAIProvider
 var context: AISidebarAgentContext
 var current_state: AgentState = AgentState.IDLE
 var current_step: int = 0
-var max_steps: int = 10
+var max_steps: int = 20
 var max_recovery_attempts: int = 3
 var _recovery_attempt_count: int = 0
 var max_empty_response_retries: int = 1
@@ -112,9 +113,10 @@ func start_task(user_prompt: String) -> void:
 		return
 		
 	var cfg = AISidebarConfig.load_config()
-	max_steps = cfg.get("max_iterations", 10)
+	max_steps = int(cfg.get("max_agent_steps", cfg.get("max_iterations", 20)))
 	current_step = 0
 	_recovery_attempt_count = 0
+	_empty_response_retry_count = 0
 	_last_error_signature = ""
 	_last_tool_signature = ""
 	_stagnation_count = 0
@@ -164,6 +166,9 @@ func _finish_task(success: bool) -> void:
 	var metrics = {
 		"success": success,
 		"elapsed_seconds": snappedf(total_elapsed_sec, 0.1),
+		"used_steps": current_step,
+		"max_steps": max_steps,
+		"steps_summary": str(current_step) + " / " + str(max_steps),
 		"llm_turns": llm_turns_count,
 		"tool_calls": tool_calls_count,
 		"file_ops": file_ops_count,
@@ -287,11 +292,9 @@ func _run_next_step() -> void:
 		_finish_task(false)
 		return
 		
+	step_progress.emit(current_step, max_steps)
 	llm_turns_count += 1
-	var status_msg = AISidebarI18n.get_text("status_thinking")
-	if current_step > 1:
-		status_msg = AISidebarI18n.get_text("status_executing", {"step": current_step, "max": max_steps})
-		
+	var status_msg = "Agent Step " + str(current_step) + " / " + str(max_steps)
 	_set_state(AgentState.PLANNING, status_msg)
 	
 	_llm_step_start_time = Time.get_ticks_msec()
