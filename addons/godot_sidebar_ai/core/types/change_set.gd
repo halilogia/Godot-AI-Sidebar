@@ -73,8 +73,15 @@ func _apply_single(path: String, c_type: ChangeType, content: String) -> Diction
 			f.store_string(content)
 			f.close()
 		ChangeType.DELETE_FILE:
+			_cleanup_editor_script_resource(path)
 			if FileAccess.file_exists(path):
 				DirAccess.remove_absolute(path)
+			var uid_path = path + ".uid"
+			if FileAccess.file_exists(uid_path):
+				DirAccess.remove_absolute(uid_path)
+			var import_path = path + ".import"
+			if FileAccess.file_exists(import_path):
+				DirAccess.remove_absolute(import_path)
 		ChangeType.MUTATE_SCENE:
 			pass
 			
@@ -97,26 +104,8 @@ func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictio
 	if path.is_empty():
 		return {"success": true}
 		
-	# Script Editöründe açık ve silinecek dosyayı güvenle kapat/değiştir ve cache unbind yap (File not found hatasını kesin önler)
 	if c_type == ChangeType.CREATE_FILE:
-		if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-			if EditorInterface.has_method("get_script_editor"):
-				var se = EditorInterface.get_script_editor()
-				if se and se.has_method("get_open_scripts"):
-					var open_scripts = se.get_open_scripts()
-					for s in open_scripts:
-						if s and s.resource_path == path:
-							if se.has_method("get_current_script") and se.get_current_script() == s:
-								var switched = false
-								for other_s in open_scripts:
-									if other_s != s and is_instance_valid(other_s):
-										EditorInterface.edit_script(other_s)
-										switched = true
-										break
-								if not switched:
-									EditorInterface.edit_script(null)
-							# Unbind resource path from ResourceCache to prevent File not found polling
-							s.take_over_path("")
+		_cleanup_editor_script_resource(path)
 							
 	match c_type:
 		ChangeType.CREATE_FILE:
@@ -128,12 +117,10 @@ func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictio
 			var import_path = path + ".import"
 			if FileAccess.file_exists(import_path):
 				DirAccess.remove_absolute(import_path)
-		ChangeType.MODIFY_FILE:
-			var f = FileAccess.open(path, FileAccess.WRITE)
-			if f:
-				f.store_string(old_c)
-				f.close()
-		ChangeType.DELETE_FILE:
+		ChangeType.MODIFY_FILE, ChangeType.DELETE_FILE:
+			var dir = path.get_base_dir()
+			if not DirAccess.dir_exists_absolute(dir):
+				DirAccess.make_dir_recursive_absolute(dir)
 			var f = FileAccess.open(path, FileAccess.WRITE)
 			if f:
 				f.store_string(old_c)
@@ -141,6 +128,26 @@ func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictio
 		ChangeType.MUTATE_SCENE:
 			pass
 	return {"success": true}
+
+## Script Editöründe açık ve silinecek/değişecek dosyayı güvenle unbind eder (File not found hatasını önler)
+func _cleanup_editor_script_resource(path: String) -> void:
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+		if EditorInterface.has_method("get_script_editor"):
+			var se = EditorInterface.get_script_editor()
+			if se and se.has_method("get_open_scripts"):
+				var open_scripts = se.get_open_scripts()
+				for s in open_scripts:
+					if s and s.resource_path == path:
+						if se.has_method("get_current_script") and se.get_current_script() == s:
+							var switched = false
+							for other_s in open_scripts:
+								if other_s != s and is_instance_valid(other_s):
+									EditorInterface.edit_script(other_s)
+									switched = true
+									break
+							if not switched:
+								EditorInterface.edit_script(null)
+						s.take_over_path("")
 
 ## Dosya bazlı eklenen/silinen satır farklarını hesaplar
 func get_file_deltas() -> Array[Dictionary]:

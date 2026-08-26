@@ -8,6 +8,8 @@ class_name AISidebarChangesCard
 
 signal view_diff_requested(change_set: AISidebarChangeSet)
 signal undo_requested(change_set: AISidebarChangeSet)
+signal meta_clicked(meta: Variant)
+signal file_clicked(file_path: String)
 
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
@@ -53,7 +55,10 @@ func _setup_ui() -> void:
 	_header_lbl.bbcode_enabled = true
 	_header_lbl.fit_content = true
 	_header_lbl.scroll_active = false
+	_header_lbl.selection_enabled = true
+	_header_lbl.context_menu_enabled = true
 	_header_lbl.add_theme_font_size_override("normal_font_size", 12)
+	_header_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_header_lbl)
 	
 	_files_list = VBoxContainer.new()
@@ -100,13 +105,19 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_theme_constant_override("separation", 6)
 		
-		var name_lbl = Label.new()
-		name_lbl.text = "• " + str(d["path"])
+		var name_lbl = RichTextLabel.new()
+		name_lbl.bbcode_enabled = true
+		name_lbl.fit_content = true
+		name_lbl.scroll_active = false
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		name_lbl.add_theme_font_size_override("font_size", 11)
-		name_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+		name_lbl.add_theme_font_size_override("normal_font_size", 11)
+		var p = str(d["path"])
+		name_lbl.text = "• [url=file:" + p + "]" + p + "[/url]"
+		name_lbl.meta_clicked.connect(func(m): 
+			meta_clicked.emit(m)
+			file_clicked.emit(p)
+		)
 		row.add_child(name_lbl)
 		
 		var delta_lbl = RichTextLabel.new()

@@ -4,6 +4,7 @@ class_name AISidebarChatExporter
 
 ## Sohbet Dışa Aktarma Servisi (Chat Export Service) (SRP).
 ## Tüm konuşma akışını temiz GitHub Markdown formatına dönüştürür ve panoya/dosyaya kaydeder.
+## Null/Nil değerlere ve karmaşık tool payload'larına karşı tam güvenlidir.
 
 static func export_to_markdown(history: Array) -> String:
 	var lines: PackedStringArray = []
@@ -12,12 +13,41 @@ static func export_to_markdown(history: Array) -> String:
 	lines.append("\n---\n")
 	
 	for entry in history:
-		var role = entry.get("role", "assistant")
-		var content = entry.get("content", "")
-		var author = "### 👤 User" if role == "user" else "### 🤖 Godot AI"
+		if entry == null or not (entry is Dictionary):
+			continue
+			
+		var role = str(entry.get("role", "assistant"))
+		var content_raw = entry.get("content")
+		var content_str = str(content_raw) if content_raw != null else ""
 		
+		var author = "### 👤 User"
+		match role:
+			"user":
+				author = "### 👤 User"
+			"assistant":
+				author = "### 🤖 Godot AI"
+			"tool":
+				var tool_name = str(entry.get("name", "tool"))
+				author = "### ⚙️ Tool Result (`" + tool_name + "`)"
+			"system":
+				author = "### 💻 System"
+			_:
+				author = "### 💬 " + role.capitalize()
+				
 		lines.append(author)
-		lines.append(content.strip_edges())
+		
+		# Tool call payload varsa (Assistant tool çağırdığında)
+		if entry.has("tool_calls") and entry["tool_calls"] is Array:
+			for tc in entry["tool_calls"]:
+				if tc is Dictionary:
+					var fn = tc.get("function", {})
+					var fn_name = str(fn.get("name", "unknown_tool"))
+					var fn_args = str(fn.get("arguments", "{}"))
+					lines.append("> **⚡ Tool Executed:** `" + fn_name + "`\n```json\n" + fn_args + "\n```")
+					
+		if not content_str.strip_edges().is_empty():
+			lines.append(content_str.strip_edges())
+			
 		lines.append("\n---\n")
 		
 	return "\n".join(lines)

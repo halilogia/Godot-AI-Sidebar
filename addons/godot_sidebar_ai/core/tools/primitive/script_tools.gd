@@ -6,6 +6,7 @@ class_name AISidebarScriptTools
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
+const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 
 static func get_schemas() -> Array:
 	return [
@@ -35,6 +36,21 @@ static func get_schemas() -> Array:
 						"content": { "type": "string", "description": "Yazılacak GDScript kodu." }
 					},
 					"required": ["file_path", "content"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "delete_file",
+				"description": "Projeden bir script, sahne veya dosyayı güvenli biçimde siler. Kullanıcı onayı (approval) gerektirir ve ChangeSet üzerinden geri alınabilir (Undo).",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"file_path": { "type": "string", "description": "Silinecek dosya yolu (örn: res://scripts/OldScript.gd veya res://DiffTest.gd)." },
+						"reason": { "type": "string", "description": "Dosyanın silinme gerekçesi." }
+					},
+					"required": ["file_path"]
 				}
 			}
 		},
@@ -99,6 +115,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _read_script(args)
 		"create_or_update_script":
 			return _create_or_update_script(args)
+		"delete_file":
+			return _delete_file(args)
 		"write_files":
 			return _write_files(args)
 		"open_script":
@@ -138,121 +156,189 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		
 	var path = safe_check["path"]
 	
-	# 1. ATOMIC PRE-WRITE VALIDATION
+	# Diske yazmadan önce in-memory syntax validation
 	if path.ends_with(".gd"):
-		var val_res = AISidebarVerificationPipeline.validate_script_source(content, path)
+		var val_res = AISidebarVerificationPipeline.validate_script_source(content)
 		if not val_res.get("success", false):
-			var err_obj = val_res.get("error", {})
-			return AISidebarToolResult.err(
-				err_obj.get("code", "SCRIPT_SYNTAX_ERROR"),
-				err_obj.get("message", "Script sözdizimi hatası içeriyor."),
-				true,
-				err_obj
-			)
+			var err_msg = val_res.get("error", {}).get("message", "Sözdizimi hatası") if val_res.get("error") is Dictionary else str(val_res.get("error", "Sözdizimi hatası"))
+			return AISidebarToolResult.err("SCRIPT_SYNTAX_ERROR", "Kod sözdizimi hatası içeriyor, dosya yazılmadı: " + err_msg, false, val_res)
 			
-	# 2. WRITE TO DISK
-	var dir_path = path.get_base_dir()
-	if not DirAccess.dir_exists_absolute(dir_path):
-		DirAccess.make_dir_recursive_absolute(dir_path)
-		
-	var file = FileAccess.open(path, FileAccess.WRITE)
-	if not file:
-		return AISidebarToolResult.err("WRITE_ERROR", "Dosya yazılamadı: " + path)
-	file.store_string(content)
-	file.close()
+	var old_content = ""
+	var is_new = not FileAccess.file_exists(path)
+	if not is_new:
+		var old_file = FileAccess.open(path, FileAccess.READ)
+		if old_file:
+			old_content = old_file.get_as_text()
+			old_file.close()
+			
+	var c_type = AISidebarChangeSet.ChangeType.CREATE_FILE if is_new else AISidebarChangeSet.ChangeType.MODIFY_FILE
+	var cs = AISidebarChangeSet.new(path, c_type, content, old_content, "Script oluşturuldu/güncellendi: " + path)
+	var apply_res = cs.apply()
 	
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-		if EditorInterface.has_method("get_resource_filesystem"):
-			EditorInterface.get_resource_filesystem().scan()
-		var res = load(path)
-		if res is Script and EditorInterface.has_method("edit_script"):
-			EditorInterface.edit_script(res)
-			
-	return AISidebarToolResult.ok({"file_path": path}, "✓ Script başarıyla yazıldı.")
+	if not apply_res["success"]:
+		return AISidebarToolResult.err("WRITE_ERROR", apply_res["error"])
+		
+	var res = AISidebarToolResult.ok({
+		"file_path": path,
+		"is_new": is_new,
+		"message": "Script başarıyla yazıldı (" + ("Yeni" if is_new else "Güncellendi") + "): " + path
+	})
+	res["change_set"] = cs
+	return res
+
+static func _delete_file(args: Dictionary) -> Dictionary:
+	var raw_path = args.get("file_path", "")
+	var reason = args.get("reason", "Dosya silme işlemi")
+	
+	var safe_check = AISidebarPathPolicy.is_safe_to_write(raw_path)
+	if not safe_check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+		
+	var path = safe_check["path"]
+	if not FileAccess.file_exists(path):
+		return AISidebarToolResult.err("FILE_NOT_FOUND", "Silinecek dosya bulunamadı: " + path)
+		
+	var old_file = FileAccess.open(path, FileAccess.READ)
+	var old_content = old_file.get_as_text() if old_file else ""
+	if old_file:
+		old_file.close()
+		
+	var cs = AISidebarChangeSet.new(path, AISidebarChangeSet.ChangeType.DELETE_FILE, "", old_content, reason)
+	var apply_res = cs.apply()
+	if not apply_res.get("success", false):
+		return AISidebarToolResult.err("DELETE_FAILED", "Dosya silinemedi: " + apply_res.get("error", "Bilinmeyen hata"))
+		
+	var res = AISidebarToolResult.ok({
+		"file_path": path,
+		"deleted": true,
+		"message": "Dosya başarıyla silindi: " + path
+	})
+	res["change_set"] = cs
+	return res
 
 static func _write_files(args: Dictionary) -> Dictionary:
 	var files_arr = args.get("files", [])
 	if not (files_arr is Array) or files_arr.is_empty():
-		return AISidebarToolResult.err("INVALID_ARGUMENTS", "Yazılacak dosyalar listesi ('files') boş veya geçersiz.")
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "'files' listesi boş veya geçersiz.")
 		
-	# 1. Aşama: Bağımlılık Duyarlı Toplu Doğrulama (Dependency-Aware Pre-validation)
 	var val_res = AISidebarVerificationPipeline.validate_batch_files(files_arr)
 	if not val_res.get("success", false):
 		var err_obj = val_res.get("error", {})
-		return AISidebarToolResult.err(
-			err_obj.get("code", "BATCH_VALIDATION_ERROR"),
-			err_obj.get("message", "Toplu doğrulama başarısız oldu."),
-			true,
-			err_obj
-		)
+		var err_code = err_obj.get("code", "BATCH_VALIDATION_FAILED") if err_obj is Dictionary else "BATCH_VALIDATION_FAILED"
+		var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
+		return AISidebarToolResult.err(err_code, "Toplu dosya yazımı doğrulanamadı: " + err_msg, false, val_res)
 		
-	var sorted_files = val_res.get("sorted_files", files_arr)
-	
-	# 2. Aşama: Güvenli Sırayla Diske Yazım
-	var written_paths: Array = []
-	for f_item in sorted_files:
-		var p = AISidebarPathPolicy.normalize_path(f_item.get("file_path", ""))
-		var c = f_item.get("content", "")
-		var dir_path = p.get_base_dir()
-		if not DirAccess.dir_exists_absolute(dir_path):
-			DirAccess.make_dir_recursive_absolute(dir_path)
-		var f = FileAccess.open(p, FileAccess.WRITE)
-		if not f:
-			return AISidebarToolResult.err("WRITE_ERROR", "Dosya yazılamadı: " + p)
-		f.store_string(c)
-		f.close()
-		written_paths.append(p)
+	var files_to_write: Array[Dictionary] = []
+	for f_item in files_arr:
+		if not (f_item is Dictionary): continue
+		var raw_path = f_item.get("file_path", "")
+		var content = f_item.get("content", "")
+		var check = AISidebarPathPolicy.is_safe_to_write(raw_path)
+		if not check["safe"]:
+			return AISidebarToolResult.err("PERMISSION_DENIED", "Güvenlik engeli: " + check["reason"] + " (" + raw_path + ")")
+		files_to_write.append({
+			"path": check["path"],
+			"content": content
+		})
 		
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-		if EditorInterface.has_method("get_resource_filesystem"):
-			EditorInterface.get_resource_filesystem().scan()
+	if files_to_write.is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "Yazılacak geçerli dosya bulunamadı.")
+		
+	var first = files_to_write[0]
+	var first_is_new = not FileAccess.file_exists(first["path"])
+	var first_old_content = ""
+	if not first_is_new:
+		var f = FileAccess.open(first["path"], FileAccess.READ)
+		if f:
+			first_old_content = f.get_as_text()
+			f.close()
 			
-	return AISidebarToolResult.ok({
-		"written_count": written_paths.size(),
-		"files": written_paths
-	}, "✓ " + str(written_paths.size()) + " dosya başarıyla oluşturuldu.")
+	var first_type = AISidebarChangeSet.ChangeType.CREATE_FILE if first_is_new else AISidebarChangeSet.ChangeType.MODIFY_FILE
+	var main_cs = AISidebarChangeSet.new(first["path"], first_type, first["content"], first_old_content, "Toplu dosya yazımı")
+	
+	for i in range(1, files_to_write.size()):
+		var item = files_to_write[i]
+		var is_new = not FileAccess.file_exists(item["path"])
+		var old_c = ""
+		if not is_new:
+			var f2 = FileAccess.open(item["path"], FileAccess.READ)
+			if f2:
+				old_c = f2.get_as_text()
+				f2.close()
+		var sub_type = AISidebarChangeSet.ChangeType.CREATE_FILE if is_new else AISidebarChangeSet.ChangeType.MODIFY_FILE
+		main_cs.add_sub_change(item["path"], sub_type, item["content"], old_c, "Toplu dosya parçası: " + item["path"])
+		
+	var apply_res = main_cs.apply()
+	if not apply_res["success"]:
+		return AISidebarToolResult.err("BATCH_WRITE_FAILED", apply_res["error"])
+		
+	var res = AISidebarToolResult.ok({
+		"count": files_to_write.size(),
+		"written_files": files_to_write.map(func(x): return x["path"]),
+		"message": str(files_to_write.size()) + " dosya atomik olarak başarıyla yazıldı."
+	})
+	res["change_set"] = main_cs
+	return res
 
 static func _open_script(args: Dictionary) -> Dictionary:
-	var path = AISidebarPathPolicy.normalize_path(args.get("file_path", ""))
+	var raw_path = args.get("file_path", "")
+	var safe_check = AISidebarPathPolicy.is_safe_to_read(raw_path)
+	if not safe_check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+		
+	var path = safe_check["path"]
 	if not FileAccess.file_exists(path):
-		return AISidebarToolResult.err("FILE_NOT_FOUND", "Script dosyası bulunamadı: " + path)
+		return AISidebarToolResult.err("FILE_NOT_FOUND", "Script bulunamadı: " + path)
 		
 	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-		var res = load(path)
-		if res is Script and EditorInterface.has_method("edit_script"):
-			EditorInterface.edit_script(res)
-			return AISidebarToolResult.ok({"file_path": path}, "Script editörde açıldı: " + path)
+		var script_res = load(path)
+		if script_res:
+			EditorInterface.edit_script(script_res)
+			return AISidebarToolResult.ok({"file_path": path, "opened": true})
 			
-	return AISidebarToolResult.err("EDITOR_REQUIRED", "Script açma editör gerektirir.")
+	return AISidebarToolResult.err("EDITOR_UNAVAILABLE", "EditorInterface hazır değil.")
 
 static func _validate_script(args: Dictionary) -> Dictionary:
 	var raw_path = args.get("file_path", "")
-	return AISidebarVerificationPipeline.verify_script(raw_path)
+	var safe_check = AISidebarPathPolicy.is_safe_to_read(raw_path)
+	if not safe_check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+		
+	var path = safe_check["path"]
+	if not FileAccess.file_exists(path):
+		return AISidebarToolResult.err("FILE_NOT_FOUND", "Script bulunamadı: " + path)
+		
+	var file = FileAccess.open(path, FileAccess.READ)
+	if not file:
+		return AISidebarToolResult.err("READ_ERROR", "Dosya okunamadı: " + path)
+	var content = file.get_as_text()
+	file.close()
+	
+	var val_res = AISidebarVerificationPipeline.validate_script_source(content)
+	return AISidebarToolResult.ok(val_res)
 
 static func _eval_gdscript(args: Dictionary) -> Dictionary:
 	var code = args.get("code", "")
-	var expr = Expression.new()
-	var err = expr.parse(code)
+	if code.is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "Çalıştırılacak kod boş.")
+		
+	var exec_code = code.strip_edges()
+	if not "\n" in exec_code and not exec_code.begins_with("return "):
+		exec_code = "return " + exec_code
+		
+	var val_res = AISidebarVerificationPipeline.validate_script_source("func _eval_test():\n\t" + exec_code.replace("\n", "\n\t"))
+	if not val_res.get("success", false):
+		return AISidebarToolResult.err("SYNTAX_ERROR", "Değerlendirilecek kodda sözdizimi hatası: " + str(val_res.get("error", "Hata")))
+		
+	var script = GDScript.new()
+	script.source_code = "@tool\nextends RefCounted\nfunc run():\n\t" + exec_code.replace("\n", "\n\t")
+	var err = script.reload()
 	if err != OK:
-		return AISidebarToolResult.err("PARSE_ERROR", "İfade ayrıştırılamadı: " + expr.get_error_text())
+		return AISidebarToolResult.err("COMPILE_ERROR", "Kod derlenemedi: " + str(err))
 		
-	var root: Object = null
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
-		root = EditorInterface.get_edited_scene_root()
+	var instance = script.new()
+	if not instance:
+		return AISidebarToolResult.err("INSTANTIATE_ERROR", "Script örneği oluşturulamadı.")
 		
-	var dummy_node: Node = null
-	if root == null:
-		dummy_node = Node.new()
-		root = dummy_node
-		
-	var result = expr.execute([], root)
-	var has_failed = expr.has_execute_failed()
-	var err_txt = expr.get_error_text()
-	
-	if dummy_node != null:
-		dummy_node.free()
-		
-	if has_failed:
-		return AISidebarToolResult.err("EXECUTION_ERROR", "Çalıştırma hatası: " + err_txt)
-		
+	var result = instance.call("run")
 	return AISidebarToolResult.ok({"result": str(result)})

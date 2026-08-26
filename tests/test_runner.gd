@@ -36,6 +36,7 @@ const TestURLNormalization = preload("res://tests/test_url_normalization.gd")
 const TestUndoAndDialogUX = preload("res://tests/test_undo_and_dialog_ux.gd")
 const TestUIComponents = preload("res://tests/test_ui_components.gd")
 const TestChatExporter = preload("res://tests/test_chat_exporter.gd")
+const TestFileDeletionAndSignals = preload("res://tests/test_file_deletion_and_signals.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -77,7 +78,8 @@ func _init() -> void:
 		TestURLNormalization,
 		TestUndoAndDialogUX,
 		TestUIComponents,
-		TestChatExporter
+		TestChatExporter,
+		TestFileDeletionAndSignals
 	]
 	
 	var total_passed = 0
