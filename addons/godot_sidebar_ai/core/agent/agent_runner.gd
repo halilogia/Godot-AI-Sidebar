@@ -207,6 +207,14 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 	if not is_running():
 		return
 		
+	# Boş Yanıt Kontrolü (Empty Response Guard)
+	if text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty():
+		_set_state(AgentState.ERROR, "Modelden boş yanıt alındı (Empty Response).")
+		error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE). Lütfen model seçimini, API adresini veya araç setini kontrol edin.")
+		loop_finished.emit()
+		_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+		return
+		
 	# 1. Thinking (Düşünce Süreci)
 	if not thinking_content.is_empty():
 		thinking_received.emit(thinking_content)
@@ -275,7 +283,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			_run_verification_and_proceed(fn_name, args, result)
 			return
 	else:
-		# Araç çağrısı bitti, görev tamamlandı
+		# Araç çağrısı bitti, görev başarıyla tamamlandı
 		_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
 		loop_finished.emit()
 		_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))

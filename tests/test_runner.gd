@@ -25,6 +25,7 @@ const TestAssetDiscovery = preload("res://tests/test_asset_discovery.gd")
 const TestMultiChangeSet = preload("res://tests/test_multi_changeset.gd")
 const TestRealUserScenarios = preload("res://tests/test_real_user_scenarios.gd")
 const TestPluginResources = preload("res://tests/test_plugin_resources.gd")
+const TestResponsePipeline = preload("res://tests/test_response_pipeline.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -55,7 +56,8 @@ func _init() -> void:
 		TestAssetDiscovery,
 		TestMultiChangeSet,
 		TestRealUserScenarios,
-		TestPluginResources
+		TestPluginResources,
+		TestResponsePipeline
 	]
 	
 	var total_passed = 0

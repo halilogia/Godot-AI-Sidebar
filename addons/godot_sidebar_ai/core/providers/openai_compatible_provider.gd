@@ -101,10 +101,12 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 			
 		payload_messages.append(msg)
 		
+	var use_stream = config.get("stream", true)
 	var body_dict: Dictionary = {
 		"model": model,
 		"messages": payload_messages,
-		"temperature": config.get("temperature", 0.2)
+		"temperature": config.get("temperature", 0.2),
+		"stream": use_stream
 	}
 	
 	if not tools_schema.is_empty():
@@ -138,7 +140,7 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 	elif endpoint_type == "chat":
 		var parsed = AISidebarSSEParser.parse_response(response_str)
 		if parsed.has("error"):
-			error_occurred.emit("API Hatası: " + str(parsed["error"]))
+			error_occurred.emit(parsed["error"])
 		else:
 			response_received.emit(
 				parsed.get("content", ""),
