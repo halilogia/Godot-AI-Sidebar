@@ -59,6 +59,7 @@ func _ready() -> void:
 	agent_runner.tool_executing.connect(_on_agent_tool_executing)
 	agent_runner.tool_completed.connect(_on_agent_tool_completed)
 	agent_runner.approval_requested.connect(_on_agent_approval_requested)
+	agent_runner.changes_applied.connect(_on_agent_changes_applied)
 	agent_runner.verification_started.connect(_on_agent_verification_started)
 	agent_runner.verification_completed.connect(_on_agent_verification_completed)
 	agent_runner.runtime_observation_received.connect(_on_agent_runtime_observation)
@@ -232,8 +233,9 @@ func _on_reject_pressed() -> void:
 		agent_runner.reject_pending_action()
 
 func _on_view_diff_pressed() -> void:
+	var cs_to_show = pending_change_set if pending_change_set else last_applied_change_set
 	if change_set_dialog:
-		change_set_dialog.show_change_set(pending_tool_name, pending_tool_args, pending_change_set)
+		change_set_dialog.show_change_set(pending_tool_name, pending_tool_args, cs_to_show)
 
 func _on_chat_meta_clicked(meta: Variant) -> void:
 	var m_str = str(meta)
@@ -320,6 +322,22 @@ func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISid
 	
 	if change_set_dialog:
 		change_set_dialog.show_change_set(tool_name, args, cs)
+
+func _on_agent_changes_applied(cs: AISidebarChangeSet) -> void:
+	last_applied_change_set = cs
+	if not chat_log or not cs:
+		return
+		
+	var deltas = cs.get_file_deltas()
+	var file_count = deltas.size()
+	
+	chat_log.append_text("[color=#4c566a][font_size=11]╭── ✎ Değişiklikler Uygulandı (" + str(file_count) + " dosya) ──────────[/font_size][/color]\n")
+	for d in deltas:
+		var link = "[url=file:" + d["path"] + "]" + d["file_name"] + "[/url]"
+		chat_log.append_text("  • [b]" + link + "[/b]  [color=#a3be8c]+" + str(d["added"]) + "[/color]  [color=#bf616a]-" + str(d["removed"]) + "[/color]\n")
+		
+	chat_log.append_text("  [color=#88c0d0][url=action:view_diff]🔍 [b]Diff Gör[/b][/url][/color]   [color=#d08770][url=action:undo]↩ [b]Geri Al (Undo)[/b][/url][/color]\n")
+	chat_log.append_text("[color=#4c566a][font_size=11]╰─────────────────────────────────────────────────────[/font_size][/color]\n\n")
 
 func _on_agent_verification_started(tool_name: String) -> void:
 	append_chat_message("🔍 Doğrulama", "İşlem doğrulanıyor: " + tool_name, "#81a1c1")

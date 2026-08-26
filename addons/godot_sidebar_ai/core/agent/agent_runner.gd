@@ -37,6 +37,7 @@ signal text_received(role: String, message_text: String)
 signal tool_executing(tool_name: String, args: Dictionary)
 signal tool_completed(tool_name: String, result: Dictionary)
 signal approval_requested(tool_name: String, args: Dictionary, change_set: AISidebarChangeSet)
+signal changes_applied(change_set: AISidebarChangeSet)
 signal verification_started(tool_name: String)
 signal verification_completed(tool_name: String, is_valid: bool, msg: String)
 signal runtime_observation_received(obs: AISidebarRuntimeObservation)
@@ -161,7 +162,7 @@ func _finish_task(success: bool) -> void:
 		"editor_ops": editor_ops_count,
 		"runtime_ops": runtime_ops_count,
 		"verification_checkpoints": verification_checkpoints_count,
-		# Detaylı Süre Dağılımı
+		# Detaylı Süre Dağılımı (Saniye)
 		"llm_time_s": snappedf(llm_time_msec / 1000.0, 0.1),
 		"tool_time_s": snappedf(tool_time_msec / 1000.0, 0.1),
 		"file_time_s": snappedf(file_time_msec / 1000.0, 0.1),
@@ -186,6 +187,8 @@ func approve_pending_action() -> void:
 	var fn_name = _pending_tool_name
 	var tc_id = _pending_tool_id
 	var args = _pending_tool_args
+	var cs = _pending_change_set
+	
 	_pending_tool_name = ""
 	_pending_tool_id = ""
 	_pending_tool_args = {}
@@ -201,6 +204,9 @@ func approve_pending_action() -> void:
 	_record_category_time(fn_name, t_delta)
 	
 	tool_completed.emit(fn_name, result)
+	if cs and result.get("success", false):
+		changes_applied.emit(cs)
+		
 	_run_verification_and_proceed(fn_name, tc_id, args, result)
 
 ## Kullanıcı bekleyen işlemi reddetti (Reject)
@@ -335,6 +341,9 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_last_tool_signature = sig
 				_stagnation_count = 0
 				
+			# Değişiklik Öncesi Eski İçerikleri Kaydet (ChangeSet Hazırlığı)
+			var cs = _build_changeset_for_tool(fn_name, args)
+			
 			# Yetki ve Onay Kontrolü
 			_set_state(AgentState.EXECUTING, "Araç çalıştırılıyor: " + fn_name)
 			tool_executing.emit(fn_name, args)
@@ -350,30 +359,6 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_pending_tool_name = fn_name
 				_pending_tool_id = tc_id
 				_pending_tool_args = args
-				
-				var cs: AISidebarChangeSet = null
-				if fn_name == "create_or_update_script":
-					var path = args.get("file_path", "")
-					var old_c = ""
-					if FileAccess.file_exists(path):
-						var f = FileAccess.open(path, FileAccess.READ)
-						if f: old_c = f.get_as_text(); f.close()
-					cs = AISidebarChangeSet.new(path, AISidebarChangeSet.ChangeType.MODIFY_FILE, args.get("content", ""), old_c, "Script güncellemesi")
-				elif fn_name == "delete_node":
-					cs = AISidebarChangeSet.new(args.get("node_path", ""), AISidebarChangeSet.ChangeType.MUTATE_SCENE, "", "", "Düğüm silme: " + args.get("node_path", ""))
-				elif fn_name == "write_files":
-					cs = AISidebarChangeSet.new("", AISidebarChangeSet.ChangeType.MODIFY_FILE, "", "", "Toplu dosya yazımı")
-					var f_arr = args.get("files", [])
-					for f_item in f_arr:
-						if f_item is Dictionary:
-							var f_p = f_item.get("file_path", "")
-							var f_c = f_item.get("content", "")
-							var old_txt = ""
-							if FileAccess.file_exists(f_p):
-								var f_rd = FileAccess.open(f_p, FileAccess.READ)
-								if f_rd: old_txt = f_rd.get_as_text(); f_rd.close()
-							cs.add_sub_change(f_p, AISidebarChangeSet.ChangeType.MODIFY_FILE, f_c, old_txt, f_p.get_file())
-							
 				_pending_change_set = cs
 				_waiting_start_time = Time.get_ticks_msec()
 				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
@@ -381,7 +366,9 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				return
 				
 			tool_completed.emit(fn_name, result)
-			
+			if cs and result.get("success", false):
+				changes_applied.emit(cs)
+				
 			if fn_name == "play_game" or fn_name == "restart_game":
 				_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor...")
 				
@@ -393,6 +380,35 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			
 		_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
 		_finish_task(true)
+
+func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarChangeSet:
+	if fn_name == "create_or_update_script":
+		var path = args.get("file_path", "")
+		var old_c = ""
+		var c_type = AISidebarChangeSet.ChangeType.CREATE_FILE
+		if FileAccess.file_exists(path):
+			c_type = AISidebarChangeSet.ChangeType.MODIFY_FILE
+			var f = FileAccess.open(path, FileAccess.READ)
+			if f: old_c = f.get_as_text(); f.close()
+		return AISidebarChangeSet.new(path, c_type, args.get("content", ""), old_c, "Script güncellemesi")
+	elif fn_name == "write_files":
+		var cs = AISidebarChangeSet.new("", AISidebarChangeSet.ChangeType.MODIFY_FILE, "", "", "Toplu dosya yazımı")
+		var f_arr = args.get("files", [])
+		for f_item in f_arr:
+			if f_item is Dictionary:
+				var f_p = f_item.get("file_path", "")
+				var f_c = f_item.get("content", "")
+				var old_txt = ""
+				var c_type = AISidebarChangeSet.ChangeType.CREATE_FILE
+				if FileAccess.file_exists(f_p):
+					c_type = AISidebarChangeSet.ChangeType.MODIFY_FILE
+					var f_rd = FileAccess.open(f_p, FileAccess.READ)
+					if f_rd: old_txt = f_rd.get_as_text(); f_rd.close()
+				cs.add_sub_change(f_p, c_type, f_c, old_txt, f_p.get_file())
+		return cs
+	elif fn_name == "delete_node":
+		return AISidebarChangeSet.new(args.get("node_path", ""), AISidebarChangeSet.ChangeType.MUTATE_SCENE, "", "", "Düğüm silme: " + args.get("node_path", ""))
+	return null
 
 func _classify_telemetry_op(fn_name: String, args: Dictionary) -> void:
 	match fn_name:

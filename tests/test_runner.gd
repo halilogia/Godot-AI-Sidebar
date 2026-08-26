@@ -31,6 +31,7 @@ const TestToolDataIntegrity = preload("res://tests/test_tool_data_integrity.gd")
 const TestAtomicScriptValidation = preload("res://tests/test_atomic_script_validation.gd")
 const TestBatchAndTelemetry = preload("res://tests/test_batch_and_telemetry.gd")
 const TestDependencyAwareBatch = preload("res://tests/test_dependency_aware_batch.gd")
+const TestChangeSetAndNetworkTiming = preload("res://tests/test_changeset_and_network_timing.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -67,7 +68,8 @@ func _init() -> void:
 		TestToolDataIntegrity,
 		TestAtomicScriptValidation,
 		TestBatchAndTelemetry,
-		TestDependencyAwareBatch
+		TestDependencyAwareBatch,
+		TestChangeSetAndNetworkTiming
 	]
 	
 	var total_passed = 0
