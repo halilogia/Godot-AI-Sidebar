@@ -97,24 +97,27 @@ func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictio
 	if path.is_empty():
 		return {"success": true}
 		
-	# Script Editöründe açık ve silinecek dosyayı güvenle kapat/değiştir (File not found hatasını önler)
-	if c_type == ChangeType.CREATE_FILE and Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-		if EditorInterface.has_method("get_script_editor"):
-			var se = EditorInterface.get_script_editor()
-			if se and se.has_method("get_open_scripts"):
-				var open_scripts = se.get_open_scripts()
-				for s in open_scripts:
-					if s and s.resource_path == path:
-						if se.has_method("get_current_script") and se.get_current_script() == s:
-							var switched = false
-							for other_s in open_scripts:
-								if other_s != s and is_instance_valid(other_s):
-									EditorInterface.edit_script(other_s)
-									switched = true
-									break
-							if not switched:
-								EditorInterface.edit_script(null)
-								
+	# Script Editöründe açık ve silinecek dosyayı güvenle kapat/değiştir ve cache unbind yap (File not found hatasını kesin önler)
+	if c_type == ChangeType.CREATE_FILE:
+		if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+			if EditorInterface.has_method("get_script_editor"):
+				var se = EditorInterface.get_script_editor()
+				if se and se.has_method("get_open_scripts"):
+					var open_scripts = se.get_open_scripts()
+					for s in open_scripts:
+						if s and s.resource_path == path:
+							if se.has_method("get_current_script") and se.get_current_script() == s:
+								var switched = false
+								for other_s in open_scripts:
+									if other_s != s and is_instance_valid(other_s):
+										EditorInterface.edit_script(other_s)
+										switched = true
+										break
+								if not switched:
+									EditorInterface.edit_script(null)
+							# Unbind resource path from ResourceCache to prevent File not found polling
+							s.take_over_path("")
+							
 	match c_type:
 		ChangeType.CREATE_FILE:
 			if FileAccess.file_exists(path):

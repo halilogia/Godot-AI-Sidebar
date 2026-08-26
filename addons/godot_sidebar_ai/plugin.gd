@@ -10,8 +10,9 @@ func _enter_tree() -> void:
 		var dock_scene: PackedScene = load(DOCK_SCENE_PATH)
 		if dock_scene:
 			chat_dock = dock_scene.instantiate()
-			add_control_to_dock(DOCK_SLOT_LEFT_UL, chat_dock)
-			print("[Godot AI Core] Eklenti başarıyla yüklendi ve sol panele eklendi.")
+			chat_dock.name = "GodotAISidebar"
+			add_control_to_dock(DOCK_SLOT_RIGHT_UL, chat_dock)
+			print("[Godot AI Core] Eklenti başarıyla yüklendi (Sağ Dock).")
 
 func _exit_tree() -> void:
 	if chat_dock:
