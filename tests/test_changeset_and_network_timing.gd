@@ -38,12 +38,12 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 1 Başarısız: ChangeSet BBCode diff formatı hatalı: " + bbcode)
 		
-	# Test 2: NetworkManager URL Parser Testi
+	# Test 2: NetworkManager URL Parser Testi (localhost -> 127.0.0.1)
 	var nm = AISidebarNetworkManager.new()
 	var p1 = nm._parse_url("http://localhost:20128/v1/chat/completions")
 	var p2 = nm._parse_url("https://api.openai.com/v1/models")
 	
-	if p1["host"] == "localhost" and p1["port"] == 20128 and p1["path"] == "/v1/chat/completions" and p2["host"] == "api.openai.com" and p2["port"] == 443 and p2["ssl"] == true:
+	if p1["host"] == "127.0.0.1" and p1["port"] == 20128 and p1["path"] == "/v1/chat/completions" and p2["host"] == "api.openai.com" and p2["port"] == 443 and p2["ssl"] == true:
 		passed += 1
 	else:
 		failed += 1
