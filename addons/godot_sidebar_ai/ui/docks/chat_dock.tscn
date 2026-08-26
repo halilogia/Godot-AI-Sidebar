@@ -1,0 +1,112 @@
+[gd_scene load_steps=9 format=3 uid="uid://b7v8k1l2m3n4p"]
+
+[ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/docks/chat_dock.gd" id="1_chat_dock"]
+[ext_resource type="PackedScene" uid="uid://c8k2m1l4n5p6q" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="2_settings_dlg"]
+[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/bot.svg" id="3_bot_icon"]
+[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/globe.svg" id="4_globe_icon"]
+[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/refresh-cw.svg" id="5_refresh_icon"]
+[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/settings.svg" id="6_settings_icon"]
+[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/trash-2.svg" id="7_trash_icon"]
+[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/send.svg" id="8_send_icon"]
+
+[node name="GodotAISidebar" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_chat_dock")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 6
+
+[node name="HeaderBar" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BotIcon" type="TextureRect" parent="MainLayout/HeaderBar"]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("3_bot_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TitleLabel" type="Label" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Godot AI"
+
+[node name="LangToggleBtn" type="Button" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+icon = ExtResource("4_globe_icon")
+flat = true
+
+[node name="StatusBadge" type="Label" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 11
+text = "● Ready"
+
+[node name="ModelBar" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ModelSelector" type="OptionButton" parent="MainLayout/ModelBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RefreshModelsBtn" type="Button" parent="MainLayout/ModelBar"]
+layout_mode = 2
+icon = ExtResource("5_refresh_icon")
+
+[node name="SettingsBtn" type="Button" parent="MainLayout/ModelBar"]
+layout_mode = 2
+icon = ExtResource("6_settings_icon")
+
+[node name="ChatLog" type="RichTextLabel" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 2
+bbcode_enabled = true
+selection_enabled = true
+
+[node name="InputArea" type="VBoxContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="InputField" type="TextEdit" parent="MainLayout/InputArea"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+wrap_mode = 1
+
+[node name="ButtonsBar" type="HBoxContainer" parent="MainLayout/InputArea"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ClearBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
+layout_mode = 2
+icon = ExtResource("7_trash_icon")
+
+[node name="SendBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+icon = ExtResource("8_send_icon")
+alignment = 1
+
+[node name="SettingsDialog" parent="." instance=ExtResource("2_settings_dlg")]

@@ -1,0 +1,28 @@
+# Godot 4+ specific ignores
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Imported translations
+*.translation
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
+
+# System / IDE ignores
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*~
+.idea/
+.vscode/
+
+# Addon user secrets / local config
+addons/godot_sidebar_ai/config.json
+
+# Agent Brain / Scratch
+brain/
