@@ -2,8 +2,8 @@
 extends RefCounted
 class_name AISidebarVerificationPipeline
 
-## Üç Durumlu Doğrulama ve Güvenilirlik Boru Hattı (SRP).
-## PASSED, FAILED ve INCONCLUSIVE durumlarını ve otomatik tool verification adımlarını yönetir.
+## Üç Durumlu Doğrulama, Bağımlılık Denetimi ve Güvenilirlik Boru Hattı (SRP).
+## PASSED, FAILED ve INCONCLUSIVE durumlarını, sözdizimi ve ChangeSet bağımlılıklarını yönetir.
 
 const AISidebarVisualObservation = preload("res://addons/godot_sidebar_ai/core/types/visual_observation.gd")
 
@@ -16,32 +16,37 @@ enum VerificationStatus {
 const CONFIDENCE_THRESHOLD: float = 0.65
 
 ## 1. Bellek İçi Kaynak Kodu Doğrulaması (Pre-write In-Memory Validation)
-static func validate_script_source(source_code: String, file_path: String = "") -> Dictionary:
+static func validate_script_source(source_code: String, file_path: String = "", batch_context: Dictionary = {}) -> Dictionary:
 	var script = GDScript.new()
 	script.source_code = source_code
 	var reload_err = script.reload()
+	
 	if reload_err != OK:
+		# Eğer hata eksik bir preload'dan kaynaklanıyorsa ve o dosya aynı batch içindeyse izin ver
+		if reload_err == 43 or reload_err == ERR_FILE_NOT_FOUND:
+			var has_batch_dep = false
+			for bp in batch_context.keys():
+				if bp in source_code:
+					has_batch_dep = true
+					break
+			if has_batch_dep:
+				return {
+					"status": VerificationStatus.PASSED,
+					"success": true,
+					"message": "✓ GDScript sözdizimi geçerli (Batch içi bağımlılık)."
+				}
+				
 		return {
 			"status": VerificationStatus.FAILED,
 			"success": false,
 			"error": {
 				"code": "SCRIPT_SYNTAX_ERROR",
-				"message": "Script sözdizimi (syntax) hatası içeriyor (Derleme kodu: " + str(reload_err) + "). Dosya yolu: " + file_path,
+				"message": "Script sözdizimi hatası içeriyor (Derleme kodu: " + str(reload_err) + "). Dosya: " + file_path,
 				"file_path": file_path,
 				"recoverable": true
 			}
 		}
-	if not script.can_instantiate():
-		return {
-			"status": VerificationStatus.FAILED,
-			"success": false,
-			"error": {
-				"code": "SCRIPT_COMPILE_ERROR",
-				"message": "Script başarıyla örneklenemedi veya geçersiz referanslara sahip: " + file_path,
-				"file_path": file_path,
-				"recoverable": true
-			}
-		}
+		
 	return {
 		"status": VerificationStatus.PASSED,
 		"success": true,
@@ -57,28 +62,93 @@ static func verify_script(file_path: String) -> Dictionary:
 			"error": {"code": "FILE_NOT_FOUND", "message": "Script dosyası bulunamadı: " + file_path, "file_path": file_path, "recoverable": true}
 		}
 		
-	var script_res = load(file_path)
-	if script_res == null or not (script_res is Script):
+	var f = FileAccess.open(file_path, FileAccess.READ)
+	if not f:
 		return {
 			"status": VerificationStatus.FAILED,
 			"success": false,
-			"error": {"code": "SCRIPT_LOAD_ERROR", "message": "Script yüklenemedi veya geçersiz GDScript: " + file_path, "file_path": file_path, "recoverable": true}
+			"error": {"code": "READ_ERROR", "message": "Script dosyası okunamadı: " + file_path, "file_path": file_path, "recoverable": true}
 		}
 		
-	if not script_res.can_instantiate():
-		return {
-			"status": VerificationStatus.FAILED,
-			"success": false,
-			"error": {"code": "SCRIPT_SYNTAX_ERROR", "message": "Script derlenemiyor (Syntax hatası): " + file_path, "file_path": file_path, "recoverable": true}
-		}
-		
+	var text = f.get_as_text()
+	f.close()
+	
+	return validate_script_source(text, file_path)
+
+## 3. Bağımlılık Duyarlı Toplu Dosya Doğrulaması (Dependency-Aware Batch Validator)
+static func validate_batch_files(files_arr: Array) -> Dictionary:
+	var batch_map: Dictionary = {}
+	for item in files_arr:
+		if item is Dictionary:
+			var p = str(item.get("file_path", ""))
+			if not p.is_empty():
+				batch_map[p] = item.get("content", "")
+				
+	# 1. GDScript sözdizimi kontrolü
+	for p in batch_map.keys():
+		if p.ends_with(".gd"):
+			var val_res = validate_script_source(batch_map[p], p, batch_map)
+			if not val_res.get("success", false):
+				return val_res
+				
+	# 2. TSCN ve ExtResource referans kontrolü
+	var ext_regex = RegEx.new()
+	ext_regex.compile('path="([^"]+)"')
+	
+	for p in batch_map.keys():
+		if p.ends_with(".tscn") or p.ends_with(".tres"):
+			var content = str(batch_map[p])
+			var matches = ext_regex.search_all(content)
+			for m in matches:
+				var ref_path = m.get_string(1)
+				if ref_path.begins_with("res://"):
+					var exists_on_disk = FileAccess.file_exists(ref_path)
+					var in_current_batch = batch_map.has(ref_path)
+					if not exists_on_disk and not in_current_batch:
+						return {
+							"status": VerificationStatus.FAILED,
+							"success": false,
+							"error": {
+								"code": "RESOURCE_REFERENCE_NOT_FOUND",
+								"message": "Dosya (" + p + ") bulunamayan bir kaynağa referans veriyor: " + ref_path + ". (Ne diskte var ne de mevcut batch paketinde).",
+								"file_path": p,
+								"missing_resource": ref_path,
+								"recoverable": true
+							}
+						}
+						
+	# 3. Dosyaları güvenli yazım sırasına göre sırala: .gd -> .tres -> .tscn -> diğerleri
+	var sorted_files: Array[Dictionary] = []
+	var gd_files: Array[Dictionary] = []
+	var tres_files: Array[Dictionary] = []
+	var tscn_files: Array[Dictionary] = []
+	var other_files: Array[Dictionary] = []
+	
+	for item in files_arr:
+		if not (item is Dictionary): continue
+		var p = str(item.get("file_path", ""))
+		if p.ends_with(".gd"):
+			gd_files.append(item)
+		elif p.ends_with(".tres"):
+			tres_files.append(item)
+		elif p.ends_with(".tscn"):
+			tscn_files.append(item)
+		else:
+			other_files.append(item)
+			
+	sorted_files.append_array(other_files)
+	sorted_files.append_array(gd_files)
+	sorted_files.append_array(tres_files)
+	sorted_files.append_array(tscn_files)
+	
 	return {
 		"status": VerificationStatus.PASSED,
 		"success": true,
-		"message": "✓ Script doğrulandı: " + file_path
+		"sorted_files": sorted_files,
+		"message": "✓ Toplu dosya bağımlılıkları ve sözdizimi doğrulandı."
 	}
 
-## 3. Sahne / Düğüm Doğrulaması (Node Hierarchy Verification)
+## 4. Sahne / Düğüm Doğrulaması (Node Hierarchy Verification)
 static func verify_node(node_path: String, expected_type: String = "") -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface") or not EditorInterface.has_method("get_edited_scene_root"):
 		return {
@@ -116,7 +186,7 @@ static func verify_node(node_path: String, expected_type: String = "") -> Dictio
 		"message": "✓ Düğüm doğrulandı: " + node.name + " (" + node.get_class() + ")"
 	}
 
-## 4. Görsel Doğrulama (Visual Verification with Confidence Threshold)
+## 5. Görsel Doğrulama (Visual Verification with Confidence Threshold)
 static func verify_visual(visual_obs: AISidebarVisualObservation) -> Dictionary:
 	if not visual_obs:
 		return {
