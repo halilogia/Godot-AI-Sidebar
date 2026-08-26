@@ -3,7 +3,7 @@ extends Node
 class_name AISidebarNetworkManager
 
 ## Düşük Gecikmeli HTTPClient Ağ Motoru (Low-Latency HTTPClient Transport) (SRP).
-## Keep-Alive ve Chunked transfer askıda kalmalarını önler, JSON/[DONE] tamamlandığında milisaniyeler içinde döner.
+## Keep-Alive ve Chunked transfer askıda kalmalarını önler, JSON/[DONE] tamamlandığı milisaniyede döner.
 
 signal request_completed(endpoint_type: String, response_code: int, response_str: String)
 signal request_failed(endpoint_type: String, error_message: String)
@@ -100,7 +100,6 @@ func _process(delta: float) -> void:
 	var status = _client.get_status()
 	match status:
 		HTTPClient.STATUS_DISCONNECTED:
-			# Soket kapandıysa ve gövde geldiyse başarıyla tamamla
 			if _raw_response_body.size() > 0:
 				_finalize_success()
 			else:
@@ -128,15 +127,21 @@ func _process(delta: float) -> void:
 			if chunk.size() > 0:
 				_raw_response_body.append_array(chunk)
 				
-				# Erken Tamamlanma Tespiti (Early Completion)
+				# 1. Content-Length ile tamamlama
 				if _expected_content_length > 0 and _raw_response_body.size() >= _expected_content_length:
 					_finalize_success()
 					return
 					
+				# 2. Erken JSON & SSE Doğrulama (Early Completion)
 				var body_str = _raw_response_body.get_string_from_utf8().strip_edges()
-				if body_str.ends_with("[DONE]") or (body_str.begins_with("{") and body_str.ends_with("}")):
+				if body_str.ends_with("[DONE]"):
 					_finalize_success()
 					return
+				elif body_str.begins_with("{"):
+					var parsed_test = JSON.parse_string(body_str)
+					if parsed_test != null and parsed_test is Dictionary:
+						_finalize_success()
+						return
 		HTTPClient.STATUS_CONNECTION_ERROR, HTTPClient.STATUS_TLS_HANDSHAKE_ERROR:
 			_is_request_active = false
 			request_failed.emit(_current_endpoint, "Ağ bağlantı hatası (Status: " + str(status) + ")")
