@@ -1,0 +1,30 @@
+[gd_scene load_steps=3 format=3 uid="uid://ci1234567890a"]
+
+[ext_resource type="Script" path="res://tests/integration_project/scripts/player.gd" id="1_player"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(32, 64)
+
+[node name="World" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(576, 324)
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(200, 300)
+script = ExtResource("1_player")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="Enemy" type="Node2D" parent="."]
+position = Vector2(600, 300)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="ScoreLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 100.0
+offset_bottom = 43.0
+text = "Score: 0"

@@ -26,6 +26,32 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
+				"name": "search_project_assets",
+				"description": "Projedeki sahneleri, scriptleri, dokuları, materyalleri veya ses dosyalarını türe göre arar.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"query": { "type": "string", "description": "Aranacak dosya adı veya kelime (örn: 'player', 'jump', 'icon')." },
+						"asset_type": { "type": "string", "description": "Asset tipi: 'scene', 'script', 'texture', 'material', 'audio', 'all'" }
+					},
+					"required": ["query"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "analyze_project",
+				"description": "Projenin genel yapısını, ana sahnesini, sahne/script sayılarını ve mimarisini özetler.",
+				"parameters": {
+					"type": "object",
+					"properties": {}
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
 				"name": "get_selected_nodes",
 				"description": "Kullanıcının Godot sahne ağacında şu anda fareyle seçtiği düğümleri listeler.",
 				"parameters": {
@@ -142,6 +168,10 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 	match tool_name:
 		"get_project_files":
 			return _get_project_files(args)
+		"search_project_assets":
+			return _search_project_assets(args)
+		"analyze_project":
+			return _analyze_project(args)
 		"get_selected_nodes":
 			return _get_selected_nodes(args)
 		"select_node":
@@ -174,6 +204,65 @@ static func _get_project_files(args: Dictionary) -> Dictionary:
 		"count": files.size(),
 		"files": files
 	})
+
+static func _search_project_assets(args: Dictionary) -> Dictionary:
+	var query = args.get("query", "").to_lower()
+	var a_type = args.get("asset_type", "all").to_lower()
+	
+	var ext_list: Array = []
+	match a_type:
+		"scene": ext_list = [".tscn"]
+		"script": ext_list = [".gd"]
+		"texture": ext_list = [".png", ".jpg", ".jpeg", ".svg", ".webp"]
+		"material": ext_list = [".tres", ".material"]
+		"audio": ext_list = [".wav", ".ogg", ".mp3"]
+		_: ext_list = [".tscn", ".gd", ".png", ".jpg", ".tres", ".wav", ".ogg"]
+		
+	var all_files: Array = []
+	_scan_dir_recursive("res://", "", all_files)
+	
+	var matches: Array = []
+	for f in all_files:
+		var f_lower = f.to_lower()
+		var ext_match = false
+		for ext in ext_list:
+			if f_lower.ends_with(ext):
+				ext_match = true
+				break
+		if ext_match and (query.is_empty() or query in f_lower.get_file()):
+			matches.append(f)
+			
+	return AISidebarToolResult.ok({
+		"query": query,
+		"asset_type": a_type,
+		"count": matches.size(),
+		"assets": matches
+	})
+
+static func _analyze_project(args: Dictionary) -> Dictionary:
+	var proj_name = ProjectSettings.get_setting("application/config/name", "Godot Project")
+	var main_scene = ProjectSettings.get_setting("application/run/main_scene", "res://")
+	
+	var all_files: Array = []
+	_scan_dir_recursive("res://", "", all_files)
+	
+	var scene_count = 0
+	var script_count = 0
+	var texture_count = 0
+	
+	for f in all_files:
+		if f.ends_with(".tscn"): scene_count += 1
+		elif f.ends_with(".gd"): script_count += 1
+		elif f.ends_with(".png") or f.ends_with(".svg"): texture_count += 1
+		
+	return AISidebarToolResult.ok({
+		"project_name": proj_name,
+		"main_scene": main_scene,
+		"total_files": all_files.size(),
+		"scenes_count": scene_count,
+		"scripts_count": script_count,
+		"textures_count": texture_count
+	}, "Proje genel yapısı başarıyla analiz edildi.")
 
 static func _scan_dir_recursive(path: String, filter: String, result: Array) -> void:
 	var dir = DirAccess.open(path)

@@ -2,11 +2,9 @@
 extends RefCounted
 class_name AISidebarChangeSet
 
-## ChangeSet ve Diff Modeli (SRP).
-## Değişiklik önerilerini, satır farklarını, uygulama (apply) ve geri alma (rollback) mantığını yönetir.
+## Atomik Değişiklik Seti ve Geri Alma (ChangeSet, Unified Diff & Multi-Item Support) (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
-const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
 
 enum ChangeType {
 	CREATE_FILE,
@@ -15,139 +13,164 @@ enum ChangeType {
 	MUTATE_SCENE
 }
 
-var id: String
-var change_type: ChangeType
-var target_path: String
-var old_content: String = ""
+var target_path: String = ""
+var change_type: ChangeType = ChangeType.MODIFY_FILE
 var new_content: String = ""
+var old_content: String = ""
 var description: String = ""
-var is_applied: bool = false
-var is_rejected: bool = false
-var created_at: int = 0
+var timestamp: int = 0
+var sub_changes: Array[Dictionary] = [] # Çoklu dosya ve sahne operasyonları için
 
-func _init(p_target_path: String = "", p_change_type: ChangeType = ChangeType.MODIFY_FILE, p_new_content: String = "", p_old_content: String = "", p_desc: String = "") -> void:
-	id = str(Time.get_unix_time_from_system()) + "_" + str(randi() % 10000)
-	target_path = p_target_path
-	change_type = p_change_type
-	new_content = p_new_content
-	old_content = p_old_content
+func _init(p_path: String = "", p_type: ChangeType = ChangeType.MODIFY_FILE, p_new: String = "", p_old: String = "", p_desc: String = "") -> void:
+	target_path = p_path
+	change_type = p_type
+	new_content = p_new
+	old_content = p_old
 	description = p_desc
-	created_at = Time.get_unix_time_from_system()
+	timestamp = Time.get_unix_time_from_system()
 
-## İnsan tarafından okunabilir özet metin
-func get_summary() -> String:
-	var path_base = target_path.get_file()
-	if path_base.is_empty():
-		path_base = target_path
-		
-	match change_type:
-		ChangeType.CREATE_FILE:
-			return "Oluşturulacak: " + path_base + " (" + target_path + ")"
-		ChangeType.DELETE_FILE:
-			return "Silinecek: " + path_base + " (" + target_path + ")"
-		ChangeType.MUTATE_SCENE:
-			return "Sahne Değişikliği: " + description
-		_:
-			var old_lines = old_content.split("\n").size() if not old_content.is_empty() else 0
-			var new_lines = new_content.split("\n").size() if not new_content.is_empty() else 0
-			return "Güncellenecek: " + path_base + " (" + str(new_lines) + " satır)"
+func add_sub_change(p_path: String, p_type: ChangeType, p_new: String, p_old: String, p_desc: String) -> void:
+	sub_changes.append({
+		"target_path": p_path,
+		"change_type": p_type,
+		"new_content": p_new,
+		"old_content": p_old,
+		"description": p_desc
+	})
 
-## Satır bazlı Diff metni üretir (+ Eklenenler, - Silinenler)
-func get_diff_text() -> String:
-	var old_lines = old_content.split("\n") if not old_content.is_empty() else PackedStringArray()
-	var new_lines = new_content.split("\n") if not new_content.is_empty() else PackedStringArray()
-	var diff_output: PackedStringArray = []
-	
-	diff_output.append("--- a/" + target_path)
-	diff_output.append("+++ b/" + target_path)
-	
-	var max_len = maxi(old_lines.size(), new_lines.size())
-	for i in range(max_len):
-		var old_l = old_lines[i] if i < old_lines.size() else null
-		var new_l = new_lines[i] if i < new_lines.size() else null
-		
-		if old_l != null and new_l != null:
-			if old_l == new_l:
-				diff_output.append("  " + old_l)
-			else:
-				diff_output.append("- " + old_l)
-				diff_output.append("+ " + new_l)
-		elif old_l != null:
-			diff_output.append("- " + old_l)
-		elif new_l != null:
-			diff_output.append("+ " + new_l)
-			
-	return "\n".join(diff_output)
-
-## Değişikliği diske uygular (Apply)
+## Değişiklikleri diske / sahneye uygular (Apply)
 func apply() -> Dictionary:
-	if is_applied:
-		return AISidebarToolResult.ok(null, "Değişiklik zaten uygulanmış.")
+	# 1. Ana Değişikliği Uygula
+	var main_res = _apply_single(target_path, change_type, new_content)
+	if not main_res["success"]:
+		return main_res
 		
-	var safe_check = AISidebarPathPolicy.is_safe_to_write(target_path)
-	if not safe_check["safe"]:
-		return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
-		
-	var path = safe_check["path"]
-	var dir_path = path.get_base_dir()
-	if not DirAccess.dir_exists_absolute(dir_path):
-		DirAccess.make_dir_recursive_absolute(dir_path)
-		
-	# Eski içeriği yedekle (Eğer daha önce kaydedilmediyse)
-	if old_content.is_empty() and FileAccess.file_exists(path):
-		var old_f = FileAccess.open(path, FileAccess.READ)
-		if old_f:
-			old_content = old_f.get_as_text()
-			old_f.close()
+	# 2. Varsa Alt Değişiklikleri Uygula
+	for sub in sub_changes:
+		var sub_res = _apply_single(sub["target_path"], sub["change_type"], sub["new_content"])
+		if not sub_res["success"]:
+			return sub_res
 			
-	var file = FileAccess.open(path, FileAccess.WRITE)
-	if not file:
-		return AISidebarToolResult.err("WRITE_FAILED", "Dosya yazılamadı: " + path)
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_resource_filesystem"):
+		EditorInterface.get_resource_filesystem().scan()
 		
-	file.store_string(new_content)
-	file.close()
-	is_applied = true
-	is_rejected = false
-	
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-		if EditorInterface.has_method("get_resource_filesystem"):
-			EditorInterface.get_resource_filesystem().scan()
-			
-	return AISidebarToolResult.ok({"path": path, "applied": true}, "Değişiklik başarıyla uygulandı.")
+	return {"success": true, "message": "ChangeSet başarıyla uygulandı (" + str(1 + sub_changes.size()) + " değişiklik)."}
 
-## Değişikliği geri alır (Rollback)
+func _apply_single(path: String, c_type: ChangeType, content: String) -> Dictionary:
+	if path.is_empty():
+		return {"success": true}
+		
+	var check = AISidebarPathPolicy.is_safe_to_write(path)
+	if not check["safe"]:
+		return {"success": false, "error": "Güvenlik Engeli: " + check["reason"]}
+		
+	match c_type:
+		ChangeType.CREATE_FILE, ChangeType.MODIFY_FILE:
+			var dir = path.get_base_dir()
+			if not DirAccess.dir_exists_absolute(dir):
+				DirAccess.make_dir_recursive_absolute(dir)
+			var f = FileAccess.open(path, FileAccess.WRITE)
+			if not f:
+				return {"success": false, "error": "Dosya yazılamadı: " + path}
+			f.store_string(content)
+			f.close()
+		ChangeType.DELETE_FILE:
+			if FileAccess.file_exists(path):
+				DirAccess.remove_absolute(path)
+		ChangeType.MUTATE_SCENE:
+			pass
+			
+	return {"success": true}
+
+## Değişiklikleri geri alır (Rollback)
 func rollback() -> Dictionary:
-	if not is_applied:
-		return AISidebarToolResult.err("NOT_APPLIED", "Uygulanmamış değişiklik geri alınamaz.")
+	# Ters sırayla geri al
+	for i in range(sub_changes.size() - 1, -1, -1):
+		var sub = sub_changes[i]
+		_rollback_single(sub["target_path"], sub["change_type"], sub["old_content"])
 		
-	var safe_check = AISidebarPathPolicy.is_safe_to_write(target_path)
-	if not safe_check["safe"]:
-		return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+	_rollback_single(target_path, change_type, old_content)
+	
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_resource_filesystem"):
+		EditorInterface.get_resource_filesystem().scan()
 		
-	var path = safe_check["path"]
-	if change_type == ChangeType.CREATE_FILE and old_content.is_empty():
-		# Yeni oluşturulan dosya ise sil
-		DirAccess.remove_absolute(path)
-	else:
-		# Eski içeriği geri yaz
-		var file = FileAccess.open(path, FileAccess.WRITE)
-		if not file:
-			return AISidebarToolResult.err("WRITE_FAILED", "Geri alma esnasında dosya yazılamadı: " + path)
-		file.store_string(old_content)
-		file.close()
-		
-	is_applied = false
-	return AISidebarToolResult.ok({"path": path, "rolled_back": true}, "Değişiklik başarıyla geri alındı.")
+	return {"success": true, "message": "ChangeSet geri alındı."}
 
-func to_dict() -> Dictionary:
-	return {
-		"id": id,
-		"type": change_type,
-		"target_path": target_path,
-		"description": description,
-		"is_applied": is_applied,
-		"is_rejected": is_rejected,
-		"old_length": old_content.length(),
-		"new_length": new_content.length(),
-		"created_at": created_at
-	}
+func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictionary:
+	if path.is_empty():
+		return {"success": true}
+	match c_type:
+		ChangeType.CREATE_FILE:
+			if FileAccess.file_exists(path):
+				DirAccess.remove_absolute(path)
+		ChangeType.MODIFY_FILE:
+			var f = FileAccess.open(path, FileAccess.WRITE)
+			if f:
+				f.store_string(old_c)
+				f.close()
+		ChangeType.DELETE_FILE:
+			var f = FileAccess.open(path, FileAccess.WRITE)
+			if f:
+				f.store_string(old_c)
+				f.close()
+		ChangeType.MUTATE_SCENE:
+			pass
+	return {"success": true}
+
+## Çoklu dosya ve satır farkı özeti üretir
+func get_summary() -> String:
+	var lines: PackedStringArray = []
+	var total_items = 1 + sub_changes.size()
+	lines.append("Değişiklik Sayısı: " + str(total_items))
+	
+	_append_item_summary(target_path, change_type, old_content, new_content, description, lines)
+	
+	for sub in sub_changes:
+		_append_item_summary(sub["target_path"], sub["change_type"], sub["old_content"], sub["new_content"], sub["description"], lines)
+		
+	return "\n".join(lines)
+
+func _append_item_summary(path: String, c_type: ChangeType, old_c: String, new_c: String, desc: String, out_lines: PackedStringArray) -> void:
+	var name_str = path.get_file() if not path.is_empty() else desc
+	match c_type:
+		ChangeType.CREATE_FILE:
+			var added = new_c.split("\n").size()
+			out_lines.append(" + [YENİ] " + name_str + " (+" + str(added) + " satır)")
+		ChangeType.MODIFY_FILE:
+			var old_lines = old_c.split("\n")
+			var new_lines = new_c.split("\n")
+			out_lines.append(" ~ [DÜZENLEME] " + name_str + " (Eski: " + str(old_lines.size()) + " satır, Yeni: " + str(new_lines.size()) + " satır)")
+		ChangeType.DELETE_FILE:
+			out_lines.append(" - [SİLME] " + name_str)
+		ChangeType.MUTATE_SCENE:
+			out_lines.append(" ❖ [SAHNE] " + desc)
+
+## Satır satır Unified Diff üretir
+func get_unified_diff() -> String:
+	var diff_lines: PackedStringArray = []
+	diff_lines.append("--- " + (target_path if not target_path.is_empty() else "Old State"))
+	diff_lines.append("+++ " + (target_path if not target_path.is_empty() else "New State"))
+	
+	var old_arr = old_content.split("\n")
+	var new_arr = new_content.split("\n")
+	
+	var max_len = maxi(old_arr.size(), new_arr.size())
+	for i in range(max_len):
+		var o_line = old_arr[i] if i < old_arr.size() else null
+		var n_line = new_arr[i] if i < new_arr.size() else null
+		
+		if o_line != null and n_line != null:
+			if o_line == n_line:
+				diff_lines.append("  " + o_line)
+			else:
+				diff_lines.append("- " + o_line)
+				diff_lines.append("+ " + n_line)
+		elif o_line != null:
+			diff_lines.append("- " + o_line)
+		elif n_line != null:
+			diff_lines.append("+ " + n_line)
+			
+	return "\n".join(diff_lines)
+
+func get_diff_text() -> String:
+	return get_unified_diff()

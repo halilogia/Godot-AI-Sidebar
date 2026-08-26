@@ -20,6 +20,10 @@ const TestVisualObservation = preload("res://tests/test_visual_observation.gd")
 const TestDiagnosisContext = preload("res://tests/test_diagnosis_context.gd")
 const TestExtendedVerification = preload("res://tests/test_extended_verification.gd")
 const TestVisualHealingLoop = preload("res://tests/test_visual_healing_loop.gd")
+const TestEditorGrounding = preload("res://tests/test_editor_grounding.gd")
+const TestAssetDiscovery = preload("res://tests/test_asset_discovery.gd")
+const TestMultiChangeSet = preload("res://tests/test_multi_changeset.gd")
+const TestRealUserScenarios = preload("res://tests/test_real_user_scenarios.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -45,7 +49,11 @@ func _init() -> void:
 		TestVisualObservation,
 		TestDiagnosisContext,
 		TestExtendedVerification,
-		TestVisualHealingLoop
+		TestVisualHealingLoop,
+		TestEditorGrounding,
+		TestAssetDiscovery,
+		TestMultiChangeSet,
+		TestRealUserScenarios
 	]
 	
 	var total_passed = 0

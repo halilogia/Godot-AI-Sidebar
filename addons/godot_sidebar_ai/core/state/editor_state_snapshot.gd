@@ -2,63 +2,89 @@
 extends RefCounted
 class_name AISidebarEditorStateSnapshot
 
-## Editör Anlık Durum Yakalayıcısı (Editor Grounding Context) (SRP).
-## İlk kullanıcı isteğinde veya durum değişiminde aktif sahne, seçili düğümler ve hataları güvenle toplar.
+## Editör Anlık Durum ve Seçim Yakalayıcısı (Editor Grounding Context) (SRP).
+## Aktif sahne, seçili düğüm, açık script ve proje bilgilerini güvenle toplar.
 
 static func capture_snapshot() -> Dictionary:
 	var snapshot: Dictionary = {
+		"project_name": ProjectSettings.get_setting("application/config/name", "Godot Project"),
 		"has_active_scene": false,
 		"active_scene_name": "",
 		"active_scene_file": "",
+		"active_scene_root_type": "",
 		"selected_nodes": [],
+		"primary_selected_node": {},
+		"active_script_path": "",
 		"recent_errors": []
 	}
 	
 	if not Engine.is_editor_hint():
 		return snapshot
 		
-	# EditorInterface metodlarının güvenli kontrolü (Headless/CLI koruması)
 	if ClassDB.class_exists("EditorInterface"):
-		var root = null
+		# 1. Aktif Sahne
 		if EditorInterface.has_method("get_edited_scene_root"):
-			root = EditorInterface.get_edited_scene_root()
-			
-		if root:
-			snapshot["has_active_scene"] = true
-			snapshot["active_scene_name"] = root.name
-			snapshot["active_scene_file"] = root.scene_file_path
-			
+			var root = EditorInterface.get_edited_scene_root()
+			if root:
+				snapshot["has_active_scene"] = true
+				snapshot["active_scene_name"] = root.name
+				snapshot["active_scene_file"] = root.scene_file_path
+				snapshot["active_scene_root_type"] = root.get_class()
+				
+		# 2. Seçili Düğümler (Selection Awareness)
 		if EditorInterface.has_method("get_selection"):
 			var selection = EditorInterface.get_selection()
 			if selection:
+				var sel_nodes = selection.get_selected_nodes()
 				var sel_array: Array = []
-				for node in selection.get_selected_nodes():
+				for node in sel_nodes:
 					sel_array.append({
 						"name": node.name,
 						"path": str(node.get_path()),
 						"type": node.get_class()
 					})
 				snapshot["selected_nodes"] = sel_array
-				
+				if sel_array.size() > 0:
+					snapshot["primary_selected_node"] = sel_array[0]
+					
+		# 3. Açık Script (Active Script Awareness)
+		if EditorInterface.has_method("get_script_editor"):
+			var script_editor = EditorInterface.get_script_editor()
+			if script_editor and script_editor.has_method("get_current_script"):
+				var curr_script = script_editor.get_current_script()
+				if curr_script:
+					snapshot["active_script_path"] = curr_script.resource_path
+					
 	return snapshot
 
-## Ajan için kompakt zemin (grounding) metni üretir (~3-5 satır, minimum token harcar)
+## Ajan için kompakt ve seçim odaklı zemin metni üretir
 static func get_grounding_prompt_text() -> String:
 	var snap = capture_snapshot()
 	var lines: PackedStringArray = []
 	
+	lines.append("=== GODOT EDITÖR ZEMİN BİLGİSİ (EDITOR GROUNDING) ===")
+	lines.append("Proje: " + str(snap.get("project_name", "Godot Project")))
+	
 	if snap.get("has_active_scene", false):
-		lines.append("[Editor Context] Aktif Sahne: " + snap.get("active_scene_name", "") + " (" + snap.get("active_scene_file", "") + ")")
+		lines.append("Aktif Sahne: " + snap.get("active_scene_name", "") + " [" + snap.get("active_scene_root_type", "Node") + "] (" + snap.get("active_scene_file", "") + ")")
 	else:
-		lines.append("[Editor Context] Açık sahne yok.")
+		lines.append("Aktif Sahne: Açık sahne yok.")
 		
 	var sel: Array = snap.get("selected_nodes", [])
 	if sel.size() > 0:
 		var sel_str: PackedStringArray = []
 		for s in sel:
-			sel_str.append(s.get("name", "") + " (" + s.get("type", "") + ")")
-		lines.append("[Editor Context] Seçili Düğümler: " + ", ".join(sel_str))
+			sel_str.append(s.get("name", "") + " [" + s.get("type", "") + "] @ " + s.get("path", ""))
+		lines.append("Seçili Düğümler: " + "; ".join(sel_str))
+		var prim = snap.get("primary_selected_node", {})
+		if not prim.is_empty():
+			lines.append("👉 BİRİNCİL SEÇİLİ DÜĞÜM (Kullanıcı 'bu/bunun' dediğinde geçerli olan): " + prim.get("name", "") + " [" + prim.get("type", "") + "]")
 	else:
-		lines.append("[Editor Context] Seçili düğüm yok.")
+		lines.append("Seçili Düğüm: Yok.")
 		
+	var active_scr = snap.get("active_script_path", "")
+	if not active_scr.is_empty():
+		lines.append("Açık Script: " + active_scr)
+		
+	lines.append("======================================================")
 	return "\n".join(lines)

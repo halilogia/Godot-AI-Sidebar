@@ -47,6 +47,22 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
+				"name": "instantiate_scene",
+				"description": "Diskteki bir sahneyi (.tscn) aktif sahnenin içine alt düğüm olarak ekler (Ctrl+Z ile geri alınabilir).",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"scene_path": { "type": "string", "description": "Örneklenecek sahne yolu (örn: res://scenes/Player.tscn)." },
+						"parent_path": { "type": "string", "description": "Ekleneceği üst düğüm yolu." },
+						"node_name": { "type": "string", "description": "Oluşacak düğümün adı (opsiyonel)." }
+					},
+					"required": ["scene_path"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
 				"name": "delete_node",
 				"description": "Sahnede belirtilen düğümü siler (Ctrl+Z ile geri alınabilir).",
 				"parameters": {
@@ -61,12 +77,42 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
+				"name": "rename_node",
+				"description": "Sahnede belirtilen bir düğümün adını değiştirir (Ctrl+Z ile geri alınabilir).",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"node_path": { "type": "string", "description": "Düğümün yolu." },
+						"new_name": { "type": "string", "description": "Yeni düğüm adı." }
+					},
+					"required": ["node_path", "new_name"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "duplicate_node",
+				"description": "Sahnede belirtilen bir düğümün kopyasını oluşturur (Ctrl+Z ile geri alınabilir).",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"node_path": { "type": "string", "description": "Kopyalanacak düğüm yolu." },
+						"new_name": { "type": "string", "description": "Kopya düğümün yeni adı (opsiyonel)." }
+					},
+					"required": ["node_path"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
 				"name": "set_node_property",
 				"description": "Bir düğümün özelliğini (position, scale, text vb.) değiştirir (Ctrl+Z ile geri alınabilir).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Hedef düğümün yolu." },
+						"node_path": { "type": "string", "description": "Hedef düğümün yolu (Kullanıcı 'bu/bunun' dediğinde seçili düğüm yolunu verin)." },
 						"property_name": { "type": "string", "description": "Değiştirilecek özellik adı." },
 						"property_value": { "description": "Yeni değer ('Vector2(100, 200)', '#ff0000', sayı vb.)." }
 					},
@@ -170,8 +216,14 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _get_scene_tree(args)
 		"add_node":
 			return _add_node(args)
+		"instantiate_scene":
+			return _instantiate_scene(args)
 		"delete_node":
 			return _delete_node(args)
+		"rename_node":
+			return _rename_node(args)
+		"duplicate_node":
+			return _duplicate_node(args)
 		"set_node_property":
 			return _set_node_property(args)
 		"get_node_properties":
@@ -242,6 +294,35 @@ static func _add_node(args: Dictionary) -> Dictionary:
 		
 	return AISidebarMutationService.add_node(parent, new_node, node_name)
 
+static func _instantiate_scene(args: Dictionary) -> Dictionary:
+	var root = _get_root()
+	if not root:
+		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
+		
+	var scene_path = AISidebarPathPolicy.normalize_path(args.get("scene_path", ""))
+	var parent_path = args.get("parent_path", "")
+	var node_name = args.get("node_name", "")
+	
+	if not FileAccess.file_exists(scene_path):
+		return AISidebarToolResult.err("FILE_NOT_FOUND", "Örneklenecek sahne dosyası bulunamadı: " + scene_path)
+		
+	var packed: PackedScene = load(scene_path)
+	if not packed or not packed.can_instantiate():
+		return AISidebarToolResult.err("LOAD_FAILED", "Sahne örneği alınamadı: " + scene_path)
+		
+	var instance = packed.instantiate()
+	if node_name.is_empty():
+		node_name = instance.name
+		
+	var parent: Node = root
+	if not parent_path.is_empty():
+		if root.has_node(parent_path):
+			parent = root.get_node(parent_path)
+		else:
+			return AISidebarToolResult.err("PARENT_NOT_FOUND", "Üst düğüm bulunamadı: " + parent_path)
+			
+	return AISidebarMutationService.add_node(parent, instance, node_name)
+
 static func _delete_node(args: Dictionary) -> Dictionary:
 	var root = _get_root()
 	if not root:
@@ -253,6 +334,32 @@ static func _delete_node(args: Dictionary) -> Dictionary:
 		
 	var target = root.get_node(node_path)
 	return AISidebarMutationService.delete_node(target)
+
+static func _rename_node(args: Dictionary) -> Dictionary:
+	var root = _get_root()
+	if not root:
+		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
+		
+	var node_path = args.get("node_path", "")
+	var new_name = args.get("new_name", "")
+	if not root.has_node(node_path):
+		return AISidebarToolResult.err("NODE_NOT_FOUND", "Düğüm bulunamadı: " + node_path)
+		
+	var target = root.get_node(node_path)
+	return AISidebarMutationService.rename_node(target, new_name)
+
+static func _duplicate_node(args: Dictionary) -> Dictionary:
+	var root = _get_root()
+	if not root:
+		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
+		
+	var node_path = args.get("node_path", "")
+	var new_name = args.get("new_name", "")
+	if not root.has_node(node_path):
+		return AISidebarToolResult.err("NODE_NOT_FOUND", "Düğüm bulunamadı: " + node_path)
+		
+	var target = root.get_node(node_path)
+	return AISidebarMutationService.duplicate_node(target, new_name)
 
 static func _set_node_property(args: Dictionary) -> Dictionary:
 	var root = _get_root()

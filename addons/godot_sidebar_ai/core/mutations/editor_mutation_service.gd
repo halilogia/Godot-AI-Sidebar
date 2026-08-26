@@ -7,10 +7,14 @@ class_name AISidebarMutationService
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
 
 static func get_undo_redo() -> EditorUndoRedoManager:
-	return EditorInterface.get_editor_undo_redo()
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_editor_undo_redo"):
+		return EditorInterface.get_editor_undo_redo()
+	return null
 
 static func get_scene_root() -> Node:
-	return EditorInterface.get_edited_scene_root()
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
+		return EditorInterface.get_edited_scene_root()
+	return null
 
 # 1. Düğüm Ekleme (Undo/Redo)
 static func add_node(parent: Node, new_node: Node, node_name: String) -> Dictionary:
@@ -133,3 +137,33 @@ static func reparent_node(target: Node, new_parent: Node) -> Dictionary:
 		target.owner = root
 		
 	return AISidebarToolResult.ok(null, "Düğüm taşındı (UndoRedo kayıtlı): " + target.name + " -> " + new_parent.name)
+
+# 7. Düğüm Yeniden Adlandırma (Rename - Undo/Redo)
+static func rename_node(target: Node, new_name: String) -> Dictionary:
+	if not target:
+		return AISidebarToolResult.err("NODE_NOT_FOUND", "Düğüm bulunamadı.")
+		
+	var old_name = target.name
+	var ur = get_undo_redo()
+	if ur:
+		ur.create_action("AI: Rename " + old_name + " -> " + new_name)
+		ur.add_do_property(target, "name", new_name)
+		ur.add_undo_property(target, "name", old_name)
+		ur.commit_action()
+	else:
+		target.name = new_name
+		
+	return AISidebarToolResult.ok({"old_name": old_name, "new_name": new_name}, "Düğüm yeniden adlandırıldı (UndoRedo kayıtlı).")
+
+# 8. Düğüm Kopyalama (Duplicate - Undo/Redo)
+static func duplicate_node(target: Node, new_name: String = "") -> Dictionary:
+	var root = get_scene_root()
+	if not root or not target:
+		return AISidebarToolResult.err("INVALID_STATE", "Geçersiz sahne veya düğüm.")
+		
+	var parent = target.get_parent()
+	var dup = target.duplicate()
+	if not new_name.is_empty():
+		dup.name = new_name
+		
+	return add_node(parent, dup, dup.name)
