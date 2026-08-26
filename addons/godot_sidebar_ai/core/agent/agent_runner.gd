@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarAgentRunner
 
-## Otonom Ajan İcra Döngüsü, Onay & Doğrulama Motoru (State Machine Agent Runner) (SRP).
+## Otonom Ajan İcra Döngüsü, Hata Ayıklama & Otomatik İyileştirme Motoru (SRP).
 
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
@@ -12,6 +12,8 @@ const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/t
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
+const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
+const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd")
 
 enum AgentState {
 	IDLE,
@@ -20,6 +22,9 @@ enum AgentState {
 	OBSERVING,
 	VERIFYING,
 	WAITING_FOR_APPROVAL,
+	RUNNING_GAME,
+	OBSERVING_RUNTIME,
+	DEBUGGING,
 	COMPLETED,
 	ERROR,
 	RECOVERING,
@@ -34,6 +39,8 @@ signal tool_completed(tool_name: String, result: Dictionary)
 signal approval_requested(tool_name: String, args: Dictionary, change_set: AISidebarChangeSet)
 signal verification_started(tool_name: String)
 signal verification_completed(tool_name: String, is_valid: bool, msg: String)
+signal runtime_observation_received(obs: AISidebarRuntimeObservation)
+signal debugging_started(error_summary: String)
 signal error_occurred(error_message: String)
 signal loop_finished()
 
@@ -42,6 +49,9 @@ var context: AISidebarAgentContext
 var current_state: AgentState = AgentState.IDLE
 var current_step: int = 0
 var max_steps: int = 10
+var max_recovery_attempts: int = 3
+var _recovery_attempt_count: int = 0
+var _last_error_signature: String = ""
 var _last_tool_signature: String = ""
 var _stagnation_count: int = 0
 
@@ -49,10 +59,12 @@ var _stagnation_count: int = 0
 var _pending_tool_name: String = ""
 var _pending_tool_args: Dictionary = {}
 var _pending_change_set: AISidebarChangeSet = null
+var runtime_debugger: AISidebarRuntimeDebugger = null
 
 func _init(p_provider: AISidebarAIProvider = null, p_context: AISidebarAgentContext = null) -> void:
 	provider = p_provider
 	context = p_context
+	runtime_debugger = AISidebarRuntimeDebugger.new()
 	
 	if provider:
 		provider.response_received.connect(_on_provider_response)
@@ -72,6 +84,8 @@ func start_task(user_prompt: String) -> void:
 	var cfg = AISidebarConfig.load_config()
 	max_steps = cfg.get("max_iterations", 10)
 	current_step = 0
+	_recovery_attempt_count = 0
+	_last_error_signature = ""
 	_last_tool_signature = ""
 	_stagnation_count = 0
 	_pending_tool_name = ""
@@ -89,6 +103,9 @@ func stop() -> void:
 		return
 	if provider:
 		provider.cancel()
+	if runtime_debugger:
+		runtime_debugger.stop()
+		
 	_set_state(AgentState.CANCELLED, AISidebarI18n.get_text("agent_stopped"))
 	error_occurred.emit(AISidebarI18n.get_text("agent_stopped"))
 	loop_finished.emit()
@@ -128,6 +145,40 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 	var reject_result = AISidebarToolResult.err("USER_REJECTED", reason, true)
 	context.add_tool_result_message(fn_name, reject_result)
 	
+	_run_next_step()
+
+## Çalışma zamanı hatası alındığında otomatik iyileştirme döngüsünü tetikler (Error -> Context -> Fix)
+func handle_runtime_error(obs: AISidebarRuntimeObservation) -> void:
+	if not is_running():
+		return
+		
+	runtime_observation_received.emit(obs)
+	
+	var err_sig = ""
+	if obs.errors.size() > 0:
+		var e0 = obs.errors[0]
+		err_sig = e0.get("file", "") + ":" + str(e0.get("line", 0)) + ":" + e0.get("message", "")
+		
+	# Tekrarlayan Hata Tespiti (Repeated Identical Error)
+	if err_sig == _last_error_signature and not err_sig.is_empty():
+		_recovery_attempt_count += 1
+		if _recovery_attempt_count > max_recovery_attempts:
+			_set_state(AgentState.ERROR, "Aynı çalışma zamanı hatası (" + str(_recovery_attempt_count) + " kez) çözülemedi. Müdahale bekleniyor.")
+			error_occurred.emit("Otomatik iyileştirme limiti aşıldı: " + err_sig)
+			loop_finished.emit()
+			_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+			return
+	else:
+		_last_error_signature = err_sig
+		_recovery_attempt_count = 1
+		
+	_set_state(AgentState.DEBUGGING, "Çalışma zamanı hatası analiz ediliyor...")
+	var summary_txt = obs.errors[0].get("message", "Runtime Error") if obs.errors.size() > 0 else "Runtime Error"
+	debugging_started.emit(summary_txt)
+	
+	if context:
+		context.add_runtime_error_context(obs)
+		
 	_run_next_step()
 
 func _run_next_step() -> void:
@@ -197,7 +248,6 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_pending_tool_name = fn_name
 				_pending_tool_args = args
 				
-				# ChangeSet oluştur (Kod değişikliği ise)
 				var cs: AISidebarChangeSet = null
 				if fn_name == "create_or_update_script":
 					var path = args.get("file_path", "")
@@ -217,6 +267,11 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				return
 				
 			tool_completed.emit(fn_name, result)
+			
+			# Eğer araç oyunu başlattıysa runtime izleme durumuna geç
+			if fn_name == "play_game" or fn_name == "restart_game":
+				_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor, çalışma zamanı gözlemleniyor...")
+				
 			_run_verification_and_proceed(fn_name, args, result)
 			return
 	else:
@@ -225,21 +280,28 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		loop_finished.emit()
 		_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
-func _run_verification_and_proceed(tool_name: String, args: Dictionary, result: Dictionary) -> void:
+func _run_verification_and_proceed(tool_name: String, args: Dictionary, result: Variant) -> void:
 	_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
 	verification_started.emit(tool_name)
 	
-	var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, result)
-	var is_valid = verified_result.get("success", false)
-	var msg = verified_result.get("message", "")
-	if msg.is_empty():
-		msg = verified_result.get("error", {}).get("message", "")
+	var res_dict = result if result is Dictionary else {}
+	var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, res_dict)
+	var is_valid = verified_result.get("success", false) if verified_result is Dictionary else true
+	var msg = ""
+	if verified_result is Dictionary:
+		msg = verified_result.get("message", "")
+		if msg.is_empty():
+			var err_obj = verified_result.get("error")
+			if err_obj is Dictionary and err_obj.has("message"):
+				msg = err_obj["message"]
+			elif err_obj is String:
+				msg = err_obj
 		
 	verification_completed.emit(tool_name, is_valid, msg)
 	
 	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
 	if context:
-		context.add_tool_result_message(tool_name, verified_result)
+		context.add_tool_result_message(tool_name, verified_result if verified_result is Dictionary else {"data": result})
 		
 	_run_next_step()
 

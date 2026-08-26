@@ -10,6 +10,7 @@ const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
@@ -58,6 +59,8 @@ func _ready() -> void:
 	agent_runner.approval_requested.connect(_on_agent_approval_requested)
 	agent_runner.verification_started.connect(_on_agent_verification_started)
 	agent_runner.verification_completed.connect(_on_agent_verification_completed)
+	agent_runner.runtime_observation_received.connect(_on_agent_runtime_observation)
+	agent_runner.debugging_started.connect(_on_agent_debugging_started)
 	agent_runner.error_occurred.connect(_on_agent_error)
 	provider.models_fetched.connect(_on_models_fetched)
 
@@ -237,6 +240,10 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 			set_status_badge(state_desc, Color(0.4, 0.8, 0.4))
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
 			set_status_badge("⏳ " + state_desc, Color(1.0, 0.5, 0.2))
+		AISidebarAgentRunner.AgentState.RUNNING_GAME:
+			set_status_badge("▶ " + state_desc, Color(0.3, 0.7, 1.0))
+		AISidebarAgentRunner.AgentState.DEBUGGING:
+			set_status_badge("🐞 " + state_desc, Color(1.0, 0.4, 0.4))
 		AISidebarAgentRunner.AgentState.ERROR:
 			set_status_badge("❌ " + state_desc, Color(1.0, 0.3, 0.3))
 		_:
@@ -278,6 +285,13 @@ func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: St
 		append_chat_message("✓ Doğrulandı", msg, "#a3be8c")
 	else:
 		append_chat_message("⚠️ Doğrulama Hatası", msg, "#bf616a")
+
+func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
+	if obs.has_errors():
+		append_chat_message("⚠ Çalışma Zamanı Hatası", "Oyun çalışırken hata tespit edildi (" + str(obs.errors.size()) + " hata):\n[color=#bf616a]" + obs.format_diagnostic_prompt() + "[/color]", "#bf616a")
+
+func _on_agent_debugging_started(summary: String) -> void:
+	append_chat_message("🐞 Teşhis & Onarım", "Ajan çalışma zamanı hatasını inceliyor: [b]" + summary + "[/b]", "#d08770")
 
 func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if result.get("success", false):

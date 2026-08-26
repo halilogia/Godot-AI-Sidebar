@@ -2,10 +2,10 @@
 extends "res://addons/godot_sidebar_ai/core/tools/tool_base.gd"
 class_name AISidebarEditorTools
 
-## İlkel Editör ve Proje Dosya Sistemi Araçları (Primitive Tools) (SRP).
+## İlkel Editör, Proje ve Çalışma Zamanı (Runtime Debugger) Araçları (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
-const AISidebarRuntimeObserver = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_observer.gd")
+const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd")
 
 static func get_schemas() -> Array:
 	return [
@@ -89,8 +89,21 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
-				"name": "get_editor_errors",
-				"description": "Son derleme ve çalışma zamanı hata loglarını getirir.",
+				"name": "restart_game",
+				"description": "Oyunu durdurup yeniden başlatır (Restart).",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"current_scene_only": { "type": "boolean", "description": "True ise sadece açık olan sahneyi yeniden oynatır." }
+					}
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "get_runtime_errors",
+				"description": "Çalışan oyundan veya log dosyasından en son hata ve exception kayıtlarını kaynak satırlarıyla çeker.",
 				"parameters": {
 					"type": "object",
 					"properties": {}
@@ -100,12 +113,25 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
-				"name": "take_viewport_screenshot",
-				"description": "Godot editör Viewport'unun anlık ekran görüntüsünü alır ve görsel analiz için kaydeder.",
+				"name": "take_editor_screenshot",
+				"description": "Godot editör arayüzünün anlık ekran görüntüsünü alır.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"target_save_path": { "type": "string", "description": "Kaydedilecek yol (varsayılan: user://ai_viewport_snapshot.png)." }
+						"save_path": { "type": "string", "description": "Kaydedilecek yol (varsayılan: user://ai_editor_snapshot.png)." }
+					}
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "take_runtime_screenshot",
+				"description": "Çalışmakta olan oyun penceresinin anlık ekran görüntüsünü alır.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"save_path": { "type": "string", "description": "Kaydedilecek yol (varsayılan: user://ai_runtime_snapshot.png)." }
 					}
 				}
 			}
@@ -126,10 +152,14 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _play_game(args)
 		"stop_game":
 			return _stop_game(args)
-		"get_editor_errors":
-			return _get_editor_errors(args)
-		"take_viewport_screenshot":
-			return _take_viewport_screenshot(args)
+		"restart_game":
+			return _restart_game(args)
+		"get_runtime_errors":
+			return _get_runtime_errors(args)
+		"take_editor_screenshot":
+			return _take_editor_screenshot(args)
+		"take_runtime_screenshot":
+			return _take_runtime_screenshot(args)
 		_:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen editör aracı: " + tool_name)
 
@@ -181,7 +211,7 @@ static func _get_selected_nodes(args: Dictionary) -> Dictionary:
 	return AISidebarToolResult.ok({"selected_nodes": selected_array})
 
 static func _select_node(args: Dictionary) -> Dictionary:
-	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
+	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface") or not EditorInterface.has_method("get_edited_scene_root"):
 		return AISidebarToolResult.err("EDITOR_REQUIRED", "Düğüm seçimi yalnızca editör GUI açıkken yapılabilir.")
 		
 	var root = EditorInterface.get_edited_scene_root()
@@ -206,35 +236,33 @@ static func _open_scene(args: Dictionary) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return AISidebarToolResult.err("FILE_NOT_FOUND", "Sahne dosyası bulunamadı: " + path)
 		
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("open_scene_from_path"):
 		EditorInterface.open_scene_from_path(path)
 		return AISidebarToolResult.ok({"scene_path": path}, "Sahne editörde açıldı: " + path)
 		
 	return AISidebarToolResult.err("EDITOR_REQUIRED", "Sahne açma işlemi editör gerektirir.")
 
 static func _play_game(args: Dictionary) -> Dictionary:
-	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
-		return AISidebarToolResult.err("EDITOR_REQUIRED", "Oyun başlatma editör gerektirir.")
-		
-	var current_only = args.get("current_scene_only", false)
-	if current_only:
-		EditorInterface.play_current_scene()
-		return AISidebarToolResult.ok(null, "Aktif sahne test için başlatıldı.")
-	else:
-		EditorInterface.play_main_scene()
-		return AISidebarToolResult.ok(null, "Ana oyun başlatıldı.")
+	var debugger = AISidebarRuntimeDebugger.new()
+	return debugger.play(args.get("current_scene_only", false))
 
 static func _stop_game(args: Dictionary) -> Dictionary:
-	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
-		return AISidebarToolResult.err("EDITOR_REQUIRED", "Oyun durdurma editör gerektirir.")
-		
-	EditorInterface.stop_playing_scene()
-	return AISidebarToolResult.ok(null, "Oyun durduruldu.")
+	var debugger = AISidebarRuntimeDebugger.new()
+	return debugger.stop()
 
-static func _get_editor_errors(args: Dictionary) -> Dictionary:
-	var recent = AISidebarRuntimeObserver.capture_recent_errors()
-	return AISidebarToolResult.ok({"recent_errors": recent})
+static func _restart_game(args: Dictionary) -> Dictionary:
+	var debugger = AISidebarRuntimeDebugger.new()
+	return debugger.restart(args.get("current_scene_only", false))
 
-static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
-	var save_path = args.get("target_save_path", "user://ai_viewport_snapshot.png")
-	return AISidebarRuntimeObserver.take_screenshot(save_path)
+static func _get_runtime_errors(args: Dictionary) -> Dictionary:
+	var debugger = AISidebarRuntimeDebugger.new()
+	var obs = debugger.get_current_observation()
+	return AISidebarToolResult.ok(obs.to_dict(), "Çalışma zamanı gözlem verisi çekildi.")
+
+static func _take_editor_screenshot(args: Dictionary) -> Dictionary:
+	var path = args.get("save_path", "user://ai_editor_snapshot.png")
+	return AISidebarRuntimeDebugger.take_editor_screenshot(path)
+
+static func _take_runtime_screenshot(args: Dictionary) -> Dictionary:
+	var path = args.get("save_path", "user://ai_runtime_snapshot.png")
+	return AISidebarRuntimeDebugger.take_runtime_screenshot(path)

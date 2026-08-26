@@ -12,6 +12,9 @@ const TestPermissionEnforcement = preload("res://tests/test_permission_enforceme
 const TestVerificationPipeline = preload("res://tests/test_verification_pipeline.gd")
 const TestAgentApprovalState = preload("res://tests/test_agent_approval_state.gd")
 const TestVisionInput = preload("res://tests/test_vision_input.gd")
+const TestRuntimeObservation = preload("res://tests/test_runtime_observation.gd")
+const TestSourceMapper = preload("res://tests/test_source_mapper.gd")
+const TestRuntimeRecovery = preload("res://tests/test_runtime_recovery.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -29,7 +32,10 @@ func _init() -> void:
 		TestPermissionEnforcement,
 		TestVerificationPipeline,
 		TestAgentApprovalState,
-		TestVisionInput
+		TestVisionInput,
+		TestRuntimeObservation,
+		TestSourceMapper,
+		TestRuntimeRecovery
 	]
 	
 	var total_passed = 0
