@@ -43,7 +43,7 @@ func fetch_models() -> void:
 	var api_key = config.get("api_key", "").strip_edges()
 	
 	var models_url = base_url + "/models"
-	var headers: PackedStringArray = ["Content-Type: application/json"]
+	var headers: PackedStringArray = ["Content-Type: application/json", "Connection: close"]
 	if not api_key.is_empty():
 		headers.append("Authorization: Bearer " + api_key)
 		
@@ -67,7 +67,7 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 		model = "all"
 		
 	var chat_url = base_url + "/chat/completions"
-	var headers: PackedStringArray = ["Content-Type: application/json"]
+	var headers: PackedStringArray = ["Content-Type: application/json", "Connection: close"]
 	if not api_key.is_empty():
 		headers.append("Authorization: Bearer " + api_key)
 		
@@ -79,7 +79,7 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 	for i in range(messages.size()):
 		var msg = messages[i].duplicate(true)
 		
-		# Eğer son kullanıcı mesajı ise ve görseller varsa multimodal parts dizisine dönüştür
+		# Multimodal görsel parçaları dönüştürme
 		if i == messages.size() - 1 and msg.get("role", "") == "user" and images.size() > 0:
 			if not supports_vision():
 				error_occurred.emit("Seçili model (" + model + ") görsel (Vision) desteğine sahip değil.")
@@ -101,7 +101,8 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 			
 		payload_messages.append(msg)
 		
-	var use_stream = config.get("stream", true)
+	# Hızlı ve deterministik yanıt için stream varsayılan false (keep-alive gecikmesini önler)
+	var use_stream = config.get("stream", false)
 	var body_dict: Dictionary = {
 		"model": model,
 		"messages": payload_messages,

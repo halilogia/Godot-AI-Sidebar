@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarAgentRunner
 
-## Otonom Ajan İcra Döngüsü, Hata Ayıklama & Telemetri Motoru (SRP).
+## Otonom Ajan İcra Döngüsü, Hata Ayıklama & Detaylı Zaman/Telemetri Motoru (SRP).
 
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
@@ -56,14 +56,25 @@ var _last_error_signature: String = ""
 var _last_tool_signature: String = ""
 var _stagnation_count: int = 0
 
-# Telemetri & Performans Sayaçları
+# Detaylı Telemetri & Zaman Sayaçları (Milisaniye)
 var task_start_time_msec: int = 0
+var _llm_step_start_time: int = 0
+var _waiting_start_time: int = 0
+
 var llm_turns_count: int = 0
 var tool_calls_count: int = 0
 var file_ops_count: int = 0
 var editor_ops_count: int = 0
 var runtime_ops_count: int = 0
 var verification_checkpoints_count: int = 0
+
+var llm_time_msec: int = 0
+var tool_time_msec: int = 0
+var file_time_msec: int = 0
+var editor_time_msec: int = 0
+var runtime_time_msec: int = 0
+var verification_time_msec: int = 0
+var waiting_time_msec: int = 0
 
 # Bekleyen Onay Verisi
 var _pending_tool_name: String = ""
@@ -113,6 +124,14 @@ func start_task(user_prompt: String) -> void:
 	runtime_ops_count = 0
 	verification_checkpoints_count = 0
 	
+	llm_time_msec = 0
+	tool_time_msec = 0
+	file_time_msec = 0
+	editor_time_msec = 0
+	runtime_time_msec = 0
+	verification_time_msec = 0
+	waiting_time_msec = 0
+	
 	context.add_user_message(user_prompt)
 	text_received.emit("user", user_prompt)
 	
@@ -132,16 +151,24 @@ func stop() -> void:
 	_finish_task(false)
 
 func _finish_task(success: bool) -> void:
-	var elapsed_sec = (Time.get_ticks_msec() - task_start_time_msec) / 1000.0
+	var total_elapsed_sec = (Time.get_ticks_msec() - task_start_time_msec) / 1000.0
 	var metrics = {
 		"success": success,
-		"elapsed_seconds": snappedf(elapsed_sec, 0.1),
+		"elapsed_seconds": snappedf(total_elapsed_sec, 0.1),
 		"llm_turns": llm_turns_count,
 		"tool_calls": tool_calls_count,
 		"file_ops": file_ops_count,
 		"editor_ops": editor_ops_count,
 		"runtime_ops": runtime_ops_count,
-		"verification_checkpoints": verification_checkpoints_count
+		"verification_checkpoints": verification_checkpoints_count,
+		# Detaylı Süre Dağılımı
+		"llm_time_s": snappedf(llm_time_msec / 1000.0, 0.1),
+		"tool_time_s": snappedf(tool_time_msec / 1000.0, 0.1),
+		"file_time_s": snappedf(file_time_msec / 1000.0, 0.1),
+		"editor_time_s": snappedf(editor_time_msec / 1000.0, 0.1),
+		"runtime_time_s": snappedf(runtime_time_msec / 1000.0, 0.1),
+		"verification_time_s": snappedf(verification_time_msec / 1000.0, 0.1),
+		"waiting_time_s": snappedf(waiting_time_msec / 1000.0, 0.1)
 	}
 	task_completed.emit(metrics)
 	loop_finished.emit()
@@ -151,6 +178,10 @@ func _finish_task(success: bool) -> void:
 func approve_pending_action() -> void:
 	if current_state != AgentState.WAITING_FOR_APPROVAL or _pending_tool_name.is_empty():
 		return
+		
+	if _waiting_start_time > 0:
+		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
+		_waiting_start_time = 0
 		
 	var fn_name = _pending_tool_name
 	var tc_id = _pending_tool_id
@@ -163,15 +194,23 @@ func approve_pending_action() -> void:
 	_set_state(AgentState.EXECUTING, "Onaylanan işlem çalıştırılıyor: " + fn_name)
 	tool_executing.emit(fn_name, args)
 	
+	var t_start = Time.get_ticks_msec()
 	var result: Dictionary = AISidebarToolManager.execute_tool(fn_name, args, true)
-	tool_completed.emit(fn_name, result)
+	var t_delta = Time.get_ticks_msec() - t_start
+	tool_time_msec += t_delta
+	_record_category_time(fn_name, t_delta)
 	
+	tool_completed.emit(fn_name, result)
 	_run_verification_and_proceed(fn_name, tc_id, args, result)
 
 ## Kullanıcı bekleyen işlemi reddetti (Reject)
 func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") -> void:
 	if current_state != AgentState.WAITING_FOR_APPROVAL or _pending_tool_name.is_empty():
 		return
+		
+	if _waiting_start_time > 0:
+		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
+		_waiting_start_time = 0
 		
 	var fn_name = _pending_tool_name
 	var tc_id = _pending_tool_id
@@ -237,6 +276,7 @@ func _run_next_step() -> void:
 		
 	_set_state(AgentState.PLANNING, status_msg)
 	
+	_llm_step_start_time = Time.get_ticks_msec()
 	var messages = context.get_messages_for_api()
 	var tools_schema = AISidebarToolManager.get_all_schemas()
 	provider.send_chat(messages, tools_schema)
@@ -245,6 +285,10 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 	if not is_running():
 		return
 		
+	if _llm_step_start_time > 0:
+		llm_time_msec += (Time.get_ticks_msec() - _llm_step_start_time)
+		_llm_step_start_time = 0
+		
 	# Boş Yanıt Kontrolü (Empty Response Guard)
 	if text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty():
 		_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
@@ -252,7 +296,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		_finish_task(false)
 		return
 		
-	# 1. Thinking (Düşünce Süreci)
+	# 1. Thinking
 	if not thinking_content.is_empty():
 		thinking_received.emit(thinking_content)
 		
@@ -273,7 +317,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			tool_calls_count += 1
 			_classify_telemetry_op(fn_name, args)
 			
-			# Stagnation / Erken Tekrarlama Koruması
+			# Stagnation Guard
 			var sig = fn_name + ":" + JSON.stringify(args)
 			if sig == _last_tool_signature:
 				_stagnation_count += 1
@@ -291,11 +335,15 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_last_tool_signature = sig
 				_stagnation_count = 0
 				
-			# Yetki ve Onay Kontrolü (Permission Check)
+			# Yetki ve Onay Kontrolü
 			_set_state(AgentState.EXECUTING, "Araç çalıştırılıyor: " + fn_name)
 			tool_executing.emit(fn_name, args)
 			
+			var t_start = Time.get_ticks_msec()
 			var result: Dictionary = AISidebarToolManager.execute_tool(fn_name, args, false)
+			var t_delta = Time.get_ticks_msec() - t_start
+			tool_time_msec += t_delta
+			_record_category_time(fn_name, t_delta)
 			
 			# Onay gerekiyorsa durakla
 			if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
@@ -309,9 +357,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 					var old_c = ""
 					if FileAccess.file_exists(path):
 						var f = FileAccess.open(path, FileAccess.READ)
-						if f:
-							old_c = f.get_as_text()
-							f.close()
+						if f: old_c = f.get_as_text(); f.close()
 					cs = AISidebarChangeSet.new(path, AISidebarChangeSet.ChangeType.MODIFY_FILE, args.get("content", ""), old_c, "Script güncellemesi")
 				elif fn_name == "delete_node":
 					cs = AISidebarChangeSet.new(args.get("node_path", ""), AISidebarChangeSet.ChangeType.MUTATE_SCENE, "", "", "Düğüm silme: " + args.get("node_path", ""))
@@ -329,6 +375,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 							cs.add_sub_change(f_p, AISidebarChangeSet.ChangeType.MODIFY_FILE, f_c, old_txt, f_p.get_file())
 							
 				_pending_change_set = cs
+				_waiting_start_time = Time.get_ticks_msec()
 				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
 				approval_requested.emit(fn_name, args, cs)
 				return
@@ -341,7 +388,6 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			_run_verification_and_proceed(fn_name, tc_id, args, result)
 			return
 	else:
-		# Araç çağrısı yok, nihai metin yanıtı
 		if not text_content.is_empty() and context:
 			context.add_assistant_message(text_content)
 			
@@ -360,19 +406,31 @@ func _classify_telemetry_op(fn_name: String, args: Dictionary) -> void:
 		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
 			runtime_ops_count += 1
 
+func _record_category_time(fn_name: String, duration_msec: int) -> void:
+	match fn_name:
+		"create_or_update_script", "create_scene", "save_scene", "write_files":
+			file_time_msec += duration_msec
+		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
+			editor_time_msec += duration_msec
+		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
+			runtime_time_msec += duration_msec
+
 func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args: Dictionary, result: Variant) -> void:
 	var res_dict = result if result is Dictionary else {}
 	var is_valid = res_dict.get("success", false)
 	var ui_msg = res_dict.get("message", "")
 	
-	# Risk-Orantılı Doğrulama: Sadece doğrulama gerektiren araçlarda checkpoint çalıştır
 	var needs_explicit_verify = (tool_name == "validate_script" or tool_name == "play_game" or tool_name == "get_runtime_errors")
 	
 	if needs_explicit_verify:
 		_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
 		verification_started.emit(tool_name)
 		verification_checkpoints_count += 1
+		
+		var v_start = Time.get_ticks_msec()
 		var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, res_dict)
+		verification_time_msec += (Time.get_ticks_msec() - v_start)
+		
 		is_valid = verified_result.get("success", false)
 		ui_msg = verified_result.get("message", ui_msg)
 		verification_completed.emit(tool_name, is_valid, ui_msg)

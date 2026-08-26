@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarChangeSet
 
-## Atomik Değişiklik Seti ve Geri Alma (ChangeSet, Multi-File Unified Diff & Batch Support) (SRP).
+## Atomik Değişiklik Seti ve Geri Alma (ChangeSet, Multi-File Unified Diff & BBCode Highlighting) (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 
@@ -40,12 +40,10 @@ func add_sub_change(p_path: String, p_type: ChangeType, p_new: String, p_old: St
 
 ## Değişiklikleri diske / sahneye uygular (Apply)
 func apply() -> Dictionary:
-	# 1. Ana Değişikliği Uygula
 	var main_res = _apply_single(target_path, change_type, new_content)
 	if not main_res["success"]:
 		return main_res
 		
-	# 2. Varsa Alt Değişiklikleri Uygula
 	for sub in sub_changes:
 		var sub_res = _apply_single(sub["target_path"], sub["change_type"], sub["new_content"])
 		if not sub_res["success"]:
@@ -82,9 +80,8 @@ func _apply_single(path: String, c_type: ChangeType, content: String) -> Diction
 			
 	return {"success": true}
 
-## Değişiklikleri geri alır (Rollback)
+## Değişiklikleri geri alır (Rollback / Undo)
 func rollback() -> Dictionary:
-	# Ters sırayla geri al
 	for i in range(sub_changes.size() - 1, -1, -1):
 		var sub = sub_changes[i]
 		_rollback_single(sub["target_path"], sub["change_type"], sub["old_content"])
@@ -116,6 +113,46 @@ func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictio
 		ChangeType.MUTATE_SCENE:
 			pass
 	return {"success": true}
+
+## Dosya bazlı eklenen/silinen satır farklarını hesaplar
+func get_file_deltas() -> Array[Dictionary]:
+	var list: Array[Dictionary] = []
+	if not target_path.is_empty():
+		list.append(_compute_single_delta(target_path, old_content, new_content))
+	for sub in sub_changes:
+		list.append(_compute_single_delta(sub["target_path"], sub["old_content"], sub["new_content"]))
+	return list
+
+func _compute_single_delta(path: String, old_c: String, new_c: String) -> Dictionary:
+	var added = 0
+	var removed = 0
+	var old_lines = old_c.split("\n") if not old_c.is_empty() else []
+	var new_lines = new_c.split("\n") if not new_c.is_empty() else []
+	
+	if old_c.is_empty():
+		added = new_lines.size()
+	elif new_c.is_empty():
+		removed = old_lines.size()
+	else:
+		var max_len = maxi(old_lines.size(), new_lines.size())
+		for i in range(max_len):
+			var o = old_lines[i] if i < old_lines.size() else null
+			var n = new_lines[i] if i < new_lines.size() else null
+			if o != null and n != null:
+				if o != n:
+					added += 1
+					removed += 1
+			elif n != null:
+				added += 1
+			elif o != null:
+				removed += 1
+				
+	return {
+		"file_name": path.get_file(),
+		"path": path,
+		"added": added,
+		"removed": removed
+	}
 
 ## Çoklu dosya ve satır farkı özeti üretir
 func get_summary() -> String:
@@ -182,6 +219,32 @@ func _append_single_diff(path: String, old_c: String, new_c: String, out_diff: P
 			out_diff.append("- " + o_line)
 		elif n_line != null:
 			out_diff.append("+ " + n_line)
+
+## Sohbet paneli için görsel BBCode Diff çıktısı üretir (+ yeşil, - kırmızı)
+func get_bbcode_diff() -> String:
+	var out: PackedStringArray = []
+	var deltas = get_file_deltas()
+	
+	out.append("[color=#88c0d0][b]Changes (" + str(deltas.size()) + " files)[/b][/color]\n")
+	for d in deltas:
+		out.append("  • [b]" + d["file_name"] + "[/b] [color=#a3be8c]+" + str(d["added"]) + "[/color] [color=#bf616a]-" + str(d["removed"]) + "[/color]")
+		
+	out.append("\n[color=#4c566a]─────────────────────────────────────────────────[/color]")
+	var raw_diff = get_unified_diff()
+	var lines = raw_diff.split("\n")
+	for l in lines:
+		if l.begins_with("---") or l.begins_with("+++"):
+			out.append("[color=#81a1c1][b]" + l + "[/b][/color]")
+		elif l.begins_with("+"):
+			out.append("[color=#a3be8c]" + l + "[/color]")
+		elif l.begins_with("-"):
+			out.append("[color=#bf616a]" + l + "[/color]")
+		elif l.begins_with("==="):
+			out.append("[color=#4c566a]" + l + "[/color]")
+		else:
+			out.append("[color=#9399b2]" + l + "[/color]")
+			
+	return "\n".join(out)
 
 func get_diff_text() -> String:
 	return get_unified_diff()

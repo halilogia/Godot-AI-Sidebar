@@ -11,7 +11,6 @@ const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/a
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
-const AISidebarEditorStateSnapshot = preload("res://addons/godot_sidebar_ai/core/state/editor_state_snapshot.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
@@ -36,6 +35,7 @@ var agent_context: AISidebarAgentContext
 var agent_runner: AISidebarAgentRunner
 var current_model_list: Array = []
 var pending_change_set: AISidebarChangeSet = null
+var last_applied_change_set: AISidebarChangeSet = null
 var pending_tool_name: String = ""
 var pending_tool_args: Dictionary = {}
 var last_user_prompt: String = ""
@@ -44,7 +44,7 @@ func _ready() -> void:
 	if not Engine.is_editor_hint():
 		return
 		
-	# 1. Clean Architecture Katmanlarının Başlatılması
+	# 1. Katmanların Başlatılması
 	network_manager = AISidebarNetworkManager.new()
 	add_child(network_manager)
 	
@@ -52,7 +52,7 @@ func _ready() -> void:
 	agent_context = AISidebarAgentContext.new()
 	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
 	
-	# Ajan ve Sağlayıcı Sinyal Bağlantıları
+	# Sinyal Bağlantıları
 	agent_runner.state_changed.connect(_on_agent_state_changed)
 	agent_runner.thinking_received.connect(_on_agent_thinking_received)
 	agent_runner.text_received.connect(_on_agent_text_received)
@@ -68,6 +68,8 @@ func _ready() -> void:
 	provider.models_fetched.connect(_on_models_fetched)
 
 	# 2. UI Olayları
+	if chat_log:
+		chat_log.meta_clicked.connect(_on_chat_meta_clicked)
 	if clear_btn:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
@@ -218,6 +220,8 @@ func _on_clear_pressed() -> void:
 func _on_approve_pressed() -> void:
 	if approval_bar:
 		approval_bar.visible = false
+	if pending_change_set:
+		last_applied_change_set = pending_change_set
 	if agent_runner:
 		agent_runner.approve_pending_action()
 
@@ -230,6 +234,34 @@ func _on_reject_pressed() -> void:
 func _on_view_diff_pressed() -> void:
 	if change_set_dialog:
 		change_set_dialog.show_change_set(pending_tool_name, pending_tool_args, pending_change_set)
+
+func _on_chat_meta_clicked(meta: Variant) -> void:
+	var m_str = str(meta)
+	match m_str:
+		"action:approve":
+			_on_approve_pressed()
+		"action:reject":
+			_on_reject_pressed()
+		"action:view_diff":
+			_on_view_diff_pressed()
+		"action:undo":
+			if last_applied_change_set:
+				var res = last_applied_change_set.rollback()
+				if res.get("success", false):
+					append_chat_message("↩ Geri Alma", "Son uygulanan değişiklikler başarıyla geri alındı.", "#a3be8c")
+				else:
+					append_chat_message("❌ Geri Alma", "Geri alma başarısız: " + res.get("error", "Bilinmeyen hata"), "#bf616a")
+		_:
+			if m_str.begins_with("file:"):
+				var fpath = m_str.trim_prefix("file:")
+				if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+					if fpath.ends_with(".gd"):
+						var res = load(fpath)
+						if res is Script and EditorInterface.has_method("edit_script"):
+							EditorInterface.edit_script(res)
+					elif fpath.ends_with(".tscn"):
+						if EditorInterface.has_method("open_scene_from_path"):
+							EditorInterface.open_scene_from_path(fpath)
 
 # --- Ajan Sinyal Dinleyicileri (Presentation) ---
 
@@ -275,14 +307,16 @@ func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISid
 	pending_tool_args = args
 	pending_change_set = cs
 	
-	var desc = cs.get_summary() if cs else tool_name
-	var diff_preview = ""
+	if not chat_log:
+		return
+		
+	chat_log.append_text("[color=#ebcb8b][font_size=12][b]⏳ Değişiklik Onayı Gerekli[/b][/font_size][/color]\n")
 	if cs:
-		var raw_diff = cs.get_unified_diff()
-		if not raw_diff.is_empty():
-			diff_preview = "\n[code][color=#cdd6f4]" + raw_diff.left(300) + ("..." if raw_diff.size() > 300 else "") + "[/color][/code]"
-			
-	append_chat_message("⏳ Onay Gerekli", "Ajan şu değişikliği yapmak istiyor:\n[b]" + desc + "[/b]" + diff_preview + "\n[i]Onaylamak için yukarıdaki 'Onayla & Uygula' butonunu kullanın veya 'Diff Gör'e tıklayın.[/i]", "#ebcb8b")
+		chat_log.append_text(cs.get_bbcode_diff() + "\n")
+	else:
+		chat_log.append_text("[color=#d8dee9]İşlem: " + tool_name + " (" + JSON.stringify(args) + ")[/color]\n")
+		
+	chat_log.append_text("[color=#88c0d0][url=action:view_diff]🔍 [b]Diff Gör[/b][/url][/color]   [color=#a3be8c][url=action:approve]✓ [b]Uygula (Approve)[/b][/url][/color]   [color=#bf616a][url=action:reject]✕ [b]Reddet (Reject)[/b][/url][/color]\n\n")
 	
 	if change_set_dialog:
 		change_set_dialog.show_change_set(tool_name, args, cs)
@@ -324,16 +358,24 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	var is_ok = metrics.get("success", true)
 	var status_hdr = "[b][color=#a3be8c]✓ Görev Tamamlandı[/color][/b]" if is_ok else "[b][color=#bf616a]✕ Görev Sonlandı[/color][/b]"
 	var elapsed = str(metrics.get("elapsed_seconds", 0.0)) + "s"
+	var llm_s = str(metrics.get("llm_time_s", 0.0)) + "s"
+	var tool_s = str(metrics.get("tool_time_s", 0.0)) + "s"
+	var file_s = str(metrics.get("file_time_s", 0.0)) + "s"
+	var runtime_s = str(metrics.get("runtime_time_s", 0.0)) + "s"
+	var wait_s = str(metrics.get("waiting_time_s", 0.0)) + "s"
+	
 	var llm_turns = str(metrics.get("llm_turns", 0))
 	var tool_calls = str(metrics.get("tool_calls", 0))
 	var file_ops = str(metrics.get("file_ops", 0))
 	var editor_ops = str(metrics.get("editor_ops", 0))
 	var verify_cps = str(metrics.get("verification_checkpoints", 0))
 	
-	chat_log.append_text("[color=#4c566a][font_size=11]╭── 📊 Görev Metrikleri ──────────────────────────────[/font_size][/color]\n")
-	chat_log.append_text(status_hdr + " [color=#81a1c1](" + elapsed + ")[/color]\n")
-	chat_log.append_text("[font_size=11][color=#d8dee9]• LLM Dönüşü: " + llm_turns + "  |  Araç Çağrısı: " + tool_calls + "  |  Doğrulama Checkpoint: " + verify_cps + "\n")
-	chat_log.append_text("• Dosya İşlemleri (File-First): " + file_ops + "  |  Editör İşlemleri: " + editor_ops + "[/color][/font_size]\n")
+	chat_log.append_text("[color=#4c566a][font_size=11]╭── 📊 Görev Metrikleri (Telemetri) ──────────────────[/font_size][/color]\n")
+	chat_log.append_text(status_hdr + " [color=#81a1c1](Toplam: " + elapsed + ")[/color]\n")
+	chat_log.append_text("[font_size=11][color=#d8dee9]• Süre Dağılımı: LLM: " + llm_s + "  |  Araçlar: " + tool_s + " (Dosya: " + file_s + ", Runtime: " + runtime_s + ")  |  Bekleme: " + wait_s + "\n")
+	chat_log.append_text("• İşlem Sayısı: " + llm_turns + " LLM Dönüşü · " + tool_calls + " Araç · " + file_ops + " Dosya (File-First) · " + editor_ops + " Editör · " + verify_cps + " Doğrulama[/color][/font_size]\n")
+	if last_applied_change_set:
+		chat_log.append_text("[color=#88c0d0][url=action:undo]↩ [b]Son Değişikliği Geri Al (Undo)[/b][/url][/color]\n")
 	chat_log.append_text("[color=#4c566a][font_size=11]╰─────────────────────────────────────────────────────[/font_size][/color]\n\n")
 
 func _on_agent_error(err_msg: String) -> void:
