@@ -27,6 +27,7 @@ const TestRealUserScenarios = preload("res://tests/test_real_user_scenarios.gd")
 const TestPluginResources = preload("res://tests/test_plugin_resources.gd")
 const TestResponsePipeline = preload("res://tests/test_response_pipeline.gd")
 const TestToolTermination = preload("res://tests/test_tool_termination.gd")
+const TestToolDataIntegrity = preload("res://tests/test_tool_data_integrity.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -59,7 +60,8 @@ func _init() -> void:
 		TestRealUserScenarios,
 		TestPluginResources,
 		TestResponsePipeline,
-		TestToolTermination
+		TestToolTermination,
+		TestToolDataIntegrity
 	]
 	
 	var total_passed = 0

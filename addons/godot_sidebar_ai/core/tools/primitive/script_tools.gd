@@ -172,9 +172,23 @@ static func _eval_gdscript(args: Dictionary) -> Dictionary:
 	if err != OK:
 		return AISidebarToolResult.err("PARSE_ERROR", "İfade ayrıştırılamadı: " + expr.get_error_text())
 		
-	var root = EditorInterface.get_edited_scene_root() if (Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root")) else null
+	var root: Object = null
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
+		root = EditorInterface.get_edited_scene_root()
+		
+	var dummy_node: Node = null
+	if root == null:
+		dummy_node = Node.new()
+		root = dummy_node
+		
 	var result = expr.execute([], root)
-	if expr.has_execute_failed():
-		return AISidebarToolResult.err("EXECUTION_ERROR", "Çalıştırma hatası: " + expr.get_error_text())
+	var has_failed = expr.has_execute_failed()
+	var err_txt = expr.get_error_text()
+	
+	if dummy_node != null:
+		dummy_node.free()
+		
+	if has_failed:
+		return AISidebarToolResult.err("EXECUTION_ERROR", "Çalıştırma hatası: " + err_txt)
 		
 	return AISidebarToolResult.ok({"result": str(result)})

@@ -232,7 +232,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		
 	# 3. Araç İcrası
 	if tool_calls.size() > 0:
-		# Assistant Tool Call mesajını OpenAI standartlarında bağlama ekle
+		# Assistant Tool Call mesajını OpenAI formatında bağlama ekle
 		if context:
 			context.add_assistant_tool_call_message(text_content, tool_calls)
 			
@@ -315,22 +315,33 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 	var res_dict = result if result is Dictionary else {}
 	var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, res_dict)
 	var is_valid = verified_result.get("success", false) if verified_result is Dictionary else true
-	var msg = ""
-	if verified_result is Dictionary:
-		msg = verified_result.get("message", "")
-		if msg.is_empty():
-			var err_obj = verified_result.get("error")
-			if err_obj is Dictionary and err_obj.has("message"):
-				msg = err_obj["message"]
-			elif err_obj is String:
-				msg = err_obj
-		
-	verification_completed.emit(tool_name, is_valid, msg)
+	var ui_msg = verified_result.get("message", "")
+	
+	# UI için insan-okunabilir bildirim
+	verification_completed.emit(tool_name, is_valid, ui_msg)
 	
 	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
 	if context:
-		var result_to_pass = verified_result if verified_result is Dictionary else {"data": result}
-		context.add_tool_result_message(tool_call_id, tool_name, result_to_pass)
+		# Modele gönderilen tool payload'ında mutlaka ham structured data korunur:
+		var final_payload: Dictionary = {}
+		if verified_result.has("data") and verified_result["data"] != null:
+			final_payload = {
+				"success": is_valid,
+				"data": verified_result["data"]
+			}
+			if not ui_msg.is_empty():
+				final_payload["message"] = ui_msg
+		elif res_dict.has("data") and res_dict["data"] != null:
+			final_payload = {
+				"success": is_valid,
+				"data": res_dict["data"]
+			}
+			if not ui_msg.is_empty():
+				final_payload["message"] = ui_msg
+		else:
+			final_payload = verified_result
+			
+		context.add_tool_result_message(tool_call_id, tool_name, final_payload)
 		
 	_run_next_step()
 
