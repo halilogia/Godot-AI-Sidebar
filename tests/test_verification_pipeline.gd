@@ -11,7 +11,7 @@ static func run() -> Dictionary:
 	# Test 1: Valid script verification
 	var valid_script = "res://addons/godot_sidebar_ai/plugin.gd"
 	var v_res = AISidebarVerificationPipeline.verify_script(valid_script)
-	if v_res.get("success", false):
+	if v_res.get("success", false) and v_res.get("status") == AISidebarVerificationPipeline.VerificationStatus.PASSED:
 		passed += 1
 	else:
 		failed += 1
@@ -20,7 +20,7 @@ static func run() -> Dictionary:
 	# Test 2: Nonexistent script verification
 	var invalid_script = "res://scripts/nonexistent_dummy.gd"
 	var inv_res = AISidebarVerificationPipeline.verify_script(invalid_script)
-	if not inv_res.get("success", false) and inv_res.get("error", {}).get("code", "") == "VERIFICATION_FAILED":
+	if not inv_res.get("success", false) and inv_res.get("status") == AISidebarVerificationPipeline.VerificationStatus.FAILED:
 		passed += 1
 	else:
 		failed += 1

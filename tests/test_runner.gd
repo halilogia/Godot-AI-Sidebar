@@ -15,6 +15,11 @@ const TestVisionInput = preload("res://tests/test_vision_input.gd")
 const TestRuntimeObservation = preload("res://tests/test_runtime_observation.gd")
 const TestSourceMapper = preload("res://tests/test_source_mapper.gd")
 const TestRuntimeRecovery = preload("res://tests/test_runtime_recovery.gd")
+const TestMultimodalProvider = preload("res://tests/test_multimodal_provider.gd")
+const TestVisualObservation = preload("res://tests/test_visual_observation.gd")
+const TestDiagnosisContext = preload("res://tests/test_diagnosis_context.gd")
+const TestExtendedVerification = preload("res://tests/test_extended_verification.gd")
+const TestVisualHealingLoop = preload("res://tests/test_visual_healing_loop.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -35,7 +40,12 @@ func _init() -> void:
 		TestVisionInput,
 		TestRuntimeObservation,
 		TestSourceMapper,
-		TestRuntimeRecovery
+		TestRuntimeRecovery,
+		TestMultimodalProvider,
+		TestVisualObservation,
+		TestDiagnosisContext,
+		TestExtendedVerification,
+		TestVisualHealingLoop
 	]
 	
 	var total_passed = 0

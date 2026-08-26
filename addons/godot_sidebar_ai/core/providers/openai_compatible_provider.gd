@@ -2,7 +2,8 @@
 extends "res://addons/godot_sidebar_ai/core/providers/ai_provider.gd"
 class_name AISidebarOpenAICompatibleProvider
 
-## OpenAI Uyumlu Sağlayıcı (9Router, OpenRouter, Ollama, LM Studio) (SRP).
+## OpenAI Uyumlu Çok Modlu Sağlayıcı (OpenAI-Compatible Multimodal Provider) (SRP).
+## 9Router, OpenRouter, Ollama ve LM Studio ile metin ve görsel (Vision) isteklerini yönetir.
 
 const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/network/network_manager.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
@@ -15,6 +16,15 @@ func _init(p_network_manager: AISidebarNetworkManager = null) -> void:
 	if network_manager:
 		network_manager.request_completed.connect(_on_network_completed)
 		network_manager.request_failed.connect(_on_network_failed)
+
+func supports_vision() -> bool:
+	var cfg = AISidebarConfig.load_config()
+	var model = cfg.get("selected_model", "all").to_lower()
+	var vision_keywords = ["vision", "4o", "flash", "sonnet", "opus", "llava", "vl", "claude-3", "gemini", "qwen-vl", "all"]
+	for kw in vision_keywords:
+		if kw in model:
+			return true
+	return false
 
 func cancel() -> void:
 	if network_manager:
@@ -42,6 +52,9 @@ func fetch_models() -> void:
 		error_occurred.emit("Modeller çekilemedi (Hata: " + str(err) + ")")
 
 func send_chat(messages: Array, tools_schema: Array) -> void:
+	send_multimodal_chat(messages, tools_schema, [])
+
+func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -> void:
 	if not network_manager:
 		error_occurred.emit("Ağ yöneticisi başlatılmamış.")
 		return
@@ -63,7 +76,29 @@ func send_chat(messages: Array, tools_schema: Array) -> void:
 	if not sys_prompt.is_empty():
 		payload_messages.append({"role": "system", "content": sys_prompt})
 		
-	for msg in messages:
+	for i in range(messages.size()):
+		var msg = messages[i].duplicate(true)
+		
+		# Eğer son kullanıcı mesajı ise ve görseller varsa multimodal parts dizisine dönüştür
+		if i == messages.size() - 1 and msg.get("role", "") == "user" and images.size() > 0:
+			if not supports_vision():
+				error_occurred.emit("Seçili model (" + model + ") görsel (Vision) desteğine sahip değil.")
+				return
+				
+			var raw_content = msg.get("content", "")
+			var parts: Array = []
+			
+			if raw_content is String:
+				parts.append({"type": "text", "text": raw_content})
+			elif raw_content is Array:
+				parts.append_array(raw_content)
+				
+			for img in images:
+				if img is AISidebarVisionInput:
+					parts.append(img.to_openai_content_part())
+					
+			msg["content"] = parts
+			
 		payload_messages.append(msg)
 		
 	var body_dict: Dictionary = {
