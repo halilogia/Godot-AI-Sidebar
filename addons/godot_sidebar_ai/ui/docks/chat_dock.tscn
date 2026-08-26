@@ -1,10 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://dxea574m8r25y"]
+[gd_scene load_steps=4 format=3 uid="uid://dxea574m8r25y"]
 
 [ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/docks/chat_dock.gd" id="1_w3m62"]
-[ext_resource type="Texture2D" uid="uid://b12l1qndm8f04" path="res://addons/godot_sidebar_ai/ui/icons/settings.svg" id="2_4h2n1"]
-[ext_resource type="Texture2D" uid="uid://c51e0k20l9m47" path="res://addons/godot_sidebar_ai/ui/icons/refresh-cw.svg" id="3_7g3k2"]
-[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="4_s5p9a"]
-[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.tscn" id="5_csdlg"]
+[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="2_s5p9a"]
+[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.tscn" id="3_csdlg"]
 
 [node name="ChatDock" type="Control"]
 layout_mode = 3
@@ -56,16 +54,12 @@ size_flags_horizontal = 3
 [node name="RefreshModelsBtn" type="Button" parent="MainLayout/ModelBar"]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
-icon = ExtResource("3_7g3k2")
-icon_alignment = 1
-expand_icon = true
+text = "🔄"
 
 [node name="SettingsBtn" type="Button" parent="MainLayout/ModelBar"]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
-icon = ExtResource("2_4h2n1")
-icon_alignment = 1
-expand_icon = true
+text = "⚙"
 
 [node name="ChatLog" type="RichTextLabel" parent="MainLayout"]
 layout_mode = 2
@@ -117,8 +111,8 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Gönder"
 
-[node name="SettingsDialog" parent="." instance=ExtResource("4_s5p9a")]
+[node name="SettingsDialog" parent="." instance=ExtResource("2_s5p9a")]
 visible = false
 
-[node name="ChangeSetDialog" parent="." instance=ExtResource("5_csdlg")]
+[node name="ChangeSetDialog" parent="." instance=ExtResource("3_csdlg")]
 visible = false

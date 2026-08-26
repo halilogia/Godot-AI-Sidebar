@@ -1,6 +1,9 @@
 @tool
 extends AcceptDialog
 
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+
 signal settings_saved()
 
 @onready var base_url_line: LineEdit = $VBox/UrlContainer/BaseUrlEdit

@@ -1,0 +1,85 @@
+[gd_scene load_steps=2 format=3 uid="uid://ctk07b667y48s"]
+
+[ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.gd" id="1_setdg"]
+
+[node name="SettingsDialog" type="AcceptDialog"]
+title = "AI Model ve API Ayarları"
+initial_position = 2
+size = Vector2i(550, 480)
+script = ExtResource("1_setdg")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 542.0
+offset_bottom = 431.0
+theme_override_constants/separation = 8
+
+[node name="UrlContainer" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBox/UrlContainer"]
+layout_mode = 2
+text = "API Base URL (OpenAI Uyumlu):"
+
+[node name="BaseUrlEdit" type="LineEdit" parent="VBox/UrlContainer"]
+layout_mode = 2
+placeholder_text = "http://localhost:20128/v1"
+
+[node name="KeyContainer" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBox/KeyContainer"]
+layout_mode = 2
+text = "API Key (Varsa):"
+
+[node name="ApiKeyEdit" type="LineEdit" parent="VBox/KeyContainer"]
+layout_mode = 2
+secret = true
+
+[node name="TempContainer" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBox/TempContainer"]
+layout_mode = 2
+text = "Sıcaklık (Temperature):"
+
+[node name="TempSlider" type="HSlider" parent="VBox/TempContainer"]
+layout_mode = 2
+max_value = 2.0
+step = 0.05
+value = 0.2
+
+[node name="TempValLabel" type="Label" parent="VBox/TempContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 11
+text = "0.2"
+horizontal_alignment = 2
+
+[node name="MaxIterContainer" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBox/MaxIterContainer"]
+layout_mode = 2
+text = "Maksimum Ajan Adım Sayısı:"
+
+[node name="MaxIterSpin" type="SpinBox" parent="VBox/MaxIterContainer"]
+layout_mode = 2
+min_value = 1.0
+max_value = 50.0
+value = 10.0
+
+[node name="PromptContainer" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Label" type="Label" parent="VBox/PromptContainer"]
+layout_mode = 2
+text = "Sistem Promptu (System Prompt):"
+
+[node name="SysPromptEdit" type="TextEdit" parent="VBox/PromptContainer"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_vertical = 3
+wrap_mode = 1

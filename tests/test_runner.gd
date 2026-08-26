@@ -24,6 +24,7 @@ const TestEditorGrounding = preload("res://tests/test_editor_grounding.gd")
 const TestAssetDiscovery = preload("res://tests/test_asset_discovery.gd")
 const TestMultiChangeSet = preload("res://tests/test_multi_changeset.gd")
 const TestRealUserScenarios = preload("res://tests/test_real_user_scenarios.gd")
+const TestPluginResources = preload("res://tests/test_plugin_resources.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -53,7 +54,8 @@ func _init() -> void:
 		TestEditorGrounding,
 		TestAssetDiscovery,
 		TestMultiChangeSet,
-		TestRealUserScenarios
+		TestRealUserScenarios,
+		TestPluginResources
 	]
 	
 	var total_passed = 0
