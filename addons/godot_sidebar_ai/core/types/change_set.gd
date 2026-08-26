@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarChangeSet
 
-## Atomik Değişiklik Seti ve Geri Alma (ChangeSet, Multi-File Unified Diff & BBCode Highlighting) (SRP).
+## Atomik Değişiklik Seti ve Geri Alma (ChangeSet, Multi-File Unified Diff & Stale Resource Cleanup) (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 
@@ -80,7 +80,7 @@ func _apply_single(path: String, c_type: ChangeType, content: String) -> Diction
 			
 	return {"success": true}
 
-## Değişiklikleri geri alır (Rollback / Undo)
+## Değişiklikleri geri alır (Rollback / Undo) ve stale editör kaynaklarını temizler
 func rollback() -> Dictionary:
 	for i in range(sub_changes.size() - 1, -1, -1):
 		var sub = sub_changes[i]
@@ -96,10 +96,35 @@ func rollback() -> Dictionary:
 func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictionary:
 	if path.is_empty():
 		return {"success": true}
+		
+	# Script Editöründe açık ve silinecek dosyayı güvenle kapat/değiştir (File not found hatasını önler)
+	if c_type == ChangeType.CREATE_FILE and Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+		if EditorInterface.has_method("get_script_editor"):
+			var se = EditorInterface.get_script_editor()
+			if se and se.has_method("get_open_scripts"):
+				var open_scripts = se.get_open_scripts()
+				for s in open_scripts:
+					if s and s.resource_path == path:
+						if se.has_method("get_current_script") and se.get_current_script() == s:
+							var switched = false
+							for other_s in open_scripts:
+								if other_s != s and is_instance_valid(other_s):
+									EditorInterface.edit_script(other_s)
+									switched = true
+									break
+							if not switched:
+								EditorInterface.edit_script(null)
+								
 	match c_type:
 		ChangeType.CREATE_FILE:
 			if FileAccess.file_exists(path):
 				DirAccess.remove_absolute(path)
+			var uid_path = path + ".uid"
+			if FileAccess.file_exists(uid_path):
+				DirAccess.remove_absolute(uid_path)
+			var import_path = path + ".import"
+			if FileAccess.file_exists(import_path):
+				DirAccess.remove_absolute(import_path)
 		ChangeType.MODIFY_FILE:
 			var f = FileAccess.open(path, FileAccess.WRITE)
 			if f:
@@ -220,7 +245,7 @@ func _append_single_diff(path: String, old_c: String, new_c: String, out_diff: P
 		elif n_line != null:
 			out_diff.append("+ " + n_line)
 
-## Sohbet paneli için görsel BBCode Diff çıktısı üretir (+ yeşil, - kırmızı)
+## Sohbet paneli ve dialog için görsel BBCode Diff çıktısı üretir (+ yeşil, - kırmızı)
 func get_bbcode_diff() -> String:
 	var out: PackedStringArray = []
 	var deltas = get_file_deltas()

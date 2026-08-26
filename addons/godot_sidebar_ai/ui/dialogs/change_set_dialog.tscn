@@ -3,27 +3,59 @@
 [ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd" id="1_diff_dlg"]
 
 [node name="ChangeSetDialog" type="ConfirmationDialog"]
-title = "AI Değişiklik Onayı (ChangeSet Approval)"
+title = "AI Değişiklik Onayı & Diff Görünümü"
 initial_position = 2
-size = Vector2i(650, 480)
+size = Vector2i(720, 500)
 visible = false
+unresizable = false
 script = ExtResource("1_diff_dlg")
 
-[node name="VBox" type="VBoxContainer" parent="."]
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 642.0
-offset_bottom = 431.0
+offset_right = -8.0
+offset_bottom = -49.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="SummaryLabel" type="Label" parent="VBox"]
+[node name="HeaderLabel" type="RichTextLabel" parent="Margin/VBox"]
 layout_mode = 2
-text = "Değişiklik Özeti..."
-autowrap_mode = 3
+bbcode_enabled = true
+text = "[b][color=#88c0d0]Changes (0 files)[/color][/b]"
+fit_content = true
+scroll_active = false
 
-[node name="DiffTextEdit" type="TextEdit" parent="VBox"]
+[node name="SummaryLabel" type="RichTextLabel" parent="Margin/VBox"]
+layout_mode = 2
+bbcode_enabled = true
+text = "Değişiklik özeti..."
+fit_content = true
+scroll_active = false
+
+[node name="DiffScroll" type="ScrollContainer" parent="Margin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 12
-editable = false
-wrap_mode = 1
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 2
+
+[node name="DiffRichText" type="RichTextLabel" parent="Margin/VBox/DiffScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/normal_font_size = 12
+bbcode_enabled = true
+text = "Diff çıktısı..."
+fit_content = true
+scroll_active = false
+selection_enabled = true
