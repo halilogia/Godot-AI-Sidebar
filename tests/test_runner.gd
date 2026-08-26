@@ -1,44 +1,61 @@
 @tool
 extends SceneTree
 
+const TestTypeParser = preload("res://tests/test_type_parser.gd")
+const TestPathPolicy = preload("res://tests/test_path_policy.gd")
+const TestChangeSet = preload("res://tests/test_change_set.gd")
+const TestSSEParser = preload("res://tests/test_sse_parser.gd")
+const TestToolManager = preload("res://tests/test_tool_manager.gd")
+const TestAgentContext = preload("res://tests/test_agent_context.gd")
+const TestAgentRunnerState = preload("res://tests/test_agent_runner_state.gd")
+const TestPermissionEnforcement = preload("res://tests/test_permission_enforcement.gd")
+const TestVerificationPipeline = preload("res://tests/test_verification_pipeline.gd")
+const TestAgentApprovalState = preload("res://tests/test_agent_approval_state.gd")
+const TestVisionInput = preload("res://tests/test_vision_input.gd")
+
 func _init() -> void:
 	print("==================================================")
-	print("   GODOT AI CORE v2.0 - HEADLESS UNIT TESTS      ")
+	print("   GODOT AI CORE v2.0 - MASTER UNIT TESTS        ")
 	print("==================================================")
 	
-	var all_suites = [
-		load("res://tests/test_type_parser.gd"),
-		load("res://tests/test_path_policy.gd"),
-		load("res://tests/test_change_set.gd"),
-		load("res://tests/test_sse_parser.gd"),
-		load("res://tests/test_tool_manager.gd"),
-		load("res://tests/test_agent_context.gd"),
-		load("res://tests/test_agent_runner_state.gd")
+	var suites = [
+		TestTypeParser,
+		TestPathPolicy,
+		TestChangeSet,
+		TestSSEParser,
+		TestToolManager,
+		TestAgentContext,
+		TestAgentRunnerState,
+		TestPermissionEnforcement,
+		TestVerificationPipeline,
+		TestAgentApprovalState,
+		TestVisionInput
 	]
 	
 	var total_passed = 0
 	var total_failed = 0
 	
-	for suite in all_suites:
-		if suite:
-			var res = suite.run()
-			var name = res.get("name", "Suite")
-			var p = res.get("passed", 0)
-			var f = res.get("failed", 0)
-			total_passed += p
-			total_failed += f
-			
-			if f == 0:
-				print(" [PASS] " + name + " (" + str(p) + "/" + str(p) + " passed)")
-			else:
-				print(" [FAIL] " + name + " (" + str(p) + " passed, " + str(f) + " FAILED)")
-				for err in res.get("errors", []):
-					print("        ❌ " + str(err))
-					
+	for suite in suites:
+		var res: Dictionary = suite.run()
+		var s_name = res.get("name", "Unknown")
+		var s_pass = res.get("passed", 0)
+		var s_fail = res.get("failed", 0)
+		var s_errs = res.get("errors", [])
+		
+		total_passed += s_pass
+		total_failed += s_fail
+		
+		if s_fail == 0:
+			print(" [PASS] " + s_name + " (" + str(s_pass) + "/" + str(s_pass + s_fail) + " passed)")
+		else:
+			print(" [FAIL] " + s_name + " (" + str(s_fail) + " FAILED):")
+			for e in s_errs:
+				print("   - " + str(e))
+				
 	print("--------------------------------------------------")
 	if total_failed == 0:
 		print("🎉 ALL TESTS PASSED! Total: " + str(total_passed) + " assertions.")
 		quit(0)
 	else:
-		print("❌ TEST SUITE FAILED: " + str(total_failed) + " failures.")
+		print("❌ TEST SUITE FAILED! Passed: " + str(total_passed) + ", Failed: " + str(total_failed))
 		quit(1)

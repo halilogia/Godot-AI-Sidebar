@@ -2,9 +2,10 @@
 extends RefCounted
 class_name AISidebarToolManager
 
-## Merkezi Araç Yöneticisi ve Progressive Discovery Motoru (SRP).
+## Merkezi Araç Yöneticisi, Yetki Denetleyicisi ve Progressive Discovery Motoru (SRP).
 
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
+const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/scene_tools.gd")
 const AISidebarScriptTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/script_tools.gd")
 const AISidebarEditorTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/editor_tools.gd")
@@ -22,7 +23,7 @@ static func get_all_schemas() -> Array:
 			"parameters": {
 				"type": "object",
 				"properties": {
-					"query": { "type": "string", "description": "Aranacak kelime (örn: 'scene', 'script', 'camera', 'character')." }
+					"query": { "type": "string", "description": "Aranacak kelime (örn: 'scene', 'script', 'camera', 'character', 'enemy', 'hud')." }
 				},
 				"required": ["query"]
 			}
@@ -36,26 +37,35 @@ static func get_all_schemas() -> Array:
 	
 	return schemas
 
-static func execute_tool(tool_name: String, args: Dictionary) -> Dictionary:
+static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if tool_name == "search_tools":
 		return _search_tools(args)
 		
-	# 1. Sahne İlkel Araçları
+	# 1. Gerçek Yetki Denetimi (Permission Enforcement)
+	if not is_user_approved and AISidebarPermissionPolicy.requires_user_approval(tool_name, args):
+		return AISidebarToolResult.err(
+			"APPROVAL_REQUIRED",
+			"Bu işlem (" + tool_name + ") kullanıcı onayı gerektirir.",
+			true,
+			{"requires_approval": true, "tool_name": tool_name, "args": args}
+		)
+		
+	# 2. Sahne İlkel Araçları
 	for s in AISidebarSceneTools.get_schemas():
 		if s["function"]["name"] == tool_name:
 			return AISidebarSceneTools.execute(tool_name, args)
 			
-	# 2. Script İlkel Araçları
+	# 3. Script İlkel Araçları
 	for s in AISidebarScriptTools.get_schemas():
 		if s["function"]["name"] == tool_name:
 			return AISidebarScriptTools.execute(tool_name, args)
 			
-	# 3. Editör İlkel Araçları
+	# 4. Editör İlkel Araçları
 	for s in AISidebarEditorTools.get_schemas():
 		if s["function"]["name"] == tool_name:
 			return AISidebarEditorTools.execute(tool_name, args)
 			
-	# 4. Yüksek Seviyeli Intent Araçları
+	# 5. Yüksek Seviyeli Intent Araçları
 	for s in AISidebarGameIntentTools.get_schemas():
 		if s["function"]["name"] == tool_name:
 			return AISidebarGameIntentTools.execute(tool_name, args)

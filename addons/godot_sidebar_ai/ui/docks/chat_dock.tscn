@@ -1,34 +1,25 @@
-[gd_scene load_steps=9 format=3 uid="uid://b7v8k1l2m3n4p"]
+[gd_scene load_steps=5 format=3 uid="uid://dxea574m8r25y"]
 
-[ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/docks/chat_dock.gd" id="1_chat_dock"]
-[ext_resource type="PackedScene" uid="uid://c8k2m1l4n5p6q" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="2_settings_dlg"]
-[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/bot.svg" id="3_bot_icon"]
-[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/globe.svg" id="4_globe_icon"]
-[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/refresh-cw.svg" id="5_refresh_icon"]
-[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/settings.svg" id="6_settings_icon"]
-[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/trash-2.svg" id="7_trash_icon"]
-[ext_resource type="Texture2D" path="res://addons/godot_sidebar_ai/ui/icons/send.svg" id="8_send_icon"]
+[ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/docks/chat_dock.gd" id="1_w3m62"]
+[ext_resource type="Texture2D" uid="uid://b12l1qndm8f04" path="res://addons/godot_sidebar_ai/ui/icons/settings.svg" id="2_4h2n1"]
+[ext_resource type="Texture2D" uid="uid://c51e0k20l9m47" path="res://addons/godot_sidebar_ai/ui/icons/refresh-cw.svg" id="3_7g3k2"]
+[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="4_s5p9a"]
+[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.tscn" id="5_csdlg"]
 
-[node name="GodotAISidebar" type="Control"]
+[node name="ChatDock" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-script = ExtResource("1_chat_dock")
+script = ExtResource("1_w3m62")
 
 [node name="MainLayout" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 6.0
-offset_top = 6.0
-offset_right = -6.0
-offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 6
@@ -37,30 +28,22 @@ theme_override_constants/separation = 6
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="BotIcon" type="TextureRect" parent="MainLayout/HeaderBar"]
-custom_minimum_size = Vector2(18, 18)
-layout_mode = 2
-size_flags_vertical = 4
-texture = ExtResource("3_bot_icon")
-expand_mode = 1
-stretch_mode = 5
-
 [node name="TitleLabel" type="Label" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 13
-text = "Godot AI"
+theme_override_font_sizes/font_size = 14
+text = "Godot AI Core"
 
 [node name="LangToggleBtn" type="Button" parent="MainLayout/HeaderBar"]
+custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
-icon = ExtResource("4_globe_icon")
-flat = true
+text = "TR"
 
 [node name="StatusBadge" type="Label" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.8, 0.4, 1)
 theme_override_font_sizes/font_size = 11
-text = "● Ready"
+text = "Hazır"
 
 [node name="ModelBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
@@ -71,27 +54,54 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="RefreshModelsBtn" type="Button" parent="MainLayout/ModelBar"]
+custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
-icon = ExtResource("5_refresh_icon")
+icon = ExtResource("3_7g3k2")
+icon_alignment = 1
+expand_icon = true
 
 [node name="SettingsBtn" type="Button" parent="MainLayout/ModelBar"]
+custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
-icon = ExtResource("6_settings_icon")
+icon = ExtResource("2_4h2n1")
+icon_alignment = 1
+expand_icon = true
 
 [node name="ChatLog" type="RichTextLabel" parent="MainLayout"]
 layout_mode = 2
 size_flags_vertical = 3
-focus_mode = 2
 bbcode_enabled = true
-selection_enabled = true
+scroll_following = true
+
+[node name="ApprovalBar" type="HBoxContainer" parent="MainLayout"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ApproveBtn" type="Button" parent="MainLayout/ApprovalBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
+text = "✓ Onayla & Uygula"
+
+[node name="ViewDiffBtn" type="Button" parent="MainLayout/ApprovalBar"]
+layout_mode = 2
+text = "🔍 Diff Gör"
+
+[node name="RejectBtn" type="Button" parent="MainLayout/ApprovalBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.6, 0.6, 1)
+text = "✕ Reddet"
 
 [node name="InputArea" type="VBoxContainer" parent="MainLayout"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="InputField" type="TextEdit" parent="MainLayout/InputArea"]
-custom_minimum_size = Vector2(0, 70)
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
+placeholder_text = "Bir görev yazın... (Gönder: Ctrl+Enter)"
 wrap_mode = 1
 
 [node name="ButtonsBar" type="HBoxContainer" parent="MainLayout/InputArea"]
@@ -100,13 +110,15 @@ theme_override_constants/separation = 6
 
 [node name="ClearBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2
-icon = ExtResource("7_trash_icon")
+text = "Temizle"
 
 [node name="SendBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-icon = ExtResource("8_send_icon")
-alignment = 1
+text = "Gönder"
 
-[node name="SettingsDialog" parent="." instance=ExtResource("2_settings_dlg")]
+[node name="SettingsDialog" parent="." instance=ExtResource("4_s5p9a")]
+visible = false
+
+[node name="ChangeSetDialog" parent="." instance=ExtResource("5_csdlg")]
+visible = false

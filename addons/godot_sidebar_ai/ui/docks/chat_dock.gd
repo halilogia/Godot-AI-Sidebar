@@ -1,6 +1,16 @@
 @tool
 extends Control
 
+const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
+const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd")
+const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/network/network_manager.gd")
+const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
+const AISidebarOpenAICompatibleProvider = preload("res://addons/godot_sidebar_ai/core/providers/openai_compatible_provider.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -8,16 +18,24 @@ extends Control
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
 @onready var settings_btn: Button = $MainLayout/ModelBar/SettingsBtn
 @onready var chat_log: RichTextLabel = $MainLayout/ChatLog
+@onready var approval_bar: HBoxContainer = $MainLayout/ApprovalBar
+@onready var approve_btn: Button = $MainLayout/ApprovalBar/ApproveBtn
+@onready var view_diff_btn: Button = $MainLayout/ApprovalBar/ViewDiffBtn
+@onready var reject_btn: Button = $MainLayout/ApprovalBar/RejectBtn
 @onready var input_field: TextEdit = $MainLayout/InputArea/InputField
 @onready var clear_btn: Button = $MainLayout/InputArea/ButtonsBar/ClearBtn
 @onready var send_btn: Button = $MainLayout/InputArea/ButtonsBar/SendBtn
 @onready var settings_dialog: AcceptDialog = $SettingsDialog
+@onready var change_set_dialog: AISidebarChangeSetDialog = $ChangeSetDialog
 
 var network_manager: AISidebarNetworkManager
 var provider: AISidebarAIProvider
 var agent_context: AISidebarAgentContext
 var agent_runner: AISidebarAgentRunner
 var current_model_list: Array = []
+var pending_change_set: AISidebarChangeSet = null
+var pending_tool_name: String = ""
+var pending_tool_args: Dictionary = {}
 
 func _ready() -> void:
 	if not Engine.is_editor_hint():
@@ -37,6 +55,9 @@ func _ready() -> void:
 	agent_runner.text_received.connect(_on_agent_text_received)
 	agent_runner.tool_executing.connect(_on_agent_tool_executing)
 	agent_runner.tool_completed.connect(_on_agent_tool_completed)
+	agent_runner.approval_requested.connect(_on_agent_approval_requested)
+	agent_runner.verification_started.connect(_on_agent_verification_started)
+	agent_runner.verification_completed.connect(_on_agent_verification_completed)
 	agent_runner.error_occurred.connect(_on_agent_error)
 	provider.models_fetched.connect(_on_models_fetched)
 
@@ -45,6 +66,12 @@ func _ready() -> void:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
 		send_btn.pressed.connect(_on_send_pressed)
+	if approve_btn:
+		approve_btn.pressed.connect(_on_approve_pressed)
+	if view_diff_btn:
+		view_diff_btn.pressed.connect(_on_view_diff_pressed)
+	if reject_btn:
+		reject_btn.pressed.connect(_on_reject_pressed)
 	if settings_btn:
 		settings_btn.pressed.connect(_on_settings_pressed)
 	if refresh_models_btn:
@@ -57,6 +84,9 @@ func _ready() -> void:
 		model_selector.item_selected.connect(_on_model_selected)
 	if settings_dialog:
 		settings_dialog.settings_saved.connect(_on_settings_saved)
+	if change_set_dialog:
+		change_set_dialog.action_approved.connect(_on_approve_pressed)
+		change_set_dialog.action_rejected.connect(_on_reject_pressed)
 
 	# 3. Başlangıç Yüklemesi
 	update_ui_language()
@@ -117,7 +147,6 @@ func _populate_model_selector(models: Array) -> void:
 		model_selector.selected = selected_idx
 
 func _on_models_fetched(models: Array) -> void:
-	# Modelleri konfigürasyona kaydet (UI/Controller seviyesinde persistence)
 	var cfg = AISidebarConfig.load_config()
 	cfg["cached_models"] = models
 	AISidebarConfig.save_config(cfg)
@@ -179,14 +208,39 @@ func _on_clear_pressed() -> void:
 	if chat_log:
 		chat_log.clear()
 
+func _on_approve_pressed() -> void:
+	if approval_bar:
+		approval_bar.visible = false
+	if agent_runner:
+		agent_runner.approve_pending_action()
+
+func _on_reject_pressed() -> void:
+	if approval_bar:
+		approval_bar.visible = false
+	if agent_runner:
+		agent_runner.reject_pending_action()
+
+func _on_view_diff_pressed() -> void:
+	if change_set_dialog:
+		change_set_dialog.show_change_set(pending_tool_name, pending_tool_args, pending_change_set)
+
 # --- Ajan Sinyal Dinleyicileri (Presentation) ---
 
 func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	update_ui_language()
-	if agent_runner.is_running():
-		set_status_badge(state_desc, Color(1.0, 0.8, 0.2))
-	else:
-		set_status_badge(state_desc, Color(0.4, 0.8, 0.4))
+	
+	if approval_bar:
+		approval_bar.visible = (new_state == AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL)
+		
+	match new_state:
+		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
+			set_status_badge(state_desc, Color(0.4, 0.8, 0.4))
+		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
+			set_status_badge("⏳ " + state_desc, Color(1.0, 0.5, 0.2))
+		AISidebarAgentRunner.AgentState.ERROR:
+			set_status_badge("❌ " + state_desc, Color(1.0, 0.3, 0.3))
+		_:
+			set_status_badge("⚡ " + state_desc, Color(1.0, 0.8, 0.2))
 
 func _on_agent_thinking_received(thinking: String) -> void:
 	if not chat_log:
@@ -203,34 +257,42 @@ func _on_agent_text_received(role: String, text: String) -> void:
 		append_chat_message(AISidebarI18n.get_text("sender_assistant"), text, "#88c0d0")
 
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
-	append_chat_message(
-		AISidebarI18n.get_text("sender_tool"),
-		AISidebarI18n.get_text("tool_executing", {"tool": tool_name}),
-		"#d08770"
-	)
+	append_chat_message("⚡ Agent", "İşlem yürütülüyor: [b]" + tool_name + "[/b]", "#d08770")
+
+func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISidebarChangeSet) -> void:
+	pending_tool_name = tool_name
+	pending_tool_args = args
+	pending_change_set = cs
+	
+	var desc = cs.get_summary() if cs else tool_name
+	append_chat_message("⏳ Onay Gerekli", "Ajan şu değişikliği yapmak istiyor: [b]" + desc + "[/b]\n[i]Onaylamak için yukarıdaki butonu kullanın veya 'Diff Gör'e tıklayın.[/i]", "#ebcb8b")
+	
+	if change_set_dialog:
+		change_set_dialog.show_change_set(tool_name, args, cs)
+
+func _on_agent_verification_started(tool_name: String) -> void:
+	append_chat_message("🔍 Doğrulama", "İşlem doğrulanıyor: " + tool_name, "#81a1c1")
+
+func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: String) -> void:
+	if is_valid:
+		append_chat_message("✓ Doğrulandı", msg, "#a3be8c")
+	else:
+		append_chat_message("⚠️ Doğrulama Hatası", msg, "#bf616a")
 
 func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if result.get("success", false):
 		var msg = result.get("message", "")
 		if msg.is_empty():
-			msg = JSON.stringify(result.get("data", {}))
-		append_chat_message(
-			AISidebarI18n.get_text("sender_result"),
-			AISidebarI18n.get_text("tool_success", {"result": msg}),
-			"#a3be8c"
-		)
+			msg = "Tamamlandı."
+		append_chat_message("✓ " + tool_name, msg, "#a3be8c")
 	else:
 		var err_obj = result.get("error", {})
-		var err_msg = "Bilinmeyen hata"
+		var err_msg = "Hata"
 		if err_obj is Dictionary and err_obj.has("message"):
 			err_msg = err_obj["message"]
 		elif result.has("error") and result["error"] is String:
 			err_msg = result["error"]
-		append_chat_message(
-			AISidebarI18n.get_text("sender_error"),
-			AISidebarI18n.get_text("tool_error", {"error": err_msg}),
-			"#bf616a"
-		)
+		append_chat_message("❌ " + tool_name, err_msg, "#bf616a")
 
 func _on_agent_error(err_msg: String) -> void:
 	append_chat_message(AISidebarI18n.get_text("sender_error"), "❌ " + err_msg, "#bf616a")

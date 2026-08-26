@@ -8,6 +8,11 @@ const AISidebarTypeParser = preload("res://addons/godot_sidebar_ai/core/types/ty
 const AISidebarMutationService = preload("res://addons/godot_sidebar_ai/core/mutations/editor_mutation_service.gd")
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 
+static func _get_root() -> Node:
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
+		return EditorInterface.get_edited_scene_root()
+	return null
+
 static func get_schemas() -> Array:
 	return [
 		{
@@ -185,7 +190,7 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen sahne aracı: " + tool_name)
 
 static func _get_scene_tree(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -213,7 +218,7 @@ static func _build_node_dict(node: Node) -> Dictionary:
 	}
 
 static func _add_node(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -238,7 +243,7 @@ static func _add_node(args: Dictionary) -> Dictionary:
 	return AISidebarMutationService.add_node(parent, new_node, node_name)
 
 static func _delete_node(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -250,7 +255,7 @@ static func _delete_node(args: Dictionary) -> Dictionary:
 	return AISidebarMutationService.delete_node(target)
 
 static func _set_node_property(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -266,7 +271,7 @@ static func _set_node_property(args: Dictionary) -> Dictionary:
 	return AISidebarMutationService.set_property(target, prop_name, final_val)
 
 static func _get_node_properties(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -288,7 +293,7 @@ static func _get_node_properties(args: Dictionary) -> Dictionary:
 	})
 
 static func _connect_signal(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -305,7 +310,7 @@ static func _connect_signal(args: Dictionary) -> Dictionary:
 	return AISidebarMutationService.connect_signal(src_node, sig_name, tgt_node, meth_name)
 
 static func _attach_script_to_node(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -325,7 +330,7 @@ static func _attach_script_to_node(args: Dictionary) -> Dictionary:
 	return AISidebarMutationService.attach_script(target, script_res)
 
 static func _reparent_node(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Aktif açık bir sahne bulunamadı.")
 		
@@ -367,13 +372,18 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 	if save_err != OK:
 		return AISidebarToolResult.err("SAVE_FAILED", "Sahne kaydedilemedi: " + str(save_err))
 		
-	EditorInterface.get_resource_filesystem().scan()
-	EditorInterface.open_scene_from_path(scene_path)
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+		if EditorInterface.has_method("get_resource_filesystem"):
+			EditorInterface.get_resource_filesystem().scan()
+		if EditorInterface.has_method("open_scene_from_path"):
+			EditorInterface.open_scene_from_path(scene_path)
+			
 	return AISidebarToolResult.ok({"scene_path": scene_path}, "Sahne oluşturuldu ve editörde açıldı.")
 
 static func _save_scene(args: Dictionary) -> Dictionary:
-	var root = EditorInterface.get_edited_scene_root()
+	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Kaydedilecek aktif sahne yok.")
-	EditorInterface.save_scene()
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("save_scene"):
+		EditorInterface.save_scene()
 	return AISidebarToolResult.ok({"scene_file": root.scene_file_path}, "Aktif sahne kaydedildi.")
