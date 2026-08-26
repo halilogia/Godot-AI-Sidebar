@@ -2,7 +2,7 @@
 extends "res://addons/godot_sidebar_ai/core/tools/tool_base.gd"
 class_name AISidebarScriptTools
 
-## İlkel Script (GDScript) ve Kod Araçları (File-First Direct Editing) (SRP).
+## İlkel Script (GDScript) ve Kod Araçları (File-First Atomic Editing) (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
@@ -27,7 +27,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_or_update_script",
-				"description": "Bir GDScript veya metin dosyasını oluşturur veya içeriğini günceller.",
+				"description": "Bir GDScript dosyasını atomik olarak oluşturur veya günceller. Kod diske yazılmadan önce bellekte sözdizimi doğrulamasından geçirilir; geçersiz kod diske yazılmaz ve mevcut geçerli dosya bozulmaz.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -110,6 +110,26 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
 		
 	var path = safe_check["path"]
+	
+	# 1. ATOMIC PRE-WRITE VALIDATION (Dosyaya yazmadan önce bellekte sözdizimi doğrulaması)
+	if path.ends_with(".gd"):
+		var val_res = AISidebarVerificationPipeline.validate_script_source(content, path)
+		if not val_res.get("success", false):
+			var err_obj = val_res.get("error", {})
+			# Diskteki mevcut dosyaya asla dokunulmaz!
+			return AISidebarToolResult.err(
+				err_obj.get("code", "SCRIPT_SYNTAX_ERROR"),
+				err_obj.get("message", "Script sözdizimi hatası içeriyor."),
+				true,
+				{
+					"code": err_obj.get("code", "SCRIPT_SYNTAX_ERROR"),
+					"message": err_obj.get("message", "Script sözdizimi hatası içeriyor."),
+					"file_path": path,
+					"recoverable": true
+				}
+			)
+			
+	# 2. WRITE TO DISK (Yalnızca sözdizimi geçerli ise diske yaz)
 	var dir_path = path.get_base_dir()
 	if not DirAccess.dir_exists_absolute(dir_path):
 		DirAccess.make_dir_recursive_absolute(dir_path)
@@ -127,12 +147,7 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		if res is Script and EditorInterface.has_method("edit_script"):
 			EditorInterface.edit_script(res)
 			
-	# Otomatik Sözdizimi Kontrolü (Syntax Check)
-	var verify_res = AISidebarVerificationPipeline.verify_script(path)
-	if not verify_res.get("success", false):
-		return verify_res
-		
-	return AISidebarToolResult.ok({"file_path": path}, "✓ Script başarıyla yazıldı ve derlendi.")
+	return AISidebarToolResult.ok({"file_path": path}, "✓ Script başarıyla doğrulandı ve yazıldı.")
 
 static func _open_script(args: Dictionary) -> Dictionary:
 	var path = AISidebarPathPolicy.normalize_path(args.get("file_path", ""))

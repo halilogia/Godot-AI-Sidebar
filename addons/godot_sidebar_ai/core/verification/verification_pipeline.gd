@@ -15,13 +15,46 @@ enum VerificationStatus {
 
 const CONFIDENCE_THRESHOLD: float = 0.65
 
-## 1. Kod / Sözdizimi Doğrulaması (Syntax Verification)
+## 1. Bellek İçi Kaynak Kodu Doğrulaması (Pre-write In-Memory Validation)
+static func validate_script_source(source_code: String, file_path: String = "") -> Dictionary:
+	var script = GDScript.new()
+	script.source_code = source_code
+	var reload_err = script.reload()
+	if reload_err != OK:
+		return {
+			"status": VerificationStatus.FAILED,
+			"success": false,
+			"error": {
+				"code": "SCRIPT_SYNTAX_ERROR",
+				"message": "Script sözdizimi (syntax) hatası içeriyor (Derleme kodu: " + str(reload_err) + "). Dosya yolu: " + file_path,
+				"file_path": file_path,
+				"recoverable": true
+			}
+		}
+	if not script.can_instantiate():
+		return {
+			"status": VerificationStatus.FAILED,
+			"success": false,
+			"error": {
+				"code": "SCRIPT_COMPILE_ERROR",
+				"message": "Script başarıyla örneklenemedi veya geçersiz referanslara sahip: " + file_path,
+				"file_path": file_path,
+				"recoverable": true
+			}
+		}
+	return {
+		"status": VerificationStatus.PASSED,
+		"success": true,
+		"message": "✓ GDScript sözdizimi geçerli."
+	}
+
+## 2. Disk Dosyası Sözdizimi Doğrulaması (Syntax Verification)
 static func verify_script(file_path: String) -> Dictionary:
 	if not FileAccess.file_exists(file_path):
 		return {
 			"status": VerificationStatus.FAILED,
 			"success": false,
-			"error": {"code": "FILE_NOT_FOUND", "message": "Script dosyası bulunamadı: " + file_path}
+			"error": {"code": "FILE_NOT_FOUND", "message": "Script dosyası bulunamadı: " + file_path, "file_path": file_path, "recoverable": true}
 		}
 		
 	var script_res = load(file_path)
@@ -29,14 +62,14 @@ static func verify_script(file_path: String) -> Dictionary:
 		return {
 			"status": VerificationStatus.FAILED,
 			"success": false,
-			"error": {"code": "SCRIPT_LOAD_ERROR", "message": "Script yüklenemedi veya geçersiz GDScript: " + file_path}
+			"error": {"code": "SCRIPT_LOAD_ERROR", "message": "Script yüklenemedi veya geçersiz GDScript: " + file_path, "file_path": file_path, "recoverable": true}
 		}
 		
 	if not script_res.can_instantiate():
 		return {
 			"status": VerificationStatus.FAILED,
 			"success": false,
-			"error": {"code": "SCRIPT_SYNTAX_ERROR", "message": "Script derlenemiyor (Syntax hatası): " + file_path}
+			"error": {"code": "SCRIPT_SYNTAX_ERROR", "message": "Script derlenemiyor (Syntax hatası): " + file_path, "file_path": file_path, "recoverable": true}
 		}
 		
 	return {
@@ -45,7 +78,7 @@ static func verify_script(file_path: String) -> Dictionary:
 		"message": "✓ Script doğrulandı: " + file_path
 	}
 
-## 2. Sahne / Düğüm Doğrulaması (Node Hierarchy Verification)
+## 3. Sahne / Düğüm Doğrulaması (Node Hierarchy Verification)
 static func verify_node(node_path: String, expected_type: String = "") -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface") or not EditorInterface.has_method("get_edited_scene_root"):
 		return {
@@ -83,7 +116,7 @@ static func verify_node(node_path: String, expected_type: String = "") -> Dictio
 		"message": "✓ Düğüm doğrulandı: " + node.name + " (" + node.get_class() + ")"
 	}
 
-## 3. Görsel Doğrulama (Visual Verification with Confidence Threshold)
+## 4. Görsel Doğrulama (Visual Verification with Confidence Threshold)
 static func verify_visual(visual_obs: AISidebarVisualObservation) -> Dictionary:
 	if not visual_obs:
 		return {

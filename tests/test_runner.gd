@@ -28,6 +28,7 @@ const TestPluginResources = preload("res://tests/test_plugin_resources.gd")
 const TestResponsePipeline = preload("res://tests/test_response_pipeline.gd")
 const TestToolTermination = preload("res://tests/test_tool_termination.gd")
 const TestToolDataIntegrity = preload("res://tests/test_tool_data_integrity.gd")
+const TestAtomicScriptValidation = preload("res://tests/test_atomic_script_validation.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -61,7 +62,8 @@ func _init() -> void:
 		TestPluginResources,
 		TestResponsePipeline,
 		TestToolTermination,
-		TestToolDataIntegrity
+		TestToolDataIntegrity,
+		TestAtomicScriptValidation
 	]
 	
 	var total_passed = 0
