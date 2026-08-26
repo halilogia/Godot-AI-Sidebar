@@ -311,9 +311,11 @@ func _run_next_step() -> void:
 	var context_text = ""
 	if context:
 		for msg in context.messages:
-			var c = msg.get("content", "")
-			if c is String:
-				context_text += " " + c
+			var role = msg.get("role", "")
+			if role == "user":
+				var c = msg.get("content", "")
+				if c is String:
+					context_text += " " + c
 				
 	var tools_schema = AISidebarToolManager.get_relevant_schemas(context_text, _unlocked_tools)
 	last_tools_sent_count = tools_schema.size()

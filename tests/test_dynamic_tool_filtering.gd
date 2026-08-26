@@ -29,13 +29,13 @@ static func run() -> Dictionary:
 	
 	var total_all_tools = AISidebarToolManager.get_all_schemas().size()
 	
-	# Test 1: "Yeni bir GDScript oluştur" senaryosu (Script / File Tools)
+	# Test 1: "Yeni bir GDScript oluştur" senaryosu (Script / File Tools: ~9 araç)
 	var script_schemas = AISidebarToolManager.get_relevant_schemas("Yeni bir GDScript oluştur")
 	var script_names: Array = []
 	for s in script_schemas:
 		script_names.append(s["function"]["name"])
 		
-	if script_schemas.size() < total_all_tools and "create_or_update_script" in script_names and "validate_script" in script_names:
+	if script_schemas.size() <= 12 and "create_or_update_script" in script_names and "validate_script" in script_names:
 		passed += 1
 	else:
 		failed += 1
@@ -53,19 +53,23 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 2 (Scene filtering) failed: count=" + str(scene_schemas.size()) + " total=" + str(total_all_tools))
 		
-	# Test 3: "Runtime hatasını düzelt" senaryosu (Runtime / Debug / Script Tools)
-	var runtime_schemas = AISidebarToolManager.get_relevant_schemas("Runtime hatasını düzelt")
+	# Test 3: "Oyunu çalıştır ve runtime hatasını kontrol et" senaryosu (Runtime / Debug Tools: Hedef 8-12 araç)
+	var runtime_schemas = AISidebarToolManager.get_relevant_schemas("Oyunu çalıştır ve runtime hatasını kontrol et")
 	var runtime_names: Array = []
 	for s in runtime_schemas:
 		runtime_names.append(s["function"]["name"])
 		
-	if runtime_schemas.size() < total_all_tools and "get_runtime_errors" in runtime_names and "create_or_update_script" in runtime_names:
+	var is_runtime_optimized = (runtime_schemas.size() >= 8 and runtime_schemas.size() <= 12)
+	var has_necessary_runtime = ("play_game" in runtime_names and "get_runtime_errors" in runtime_names and "create_or_update_script" in runtime_names and "validate_script" in runtime_names and "read_script" in runtime_names)
+	var has_no_unrelated_scene = (not "add_node" in runtime_names and not "create_scene" in runtime_names and not "delete_node" in runtime_names)
+	
+	if is_runtime_optimized and has_necessary_runtime and has_no_unrelated_scene:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 3 (Runtime filtering) failed: count=" + str(runtime_schemas.size()) + " total=" + str(total_all_tools))
+		errors.append("Test 3 (Runtime optimization 8-12 tools) failed: count=" + str(runtime_schemas.size()) + " tools=" + str(runtime_names))
 		
-	# Test 4 & 5: Progressive Discovery ile Arama ve Dinamik Araç Açma & Telemetri
+	# Test 4: Progressive Discovery ile Arama ve Dinamik Araç Açma (search_tools dynamic unlocking)
 	var prov = MockDynamicToolProvider.new()
 	var ctx = AISidebarAgentContext.new()
 	var runner = AISidebarAgentRunner.new(prov, ctx)

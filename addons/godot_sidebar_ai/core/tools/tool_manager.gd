@@ -3,7 +3,7 @@ extends RefCounted
 class_name AISidebarToolManager
 
 ## Merkezi Araç Yöneticisi, Yetki Denetleyicisi ve Progressive Tool Routing Motoru (SRP).
-## 36 aracın tamamını her LLM isteğinde göndermek yerine, kullanıcı isteğine göre
+## 37 aracın tamamını her LLM isteğinde göndermek yerine, kullanıcı isteğine göre
 ## dinamik olarak yalnızca ilgili araç alt kümesini modele sunar.
 
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
@@ -47,12 +47,23 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	
 	var active_tool_names: Dictionary = {}
 	
-	# 1. Çekirdek Araçlar (Core Tools - Daima Erişilebilir)
-	var core_tools = ["search_tools", "analyze_project", "read_file", "write_files"]
+	# 1. Çekirdek Araçlar (Core Discovery & Inspection - Daima Erişilebilir)
+	var core_tools = ["search_tools", "analyze_project", "read_script"]
 	for ct in core_tools:
 		active_tool_names[ct] = true
 		
-	# 2. Kategori Anahtar Kelimeleri & Eşleşmeler
+	# 2. Kategori Anahtar Kelimeleri & Niyet Ayrımı
+	var runtime_keywords = [
+		"runtime", "error", "hata", "bug", "crash", "play", "oyna", "çalıştır",
+		"run", "test", "debug", "düzelt", "fix", "heal", "screenshot", "ekran",
+		"stop", "durdur", "restart", "sıfırla", "log", "diagnostic", "check"
+	]
+	var has_runtime_intent = false
+	for kw in runtime_keywords:
+		if kw in text:
+			has_runtime_intent = true
+			break
+
 	var script_keywords = [
 		"script", "gdscript", "kod", "code", "fonksiyon", "method", "variable",
 		"değişken", "class", "extends", "dosya", "file", "sil", "delete", "oluştur",
@@ -67,10 +78,10 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			
 	var scene_keywords = [
 		"scene", "sahne", "node", "düğüm", "3d", "2d", "camera", "kamera",
-		"player", "karakter", "enemy", "düşman", "chest", "sandık", "hud", "ui",
-		"arayüz", "level", "tscn", ".tscn", "mesh", "collision", "spawn", "rigid",
-		"area", "light", "ışık", "spatial", "tree", "ağaç", "property", "özellik",
-		"signal", "sinyal", "reparent", "select", "seç"
+		"hud", "ui", "arayüz", "level", "tscn", ".tscn", "mesh", "collision",
+		"spawn", "rigid", "area", "light", "ışık", "spatial", "tree", "ağaç",
+		"property", "özellik", "signal", "sinyal", "reparent", "select", "seç",
+		"düşman sahnesi", "karakter sahnesi", "chest", "sandık"
 	]
 	var has_scene_intent = false
 	for kw in scene_keywords:
@@ -78,20 +89,21 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			has_scene_intent = true
 			break
 			
-	var runtime_keywords = [
-		"runtime", "error", "hata", "bug", "crash", "play", "oyna", "çalıştır",
-		"run", "test", "debug", "düzelt", "fix", "heal", "screenshot", "ekran",
-		"stop", "durdur", "restart", "sıfırla", "log", "diagnostic"
-	]
-	var has_runtime_intent = false
-	for kw in runtime_keywords:
-		if kw in text:
-			has_runtime_intent = true
-			break
-			
 	# 3. İlgili Kategorileri Aktif Et
+	if has_runtime_intent:
+		# Runtime / Debug odaklı dar araç seti (~10 araç)
+		var runtime_tools = [
+			"play_game", "stop_game", "restart_game", "get_runtime_errors",
+			"take_runtime_screenshot", "create_or_update_script", "validate_script", "read_script"
+		]
+		for rt in runtime_tools:
+			active_tool_names[rt] = true
+			
 	if has_script_intent:
-		var script_tools = ["create_or_update_script", "validate_script", "delete_file", "list_dir", "get_open_scripts"]
+		var script_tools = [
+			"create_or_update_script", "validate_script", "write_files",
+			"delete_file", "list_dir", "get_open_scripts", "read_script"
+		]
 		for st in script_tools:
 			active_tool_names[st] = true
 			
@@ -99,33 +111,23 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 		var scene_tools = [
 			"create_scene", "save_scene", "add_node", "delete_node", "rename_node",
 			"duplicate_node", "set_node_property", "connect_signal", "reparent_node",
-			"select_node", "get_active_scene_tree", "get_selected_nodes", "list_dir",
-			"spawn_player_controller", "spawn_camera_rig", "spawn_enemy_ai",
-			"spawn_interactive_chest", "spawn_game_hud", "setup_gameplay_manager",
-			"create_level_greybox"
+			"select_node", "get_active_scene_tree", "get_selected_nodes", "write_files",
+			"list_dir", "create_character_scene", "create_enemy_scene",
+			"create_ui_hud", "create_interactable", "setup_camera_follow"
 		]
 		for sc in scene_tools:
 			active_tool_names[sc] = true
-			
-	if has_runtime_intent:
-		var runtime_tools = [
-			"play_game", "stop_game", "restart_game", "get_runtime_errors",
-			"take_runtime_screenshot", "create_or_update_script", "validate_script",
-			"get_project_settings"
-		]
-		for rt in runtime_tools:
-			active_tool_names[rt] = true
 			
 	# 4. Hiçbir kategori eşleşmediyse varsayılan temel araç kümesini sun
 	if not has_script_intent and not has_scene_intent and not has_runtime_intent:
 		var default_tools = [
 			"create_or_update_script", "create_scene", "save_scene",
-			"play_game", "get_runtime_errors", "list_dir"
+			"play_game", "get_runtime_errors", "write_files", "list_dir", "read_script"
 		]
 		for dt in default_tools:
 			active_tool_names[dt] = true
 			
-	# 5. search_tools veya önceki adımlarda açılan özel araçlar
+	# 5. search_tools veya önceki adımlarda açılan özel araçlar (Progressive Unlocking)
 	for ut in explicitly_unlocked:
 		var ut_str = str(ut)
 		if not ut_str.is_empty():
