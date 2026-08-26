@@ -56,6 +56,8 @@ var max_recovery_attempts: int = 3
 var _recovery_attempt_count: int = 0
 var max_empty_response_retries: int = 1
 var _empty_response_retry_count: int = 0
+var _unlocked_tools: Array = []
+var last_tools_sent_count: int = 0
 var _last_error_signature: String = ""
 var _last_tool_signature: String = ""
 var _stagnation_count: int = 0
@@ -117,6 +119,8 @@ func start_task(user_prompt: String) -> void:
 	current_step = 0
 	_recovery_attempt_count = 0
 	_empty_response_retry_count = 0
+	_unlocked_tools.clear()
+	last_tools_sent_count = 0
 	_last_error_signature = ""
 	_last_tool_signature = ""
 	_stagnation_count = 0
@@ -163,12 +167,16 @@ func stop() -> void:
 
 func _finish_task(success: bool) -> void:
 	var total_elapsed_sec = (Time.get_ticks_msec() - task_start_time_msec) / 1000.0
+	var total_schemas_count = AISidebarToolManager.get_all_schemas().size()
 	var metrics = {
 		"success": success,
 		"elapsed_seconds": snappedf(total_elapsed_sec, 0.1),
 		"used_steps": current_step,
 		"max_steps": max_steps,
 		"steps_summary": str(current_step) + " / " + str(max_steps),
+		"tools_sent": last_tools_sent_count,
+		"total_tools": total_schemas_count,
+		"tools_ratio": str(last_tools_sent_count) + " / " + str(total_schemas_count),
 		"llm_turns": llm_turns_count,
 		"tool_calls": tool_calls_count,
 		"file_ops": file_ops_count,
@@ -219,6 +227,8 @@ func approve_pending_action() -> void:
 	_record_category_time(fn_name, t_delta)
 	
 	print("[TIMING] %s | TOOL_DONE (APPROVED) | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
+	if not fn_name in _unlocked_tools:
+		_unlocked_tools.append(fn_name)
 	tool_completed.emit(fn_name, result)
 	if cs and result.get("success", false):
 		changes_applied.emit(cs)
@@ -298,13 +308,22 @@ func _run_next_step() -> void:
 	_set_state(AgentState.PLANNING, status_msg)
 	
 	_llm_step_start_time = Time.get_ticks_msec()
+	var context_text = ""
+	if context:
+		for msg in context.messages:
+			var c = msg.get("content", "")
+			if c is String:
+				context_text += " " + c
+				
+	var tools_schema = AISidebarToolManager.get_relevant_schemas(context_text, _unlocked_tools)
+	last_tools_sent_count = tools_schema.size()
+	
 	if current_step > 1:
-		print("[TIMING] %s | NEXT_LLM_REQUEST_START | step=%d/%d" % [get_ts(), current_step, max_steps])
+		print("[TIMING] %s | NEXT_LLM_REQUEST_START | step=%d/%d tools=%d/%d" % [get_ts(), current_step, max_steps, last_tools_sent_count, AISidebarToolManager.get_all_schemas().size()])
 	else:
-		print("[TIMING] %s | LLM_REQUEST_START | step=1/%d" % [get_ts(), max_steps])
+		print("[TIMING] %s | LLM_REQUEST_START | step=1/%d tools=%d/%d" % [get_ts(), max_steps, last_tools_sent_count, AISidebarToolManager.get_all_schemas().size()])
 		
 	var messages = context.get_messages_for_api()
-	var tools_schema = AISidebarToolManager.get_all_schemas()
 	provider.send_chat(messages, tools_schema)
 
 func _on_provider_response(text_content: String, thinking_content: String, tool_calls: Array) -> void:
@@ -352,6 +371,8 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			
 			tool_calls_count += 1
 			_classify_telemetry_op(fn_name, args)
+			if not fn_name in _unlocked_tools:
+				_unlocked_tools.append(fn_name)
 			
 			# Stagnation Guard
 			var sig = fn_name + ":" + JSON.stringify(args)
@@ -384,6 +405,15 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			var t_delta = Time.get_ticks_msec() - t_start
 			tool_time_msec += t_delta
 			_record_category_time(fn_name, t_delta)
+			
+			# search_tools ile keşfedilen araçları dynamic context'e ekle
+			if fn_name == "search_tools" and result.get("success", false):
+				var s_data = result.get("data", {})
+				var s_list = s_data.get("tools", [])
+				for s_item in s_list:
+					var s_name = s_item.get("name", "")
+					if not s_name.is_empty() and not s_name in _unlocked_tools:
+						_unlocked_tools.append(s_name)
 			
 			print("[TIMING] %s | TOOL_DONE | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
 			
