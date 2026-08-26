@@ -2,7 +2,7 @@
 extends "res://addons/godot_sidebar_ai/core/tools/tool_base.gd"
 class_name AISidebarSceneTools
 
-## İlkel Sahne ve Düğüm (Node) Araçları (Primitive Tools) (SRP).
+## İlkel Sahne ve Düğüm (Node) Araçları (File-First + Editor Mutations) (SRP).
 
 const AISidebarTypeParser = preload("res://addons/godot_sidebar_ai/core/types/type_parser.gd")
 const AISidebarMutationService = preload("res://addons/godot_sidebar_ai/core/mutations/editor_mutation_service.gd")
@@ -31,13 +31,30 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
-				"name": "add_node",
-				"description": "Sahneye yeni bir düğüm (Node2D, CharacterBody2D, Camera2D, Button vb.) ekler (Ctrl+Z ile geri alınabilir).",
+				"name": "create_scene",
+				"description": "Sıfırdan yeni bir sahne (.tscn) dosyası oluşturur. İsteğe bağlı olarak doğrudan tam TSCN metin içeriği verilebilir (File-First tek adımda tüm sahne oluşturma).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_type": { "type": "string", "description": "Godot sınıf adı (Örn: CharacterBody2D, Sprite2D, Node3D, Label)." },
-						"node_name": { "type": "string", "description": "Düğümün adı (Örn: Player, HealthBar, Background)." },
+						"scene_path": { "type": "string", "description": "Kaydedilecek yol (örn: res://scenes/Player.tscn veya res://scenes/Main.tscn)." },
+						"root_type": { "type": "string", "description": "Kök düğüm tipi (örn: CharacterBody3D, Node3D, Node2D, Control)." },
+						"root_name": { "type": "string", "description": "Kök düğüm adı (örn: Player, Main, Level1)." },
+						"tscn_content": { "type": "string", "description": "Opsiyonel: Doğrudan yazılacak komple .tscn metin içeriği (File-First hızlı üretim)." }
+					},
+					"required": ["scene_path", "root_type"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "add_node",
+				"description": "Sahneye yeni bir düğüm (CharacterBody3D, MeshInstance3D, CollisionShape3D, Camera3D vb.) ekler (Ctrl+Z ile geri alınabilir).",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"node_type": { "type": "string", "description": "Godot sınıf adı (Örn: CharacterBody3D, MeshInstance3D, CollisionShape3D, Camera3D)." },
+						"node_name": { "type": "string", "description": "Düğümün adı (Örn: Mesh, Collision, Camera, Player)." },
 						"parent_path": { "type": "string", "description": "Ekleneceği üst düğümün yolu (boşsa sahne köküne eklenir)." }
 					},
 					"required": ["node_type", "node_name"]
@@ -112,9 +129,9 @@ static func get_schemas() -> Array:
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Hedef düğümün yolu (Kullanıcı 'bu/bunun' dediğinde seçili düğüm yolunu verin)." },
+						"node_path": { "type": "string", "description": "Hedef düğümün yolu." },
 						"property_name": { "type": "string", "description": "Değiştirilecek özellik adı." },
-						"property_value": { "description": "Yeni değer ('Vector2(100, 200)', '#ff0000', sayı vb.)." }
+						"property_value": { "description": "Yeni değer ('Vector3(0, 1, 0)', '#ff0000', sayı vb.)." }
 					},
 					"required": ["node_path", "property_name", "property_value"]
 				}
@@ -184,22 +201,6 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
-				"name": "create_scene",
-				"description": "Sıfırdan yeni bir sahne (.tscn) dosyası oluşturur.",
-				"parameters": {
-					"type": "object",
-					"properties": {
-						"scene_path": { "type": "string", "description": "Kaydedilecek yol (örn: res://scenes/Level1.tscn)." },
-						"root_type": { "type": "string", "description": "Kök düğüm tipi (örn: Node2D, Control, Node3D)." },
-						"root_name": { "type": "string", "description": "Kök düğüm adı (örn: Level1, MainMenu)." }
-					},
-					"required": ["scene_path", "root_type"]
-				}
-			}
-		},
-		{
-			"type": "function",
-			"function": {
 				"name": "save_scene",
 				"description": "Aktif olarak düzenlenen sahneyi diske kaydeder.",
 				"parameters": {
@@ -214,6 +215,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 	match tool_name:
 		"get_scene_tree":
 			return _get_scene_tree(args)
+		"create_scene":
+			return _create_scene(args)
 		"add_node":
 			return _add_node(args)
 		"instantiate_scene":
@@ -234,8 +237,6 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _attach_script_to_node(args)
 		"reparent_node":
 			return _reparent_node(args)
-		"create_scene":
-			return _create_scene(args)
 		"save_scene":
 			return _save_scene(args)
 		_:
@@ -269,6 +270,60 @@ static func _build_node_dict(node: Node) -> Dictionary:
 		"children": children
 	}
 
+static func _create_scene(args: Dictionary) -> Dictionary:
+	var raw_path = args.get("scene_path", "")
+	var scene_path = AISidebarPathPolicy.normalize_path(raw_path)
+	var root_type = args.get("root_type", "Node2D")
+	var root_name = args.get("root_name", "Root")
+	var tscn_content = args.get("tscn_content", "")
+	
+	var check = AISidebarPathPolicy.is_safe_to_write(scene_path)
+	if not check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", check["reason"])
+		
+	if not scene_path.ends_with(".tscn"):
+		scene_path += ".tscn"
+		
+	var dir_path = scene_path.get_base_dir()
+	if not DirAccess.dir_exists_absolute(dir_path):
+		DirAccess.make_dir_recursive_absolute(dir_path)
+		
+	# File-First: Eğer doğrudan .tscn içeriği verilmişse metin olarak kaydet
+	if not tscn_content.strip_edges().is_empty():
+		var f = FileAccess.open(scene_path, FileAccess.WRITE)
+		if not f:
+			return AISidebarToolResult.err("WRITE_ERROR", "Sahne dosyası yazılamadı: " + scene_path)
+		f.store_string(tscn_content)
+		f.close()
+	else:
+		if not ClassDB.class_exists(root_type):
+			return AISidebarToolResult.err("INVALID_CLASS", "Geçersiz kök düğüm tipi: " + root_type)
+			
+		var root_node = ClassDB.instantiate(root_type)
+		root_node.name = root_name
+		
+		var packed_scene = PackedScene.new()
+		var pack_err = packed_scene.pack(root_node)
+		if pack_err != OK:
+			return AISidebarToolResult.err("PACK_FAILED", "Sahne paketlenemedi: " + str(pack_err))
+			
+		var save_err = ResourceSaver.save(packed_scene, scene_path)
+		if save_err != OK:
+			return AISidebarToolResult.err("SAVE_FAILED", "Sahne kaydedilemedi: " + str(save_err))
+		
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+		if EditorInterface.has_method("get_resource_filesystem"):
+			EditorInterface.get_resource_filesystem().scan()
+		if EditorInterface.has_method("open_scene_from_path"):
+			EditorInterface.open_scene_from_path(scene_path)
+			
+	return AISidebarToolResult.ok({
+		"scene_path": scene_path,
+		"root_name": root_name,
+		"root_type": root_type,
+		"root_path": root_name
+	}, "Sahne başarıyla oluşturuldu ve editörde açıldı. Kök düğüm: " + root_name + " (" + root_type + ")")
+
 static func _add_node(args: Dictionary) -> Dictionary:
 	var root = _get_root()
 	if not root:
@@ -285,14 +340,25 @@ static func _add_node(args: Dictionary) -> Dictionary:
 	if not parent_path.is_empty():
 		if root.has_node(parent_path):
 			parent = root.get_node(parent_path)
+		elif root.name == parent_path:
+			parent = root
 		else:
-			return AISidebarToolResult.err("PARENT_NOT_FOUND", "Üst düğüm bulunamadı: " + parent_path)
+			return AISidebarToolResult.err("PARENT_NOT_FOUND", "Üst düğüm bulunamadı: " + parent_path + " (Aktif kök: " + root.name + ")")
 			
 	var new_node = ClassDB.instantiate(node_type)
 	if not new_node:
 		return AISidebarToolResult.err("INSTANTIATION_FAILED", "Düğüm oluşturulamadı: " + node_type)
 		
-	return AISidebarMutationService.add_node(parent, new_node, node_name)
+	var mut_res = AISidebarMutationService.add_node(parent, new_node, node_name)
+	if mut_res.get("success", false):
+		var target_path = str(new_node.get_path())
+		return AISidebarToolResult.ok({
+			"node_name": node_name,
+			"node_type": node_type,
+			"node_path": target_path,
+			"parent_path": str(parent.get_path())
+		}, "Düğüm eklendi: " + node_name + " (" + node_type + ")")
+	return mut_res
 
 static func _instantiate_scene(args: Dictionary) -> Dictionary:
 	var root = _get_root()
@@ -450,42 +516,6 @@ static func _reparent_node(args: Dictionary) -> Dictionary:
 	var target = root.get_node(node_path)
 	var new_parent = root.get_node(new_parent_path)
 	return AISidebarMutationService.reparent_node(target, new_parent)
-
-static func _create_scene(args: Dictionary) -> Dictionary:
-	var raw_path = args.get("scene_path", "")
-	var scene_path = AISidebarPathPolicy.normalize_path(raw_path)
-	var root_type = args.get("root_type", "Node2D")
-	var root_name = args.get("root_name", "Root")
-	
-	var check = AISidebarPathPolicy.is_safe_to_write(scene_path)
-	if not check["safe"]:
-		return AISidebarToolResult.err("PERMISSION_DENIED", check["reason"])
-		
-	if not scene_path.ends_with(".tscn"):
-		scene_path += ".tscn"
-		
-	if not ClassDB.class_exists(root_type):
-		return AISidebarToolResult.err("INVALID_CLASS", "Geçersiz kök düğüm tipi: " + root_type)
-		
-	var root_node = ClassDB.instantiate(root_type)
-	root_node.name = root_name
-	
-	var packed_scene = PackedScene.new()
-	var pack_err = packed_scene.pack(root_node)
-	if pack_err != OK:
-		return AISidebarToolResult.err("PACK_FAILED", "Sahne paketlenemedi: " + str(pack_err))
-		
-	var save_err = ResourceSaver.save(packed_scene, scene_path)
-	if save_err != OK:
-		return AISidebarToolResult.err("SAVE_FAILED", "Sahne kaydedilemedi: " + str(save_err))
-		
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-		if EditorInterface.has_method("get_resource_filesystem"):
-			EditorInterface.get_resource_filesystem().scan()
-		if EditorInterface.has_method("open_scene_from_path"):
-			EditorInterface.open_scene_from_path(scene_path)
-			
-	return AISidebarToolResult.ok({"scene_path": scene_path}, "Sahne oluşturuldu ve editörde açıldı.")
 
 static func _save_scene(args: Dictionary) -> Dictionary:
 	var root = _get_root()

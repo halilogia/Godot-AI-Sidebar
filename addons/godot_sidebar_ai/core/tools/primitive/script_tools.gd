@@ -2,7 +2,7 @@
 extends "res://addons/godot_sidebar_ai/core/tools/tool_base.gd"
 class_name AISidebarScriptTools
 
-## İlkel Script (GDScript) ve Kod Araçları (Primitive Tools) (SRP).
+## İlkel Script (GDScript) ve Kod Araçları (File-First Direct Editing) (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
@@ -13,7 +13,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "read_script",
-				"description": "Belirtilen GDScript veya shader dosyasının tüm içeriğini satır satır okur.",
+				"description": "Belirtilen GDScript, shader veya metin dosyasının tüm içeriğini satır satır okur.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -27,7 +27,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_or_update_script",
-				"description": "Bir GDScript dosyasını oluşturur veya içeriğini günceller ve otomatik olarak sözdizimi doğrulamasından geçirir.",
+				"description": "Bir GDScript veya metin dosyasını oluşturur veya içeriğini günceller.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -63,20 +63,6 @@ static func get_schemas() -> Array:
 						"file_path": { "type": "string", "description": "Kontrol edilecek script yolu." }
 					},
 					"required": ["file_path"]
-				}
-			}
-		},
-		{
-			"type": "function",
-			"function": {
-				"name": "eval_gdscript",
-				"description": "Godot editörü içinde geçici dinamik GDScript kodu çalıştırır ve sonucunu döner.",
-				"parameters": {
-					"type": "object",
-					"properties": {
-						"code": { "type": "string", "description": "Çalıştırılacak GDScript kodu (örn: return 2 + 2)." }
-					},
-					"required": ["code"]
 				}
 			}
 		}
@@ -141,12 +127,12 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		if res is Script and EditorInterface.has_method("edit_script"):
 			EditorInterface.edit_script(res)
 			
-	# Otomatik Doğrulama (Verification Pipeline)
+	# Otomatik Sözdizimi Kontrolü (Syntax Check)
 	var verify_res = AISidebarVerificationPipeline.verify_script(path)
 	if not verify_res.get("success", false):
 		return verify_res
 		
-	return AISidebarToolResult.ok({"file_path": path}, "✓ Script başarıyla yazıldı ve doğrulandı.")
+	return AISidebarToolResult.ok({"file_path": path}, "✓ Script başarıyla yazıldı ve derlendi.")
 
 static func _open_script(args: Dictionary) -> Dictionary:
 	var path = AISidebarPathPolicy.normalize_path(args.get("file_path", ""))
