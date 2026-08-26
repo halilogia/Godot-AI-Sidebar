@@ -3,13 +3,13 @@ extends RefCounted
 class_name AISidebarPathPolicy
 
 ## Dosya ve Yol Güvenlik Politikası (Path Security & Permission Policy) (SRP).
-## Path traversal (../) saldırılarını engeller ve korumalı dosyaları (blacklist) muhafaza eder.
+## Path traversal (..) saldırılarını engeller ve korumalı dosyaları (blacklist) muhafaza eder.
 
 const PROTECTED_PREFIXES: Array[String] = [
-	"res://.git/",
-	"res://addons/godot_sidebar_ai/",
-	"res://.godot/",
-	"res://.import/"
+	"res://.git",
+	"res://addons/godot_sidebar_ai",
+	"res://.godot",
+	"res://.import"
 ]
 
 const PROTECTED_EXACT_FILES: Array[String] = [
@@ -19,16 +19,21 @@ const PROTECTED_EXACT_FILES: Array[String] = [
 
 static func normalize_path(raw_path: String) -> String:
 	var path = raw_path.strip_edges().replace("\\", "/")
-	if not path.begins_with("res://") and not path.begins_with("user://"):
-		path = "res://" + path.trim_prefix("/")
+	
+	# Protokol öneki normalizasyonu (res:/, res:///, user:\ vb.)
+	var prefix = "res://"
+	if path.begins_with("user://") or path.begins_with("user:/") or path.begins_with("user:"):
+		prefix = "user://"
+		path = path.trim_prefix("user:///").trim_prefix("user://").trim_prefix("user:/").trim_prefix("user:")
+	else:
+		path = path.trim_prefix("res:///").trim_prefix("res://").trim_prefix("res:/").trim_prefix("res:")
 		
 	# Path Traversal (..) Temizliği
-	var prefix = "res://" if path.begins_with("res://") else "user://"
-	var relative = path.trim_prefix(prefix)
-	var segments = relative.split("/")
+	var segments = path.split("/")
 	var clean_segments: Array[String] = []
 	
 	for s in segments:
+		s = s.strip_edges()
 		if s == "" or s == ".":
 			continue
 		elif s == "..":
@@ -41,7 +46,7 @@ static func normalize_path(raw_path: String) -> String:
 
 static func is_safe_to_read(raw_path: String) -> Dictionary:
 	var norm = normalize_path(raw_path)
-	if norm.begins_with("res://.git/"):
+	if norm.begins_with("res://.git"):
 		return {"safe": false, "reason": "Git iç dizinine erişim yasaktır."}
 	return {"safe": true, "path": norm}
 
@@ -56,7 +61,7 @@ static func is_safe_to_write(raw_path: String) -> Dictionary:
 			}
 			
 	for prefix in PROTECTED_PREFIXES:
-		if norm.begins_with(prefix):
+		if norm == prefix or norm.begins_with(prefix + "/"):
 			return {
 				"safe": false,
 				"reason": "Korumalı eklenti veya sistem klasörüne (" + prefix + ") yazma izni yoktur."

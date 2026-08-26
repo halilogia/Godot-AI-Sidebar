@@ -3,7 +3,7 @@ extends RefCounted
 class_name AISidebarEditorStateSnapshot
 
 ## Editör Anlık Durum Yakalayıcısı (Editor Grounding Context) (SRP).
-## İlk kullanıcı isteğinde veya durum değişiminde aktif sahne, seçili düğümler ve hataları toplar.
+## İlk kullanıcı isteğinde veya durum değişiminde aktif sahne, seçili düğümler ve hataları güvenle toplar.
 
 static func capture_snapshot() -> Dictionary:
 	var snapshot: Dictionary = {
@@ -14,23 +14,32 @@ static func capture_snapshot() -> Dictionary:
 		"recent_errors": []
 	}
 	
-	var root = EditorInterface.get_edited_scene_root()
-	if root:
-		snapshot["has_active_scene"] = true
-		snapshot["active_scene_name"] = root.name
-		snapshot["active_scene_file"] = root.scene_file_path
+	if not Engine.is_editor_hint():
+		return snapshot
 		
-	var selection = EditorInterface.get_selection()
-	if selection:
-		var sel_array: Array = []
-		for node in selection.get_selected_nodes():
-			sel_array.append({
-				"name": node.name,
-				"path": str(node.get_path()),
-				"type": node.get_class()
-			})
-		snapshot["selected_nodes"] = sel_array
-		
+	# EditorInterface metodlarının güvenli kontrolü (Headless/CLI koruması)
+	if ClassDB.class_exists("EditorInterface"):
+		var root = null
+		if EditorInterface.has_method("get_edited_scene_root"):
+			root = EditorInterface.get_edited_scene_root()
+			
+		if root:
+			snapshot["has_active_scene"] = true
+			snapshot["active_scene_name"] = root.name
+			snapshot["active_scene_file"] = root.scene_file_path
+			
+		if EditorInterface.has_method("get_selection"):
+			var selection = EditorInterface.get_selection()
+			if selection:
+				var sel_array: Array = []
+				for node in selection.get_selected_nodes():
+					sel_array.append({
+						"name": node.name,
+						"path": str(node.get_path()),
+						"type": node.get_class()
+					})
+				snapshot["selected_nodes"] = sel_array
+				
 	return snapshot
 
 ## Ajan için kompakt zemin (grounding) metni üretir (~3-5 satır, minimum token harcar)
@@ -38,16 +47,16 @@ static func get_grounding_prompt_text() -> String:
 	var snap = capture_snapshot()
 	var lines: PackedStringArray = []
 	
-	if snap["has_active_scene"]:
-		lines.append("[Editor Context] Aktif Sahne: " + snap["active_scene_name"] + " (" + snap["active_scene_file"] + ")")
+	if snap.get("has_active_scene", false):
+		lines.append("[Editor Context] Aktif Sahne: " + snap.get("active_scene_name", "") + " (" + snap.get("active_scene_file", "") + ")")
 	else:
 		lines.append("[Editor Context] Açık sahne yok.")
 		
-	var sel: Array = snap["selected_nodes"]
+	var sel: Array = snap.get("selected_nodes", [])
 	if sel.size() > 0:
 		var sel_str: PackedStringArray = []
 		for s in sel:
-			sel_str.append(s["name"] + " (" + s["type"] + ")")
+			sel_str.append(s.get("name", "") + " (" + s.get("type", "") + ")")
 		lines.append("[Editor Context] Seçili Düğümler: " + ", ".join(sel_str))
 	else:
 		lines.append("[Editor Context] Seçili düğüm yok.")

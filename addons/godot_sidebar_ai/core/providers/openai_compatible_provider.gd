@@ -1,13 +1,16 @@
 @tool
-extends AISidebarAIProvider
+extends "res://addons/godot_sidebar_ai/core/providers/ai_provider.gd"
 class_name AISidebarOpenAICompatibleProvider
 
 ## OpenAI Uyumlu Sağlayıcı (9Router, OpenRouter, Ollama, LM Studio) (SRP).
-## İstekleri hazırlar, NetworkManager ile konuşur ve yanıtları SSE Parser ile çözer.
+
+const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/network/network_manager.gd")
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarSSEParser = preload("res://addons/godot_sidebar_ai/core/network/sse_parser.gd")
 
 var network_manager: AISidebarNetworkManager
 
-func _init(p_network_manager: AISidebarNetworkManager) -> void:
+func _init(p_network_manager: AISidebarNetworkManager = null) -> void:
 	network_manager = p_network_manager
 	if network_manager:
 		network_manager.request_completed.connect(_on_network_completed)

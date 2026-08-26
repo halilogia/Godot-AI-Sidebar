@@ -40,4 +40,12 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Safe script write was blocked: " + str(write_script))
 		
+	# Test 5: Adversarial Backslash & Traversal
+	var adv_check = AISidebarPathPolicy.is_safe_to_write("res:\\foo\\..\\project.godot")
+	if adv_check["safe"] == false:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Adversarial backslash traversal was allowed!")
+		
 	return {"name": "PathPolicyTests", "passed": passed, "failed": failed, "errors": errors}
