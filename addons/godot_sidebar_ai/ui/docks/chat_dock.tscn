@@ -4,8 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://d78m3p4g00001" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="2_settings_dlg"]
 [ext_resource type="PackedScene" uid="uid://b7vyk8n200001" path="res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.tscn" id="3_changeset_dlg"]
 
-[node name="GodotAISidebar" type="Control"]
-layout_mode = 3
+[node name="GodotAISidebar" type="PanelContainer"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -16,20 +15,14 @@ size_flags_vertical = 3
 script = ExtResource("1_chat_dock")
 
 [node name="MainLayout" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 4.0
-offset_top = 4.0
-offset_right = -4.0
-offset_bottom = -4.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 4
 
 [node name="HeaderBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
 [node name="TitleLabel" type="Label" parent="MainLayout/HeaderBar"]
@@ -45,6 +38,7 @@ theme_override_font_sizes/font_size = 10
 text = "Ready"
 horizontal_alignment = 2
 text_overrun_behavior = 3
+clip_text = true
 
 [node name="LangToggleBtn" type="Button" parent="MainLayout/HeaderBar"]
 layout_mode = 2
@@ -55,6 +49,7 @@ flat = true
 
 [node name="ModelBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
 [node name="ModelSelector" type="OptionButton" parent="MainLayout/ModelBar"]
@@ -64,6 +59,7 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 11
 text_overrun_behavior = 3
 clip_text = true
+fit_to_longest_item = false
 
 [node name="RefreshModelsBtn" type="Button" parent="MainLayout/ModelBar"]
 layout_mode = 2
@@ -79,58 +75,35 @@ theme_override_font_sizes/font_size = 11
 text = "⚙"
 flat = true
 
-[node name="ScrollWrapper" type="Control" parent="MainLayout"]
+[node name="ChatScroll" type="ScrollContainer" parent="MainLayout"]
 layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ChatScroll" type="ScrollContainer" parent="MainLayout/ScrollWrapper"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="MessageStream" type="VBoxContainer" parent="MainLayout/ScrollWrapper/ChatScroll"]
+[node name="MessageStream" type="VBoxContainer" parent="MainLayout/ChatScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="JumpToBottomBtn" type="Button" parent="MainLayout/ScrollWrapper"]
-visible = false
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -50.0
-offset_top = -28.0
-offset_right = 50.0
-offset_bottom = -6.0
-grow_horizontal = 2
-grow_vertical = 0
-focus_mode = 0
-theme_override_font_sizes/font_size = 10
-text = "↓ Latest"
-
 [node name="InputArea" type="VBoxContainer" parent="MainLayout"]
 layout_mode = 2
-theme_override_constants/separation = 4
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
 
 [node name="InputField" type="TextEdit" parent="MainLayout/InputArea"]
-custom_minimum_size = Vector2(0, 46)
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 11
 placeholder_text = "Ask Godot AI... (Ctrl+Enter to send)"
 wrap_mode = 1
 
 [node name="ButtonsBar" type="HBoxContainer" parent="MainLayout/InputArea"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
 [node name="ClearBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
@@ -143,6 +116,14 @@ flat = true
 [node name="Spacer" type="Control" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="JumpToBottomBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
+visible = false
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "↓ Latest"
+flat = true
 
 [node name="SendBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2

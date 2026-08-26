@@ -31,9 +31,9 @@ const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
 @onready var settings_btn: Button = $MainLayout/ModelBar/SettingsBtn
 
-@onready var chat_scroll: ScrollContainer = $MainLayout/ScrollWrapper/ChatScroll
-@onready var message_stream: VBoxContainer = $MainLayout/ScrollWrapper/ChatScroll/MessageStream
-@onready var jump_to_bottom_btn: Button = $MainLayout/ScrollWrapper/JumpToBottomBtn
+@onready var chat_scroll: ScrollContainer = $MainLayout/ChatScroll
+@onready var message_stream: VBoxContainer = $MainLayout/ChatScroll/MessageStream
+@onready var jump_to_bottom_btn: Button = $MainLayout/InputArea/ButtonsBar/JumpToBottomBtn
 
 @onready var input_field: TextEdit = $MainLayout/InputArea/InputField
 @onready var clear_btn: Button = $MainLayout/InputArea/ButtonsBar/ClearBtn
