@@ -2,8 +2,7 @@
 extends Node
 class_name AISidebarNetworkManager
 
-## Düşük Gecikmeli HTTPClient Ağ Motoru (Low-Latency HTTPClient Transport) (SRP).
-## Keep-Alive ve Chunked transfer askıda kalmalarını önler, JSON/[DONE] tamamlandığı milisaniyede döner.
+## Düşük Gecikmeli HTTPClient Ağ Motoru ve Milisaniye Zaman Damgası Denetimi (SRP).
 
 signal request_completed(endpoint_type: String, response_code: int, response_str: String)
 signal request_failed(endpoint_type: String, error_message: String)
@@ -14,11 +13,18 @@ var _is_request_active: bool = false
 var _raw_response_body: PackedByteArray = PackedByteArray()
 var _expected_content_length: int = -1
 var _request_headers_sent: bool = false
+var _first_byte_received: bool = false
+var _req_start_msec: int = 0
 
 var _method: int = HTTPClient.METHOD_POST
 var _path: String = ""
 var _headers: PackedStringArray = []
 var _body: String = ""
+
+static func get_ts() -> String:
+	var dt = Time.get_time_dict_from_system()
+	var ms = Time.get_ticks_msec() % 1000
+	return "%02d:%02d:%02d.%03d" % [dt.hour, dt.minute, dt.second, ms]
 
 func _ready() -> void:
 	set_process(true)
@@ -44,6 +50,8 @@ func _start_httpclient_request(endpoint_type: String, method: int, url: String, 
 	_raw_response_body = PackedByteArray()
 	_expected_content_length = -1
 	_request_headers_sent = false
+	_first_byte_received = false
+	_req_start_msec = Time.get_ticks_msec()
 	
 	var final_headers = headers.duplicate()
 	if not _has_header(final_headers, "Connection"):
@@ -53,9 +61,12 @@ func _start_httpclient_request(endpoint_type: String, method: int, url: String, 
 	var parsed_url = _parse_url(url)
 	_path = parsed_url["path"]
 	
+	print("[TIMING] %s | NETWORK_REQUEST_START | endpoint=%s host=%s:%d path=%s" % [get_ts(), endpoint_type, parsed_url["host"], parsed_url["port"], _path])
+	
 	_client = HTTPClient.new()
 	var err = _client.connect_to_host(parsed_url["host"], parsed_url["port"])
 	if err != OK:
+		print("[TIMING] %s | NETWORK_CONNECT_ERROR | err=%d" % [get_ts(), err])
 		_client = null
 		return err
 		
@@ -104,6 +115,7 @@ func _process(delta: float) -> void:
 				_finalize_success()
 			else:
 				_is_request_active = false
+				print("[TIMING] %s | NETWORK_FAILED | Disconnected with 0 bytes" % [get_ts()])
 				request_failed.emit(_current_endpoint, "Bağlantı kapandı (Sunucu yanıt vermedi).")
 		HTTPClient.STATUS_RESOLVING, HTTPClient.STATUS_CONNECTING:
 			_client.poll()
@@ -113,6 +125,7 @@ func _process(delta: float) -> void:
 				var req_err = _client.request(_method, _path, _headers, _body)
 				if req_err != OK:
 					_is_request_active = false
+					print("[TIMING] %s | NETWORK_REQUEST_ERROR | err=%d" % [get_ts(), req_err])
 					request_failed.emit(_current_endpoint, "İstek gönderilemedi (Hata: " + str(req_err) + ")")
 			else:
 				_client.poll()
@@ -120,6 +133,12 @@ func _process(delta: float) -> void:
 			_client.poll()
 		HTTPClient.STATUS_BODY:
 			_client.poll()
+			if not _first_byte_received and _client.has_response():
+				_first_byte_received = true
+				var f_elapsed = Time.get_ticks_msec() - _req_start_msec
+				var code = _client.get_response_code()
+				print("[TIMING] %s | FIRST_RESPONSE | endpoint=%s code=%d t_first=%dms" % [get_ts(), _current_endpoint, code, f_elapsed])
+				
 			if _expected_content_length == -1 and _client.has_response():
 				_expected_content_length = _client.get_response_body_length()
 				
@@ -144,11 +163,17 @@ func _process(delta: float) -> void:
 						return
 		HTTPClient.STATUS_CONNECTION_ERROR, HTTPClient.STATUS_TLS_HANDSHAKE_ERROR:
 			_is_request_active = false
+			print("[TIMING] %s | NETWORK_ERROR | status=%d" % [get_ts(), status])
 			request_failed.emit(_current_endpoint, "Ağ bağlantı hatası (Status: " + str(status) + ")")
 
 func _finalize_success() -> void:
+	var total_dur = Time.get_ticks_msec() - _req_start_msec
 	var code = _client.get_response_code() if _client else 200
 	var resp_str = _raw_response_body.get_string_from_utf8()
+	var b_size = _raw_response_body.size()
+	
+	print("[TIMING] %s | NETWORK_RESPONSE_COMPLETE | endpoint=%s code=%d bytes=%d duration=%dms" % [get_ts(), _current_endpoint, code, b_size, total_dur])
+	
 	if _client:
 		_client.close()
 	_is_request_active = false

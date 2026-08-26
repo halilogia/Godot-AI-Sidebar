@@ -10,6 +10,12 @@ const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_c
 const AISidebarSSEParser = preload("res://addons/godot_sidebar_ai/core/network/sse_parser.gd")
 
 var network_manager: AISidebarNetworkManager
+var _provider_req_start_msec: int = 0
+
+static func get_ts() -> String:
+	var dt = Time.get_time_dict_from_system()
+	var ms = Time.get_ticks_msec() % 1000
+	return "%02d:%02d:%02d.%03d" % [dt.hour, dt.minute, dt.second, ms]
 
 func _init(p_network_manager: AISidebarNetworkManager = null) -> void:
 	network_manager = p_network_manager
@@ -101,7 +107,6 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 			
 		payload_messages.append(msg)
 		
-	# Hızlı ve deterministik yanıt için stream varsayılan false (keep-alive gecikmesini önler)
 	var use_stream = config.get("stream", false)
 	var body_dict: Dictionary = {
 		"model": model,
@@ -115,6 +120,10 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 		body_dict["tool_choice"] = "auto"
 		
 	var body_str = JSON.stringify(body_dict)
+	
+	_provider_req_start_msec = Time.get_ticks_msec()
+	print("[TIMING] %s | LLM_REQUEST_START | model=%s messages=%d tools=%d" % [get_ts(), model, payload_messages.size(), tools_schema.size()])
+	
 	var err = network_manager.post_request(chat_url, headers, body_str)
 	if err != OK:
 		error_occurred.emit("İstek başlatılamadı (Hata: " + str(err) + ")")
@@ -139,15 +148,24 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 		models_fetched.emit(model_ids)
 		
 	elif endpoint_type == "chat":
+		var t_start_parse = Time.get_ticks_msec()
 		var parsed = AISidebarSSEParser.parse_response(response_str)
+		var parse_dur = Time.get_ticks_msec() - t_start_parse
+		var total_prov_dur = Time.get_ticks_msec() - _provider_req_start_msec
+		
 		if parsed.has("error"):
+			print("[TIMING] %s | PROVIDER_PARSE_ERROR | err=%s" % [get_ts(), parsed["error"]])
 			error_occurred.emit(parsed["error"])
 		else:
+			var txt = parsed.get("content", "")
+			var tools = parsed.get("tool_calls", [])
+			print("[TIMING] %s | PROVIDER_RESPONSE_RECEIVED | total_dur=%dms parse_dur=%dms text_len=%d tools=%d" % [get_ts(), total_prov_dur, parse_dur, txt.length(), tools.size()])
 			response_received.emit(
-				parsed.get("content", ""),
+				txt,
 				parsed.get("thinking", ""),
-				parsed.get("tool_calls", [])
+				tools
 			)
 
 func _on_network_failed(endpoint_type: String, error_msg: String) -> void:
+	print("[TIMING] %s | PROVIDER_NETWORK_FAILED | endpoint=%s err=%s" % [get_ts(), endpoint_type, error_msg])
 	error_occurred.emit(error_msg)

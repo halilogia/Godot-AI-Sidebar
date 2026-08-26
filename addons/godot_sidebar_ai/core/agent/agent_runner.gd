@@ -84,6 +84,11 @@ var _pending_tool_args: Dictionary = {}
 var _pending_change_set: AISidebarChangeSet = null
 var runtime_debugger: AISidebarRuntimeDebugger = null
 
+static func get_ts() -> String:
+	var dt = Time.get_time_dict_from_system()
+	var ms = Time.get_ticks_msec() % 1000
+	return "%02d:%02d:%02d.%03d" % [dt.hour, dt.minute, dt.second, ms]
+
 func _init(p_provider: AISidebarAIProvider = null, p_context: AISidebarAgentContext = null) -> void:
 	provider = p_provider
 	context = p_context
@@ -92,12 +97,6 @@ func _init(p_provider: AISidebarAIProvider = null, p_context: AISidebarAgentCont
 	if provider:
 		provider.response_received.connect(_on_provider_response)
 		provider.error_occurred.connect(_on_provider_error)
-
-func _log_trace(event_name: String, extra: String = "") -> void:
-	var now_msec = Time.get_ticks_msec()
-	var time_str = Time.get_time_string_from_system()
-	var delta_s = (now_msec - task_start_time_msec) / 1000.0 if task_start_time_msec > 0 else 0.0
-	print("[AGENT_TRACE] %s (+%.3fs) | %s %s" % [time_str, delta_s, event_name, extra])
 
 func is_running() -> bool:
 	return current_state != AgentState.IDLE and current_state != AgentState.COMPLETED and current_state != AgentState.ERROR and current_state != AgentState.CANCELLED
@@ -139,7 +138,7 @@ func start_task(user_prompt: String) -> void:
 	verification_time_msec = 0
 	waiting_time_msec = 0
 	
-	_log_trace("START_TASK", user_prompt.left(60))
+	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), user_prompt.left(60)])
 	context.add_user_message(user_prompt)
 	text_received.emit("user", user_prompt)
 	
@@ -178,7 +177,7 @@ func _finish_task(success: bool) -> void:
 		"verification_time_s": snappedf(verification_time_msec / 1000.0, 0.1),
 		"waiting_time_s": snappedf(waiting_time_msec / 1000.0, 0.1)
 	}
-	_log_trace("TASK_COMPLETED", "Success: " + str(success) + " | Total: " + str(metrics["elapsed_seconds"]) + "s | LLM: " + str(metrics["llm_time_s"]) + "s")
+	print("[TIMING] %s | TASK_COMPLETE | success=%s elapsed=%.3fs llm=%.3fs tool=%.3fs" % [get_ts(), str(success), total_elapsed_sec, llm_time_msec / 1000.0, tool_time_msec / 1000.0])
 	task_completed.emit(metrics)
 	loop_finished.emit()
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
@@ -203,7 +202,7 @@ func approve_pending_action() -> void:
 	_pending_change_set = null
 	
 	_set_state(AgentState.EXECUTING, "Onaylanan işlem çalıştırılıyor: " + fn_name)
-	_log_trace("TOOL_START (APPROVED)", fn_name)
+	print("[TIMING] %s | TOOL_START (APPROVED) | tool=%s" % [get_ts(), fn_name])
 	tool_executing.emit(fn_name, args)
 	
 	var t_start = Time.get_ticks_msec()
@@ -212,7 +211,7 @@ func approve_pending_action() -> void:
 	tool_time_msec += t_delta
 	_record_category_time(fn_name, t_delta)
 	
-	_log_trace("TOOL_DONE (APPROVED)", fn_name + " in " + str(t_delta) + "ms")
+	print("[TIMING] %s | TOOL_DONE (APPROVED) | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
 	tool_completed.emit(fn_name, result)
 	if cs and result.get("success", false):
 		changes_applied.emit(cs)
@@ -236,7 +235,7 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 	_pending_change_set = null
 	
 	_set_state(AgentState.RECOVERING, "İşlem reddedildi, ajana bildiriliyor...")
-	_log_trace("TOOL_REJECTED", fn_name)
+	print("[TIMING] %s | TOOL_REJECTED | tool=%s" % [get_ts(), fn_name])
 	var reject_result = AISidebarToolResult.err("USER_REJECTED", reason, true)
 	if context:
 		context.add_tool_result_message(tc_id, fn_name, reject_result)
@@ -294,7 +293,11 @@ func _run_next_step() -> void:
 	_set_state(AgentState.PLANNING, status_msg)
 	
 	_llm_step_start_time = Time.get_ticks_msec()
-	_log_trace("REQUEST_START", "Step " + str(current_step) + "/" + str(max_steps))
+	if current_step > 1:
+		print("[TIMING] %s | NEXT_LLM_REQUEST_START | step=%d/%d" % [get_ts(), current_step, max_steps])
+	else:
+		print("[TIMING] %s | LLM_REQUEST_START | step=1/%d" % [get_ts(), max_steps])
+		
 	var messages = context.get_messages_for_api()
 	var tools_schema = AISidebarToolManager.get_all_schemas()
 	provider.send_chat(messages, tools_schema)
@@ -306,7 +309,6 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 	if _llm_step_start_time > 0:
 		var delta_req = Time.get_ticks_msec() - _llm_step_start_time
 		llm_time_msec += delta_req
-		_log_trace("PROVIDER_RESPONSE_RECEIVED", "Step " + str(current_step) + " completed in " + str(delta_req) + "ms | Tools: " + str(tool_calls.size()))
 		_llm_step_start_time = 0
 		
 	# Boş Yanıt Kontrolü (Empty Response Guard)
@@ -360,7 +362,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			
 			# Yetki ve Onay Kontrolü
 			_set_state(AgentState.EXECUTING, "Araç çalıştırılıyor: " + fn_name)
-			_log_trace("TOOL_START", fn_name)
+			print("[TIMING] %s | TOOL_START | tool=%s" % [get_ts(), fn_name])
 			tool_executing.emit(fn_name, args)
 			
 			var t_start = Time.get_ticks_msec()
@@ -369,7 +371,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			tool_time_msec += t_delta
 			_record_category_time(fn_name, t_delta)
 			
-			_log_trace("TOOL_DONE", fn_name + " in " + str(t_delta) + "ms")
+			print("[TIMING] %s | TOOL_DONE | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
 			
 			# Onay gerekiyorsa durakla
 			if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
@@ -379,7 +381,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_pending_change_set = cs
 				_waiting_start_time = Time.get_ticks_msec()
 				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
-				_log_trace("APPROVAL_REQUESTED", fn_name)
+				print("[TIMING] %s | APPROVAL_REQUESTED | tool=%s" % [get_ts(), fn_name])
 				approval_requested.emit(fn_name, args, cs)
 				return
 				
@@ -458,7 +460,7 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 	
 	if needs_explicit_verify:
 		_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
-		_log_trace("VERIFICATION_START", tool_name)
+		print("[TIMING] %s | VERIFICATION_START | tool=%s" % [get_ts(), tool_name])
 		verification_started.emit(tool_name)
 		verification_checkpoints_count += 1
 		
@@ -469,7 +471,7 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 		
 		is_valid = verified_result.get("success", false)
 		ui_msg = verified_result.get("message", ui_msg)
-		_log_trace("VERIFICATION_DONE", tool_name + " in " + str(v_delta) + "ms | valid: " + str(is_valid))
+		print("[TIMING] %s | VERIFICATION_DONE | tool=%s duration=%dms valid=%s" % [get_ts(), tool_name, v_delta, str(is_valid)])
 		verification_completed.emit(tool_name, is_valid, ui_msg)
 		
 	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
@@ -486,10 +488,11 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 			
 		context.add_tool_result_message(tool_call_id, tool_name, final_payload)
 		
+	print("[TIMING] %s | AGENT_CONTINUE | next_step=%d" % [get_ts(), current_step + 1])
 	_run_next_step()
 
 func _on_provider_error(error_message: String) -> void:
 	_set_state(AgentState.ERROR, error_message)
-	_log_trace("PROVIDER_ERROR", error_message)
+	print("[TIMING] %s | PROVIDER_ERROR | err=%s" % [get_ts(), error_message])
 	error_occurred.emit(error_message)
 	_finish_task(false)
