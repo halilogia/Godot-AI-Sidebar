@@ -57,6 +57,7 @@ var _stagnation_count: int = 0
 
 # Bekleyen Onay Verisi
 var _pending_tool_name: String = ""
+var _pending_tool_id: String = ""
 var _pending_tool_args: Dictionary = {}
 var _pending_change_set: AISidebarChangeSet = null
 var runtime_debugger: AISidebarRuntimeDebugger = null
@@ -89,6 +90,7 @@ func start_task(user_prompt: String) -> void:
 	_last_tool_signature = ""
 	_stagnation_count = 0
 	_pending_tool_name = ""
+	_pending_tool_id = ""
 	_pending_tool_args = {}
 	_pending_change_set = null
 	
@@ -117,8 +119,10 @@ func approve_pending_action() -> void:
 		return
 		
 	var fn_name = _pending_tool_name
+	var tc_id = _pending_tool_id
 	var args = _pending_tool_args
 	_pending_tool_name = ""
+	_pending_tool_id = ""
 	_pending_tool_args = {}
 	_pending_change_set = null
 	
@@ -129,7 +133,7 @@ func approve_pending_action() -> void:
 	tool_completed.emit(fn_name, result)
 	
 	# Otomatik Doğrulama (Verification)
-	_run_verification_and_proceed(fn_name, args, result)
+	_run_verification_and_proceed(fn_name, tc_id, args, result)
 
 ## Kullanıcı bekleyen işlemi reddetti (Reject)
 func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") -> void:
@@ -137,13 +141,16 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 		return
 		
 	var fn_name = _pending_tool_name
+	var tc_id = _pending_tool_id
 	_pending_tool_name = ""
+	_pending_tool_id = ""
 	_pending_tool_args = {}
 	_pending_change_set = null
 	
 	_set_state(AgentState.RECOVERING, "İşlem reddedildi, ajana bildiriliyor...")
 	var reject_result = AISidebarToolResult.err("USER_REJECTED", reason, true)
-	context.add_tool_result_message(fn_name, reject_result)
+	if context:
+		context.add_tool_result_message(tc_id, fn_name, reject_result)
 	
 	_run_next_step()
 
@@ -221,24 +228,33 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		
 	# 2. Metin Yanıtı
 	if not text_content.is_empty():
-		if context:
-			context.add_assistant_message(text_content)
 		text_received.emit("assistant", text_content)
 		
 	# 3. Araç İcrası
 	if tool_calls.size() > 0:
+		# Assistant Tool Call mesajını OpenAI standartlarında bağlama ekle
+		if context:
+			context.add_assistant_tool_call_message(text_content, tool_calls)
+			
 		for tc in tool_calls:
 			var fn_name: String = tc.get("name", "")
+			var tc_id: String = tc.get("id", "call_default")
 			var args: Dictionary = tc.get("arguments", {})
 			
-			# Stagnation / Sonsuz Döngü Koruması
+			# Stagnation / Erken Tekrarlama Koruması
 			var sig = fn_name + ":" + JSON.stringify(args)
 			if sig == _last_tool_signature:
 				_stagnation_count += 1
-				if _stagnation_count >= 3:
-					_set_state(AgentState.RECOVERING, "Tekrarlayan araç döngüsü tespit edildi, strateji değiştiriliyor.")
+				if _stagnation_count >= 2:
+					_set_state(AgentState.ERROR, "Aynı araç (" + fn_name + ") tekrar tekrar çağrıldı. Döngü durduruldu.")
+					error_occurred.emit("Ajan aynı aracı (" + fn_name + ") tekrarladı. Görev sonlandırıldı.")
+					loop_finished.emit()
+					_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+					return
+				else:
+					# Modele ara uyarı gönder
 					if context:
-						context.add_tool_result_message(fn_name, AISidebarToolResult.err("STAGNATION_DETECTED", "Aynı araç aynı parametrelerle 3 kez üst üste çağrıldı. Lütfen farklı bir yöntem deneyin."))
+						context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
 					_run_next_step()
 					return
 			else:
@@ -254,6 +270,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			# Eğer onay gerekiyorsa durakla ve WAITING_FOR_APPROVAL durumuna geç
 			if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
 				_pending_tool_name = fn_name
+				_pending_tool_id = tc_id
 				_pending_tool_args = args
 				
 				var cs: AISidebarChangeSet = null
@@ -280,15 +297,18 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			if fn_name == "play_game" or fn_name == "restart_game":
 				_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor, çalışma zamanı gözlemleniyor...")
 				
-			_run_verification_and_proceed(fn_name, args, result)
+			_run_verification_and_proceed(fn_name, tc_id, args, result)
 			return
 	else:
-		# Araç çağrısı bitti, görev başarıyla tamamlandı
+		# Araç çağrısı yok, model kullanıcıya nihai yanıtını verdi
+		if not text_content.is_empty() and context:
+			context.add_assistant_message(text_content)
+			
 		_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
 		loop_finished.emit()
 		_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
-func _run_verification_and_proceed(tool_name: String, args: Dictionary, result: Variant) -> void:
+func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args: Dictionary, result: Variant) -> void:
 	_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
 	verification_started.emit(tool_name)
 	
@@ -309,7 +329,8 @@ func _run_verification_and_proceed(tool_name: String, args: Dictionary, result: 
 	
 	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
 	if context:
-		context.add_tool_result_message(tool_name, verified_result if verified_result is Dictionary else {"data": result})
+		var result_to_pass = verified_result if verified_result is Dictionary else {"data": result}
+		context.add_tool_result_message(tool_call_id, tool_name, result_to_pass)
 		
 	_run_next_step()
 

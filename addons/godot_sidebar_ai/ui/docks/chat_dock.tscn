@@ -65,6 +65,8 @@ text = "⚙"
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
+selection_enabled = true
+context_menu_enabled = true
 scroll_following = true
 
 [node name="ApprovalBar" type="HBoxContainer" parent="MainLayout"]

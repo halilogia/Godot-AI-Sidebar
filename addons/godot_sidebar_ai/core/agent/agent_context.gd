@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarAgentContext
 
-## Ajan Konuşma Bağlamı, Kısa Vadeli Görev Belleği & Sıkıştırma (Memory & Compaction) (SRP).
+## Ajan Konuşma Bağlamı, OpenAI Uyumlu Tool Call & Bellek Yöneticisi (SRP).
 
 const AISidebarEditorStateSnapshot = preload("res://addons/godot_sidebar_ai/core/state/editor_state_snapshot.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
@@ -31,11 +31,55 @@ func add_assistant_message(text: String) -> void:
 		"content": text
 	})
 
-func add_tool_result_message(tool_name: String, result: Dictionary) -> void:
+## OpenAI Uyumlu Assistant Tool Call mesajı ekler
+func add_assistant_tool_call_message(text: String, tool_calls: Array) -> void:
+	var tc_payload: Array = []
+	for tc in tool_calls:
+		var tc_id = tc.get("id", "")
+		if tc_id.is_empty():
+			tc_id = "call_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000)
+		tc["id"] = tc_id # ID'yi nesne üzerinde de sabitle
+		
+		var args_str = ""
+		if tc.get("arguments") is Dictionary:
+			args_str = JSON.stringify(tc["arguments"])
+		elif tc.get("arguments") is String:
+			args_str = tc["arguments"]
+		else:
+			args_str = "{}"
+			
+		tc_payload.append({
+			"id": tc_id,
+			"type": "function",
+			"function": {
+				"name": tc.get("name", ""),
+				"arguments": args_str
+			}
+		})
+		
+	var msg: Dictionary = {
+		"role": "assistant",
+		"tool_calls": tc_payload
+	}
+	if not text.is_empty():
+		msg["content"] = text
+	else:
+		msg["content"] = null
+		
+	messages.append(msg)
+
+## OpenAI Uyumlu Tool Sonucu mesajı ekler
+func add_tool_result_message(tool_call_id: String, tool_name: String, result: Dictionary) -> void:
 	recent_actions.append(tool_name)
+	var final_id = tool_call_id
+	if final_id.is_empty():
+		final_id = "call_default"
+		
 	messages.append({
-		"role": "user",
-		"content": "Araç '" + tool_name + "' tamamlandı:\n" + JSON.stringify(result, "\t")
+		"role": "tool",
+		"tool_call_id": final_id,
+		"name": tool_name,
+		"content": JSON.stringify(result)
 	})
 	_auto_compact_if_needed()
 
@@ -55,7 +99,7 @@ func add_runtime_error_context(obs: AISidebarRuntimeObservation) -> void:
 	})
 	_auto_compact_if_needed()
 
-## Model API'sine gönderilmeden önce dinamik editör zeminlemesini (Grounding) enjekte eder
+## Model API'sine gönderilmeden önce dinamik editör zeminlemesini (Grounding) ekler
 func get_messages_for_api() -> Array:
 	var api_messages: Array = []
 	
@@ -72,7 +116,7 @@ func get_messages_for_api() -> Array:
 	return api_messages
 
 ## Bağlam Şişmesini Önleyen Otomatik Sıkıştırma (Compaction)
-func _auto_compact_if_needed(max_msgs: int = 16) -> void:
+func _auto_compact_if_needed(max_msgs: int = 18) -> void:
 	if messages.size() <= max_msgs:
 		return
 		
