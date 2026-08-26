@@ -34,6 +34,7 @@ const TestDependencyAwareBatch = preload("res://tests/test_dependency_aware_batc
 const TestChangeSetAndNetworkTiming = preload("res://tests/test_changeset_and_network_timing.gd")
 const TestURLNormalization = preload("res://tests/test_url_normalization.gd")
 const TestUndoAndDialogUX = preload("res://tests/test_undo_and_dialog_ux.gd")
+const TestUIComponents = preload("res://tests/test_ui_components.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -73,7 +74,8 @@ func _init() -> void:
 		TestDependencyAwareBatch,
 		TestChangeSetAndNetworkTiming,
 		TestURLNormalization,
-		TestUndoAndDialogUX
+		TestUndoAndDialogUX,
+		TestUIComponents
 	]
 	
 	var total_passed = 0

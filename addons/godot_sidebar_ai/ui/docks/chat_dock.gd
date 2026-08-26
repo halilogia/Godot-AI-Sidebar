@@ -1,6 +1,9 @@
 @tool
 extends Control
 
+## Godot AI Sidebar - Profesyonel AI IDE Sohbet ve Orkestrasyon Paneli (SRP).
+## Cursor / Claude Code tarzı doğal konuşma, katlanabilir aktivite kartları, diff ve geri alma sunar.
+
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd")
 const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/network/network_manager.gd")
@@ -12,20 +15,30 @@ const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_c
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
 
+# Modüler UI Bileşenleri
+const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
+const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
+const AISidebarChangesCard = preload("res://addons/godot_sidebar_ai/ui/components/changes_card.gd")
+const AISidebarApprovalCard = preload("res://addons/godot_sidebar_ai/ui/components/approval_card.gd")
+const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
+const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
+const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
+
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
-@onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
+@onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
 @onready var settings_btn: Button = $MainLayout/ModelBar/SettingsBtn
-@onready var chat_log: RichTextLabel = $MainLayout/ChatLog
-@onready var approval_bar: HBoxContainer = $MainLayout/ApprovalBar
-@onready var approve_btn: Button = $MainLayout/ApprovalBar/ApproveBtn
-@onready var view_diff_btn: Button = $MainLayout/ApprovalBar/ViewDiffBtn
-@onready var reject_btn: Button = $MainLayout/ApprovalBar/RejectBtn
+
+@onready var chat_scroll: ScrollContainer = $MainLayout/ScrollWrapper/ChatScroll
+@onready var message_stream: VBoxContainer = $MainLayout/ScrollWrapper/ChatScroll/MessageStream
+@onready var jump_to_bottom_btn: Button = $MainLayout/ScrollWrapper/JumpToBottomBtn
+
 @onready var input_field: TextEdit = $MainLayout/InputArea/InputField
 @onready var clear_btn: Button = $MainLayout/InputArea/ButtonsBar/ClearBtn
 @onready var send_btn: Button = $MainLayout/InputArea/ButtonsBar/SendBtn
+
 @onready var settings_dialog: AcceptDialog = $SettingsDialog
 @onready var change_set_dialog: AISidebarChangeSetDialog = $ChangeSetDialog
 
@@ -33,12 +46,18 @@ var network_manager: AISidebarNetworkManager
 var provider: AISidebarAIProvider
 var agent_context: AISidebarAgentContext
 var agent_runner: AISidebarAgentRunner
+
 var current_model_list: Array = []
 var pending_change_set: AISidebarChangeSet = null
 var last_applied_change_set: AISidebarChangeSet = null
 var pending_tool_name: String = ""
 var pending_tool_args: Dictionary = {}
 var last_user_prompt: String = ""
+
+var _current_activity_group: AISidebarActivityGroup = null
+var _current_runtime_card: AISidebarRuntimeCard = null
+var _current_approval_card: AISidebarApprovalCard = null
+var _auto_scroll_enabled: bool = true
 
 func _ready() -> void:
 	if not Engine.is_editor_hint():
@@ -69,18 +88,10 @@ func _ready() -> void:
 	provider.models_fetched.connect(_on_models_fetched)
 
 	# 2. UI Olayları
-	if chat_log:
-		chat_log.meta_clicked.connect(_on_chat_meta_clicked)
 	if clear_btn:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
 		send_btn.pressed.connect(_on_send_pressed)
-	if approve_btn:
-		approve_btn.pressed.connect(_on_approve_pressed)
-	if view_diff_btn:
-		view_diff_btn.pressed.connect(_on_view_diff_pressed)
-	if reject_btn:
-		reject_btn.pressed.connect(_on_reject_pressed)
 	if settings_btn:
 		settings_btn.pressed.connect(_on_settings_pressed)
 	if refresh_models_btn:
@@ -93,9 +104,12 @@ func _ready() -> void:
 		model_selector.item_selected.connect(_on_model_selected)
 	if settings_dialog:
 		settings_dialog.settings_saved.connect(_on_settings_saved)
-	if change_set_dialog:
-		change_set_dialog.action_approved.connect(_on_approve_pressed)
-		change_set_dialog.action_rejected.connect(_on_reject_pressed)
+	if jump_to_bottom_btn:
+		jump_to_bottom_btn.pressed.connect(_on_jump_to_bottom_pressed)
+	if chat_scroll:
+		var v_bar = chat_scroll.get_v_scroll_bar()
+		if v_bar:
+			v_bar.value_changed.connect(_on_scroll_value_changed)
 
 	# 3. Başlangıç Yüklemesi
 	update_ui_language()
@@ -124,10 +138,10 @@ func update_ui_language() -> void:
 		
 	if send_btn:
 		if agent_runner and agent_runner.is_running():
-			send_btn.text = "⏹ " + AISidebarI18n.get_text("btn_stop")
-			send_btn.tooltip_text = AISidebarI18n.get_text("tooltip_stop")
+			send_btn.text = "⏹ Stop"
+			send_btn.tooltip_text = "Görevi Durdur"
 		else:
-			send_btn.text = AISidebarI18n.get_text("btn_send")
+			send_btn.text = "Send ➤"
 			send_btn.tooltip_text = ""
 
 func _load_cached_models() -> void:
@@ -161,11 +175,11 @@ func _on_models_fetched(models: Array) -> void:
 	AISidebarConfig.save_config(cfg)
 	
 	_populate_model_selector(models)
-	set_status_badge(AISidebarI18n.get_text("status_ready"), Color(0.4, 0.8, 0.4))
+	set_status_badge("Ready", Color(0.4, 0.8, 0.4))
 
 func _on_refresh_models_pressed() -> void:
 	if provider:
-		set_status_badge(AISidebarI18n.get_text("status_refreshing"), Color(1.0, 0.8, 0.2))
+		set_status_badge("Refreshing...", Color(1.0, 0.8, 0.2))
 		provider.fetch_models()
 
 func _on_settings_pressed() -> void:
@@ -200,6 +214,7 @@ func _on_send_pressed() -> void:
 		
 	if agent_runner.is_running():
 		agent_runner.stop()
+		update_ui_language()
 		return
 		
 	var user_text = input_field.text.strip_edges()
@@ -208,6 +223,11 @@ func _on_send_pressed() -> void:
 		
 	last_user_prompt = user_text
 	input_field.text = ""
+	
+	_current_activity_group = null
+	_current_runtime_card = null
+	_current_approval_card = null
+	
 	agent_runner.start_task(user_text)
 
 func _on_clear_pressed() -> void:
@@ -215,194 +235,232 @@ func _on_clear_pressed() -> void:
 		agent_runner.stop()
 	if agent_context:
 		agent_context.clear()
-	if chat_log:
-		chat_log.clear()
+	if message_stream:
+		for child in message_stream.get_children():
+			child.queue_free()
+	_current_activity_group = null
+	_current_runtime_card = null
+	_current_approval_card = null
 
-func _on_approve_pressed() -> void:
-	if approval_bar:
-		approval_bar.visible = false
-	if pending_change_set:
-		last_applied_change_set = pending_change_set
-	if agent_runner:
-		agent_runner.approve_pending_action()
+func _on_jump_to_bottom_pressed() -> void:
+	_scroll_to_bottom()
+	if jump_to_bottom_btn:
+		jump_to_bottom_btn.visible = false
 
-func _on_reject_pressed() -> void:
-	if approval_bar:
-		approval_bar.visible = false
-	if agent_runner:
-		agent_runner.reject_pending_action()
+func _on_scroll_value_changed(val: float) -> void:
+	if not chat_scroll:
+		return
+	var v_bar = chat_scroll.get_v_scroll_bar()
+	if not v_bar:
+		return
+	var max_val = v_bar.max_value - v_bar.page
+	var is_near_bottom = (max_val - val) < 40.0
+	_auto_scroll_enabled = is_near_bottom
+	if jump_to_bottom_btn:
+		jump_to_bottom_btn.visible = not is_near_bottom
 
-func _on_view_diff_pressed() -> void:
-	var cs_to_show = pending_change_set if pending_change_set else last_applied_change_set
-	if change_set_dialog:
-		change_set_dialog.show_change_set(pending_tool_name, pending_tool_args, cs_to_show)
+func _scroll_to_bottom() -> void:
+	if not chat_scroll:
+		return
+	chat_scroll.set_deferred("scroll_vertical", 999999)
 
-func _on_chat_meta_clicked(meta: Variant) -> void:
-	var m_str = str(meta)
-	match m_str:
-		"action:approve":
-			_on_approve_pressed()
-		"action:reject":
-			_on_reject_pressed()
-		"action:view_diff":
-			_on_view_diff_pressed()
-		"action:undo":
-			if last_applied_change_set:
-				var res = last_applied_change_set.rollback()
-				if res.get("success", false):
-					append_chat_message("↩ Geri Alma", "Son uygulanan değişiklikler başarıyla geri alındı.", "#a3be8c")
-				else:
-					append_chat_message("❌ Geri Alma", "Geri alma başarısız: " + res.get("error", "Bilinmeyen hata"), "#bf616a")
-		_:
-			if m_str.begins_with("file:"):
-				var fpath = m_str.trim_prefix("file:")
-				if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
-					if fpath.ends_with(".gd"):
-						var res = load(fpath)
-						if res is Script and EditorInterface.has_method("edit_script"):
-							EditorInterface.edit_script(res)
-					elif fpath.ends_with(".tscn"):
-						if EditorInterface.has_method("open_scene_from_path"):
-							EditorInterface.open_scene_from_path(fpath)
+func _add_stream_component(comp: Control) -> void:
+	if not message_stream:
+		return
+	message_stream.add_child(comp)
+	if _auto_scroll_enabled:
+		_scroll_to_bottom()
 
 # --- Ajan Sinyal Dinleyicileri (Presentation) ---
 
 func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	update_ui_language()
-	
-	if approval_bar:
-		approval_bar.visible = (new_state == AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL)
-		
 	match new_state:
 		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
 			set_status_badge(state_desc, Color(0.4, 0.8, 0.4))
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
-			set_status_badge("⏳ " + state_desc, Color(1.0, 0.5, 0.2))
+			set_status_badge("⏳ Waiting Approval", Color(1.0, 0.5, 0.2))
 		AISidebarAgentRunner.AgentState.RUNNING_GAME:
-			set_status_badge("▶ " + state_desc, Color(0.3, 0.7, 1.0))
+			set_status_badge("▶ Running Game", Color(0.3, 0.7, 1.0))
 		AISidebarAgentRunner.AgentState.DEBUGGING:
-			set_status_badge("🐞 " + state_desc, Color(1.0, 0.4, 0.4))
+			set_status_badge("🐞 Debugging", Color(1.0, 0.4, 0.4))
 		AISidebarAgentRunner.AgentState.ERROR:
 			set_status_badge("❌ " + state_desc, Color(1.0, 0.3, 0.3))
 		_:
 			set_status_badge("⚡ " + state_desc, Color(1.0, 0.8, 0.2))
 
 func _on_agent_thinking_received(thinking: String) -> void:
-	if not chat_log:
-		return
-	var title = AISidebarI18n.get_text("thinking_title")
-	chat_log.append_text("[color=#a6adc8][font_size=11]╭── " + title + " ──[/font_size][/color]\n")
-	chat_log.append_text("[color=#9399b2][font_size=11][i]" + thinking + "[/i][/font_size][/color]\n")
-	chat_log.append_text("[color=#a6adc8][font_size=11]╰──────────────────────────[/font_size][/color]\n\n")
+	pass
 
 func _on_agent_text_received(role: String, text: String) -> void:
-	if role == "user":
-		append_chat_message(AISidebarI18n.get_text("sender_user"), text, "#ffffff")
-	else:
-		append_chat_message(AISidebarI18n.get_text("sender_assistant"), text, "#88c0d0")
+	if _current_activity_group:
+		_current_activity_group.complete_group()
+		_current_activity_group = null
+		
+	var bubble = AISidebarMessageBubble.new(role, text)
+	bubble.meta_clicked.connect(_on_meta_clicked)
+	_add_stream_component(bubble)
+
+func _ensure_activity_group() -> AISidebarActivityGroup:
+	if not _current_activity_group:
+		_current_activity_group = AISidebarActivityGroup.new(true)
+		_current_activity_group.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(_current_activity_group)
+	return _current_activity_group
 
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
-	append_chat_message("⚡ Agent", "İşlem yürütülüyor: [b]" + tool_name + "[/b]", "#d08770")
+	var grp = _ensure_activity_group()
+	var human_title = _get_human_tool_title(tool_name, args)
+	grp.add_activity("▶", human_title, -1, JSON.stringify(args))
+
+func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
+	var grp = _ensure_activity_group()
+	var is_ok = result.get("success", false)
+	var icon = "✓" if is_ok else "❌"
+	var human_title = _get_human_tool_title(tool_name, {})
+	var msg = result.get("message", "")
+	if not msg.is_empty():
+		human_title = msg
+	grp.add_activity(icon, human_title, 100, JSON.stringify(result))
+
+func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
+	match tool_name:
+		"create_or_update_script":
+			var p = args.get("file_path", "")
+			return "Updated " + p.get_file() if not p.is_empty() else "Updated script"
+		"write_files":
+			var f_arr = args.get("files", [])
+			return "Batch wrote " + str(f_arr.size()) + " files"
+		"create_scene":
+			var sp = args.get("scene_path", "")
+			return "Created scene " + sp.get_file()
+		"save_scene":
+			return "Saved active scene"
+		"analyze_project":
+			return "Inspected project structure"
+		"get_project_files":
+			return "Scanned project files"
+		"read_script":
+			return "Read script: " + args.get("file_path", "").get_file()
+		"validate_script":
+			return "Validated GDScript source"
+		"play_game":
+			return "Launched game instance"
+		"stop_game":
+			return "Stopped running game"
+		"get_runtime_errors":
+			return "Checked runtime logs"
+		"delete_node":
+			return "Deleted node: " + args.get("node_path", "")
+		_:
+			return tool_name
 
 func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISidebarChangeSet) -> void:
 	pending_tool_name = tool_name
 	pending_tool_args = args
 	pending_change_set = cs
 	
-	if not chat_log:
-		return
-		
-	chat_log.append_text("[color=#ebcb8b][font_size=12][b]⏳ Değişiklik Onayı Gerekli[/b][/font_size][/color]\n")
-	if cs:
-		chat_log.append_text(cs.get_bbcode_diff() + "\n")
-	else:
-		chat_log.append_text("[color=#d8dee9]İşlem: " + tool_name + " (" + JSON.stringify(args) + ")[/color]\n")
-		
-	chat_log.append_text("[color=#88c0d0][url=action:view_diff]🔍 [b]Diff Gör[/b][/url][/color]   [color=#a3be8c][url=action:approve]✓ [b]Uygula (Approve)[/b][/url][/color]   [color=#bf616a][url=action:reject]✕ [b]Reddet (Reject)[/b][/url][/color]\n\n")
+	_current_approval_card = AISidebarApprovalCard.new(tool_name, args, cs)
+	_current_approval_card.action_approved.connect(_on_approve_pressed)
+	_current_approval_card.action_rejected.connect(_on_reject_pressed)
+	_current_approval_card.view_diff_requested.connect(_on_view_diff_pressed)
+	_add_stream_component(_current_approval_card)
 	
 	if change_set_dialog:
 		change_set_dialog.show_change_set(tool_name, args, cs)
 
+func _on_approve_pressed() -> void:
+	if pending_change_set:
+		last_applied_change_set = pending_change_set
+	if agent_runner:
+		agent_runner.approve_pending_action()
+
+func _on_reject_pressed() -> void:
+	if agent_runner:
+		agent_runner.reject_pending_action()
+
+func _on_view_diff_pressed(cs: AISidebarChangeSet = null) -> void:
+	var cs_to_show = cs if cs else (pending_change_set if pending_change_set else last_applied_change_set)
+	if change_set_dialog:
+		change_set_dialog.show_change_set(pending_tool_name, pending_tool_args, cs_to_show)
+
 func _on_agent_changes_applied(cs: AISidebarChangeSet) -> void:
 	last_applied_change_set = cs
-	if not chat_log or not cs:
+	if not cs:
 		return
-		
-	var deltas = cs.get_file_deltas()
-	var file_count = deltas.size()
-	
-	chat_log.append_text("[color=#4c566a][font_size=11]╭── ✎ Değişiklikler Uygulandı (" + str(file_count) + " dosya) ──────────[/font_size][/color]\n")
-	for d in deltas:
-		var link = "[url=file:" + d["path"] + "]" + d["file_name"] + "[/url]"
-		chat_log.append_text("  • [b]" + link + "[/b]  [color=#a3be8c]+" + str(d["added"]) + "[/color]  [color=#bf616a]-" + str(d["removed"]) + "[/color]\n")
-		
-	chat_log.append_text("  [color=#88c0d0][url=action:view_diff]🔍 [b]Diff Gör[/b][/url][/color]   [color=#d08770][url=action:undo]↩ [b]Geri Al (Undo)[/b][/url][/color]\n")
-	chat_log.append_text("[color=#4c566a][font_size=11]╰─────────────────────────────────────────────────────[/font_size][/color]\n\n")
+	var card = AISidebarChangesCard.new(cs)
+	card.view_diff_requested.connect(func(c): _on_view_diff_pressed(c))
+	card.undo_requested.connect(func(c): _on_undo_pressed(c))
+	card.meta_clicked.connect(_on_meta_clicked)
+	_add_stream_component(card)
+
+func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
+	if cs:
+		var res = cs.rollback()
+		var grp = _ensure_activity_group()
+		if res.get("success", false):
+			grp.add_activity("↩", "Undo successful: changes reverted", 50)
+		else:
+			grp.add_activity("❌", "Undo failed: " + res.get("error", "Error"), 50)
 
 func _on_agent_verification_started(tool_name: String) -> void:
-	append_chat_message("🔍 Doğrulama", "İşlem doğrulanıyor: " + tool_name, "#81a1c1")
+	var grp = _ensure_activity_group()
+	grp.add_activity("🔍", "Verifying " + tool_name + "...", -1)
 
 func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: String) -> void:
-	if is_valid:
-		append_chat_message("✓ Doğrulandı", msg, "#a3be8c")
-	else:
-		append_chat_message("⚠️ Doğrulama Uyarısı", msg, "#bf616a")
+	var grp = _ensure_activity_group()
+	var icon = "✓" if is_valid else "⚠️"
+	grp.add_activity(icon, "Verification: " + msg, 50)
 
 func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
+	if not _current_runtime_card:
+		_current_runtime_card = AISidebarRuntimeCard.new()
+		_current_runtime_card.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(_current_runtime_card)
+		
 	if obs.has_errors():
-		append_chat_message("⚠ Çalışma Zamanı Hatası", "Oyun çalışırken hata tespit edildi (" + str(obs.errors.size()) + " hata):\n[color=#bf616a]" + obs.format_diagnostic_prompt() + "[/color]", "#bf616a")
+		_current_runtime_card.add_status("❌", "Runtime Error: " + obs.format_diagnostic_prompt(), "#bf616a")
+	else:
+		_current_runtime_card.add_status("✓", "No runtime errors detected", "#a3be8c")
 
 func _on_agent_debugging_started(summary: String) -> void:
-	append_chat_message("🐞 Teşhis & Onarım", "Ajan çalışma zamanı hatasını inceliyor: [b]" + summary + "[/b]", "#d08770")
-
-func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
-	if result.get("success", false):
-		var msg = result.get("message", "")
-		if msg.is_empty():
-			msg = "Tamamlandı."
-		append_chat_message("✓ " + tool_name, msg, "#a3be8c")
-	else:
-		var err_obj = result.get("error", {})
-		var err_msg = "Hata"
-		if err_obj is Dictionary and err_obj.has("message"):
-			err_msg = err_obj["message"]
-		elif result.has("error") and result["error"] is String:
-			err_msg = result["error"]
-		append_chat_message("❌ " + tool_name, err_msg, "#bf616a")
+	var grp = _ensure_activity_group()
+	grp.add_activity("🐞", "Auto-diagnosing runtime error: " + summary, -1)
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
-	if not chat_log:
-		return
-	var is_ok = metrics.get("success", true)
-	var status_hdr = "[b][color=#a3be8c]✓ Görev Tamamlandı[/color][/b]" if is_ok else "[b][color=#bf616a]✕ Görev Sonlandı[/color][/b]"
-	var elapsed = str(metrics.get("elapsed_seconds", 0.0)) + "s"
-	var llm_s = str(metrics.get("llm_time_s", 0.0)) + "s"
-	var tool_s = str(metrics.get("tool_time_s", 0.0)) + "s"
-	var file_s = str(metrics.get("file_time_s", 0.0)) + "s"
-	var runtime_s = str(metrics.get("runtime_time_s", 0.0)) + "s"
-	var wait_s = str(metrics.get("waiting_time_s", 0.0)) + "s"
-	
-	var llm_turns = str(metrics.get("llm_turns", 0))
-	var tool_calls = str(metrics.get("tool_calls", 0))
-	var file_ops = str(metrics.get("file_ops", 0))
-	var editor_ops = str(metrics.get("editor_ops", 0))
-	var verify_cps = str(metrics.get("verification_checkpoints", 0))
-	
-	chat_log.append_text("[color=#4c566a][font_size=11]╭── 📊 Görev Metrikleri (Telemetri) ──────────────────[/font_size][/color]\n")
-	chat_log.append_text(status_hdr + " [color=#81a1c1](Toplam: " + elapsed + ")[/color]\n")
-	chat_log.append_text("[font_size=11][color=#d8dee9]• Süre Dağılımı: LLM: " + llm_s + "  |  Araçlar: " + tool_s + " (Dosya: " + file_s + ", Runtime: " + runtime_s + ")  |  Bekleme: " + wait_s + "\n")
-	chat_log.append_text("• İşlem Sayısı: " + llm_turns + " LLM Dönüşü · " + tool_calls + " Araç · " + file_ops + " Dosya (File-First) · " + editor_ops + " Editör · " + verify_cps + " Doğrulama[/color][/font_size]\n")
-	if last_applied_change_set:
-		chat_log.append_text("[color=#88c0d0][url=action:undo]↩ [b]Son Değişikliği Geri Al (Undo)[/b][/url][/color]\n")
-	chat_log.append_text("[color=#4c566a][font_size=11]╰─────────────────────────────────────────────────────[/font_size][/color]\n\n")
+	if _current_activity_group:
+		_current_activity_group.complete_group()
+		_current_activity_group = null
+		
+	var telemetry_comp = AISidebarTelemetryCard.new(metrics)
+	_add_stream_component(telemetry_comp)
+	update_ui_language()
 
 func _on_agent_error(err_msg: String) -> void:
-	append_chat_message(AISidebarI18n.get_text("sender_error"), "❌ " + err_msg, "#bf616a")
+	if _current_activity_group:
+		_current_activity_group.complete_group()
+		_current_activity_group = null
+		
+	var err_comp = AISidebarErrorCard.new(err_msg)
+	err_comp.retry_requested.connect(func():
+		if not last_user_prompt.is_empty():
+			agent_runner.start_task(last_user_prompt)
+	)
+	_add_stream_component(err_comp)
+	update_ui_language()
 
-func append_chat_message(sender: String, message: String, color_hex: String = "#ffffff") -> void:
-	if not chat_log:
-		return
-	chat_log.append_text("[b][color=" + color_hex + "]" + sender + ":[/color][/b] " + message + "\n\n")
+func _on_meta_clicked(meta: Variant) -> void:
+	var m_str = str(meta)
+	if m_str.begins_with("file:"):
+		var fpath = m_str.trim_prefix("file:")
+		if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+			if fpath.ends_with(".gd"):
+				var res = load(fpath)
+				if res is Script and EditorInterface.has_method("edit_script"):
+					EditorInterface.edit_script(res)
+			elif fpath.ends_with(".tscn"):
+				if EditorInterface.has_method("open_scene_from_path"):
+					EditorInterface.open_scene_from_path(fpath)
 
 func set_status_badge(txt: String, color: Color) -> void:
 	if status_badge:

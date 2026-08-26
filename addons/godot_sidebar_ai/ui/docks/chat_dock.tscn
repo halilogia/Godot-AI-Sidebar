@@ -1,23 +1,27 @@
-[gd_scene load_steps=4 format=3 uid="uid://dxea574m8r25y"]
+[gd_scene load_steps=4 format=3 uid="uid://c83p6m2g00001"]
 
-[ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/docks/chat_dock.gd" id="1_w3m62"]
-[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="2_s5p9a"]
-[ext_resource type="PackedScene" path="res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.tscn" id="3_csdlg"]
+[ext_resource type="Script" path="res://addons/godot_sidebar_ai/ui/docks/chat_dock.gd" id="1_chat_dock"]
+[ext_resource type="PackedScene" uid="uid://d78m3p4g00001" path="res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn" id="2_settings_dlg"]
+[ext_resource type="PackedScene" uid="uid://b7vyk8n200001" path="res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.tscn" id="3_changeset_dlg"]
 
-[node name="ChatDock" type="Control"]
+[node name="GodotAISidebar" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_w3m62")
+script = ExtResource("1_chat_dock")
 
 [node name="MainLayout" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 6
@@ -28,20 +32,22 @@ theme_override_constants/separation = 6
 
 [node name="TitleLabel" type="Label" parent="MainLayout/HeaderBar"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 14
-text = "Godot AI Core"
-
-[node name="LangToggleBtn" type="Button" parent="MainLayout/HeaderBar"]
-custom_minimum_size = Vector2(36, 0)
-layout_mode = 2
-text = "TR"
+theme_override_font_sizes/font_size = 13
+text = "Godot AI"
 
 [node name="StatusBadge" type="Label" parent="MainLayout/HeaderBar"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.8, 0.4, 1)
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 11
-text = "Hazır"
+theme_override_colors/font_color = Color(0.4, 0.8, 0.4, 1)
+text = "Ready"
+horizontal_alignment = 2
+
+[node name="LangToggleBtn" type="Button" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "TR"
 
 [node name="ModelBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
@@ -50,54 +56,69 @@ theme_override_constants/separation = 4
 [node name="ModelSelector" type="OptionButton" parent="MainLayout/ModelBar"]
 layout_mode = 2
 size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
 
 [node name="RefreshModelsBtn" type="Button" parent="MainLayout/ModelBar"]
-custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
 text = "🔄"
 
 [node name="SettingsBtn" type="Button" parent="MainLayout/ModelBar"]
-custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
 text = "⚙"
 
-[node name="ChatLog" type="RichTextLabel" parent="MainLayout"]
+[node name="ScrollWrapper" type="Control" parent="MainLayout"]
 layout_mode = 2
 size_flags_vertical = 3
-bbcode_enabled = true
-selection_enabled = true
-context_menu_enabled = true
-scroll_following = true
 
-[node name="ApprovalBar" type="HBoxContainer" parent="MainLayout"]
-visible = false
+[node name="ChatScroll" type="ScrollContainer" parent="MainLayout/ScrollWrapper"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="MessageStream" type="VBoxContainer" parent="MainLayout/ScrollWrapper/ChatScroll"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="ApproveBtn" type="Button" parent="MainLayout/ApprovalBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
-text = "✓ Onayla & Uygula"
-
-[node name="ViewDiffBtn" type="Button" parent="MainLayout/ApprovalBar"]
-layout_mode = 2
-text = "🔍 Diff Gör"
-
-[node name="RejectBtn" type="Button" parent="MainLayout/ApprovalBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.6, 0.6, 1)
-text = "✕ Reddet"
+[node name="JumpToBottomBtn" type="Button" parent="MainLayout/ScrollWrapper"]
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -60.0
+offset_top = -32.0
+offset_right = 60.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "↓ Jump to latest"
 
 [node name="InputArea" type="VBoxContainer" parent="MainLayout"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="InputField" type="TextEdit" parent="MainLayout/InputArea"]
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-placeholder_text = "Bir görev yazın... (Gönder: Ctrl+Enter)"
+theme_override_font_sizes/font_size = 12
+placeholder_text = "Ask Godot AI... (Ctrl+Enter to send)"
 wrap_mode = 1
 
 [node name="ButtonsBar" type="HBoxContainer" parent="MainLayout/InputArea"]
@@ -106,15 +127,23 @@ theme_override_constants/separation = 6
 
 [node name="ClearBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2
-text = "Temizle"
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "Clear"
 
-[node name="SendBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
+[node name="Spacer" type="Control" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Gönder"
 
-[node name="SettingsDialog" parent="." instance=ExtResource("2_s5p9a")]
+[node name="SendBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "Send ➤"
+
+[node name="SettingsDialog" parent="." instance=ExtResource("2_settings_dlg")]
 visible = false
 
-[node name="ChangeSetDialog" parent="." instance=ExtResource("3_csdlg")]
+[node name="ChangeSetDialog" parent="." instance=ExtResource("3_changeset_dlg")]
 visible = false
