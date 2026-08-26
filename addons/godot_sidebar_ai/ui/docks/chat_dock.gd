@@ -24,9 +24,11 @@ const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/component
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
+@onready var export_btn: Button = $MainLayout/HeaderBar/ExportBtn
 @onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
@@ -99,6 +101,8 @@ func _ready() -> void:
 		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
 	if lang_toggle_btn:
 		lang_toggle_btn.pressed.connect(_on_lang_toggle_pressed)
+	if export_btn:
+		export_btn.pressed.connect(_on_export_pressed)
 	if input_field:
 		input_field.gui_input.connect(_on_input_gui_input)
 	if model_selector:
@@ -123,6 +127,9 @@ func update_ui_language() -> void:
 	if lang_toggle_btn:
 		lang_toggle_btn.text = current_lang
 		lang_toggle_btn.tooltip_text = AISidebarI18n.get_text("tooltip_lang")
+	if export_btn:
+		AISidebarIconHelper.apply_icon(export_btn, "download")
+		export_btn.tooltip_text = "Sohbeti Dışa Aktar / Kopyala (Export Chat)"
 		
 	if title_label:
 		title_label.text = AISidebarI18n.get_text("app_title")
@@ -149,6 +156,39 @@ func update_ui_language() -> void:
 			send_btn.text = "Send"
 			AISidebarIconHelper.apply_icon(send_btn, "send")
 			send_btn.tooltip_text = ""
+
+func _on_export_pressed() -> void:
+	var msgs: Array = []
+	if agent_context:
+		msgs = agent_context.messages
+		
+	if msgs.is_empty():
+		return
+		
+	var md = AISidebarChatExporter.export_to_markdown(msgs)
+	DisplayServer.clipboard_set(md)
+	var save_res = AISidebarChatExporter.save_to_file(md)
+	
+	if export_btn:
+		AISidebarIconHelper.apply_icon(export_btn, "check")
+		var t = get_tree()
+		if t:
+			var timer = t.create_timer(1.5)
+			timer.timeout.connect(func():
+				if is_instance_valid(export_btn):
+					AISidebarIconHelper.apply_icon(export_btn, "download")
+			)
+			
+	if status_badge:
+		var prev = status_badge.text
+		status_badge.text = "Exported ✓"
+		var t = get_tree()
+		if t:
+			var timer = t.create_timer(2.0)
+			timer.timeout.connect(func():
+				if is_instance_valid(status_badge):
+					status_badge.text = prev
+			)
 
 func _load_cached_models() -> void:
 	var cfg = AISidebarConfig.load_config()

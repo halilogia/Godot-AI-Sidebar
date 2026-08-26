@@ -8,12 +8,15 @@ class_name AISidebarMessageBubble
 signal meta_clicked(meta: Variant)
 signal copy_code_requested(code_text: String)
 
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+
 var role: String = "assistant"
 var text_content: String = ""
 
 var _vbox: VBoxContainer
 var _header_bar: HBoxContainer
 var _role_label: Label
+var _copy_btn: Button
 var _content_label: RichTextLabel
 
 func _init(p_role: String = "assistant", p_text: String = "") -> void:
@@ -73,6 +76,14 @@ func _setup_ui() -> void:
 		
 	_header_bar.add_child(_role_label)
 	
+	_copy_btn = Button.new()
+	_copy_btn.flat = true
+	_copy_btn.focus_mode = Control.FOCUS_NONE
+	_copy_btn.tooltip_text = "Metni Kopyala"
+	AISidebarIconHelper.apply_icon(_copy_btn, "copy")
+	_copy_btn.pressed.connect(_on_copy_pressed)
+	_header_bar.add_child(_copy_btn)
+	
 	# İçerik
 	_content_label = RichTextLabel.new()
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -84,6 +95,17 @@ func _setup_ui() -> void:
 	_content_label.add_theme_font_size_override("normal_font_size", 12)
 	_content_label.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_label)
+
+func _on_copy_pressed() -> void:
+	DisplayServer.clipboard_set(text_content)
+	AISidebarIconHelper.apply_icon(_copy_btn, "check")
+	var t = get_tree()
+	if t:
+		var timer = t.create_timer(1.2)
+		timer.timeout.connect(func(): 
+			if is_instance_valid(_copy_btn):
+				AISidebarIconHelper.apply_icon(_copy_btn, "copy")
+		)
 
 func _render_content() -> void:
 	if not _content_label:

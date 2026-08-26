@@ -40,6 +40,12 @@ horizontal_alignment = 2
 text_overrun_behavior = 3
 clip_text = true
 
+[node name="ExportBtn" type="Button" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Sohbeti Dışa Aktar (Export Chat)"
+flat = true
+
 [node name="LangToggleBtn" type="Button" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 focus_mode = 0
