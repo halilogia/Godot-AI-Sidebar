@@ -2,7 +2,7 @@
 extends "res://addons/godot_sidebar_ai/core/tools/tool_base.gd"
 class_name AISidebarScriptTools
 
-## İlkel Script (GDScript) ve Kod Araçları (File-First Atomic Editing) (SRP).
+## İlkel Script (GDScript) ve Kod Araçları (File-First Atomic & Batch Editing) (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
@@ -27,7 +27,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_or_update_script",
-				"description": "Bir GDScript dosyasını atomik olarak oluşturur veya günceller. Kod diske yazılmadan önce bellekte sözdizimi doğrulamasından geçirilir; geçersiz kod diske yazılmaz ve mevcut geçerli dosya bozulmaz.",
+				"description": "Bir GDScript veya metin dosyasını atomik olarak oluşturur veya günceller. Kod diske yazılmadan önce bellekte sözdizimi doğrulamasından geçirilir.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -35,6 +35,31 @@ static func get_schemas() -> Array:
 						"content": { "type": "string", "description": "Yazılacak GDScript kodu." }
 					},
 					"required": ["file_path", "content"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "write_files",
+				"description": "Birden fazla script veya sahne dosyasını tek atomik operasyonda toplu olarak oluşturur veya günceller (File-First hızlı üretim).",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"files": {
+							"type": "array",
+							"description": "Yazılacak dosyaların listesi. Her öğe 'file_path' ve 'content' alanlarına sahiptir.",
+							"items": {
+								"type": "object",
+								"properties": {
+									"file_path": { "type": "string", "description": "Dosya yolu (örn: res://scripts/Player.gd veya res://scenes/Player.tscn)." },
+									"content": { "type": "string", "description": "Dosya metin içeriği." }
+								},
+								"required": ["file_path", "content"]
+							}
+						}
+					},
+					"required": ["files"]
 				}
 			}
 		},
@@ -74,6 +99,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _read_script(args)
 		"create_or_update_script":
 			return _create_or_update_script(args)
+		"write_files":
+			return _write_files(args)
 		"open_script":
 			return _open_script(args)
 		"validate_script":
@@ -116,7 +143,6 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		var val_res = AISidebarVerificationPipeline.validate_script_source(content, path)
 		if not val_res.get("success", false):
 			var err_obj = val_res.get("error", {})
-			# Diskteki mevcut dosyaya asla dokunulmaz!
 			return AISidebarToolResult.err(
 				err_obj.get("code", "SCRIPT_SYNTAX_ERROR"),
 				err_obj.get("message", "Script sözdizimi hatası içeriyor."),
@@ -129,7 +155,7 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 				}
 			)
 			
-	# 2. WRITE TO DISK (Yalnızca sözdizimi geçerli ise diske yaz)
+	# 2. WRITE TO DISK
 	var dir_path = path.get_base_dir()
 	if not DirAccess.dir_exists_absolute(dir_path):
 		DirAccess.make_dir_recursive_absolute(dir_path)
@@ -148,6 +174,58 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 			EditorInterface.edit_script(res)
 			
 	return AISidebarToolResult.ok({"file_path": path}, "✓ Script başarıyla doğrulandı ve yazıldı.")
+
+static func _write_files(args: Dictionary) -> Dictionary:
+	var files_arr = args.get("files", [])
+	if not (files_arr is Array) or files_arr.is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENTS", "Yazılacak dosyalar listesi ('files') boş veya geçersiz.")
+		
+	# 1. Aşama: Toplu Güvenlik ve Bellek İçi Sözdizimi Doğrulaması (Batch Pre-validation)
+	var sanitized_files: Array[Dictionary] = []
+	for item in files_arr:
+		if not (item is Dictionary):
+			continue
+		var raw_path = item.get("file_path", "")
+		var content = item.get("content", "")
+		var safe_check = AISidebarPathPolicy.is_safe_to_write(raw_path)
+		if not safe_check["safe"]:
+			return AISidebarToolResult.err("PERMISSION_DENIED", "Güvenlik engeli (" + raw_path + "): " + safe_check["reason"])
+			
+		var path = safe_check["path"]
+		if path.ends_with(".gd"):
+			var val_res = AISidebarVerificationPipeline.validate_script_source(content, path)
+			if not val_res.get("success", false):
+				var err_obj = val_res.get("error", {})
+				return AISidebarToolResult.err(
+					err_obj.get("code", "SCRIPT_SYNTAX_ERROR"),
+					"Toplu yazma iptal edildi: " + err_obj.get("message", "") + " (" + path + ")",
+					true,
+					err_obj
+				)
+		sanitized_files.append({"path": path, "content": content})
+		
+	# 2. Aşama: Atomik Yazım (Batch Write)
+	var written_paths: Array = []
+	for f_item in sanitized_files:
+		var p = f_item["path"]
+		var c = f_item["content"]
+		var dir_path = p.get_base_dir()
+		if not DirAccess.dir_exists_absolute(dir_path):
+			DirAccess.make_dir_recursive_absolute(dir_path)
+		var f = FileAccess.open(p, FileAccess.WRITE)
+		if not f:
+			return AISidebarToolResult.err("WRITE_ERROR", "Dosya yazılamadı: " + p)
+		f.store_string(c)
+		f.close()
+		written_paths.append(p)
+		
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_resource_filesystem"):
+		EditorInterface.get_resource_filesystem().scan()
+		
+	return AISidebarToolResult.ok({
+		"written_count": written_paths.size(),
+		"files": written_paths
+	}, "✓ " + str(written_paths.size()) + " dosya başarıyla oluşturuldu/güncellendi.")
 
 static func _open_script(args: Dictionary) -> Dictionary:
 	var path = AISidebarPathPolicy.normalize_path(args.get("file_path", ""))

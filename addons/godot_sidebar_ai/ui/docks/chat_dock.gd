@@ -11,6 +11,7 @@ const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/a
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
+const AISidebarEditorStateSnapshot = preload("res://addons/godot_sidebar_ai/core/state/editor_state_snapshot.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
@@ -37,6 +38,7 @@ var current_model_list: Array = []
 var pending_change_set: AISidebarChangeSet = null
 var pending_tool_name: String = ""
 var pending_tool_args: Dictionary = {}
+var last_user_prompt: String = ""
 
 func _ready() -> void:
 	if not Engine.is_editor_hint():
@@ -62,6 +64,7 @@ func _ready() -> void:
 	agent_runner.runtime_observation_received.connect(_on_agent_runtime_observation)
 	agent_runner.debugging_started.connect(_on_agent_debugging_started)
 	agent_runner.error_occurred.connect(_on_agent_error)
+	agent_runner.task_completed.connect(_on_agent_task_completed)
 	provider.models_fetched.connect(_on_models_fetched)
 
 	# 2. UI Olayları
@@ -118,7 +121,7 @@ func update_ui_language() -> void:
 		
 	if send_btn:
 		if agent_runner and agent_runner.is_running():
-			send_btn.text = AISidebarI18n.get_text("btn_stop")
+			send_btn.text = "⏹ " + AISidebarI18n.get_text("btn_stop")
 			send_btn.tooltip_text = AISidebarI18n.get_text("tooltip_stop")
 		else:
 			send_btn.text = AISidebarI18n.get_text("btn_send")
@@ -200,6 +203,7 @@ func _on_send_pressed() -> void:
 	if user_text.is_empty():
 		return
 		
+	last_user_prompt = user_text
 	input_field.text = ""
 	agent_runner.start_task(user_text)
 
@@ -272,7 +276,13 @@ func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISid
 	pending_change_set = cs
 	
 	var desc = cs.get_summary() if cs else tool_name
-	append_chat_message("⏳ Onay Gerekli", "Ajan şu değişikliği yapmak istiyor: [b]" + desc + "[/b]\n[i]Onaylamak için yukarıdaki butonu kullanın veya 'Diff Gör'e tıklayın.[/i]", "#ebcb8b")
+	var diff_preview = ""
+	if cs:
+		var raw_diff = cs.get_unified_diff()
+		if not raw_diff.is_empty():
+			diff_preview = "\n[code][color=#cdd6f4]" + raw_diff.left(300) + ("..." if raw_diff.size() > 300 else "") + "[/color][/code]"
+			
+	append_chat_message("⏳ Onay Gerekli", "Ajan şu değişikliği yapmak istiyor:\n[b]" + desc + "[/b]" + diff_preview + "\n[i]Onaylamak için yukarıdaki 'Onayla & Uygula' butonunu kullanın veya 'Diff Gör'e tıklayın.[/i]", "#ebcb8b")
 	
 	if change_set_dialog:
 		change_set_dialog.show_change_set(tool_name, args, cs)
@@ -284,7 +294,7 @@ func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: St
 	if is_valid:
 		append_chat_message("✓ Doğrulandı", msg, "#a3be8c")
 	else:
-		append_chat_message("⚠️ Doğrulama Hatası", msg, "#bf616a")
+		append_chat_message("⚠️ Doğrulama Uyarısı", msg, "#bf616a")
 
 func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 	if obs.has_errors():
@@ -307,6 +317,24 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 		elif result.has("error") and result["error"] is String:
 			err_msg = result["error"]
 		append_chat_message("❌ " + tool_name, err_msg, "#bf616a")
+
+func _on_agent_task_completed(metrics: Dictionary) -> void:
+	if not chat_log:
+		return
+	var is_ok = metrics.get("success", true)
+	var status_hdr = "[b][color=#a3be8c]✓ Görev Tamamlandı[/color][/b]" if is_ok else "[b][color=#bf616a]✕ Görev Sonlandı[/color][/b]"
+	var elapsed = str(metrics.get("elapsed_seconds", 0.0)) + "s"
+	var llm_turns = str(metrics.get("llm_turns", 0))
+	var tool_calls = str(metrics.get("tool_calls", 0))
+	var file_ops = str(metrics.get("file_ops", 0))
+	var editor_ops = str(metrics.get("editor_ops", 0))
+	var verify_cps = str(metrics.get("verification_checkpoints", 0))
+	
+	chat_log.append_text("[color=#4c566a][font_size=11]╭── 📊 Görev Metrikleri ──────────────────────────────[/font_size][/color]\n")
+	chat_log.append_text(status_hdr + " [color=#81a1c1](" + elapsed + ")[/color]\n")
+	chat_log.append_text("[font_size=11][color=#d8dee9]• LLM Dönüşü: " + llm_turns + "  |  Araç Çağrısı: " + tool_calls + "  |  Doğrulama Checkpoint: " + verify_cps + "\n")
+	chat_log.append_text("• Dosya İşlemleri (File-First): " + file_ops + "  |  Editör İşlemleri: " + editor_ops + "[/color][/font_size]\n")
+	chat_log.append_text("[color=#4c566a][font_size=11]╰─────────────────────────────────────────────────────[/font_size][/color]\n\n")
 
 func _on_agent_error(err_msg: String) -> void:
 	append_chat_message(AISidebarI18n.get_text("sender_error"), "❌ " + err_msg, "#bf616a")

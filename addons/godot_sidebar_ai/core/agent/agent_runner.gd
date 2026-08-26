@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarAgentRunner
 
-## Otonom Ajan İcra Döngüsü, Hata Ayıklama & Otomatik İyileştirme Motoru (SRP).
+## Otonom Ajan İcra Döngüsü, Hata Ayıklama & Telemetri Motoru (SRP).
 
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
@@ -43,6 +43,7 @@ signal runtime_observation_received(obs: AISidebarRuntimeObservation)
 signal debugging_started(error_summary: String)
 signal error_occurred(error_message: String)
 signal loop_finished()
+signal task_completed(metrics: Dictionary)
 
 var provider: AISidebarAIProvider
 var context: AISidebarAgentContext
@@ -54,6 +55,15 @@ var _recovery_attempt_count: int = 0
 var _last_error_signature: String = ""
 var _last_tool_signature: String = ""
 var _stagnation_count: int = 0
+
+# Telemetri & Performans Sayaçları
+var task_start_time_msec: int = 0
+var llm_turns_count: int = 0
+var tool_calls_count: int = 0
+var file_ops_count: int = 0
+var editor_ops_count: int = 0
+var runtime_ops_count: int = 0
+var verification_checkpoints_count: int = 0
 
 # Bekleyen Onay Verisi
 var _pending_tool_name: String = ""
@@ -94,6 +104,15 @@ func start_task(user_prompt: String) -> void:
 	_pending_tool_args = {}
 	_pending_change_set = null
 	
+	# Telemetri Sıfırlama
+	task_start_time_msec = Time.get_ticks_msec()
+	llm_turns_count = 0
+	tool_calls_count = 0
+	file_ops_count = 0
+	editor_ops_count = 0
+	runtime_ops_count = 0
+	verification_checkpoints_count = 0
+	
 	context.add_user_message(user_prompt)
 	text_received.emit("user", user_prompt)
 	
@@ -110,6 +129,21 @@ func stop() -> void:
 		
 	_set_state(AgentState.CANCELLED, AISidebarI18n.get_text("agent_stopped"))
 	error_occurred.emit(AISidebarI18n.get_text("agent_stopped"))
+	_finish_task(false)
+
+func _finish_task(success: bool) -> void:
+	var elapsed_sec = (Time.get_ticks_msec() - task_start_time_msec) / 1000.0
+	var metrics = {
+		"success": success,
+		"elapsed_seconds": snappedf(elapsed_sec, 0.1),
+		"llm_turns": llm_turns_count,
+		"tool_calls": tool_calls_count,
+		"file_ops": file_ops_count,
+		"editor_ops": editor_ops_count,
+		"runtime_ops": runtime_ops_count,
+		"verification_checkpoints": verification_checkpoints_count
+	}
+	task_completed.emit(metrics)
 	loop_finished.emit()
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
@@ -132,7 +166,6 @@ func approve_pending_action() -> void:
 	var result: Dictionary = AISidebarToolManager.execute_tool(fn_name, args, true)
 	tool_completed.emit(fn_name, result)
 	
-	# Otomatik Doğrulama (Verification)
 	_run_verification_and_proceed(fn_name, tc_id, args, result)
 
 ## Kullanıcı bekleyen işlemi reddetti (Reject)
@@ -154,7 +187,7 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 	
 	_run_next_step()
 
-## Çalışma zamanı hatası alındığında otomatik iyileştirme döngüsünü tetikler (Error -> Context -> Fix)
+## Çalışma zamanı hatası alındığında otomatik iyileştirme döngüsünü tetikler
 func handle_runtime_error(obs: AISidebarRuntimeObservation) -> void:
 	if not is_running():
 		return
@@ -166,14 +199,12 @@ func handle_runtime_error(obs: AISidebarRuntimeObservation) -> void:
 		var e0 = obs.errors[0]
 		err_sig = e0.get("file", "") + ":" + str(e0.get("line", 0)) + ":" + e0.get("message", "")
 		
-	# Tekrarlayan Hata Tespiti (Repeated Identical Error)
 	if err_sig == _last_error_signature and not err_sig.is_empty():
 		_recovery_attempt_count += 1
 		if _recovery_attempt_count > max_recovery_attempts:
-			_set_state(AgentState.ERROR, "Aynı çalışma zamanı hatası (" + str(_recovery_attempt_count) + " kez) çözülemedi. Müdahale bekleniyor.")
+			_set_state(AgentState.ERROR, "Aynı çalışma zamanı hatası çözülemedi.")
 			error_occurred.emit("Otomatik iyileştirme limiti aşıldı: " + err_sig)
-			loop_finished.emit()
-			_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+			_finish_task(false)
 			return
 	else:
 		_last_error_signature = err_sig
@@ -196,10 +227,10 @@ func _run_next_step() -> void:
 	if current_step > max_steps:
 		_set_state(AgentState.ERROR, "Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
 		error_occurred.emit("Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
-		loop_finished.emit()
-		_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+		_finish_task(false)
 		return
 		
+	llm_turns_count += 1
 	var status_msg = AISidebarI18n.get_text("status_thinking")
 	if current_step > 1:
 		status_msg = AISidebarI18n.get_text("status_executing", {"step": current_step, "max": max_steps})
@@ -216,10 +247,9 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		
 	# Boş Yanıt Kontrolü (Empty Response Guard)
 	if text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty():
-		_set_state(AgentState.ERROR, "Modelden boş yanıt alındı (Empty Response).")
-		error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE). Lütfen model seçimini, API adresini veya araç setini kontrol edin.")
-		loop_finished.emit()
-		_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+		_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
+		error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE).")
+		_finish_task(false)
 		return
 		
 	# 1. Thinking (Düşünce Süreci)
@@ -232,7 +262,6 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		
 	# 3. Araç İcrası
 	if tool_calls.size() > 0:
-		# Assistant Tool Call mesajını OpenAI formatında bağlama ekle
 		if context:
 			context.add_assistant_tool_call_message(text_content, tool_calls)
 			
@@ -241,18 +270,19 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			var tc_id: String = tc.get("id", "call_default")
 			var args: Dictionary = tc.get("arguments", {})
 			
+			tool_calls_count += 1
+			_classify_telemetry_op(fn_name, args)
+			
 			# Stagnation / Erken Tekrarlama Koruması
 			var sig = fn_name + ":" + JSON.stringify(args)
 			if sig == _last_tool_signature:
 				_stagnation_count += 1
 				if _stagnation_count >= 2:
-					_set_state(AgentState.ERROR, "Aynı araç (" + fn_name + ") tekrar tekrar çağrıldı. Döngü durduruldu.")
+					_set_state(AgentState.ERROR, "Aynı araç (" + fn_name + ") tekrar tekrar çağrıldı.")
 					error_occurred.emit("Ajan aynı aracı (" + fn_name + ") tekrarladı. Görev sonlandırıldı.")
-					loop_finished.emit()
-					_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+					_finish_task(false)
 					return
 				else:
-					# Modele ara uyarı gönder
 					if context:
 						context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
 					_run_next_step()
@@ -267,7 +297,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			
 			var result: Dictionary = AISidebarToolManager.execute_tool(fn_name, args, false)
 			
-			# Eğer onay gerekiyorsa durakla ve WAITING_FOR_APPROVAL durumuna geç
+			# Onay gerekiyorsa durakla
 			if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
 				_pending_tool_name = fn_name
 				_pending_tool_id = tc_id
@@ -285,7 +315,19 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 					cs = AISidebarChangeSet.new(path, AISidebarChangeSet.ChangeType.MODIFY_FILE, args.get("content", ""), old_c, "Script güncellemesi")
 				elif fn_name == "delete_node":
 					cs = AISidebarChangeSet.new(args.get("node_path", ""), AISidebarChangeSet.ChangeType.MUTATE_SCENE, "", "", "Düğüm silme: " + args.get("node_path", ""))
-					
+				elif fn_name == "write_files":
+					cs = AISidebarChangeSet.new("", AISidebarChangeSet.ChangeType.MODIFY_FILE, "", "", "Toplu dosya yazımı")
+					var f_arr = args.get("files", [])
+					for f_item in f_arr:
+						if f_item is Dictionary:
+							var f_p = f_item.get("file_path", "")
+							var f_c = f_item.get("content", "")
+							var old_txt = ""
+							if FileAccess.file_exists(f_p):
+								var f_rd = FileAccess.open(f_p, FileAccess.READ)
+								if f_rd: old_txt = f_rd.get_as_text(); f_rd.close()
+							cs.add_sub_change(f_p, AISidebarChangeSet.ChangeType.MODIFY_FILE, f_c, old_txt, f_p.get_file())
+							
 				_pending_change_set = cs
 				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
 				approval_requested.emit(fn_name, args, cs)
@@ -293,53 +335,59 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				
 			tool_completed.emit(fn_name, result)
 			
-			# Eğer araç oyunu başlattıysa runtime izleme durumuna geç
 			if fn_name == "play_game" or fn_name == "restart_game":
-				_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor, çalışma zamanı gözlemleniyor...")
+				_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor...")
 				
 			_run_verification_and_proceed(fn_name, tc_id, args, result)
 			return
 	else:
-		# Araç çağrısı yok, model kullanıcıya nihai yanıtını verdi
+		# Araç çağrısı yok, nihai metin yanıtı
 		if not text_content.is_empty() and context:
 			context.add_assistant_message(text_content)
 			
 		_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
-		loop_finished.emit()
-		_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+		_finish_task(true)
+
+func _classify_telemetry_op(fn_name: String, args: Dictionary) -> void:
+	match fn_name:
+		"create_or_update_script", "create_scene", "save_scene":
+			file_ops_count += 1
+		"write_files":
+			var files_arr = args.get("files", [])
+			file_ops_count += maxi(1, files_arr.size())
+		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
+			editor_ops_count += 1
+		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
+			runtime_ops_count += 1
 
 func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args: Dictionary, result: Variant) -> void:
-	_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
-	verification_started.emit(tool_name)
-	
 	var res_dict = result if result is Dictionary else {}
-	var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, res_dict)
-	var is_valid = verified_result.get("success", false) if verified_result is Dictionary else true
-	var ui_msg = verified_result.get("message", "")
+	var is_valid = res_dict.get("success", false)
+	var ui_msg = res_dict.get("message", "")
 	
-	# UI için insan-okunabilir bildirim
-	verification_completed.emit(tool_name, is_valid, ui_msg)
+	# Risk-Orantılı Doğrulama: Sadece doğrulama gerektiren araçlarda checkpoint çalıştır
+	var needs_explicit_verify = (tool_name == "validate_script" or tool_name == "play_game" or tool_name == "get_runtime_errors")
 	
+	if needs_explicit_verify:
+		_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
+		verification_started.emit(tool_name)
+		verification_checkpoints_count += 1
+		var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, res_dict)
+		is_valid = verified_result.get("success", false)
+		ui_msg = verified_result.get("message", ui_msg)
+		verification_completed.emit(tool_name, is_valid, ui_msg)
+		
 	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
 	if context:
-		# Modele gönderilen tool payload'ında mutlaka ham structured data korunur:
 		var final_payload: Dictionary = {}
-		if verified_result.has("data") and verified_result["data"] != null:
+		if res_dict.has("data") and res_dict["data"] != null:
 			final_payload = {
 				"success": is_valid,
-				"data": verified_result["data"]
+				"data": res_dict["data"],
+				"message": ui_msg
 			}
-			if not ui_msg.is_empty():
-				final_payload["message"] = ui_msg
-		elif res_dict.has("data") and res_dict["data"] != null:
-			final_payload = {
-				"success": is_valid,
-				"data": res_dict["data"]
-			}
-			if not ui_msg.is_empty():
-				final_payload["message"] = ui_msg
 		else:
-			final_payload = verified_result
+			final_payload = res_dict
 			
 		context.add_tool_result_message(tool_call_id, tool_name, final_payload)
 		
@@ -348,5 +396,4 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 func _on_provider_error(error_message: String) -> void:
 	_set_state(AgentState.ERROR, error_message)
 	error_occurred.emit(error_message)
-	loop_finished.emit()
-	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+	_finish_task(false)

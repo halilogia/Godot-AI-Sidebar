@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarChangeSet
 
-## Atomik Değişiklik Seti ve Geri Alma (ChangeSet, Unified Diff & Multi-Item Support) (SRP).
+## Atomik Değişiklik Seti ve Geri Alma (ChangeSet, Multi-File Unified Diff & Batch Support) (SRP).
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 
@@ -54,7 +54,7 @@ func apply() -> Dictionary:
 	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_resource_filesystem"):
 		EditorInterface.get_resource_filesystem().scan()
 		
-	return {"success": true, "message": "ChangeSet başarıyla uygulandı (" + str(1 + sub_changes.size()) + " değişiklik)."}
+	return {"success": true, "message": "ChangeSet başarıyla uygulandı (" + str(1 + sub_changes.size()) + " dosya/değişiklik)."}
 
 func _apply_single(path: String, c_type: ChangeType, content: String) -> Dictionary:
 	if path.is_empty():
@@ -120,10 +120,11 @@ func _rollback_single(path: String, c_type: ChangeType, old_c: String) -> Dictio
 ## Çoklu dosya ve satır farkı özeti üretir
 func get_summary() -> String:
 	var lines: PackedStringArray = []
-	var total_items = 1 + sub_changes.size()
-	lines.append("Değişiklik Sayısı: " + str(total_items))
+	var total_items = (1 if not target_path.is_empty() else 0) + sub_changes.size()
+	lines.append("Değişiklik Sayısı: " + str(total_items) + " dosya")
 	
-	_append_item_summary(target_path, change_type, old_content, new_content, description, lines)
+	if not target_path.is_empty():
+		_append_item_summary(target_path, change_type, old_content, new_content, description, lines)
 	
 	for sub in sub_changes:
 		_append_item_summary(sub["target_path"], sub["change_type"], sub["old_content"], sub["new_content"], sub["description"], lines)
@@ -145,14 +146,26 @@ func _append_item_summary(path: String, c_type: ChangeType, old_c: String, new_c
 		ChangeType.MUTATE_SCENE:
 			out_lines.append(" ❖ [SAHNE] " + desc)
 
-## Satır satır Unified Diff üretir
+## Satır satır Çoklu Dosya Unified Diff üretir
 func get_unified_diff() -> String:
 	var diff_lines: PackedStringArray = []
-	diff_lines.append("--- " + (target_path if not target_path.is_empty() else "Old State"))
-	diff_lines.append("+++ " + (target_path if not target_path.is_empty() else "New State"))
 	
-	var old_arr = old_content.split("\n")
-	var new_arr = new_content.split("\n")
+	if not target_path.is_empty():
+		_append_single_diff(target_path, old_content, new_content, diff_lines)
+		
+	for sub in sub_changes:
+		if diff_lines.size() > 0:
+			diff_lines.append("\n" + "=".repeat(40) + "\n")
+		_append_single_diff(sub["target_path"], sub["old_content"], sub["new_content"], diff_lines)
+		
+	return "\n".join(diff_lines)
+
+func _append_single_diff(path: String, old_c: String, new_c: String, out_diff: PackedStringArray) -> void:
+	out_diff.append("--- a/" + path)
+	out_diff.append("+++ b/" + path)
+	
+	var old_arr = old_c.split("\n")
+	var new_arr = new_c.split("\n")
 	
 	var max_len = maxi(old_arr.size(), new_arr.size())
 	for i in range(max_len):
@@ -161,16 +174,14 @@ func get_unified_diff() -> String:
 		
 		if o_line != null and n_line != null:
 			if o_line == n_line:
-				diff_lines.append("  " + o_line)
+				out_diff.append("  " + o_line)
 			else:
-				diff_lines.append("- " + o_line)
-				diff_lines.append("+ " + n_line)
+				out_diff.append("- " + o_line)
+				out_diff.append("+ " + n_line)
 		elif o_line != null:
-			diff_lines.append("- " + o_line)
+			out_diff.append("- " + o_line)
 		elif n_line != null:
-			diff_lines.append("+ " + n_line)
-			
-	return "\n".join(diff_lines)
+			out_diff.append("+ " + n_line)
 
 func get_diff_text() -> String:
 	return get_unified_diff()
