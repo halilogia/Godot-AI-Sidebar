@@ -345,8 +345,9 @@ static func _restart_game(args: Dictionary) -> Dictionary:
 
 static func _get_runtime_errors(args: Dictionary) -> Dictionary:
 	var debugger = AISidebarRuntimeDebugger.new()
-	var obs = debugger.get_current_observation()
-	return AISidebarToolResult.ok(obs.to_dict(), "Çalışma zamanı gözlem verisi çekildi.")
+	var checkpoint_ms = int(args.get("checkpoint_msec", 1500))
+	var obs = debugger.observe_runtime(checkpoint_ms)
+	return AISidebarToolResult.ok(obs.to_dict(), obs.get_observation_verdict())
 
 static func _take_editor_screenshot(args: Dictionary) -> Dictionary:
 	var path = args.get("save_path", "user://ai_editor_snapshot.png")
