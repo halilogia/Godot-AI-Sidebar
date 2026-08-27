@@ -60,6 +60,14 @@ var pending_tool_name: String = ""
 var pending_tool_args: Dictionary = {}
 var last_user_prompt: String = ""
 
+# Kuyruktaki Mesajlar (FIFO Message Queue)
+var _message_queue: Array[Dictionary] = []
+var _is_user_stopped: bool = false
+var _queue_container: PanelContainer = null
+var _queue_title_label: Label = null
+var _queue_items_vbox: VBoxContainer = null
+var _queue_clear_btn: Button = null
+
 var _current_activity_group: AISidebarActivityGroup = null
 var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
@@ -147,11 +155,63 @@ func _ready() -> void:
 	if message_stream:
 		message_stream.mouse_filter = Control.MOUSE_FILTER_PASS
 
+	_setup_queue_ui()
+
 	# 3. Başlangıç Yüklemesi
 	update_ui_language()
 	_load_cached_models()
 	if provider:
 		provider.fetch_models()
+
+func _setup_queue_ui() -> void:
+	if not has_node("MainLayout/InputArea"):
+		return
+	var input_area = $MainLayout/InputArea
+	
+	_queue_container = PanelContainer.new()
+	_queue_container.visible = false
+	var style = StyleBoxFlat.new()
+	style.set_corner_radius_all(4)
+	style.bg_color = Color(0.14, 0.16, 0.22, 0.95)
+	style.border_color = Color(0.35, 0.45, 0.6, 0.7)
+	style.set_border_width_all(1)
+	style.content_margin_left = 6
+	style.content_margin_top = 4
+	style.content_margin_right = 6
+	style.content_margin_bottom = 4
+	_queue_container.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 2)
+	
+	var header = HBoxContainer.new()
+	_queue_title_label = Label.new()
+	_queue_title_label.text = "📋 Queued Messages (0)"
+	_queue_title_label.add_theme_font_size_override("font_size", 10)
+	_queue_title_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	header.add_child(_queue_title_label)
+	
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(spacer)
+	
+	_queue_clear_btn = Button.new()
+	_queue_clear_btn.text = "Clear All"
+	_queue_clear_btn.flat = true
+	_queue_clear_btn.focus_mode = Control.FOCUS_NONE
+	_queue_clear_btn.add_theme_font_size_override("font_size", 9)
+	_queue_clear_btn.add_theme_color_override("font_color", Color(0.8, 0.5, 0.5))
+	_queue_clear_btn.pressed.connect(_clear_all_queue)
+	header.add_child(_queue_clear_btn)
+	vbox.add_child(header)
+	
+	_queue_items_vbox = VBoxContainer.new()
+	_queue_items_vbox.add_theme_constant_override("separation", 2)
+	vbox.add_child(_queue_items_vbox)
+	
+	_queue_container.add_child(vbox)
+	input_area.add_child(_queue_container)
+	input_area.move_child(_queue_container, 0)
 
 func update_ui_language() -> void:
 	var current_lang = AISidebarI18n.get_current_language().to_upper()
@@ -196,9 +256,14 @@ func _on_export_pressed() -> void:
 	if msgs.is_empty():
 		return
 		
-	var md = AISidebarChatExporter.export_to_markdown(msgs)
+	var cfg = AISidebarConfig.load_config()
+	var session_meta = {
+		"model": cfg.get("selected_model", "all"),
+		"exported_at": Time.get_datetime_string_from_system()
+	}
+	var md = AISidebarChatExporter.export_to_markdown(msgs, session_meta)
 	DisplayServer.clipboard_set(md)
-	var save_res = AISidebarChatExporter.save_to_file(md)
+	var save_res = AISidebarChatExporter.save_to_file(md, "md")
 	
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "check")
@@ -281,6 +346,9 @@ func _on_model_selected(index: int) -> void:
 
 func _on_input_gui_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
+		var is_enter = (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER)
+		
+		# Mention Açıkken Klavye Navigasyonu
 		if mention_container and mention_container.visible:
 			if event.keycode == KEY_ESCAPE:
 				accept_event()
@@ -294,16 +362,28 @@ func _on_input_gui_input(event: InputEvent) -> void:
 				accept_event()
 				_navigate_mention_list(-1)
 				return
-			elif event.keycode == KEY_TAB or (event.keycode == KEY_ENTER and not (event.ctrl_pressed or event.shift_pressed)):
+			elif event.keycode == KEY_TAB or (is_enter and not (event.ctrl_pressed or event.shift_pressed)):
 				var sel = mention_list.get_selected_items()
 				if sel.size() > 0:
 					accept_event()
 					_on_mention_item_activated(sel[0])
 					return
-					
-		if event.keycode == KEY_ENTER and (event.ctrl_pressed or event.shift_pressed):
-			accept_event()
-			_on_send_pressed()
+			elif is_enter and event.shift_pressed:
+				accept_event()
+				mention_container.visible = false
+				input_field.insert_text_at_caret("\n")
+				return
+				
+		# Enter ve Shift+Enter / Ctrl+Enter Yönetimi
+		if is_enter:
+			if event.shift_pressed:
+				# Shift+Enter -> Yeni satır (Multiline)
+				accept_event()
+				input_field.insert_text_at_caret("\n")
+			elif not event.alt_pressed:
+				# Enter veya Ctrl+Enter -> Mesajı Gönder veya Kuyruğa Al
+				accept_event()
+				_on_send_pressed()
 
 func _navigate_mention_list(dir: int) -> void:
 	if not mention_list or mention_list.item_count == 0:
@@ -391,32 +471,128 @@ func _on_send_pressed() -> void:
 	if mention_container:
 		mention_container.visible = false
 		
-	if agent_runner.is_running():
-		agent_runner.stop()
-		update_ui_language()
-		return
-		
 	var user_text = input_field.text.strip_edges()
+	
+	# Eğer metin boşsa ve kullanıcı 'Stop' butonuna bastıysa:
 	if user_text.is_empty():
+		if agent_runner.is_running():
+			_is_user_stopped = true
+			agent_runner.stop()
+			update_ui_language()
 		return
 		
-	last_user_prompt = user_text
 	input_field.text = ""
+	_is_user_stopped = false
 	
+	# Eğer ajan şu anda başka bir görev çalıştırıyorsa -> Mesajı Kuyruğa Al
+	if agent_runner.is_running():
+		var queue_item = {
+			"id": "q_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+			"prompt": user_text,
+			"created_at": Time.get_unix_time_from_system()
+		}
+		_message_queue.append(queue_item)
+		_update_queue_ui()
+		return
+		
+	# Ajan boşta ise görevi hemen başlat
+	_start_task_prompt(user_text)
+
+func _start_task_prompt(prompt_text: String) -> void:
+	last_user_prompt = prompt_text
 	_current_activity_group = null
 	_current_runtime_card = null
 	_current_approval_card = null
+	_is_user_stopped = false
 	
-	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(user_text)
-	agent_runner.start_task(resolved_ctx["augmented_prompt"], user_text)
+	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
+	agent_runner.start_task(resolved_ctx["augmented_prompt"], prompt_text)
+
+func _update_queue_ui() -> void:
+	if not _queue_container or not _queue_items_vbox:
+		return
+		
+	for child in _queue_items_vbox.get_children():
+		child.queue_free()
+		
+	if _message_queue.is_empty():
+		_queue_container.visible = false
+		return
+		
+	_queue_container.visible = true
+	if _queue_title_label:
+		_queue_title_label.text = "📋 Queued Messages (%d)" % _message_queue.size()
+		
+	for i in range(_message_queue.size()):
+		var item = _message_queue[i]
+		var item_row = HBoxContainer.new()
+		item_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var num_label = Label.new()
+		num_label.text = str(i + 1) + "."
+		num_label.add_theme_font_size_override("font_size", 10)
+		num_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		item_row.add_child(num_label)
+		
+		var prompt_label = Label.new()
+		prompt_label.text = str(item.get("prompt", "")).replace("\n", " ")
+		prompt_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		prompt_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		prompt_label.clip_text = true
+		prompt_label.add_theme_font_size_override("font_size", 10)
+		item_row.add_child(prompt_label)
+		
+		var cancel_btn = Button.new()
+		cancel_btn.text = "✕"
+		cancel_btn.flat = true
+		cancel_btn.focus_mode = Control.FOCUS_NONE
+		cancel_btn.add_theme_font_size_override("font_size", 10)
+		cancel_btn.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
+		cancel_btn.tooltip_text = "Bu sıradaki mesajı iptal et"
+		var item_id = item.get("id", "")
+		cancel_btn.pressed.connect(func(): _cancel_queued_message(item_id))
+		item_row.add_child(cancel_btn)
+		
+		_queue_items_vbox.add_child(item_row)
+
+func _cancel_queued_message(item_id: String) -> void:
+	for i in range(_message_queue.size()):
+		if _message_queue[i].get("id", "") == item_id:
+			_message_queue.remove_at(i)
+			break
+	_update_queue_ui()
+
+func _clear_all_queue() -> void:
+	_message_queue.clear()
+	_update_queue_ui()
+
+func _check_and_dispatch_next_queue() -> void:
+	if _is_user_stopped:
+		return
+		
+	if _message_queue.size() > 0:
+		var next_item = _message_queue.pop_front()
+		_update_queue_ui()
+		if next_item is Dictionary and next_item.has("prompt"):
+			var next_prompt = str(next_item["prompt"])
+			var t = get_tree()
+			if t:
+				t.create_timer(0.05).timeout.connect(func():
+					_start_task_prompt(next_prompt)
+				)
+			else:
+				_start_task_prompt(next_prompt)
 
 func _on_clear_pressed() -> void:
 	if mention_container:
 		mention_container.visible = false
 	if agent_runner and agent_runner.is_running():
+		_is_user_stopped = true
 		agent_runner.stop()
 	if agent_context:
 		agent_context.clear()
+	_message_queue.clear()
+	_update_queue_ui()
 	if message_stream:
 		for child in message_stream.get_children():
 			child.queue_free()
@@ -655,6 +831,8 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	var telemetry_comp = AISidebarTelemetryCard.new(metrics)
 	_add_stream_component(telemetry_comp)
 	update_ui_language()
+	
+	_check_and_dispatch_next_queue()
 
 func _on_agent_error(err_msg: String) -> void:
 	_current_assistant_bubble = null
@@ -669,6 +847,8 @@ func _on_agent_error(err_msg: String) -> void:
 	)
 	_add_stream_component(err_comp)
 	update_ui_language()
+	
+	_check_and_dispatch_next_queue()
 
 func _on_meta_clicked(meta: Variant) -> void:
 	var m_str = str(meta)

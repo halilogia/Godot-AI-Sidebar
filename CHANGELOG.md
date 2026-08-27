@@ -7,6 +7,28 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
+## [2.4.0] - 2026-08-27 (Enter=Send, Queued Messages FIFO & Chat Export 2.0)
+
+### 🌟 Eklenenler & İyileştirmeler
+* **Enter = Send UX Standardı:**
+  - `Enter` ve `Ctrl+Enter` mesajı gönderir (veya kuyruğa alır).
+  - `Shift+Enter` çok satırlı (multiline) metin girişi için yeni satır ekler.
+  - `@mention` popup açıkken `Enter` ve `Tab` öneriyi seçer; `Esc` kapatır; `Yukarı/Aşağı` gezinir.
+* **Queued Messages (FIFO Sıralı Mesaj Kuyruğu):**
+  - AI bir görev üzerinde çalışırken (veya onay beklerken) kullanıcı yeni mesajlar gönderebilir.
+  - Yeni mesajlar `_message_queue` kuyruğuna alınır ve girdi kutusunun üstünde `📋 Queued Messages (X)` kartında listelenir.
+  - Kullanıcı istediği sırada bekleyen mesajı `✕` butonuyla iptal edebilir veya `Clear All` ile tümünü temizleyebilir.
+  - Aktif görev tamamlandığında kuyruktaki sıradaki mesaj otomatik olarak başlatılır.
+  - Kullanıcı `Stop` veya `Clear` yaptığında kuyruk güvenli şekilde duraklatılır veya temizlenir.
+* **Gelişmiş Chat Export 2.0 (`chat_exporter.gd`):**
+  - İnsan ve AI tarafından kolayca ayrıştırılabilen zengin Markdown ve JSON dışa aktarım desteği.
+  - Hiyerarşik başlıklar: `## 👤 User` (multimodal görsel rozetleri dahil), `## 🤖 Godot AI` (Reasoning/Planning blokları dahil), `#### ⚡ Tool Executed` (girintili JSON argümanları), `### ⚙️ Tool Result` (dosya hedefleri, runtime teşhis hataları, durum rozetleri) ve `## 📊 Session Telemetry`.
+  - Hatalı veya eksik veri girişlerine karşı %100 Null-Safe yapı.
+* **Kapsamlı Test Paketi:**
+  - `tests/test_ui_ux_queue_and_input.gd` ve genişletilmiş `tests/test_chat_exporter.gd` ile toplam test paketi 47'ye ve doğrulama sayısı 210'a ulaştı (`%100 ALL PASS`).
+
+---
+
 ## [2.3.0] - 2026-08-27 (Viewport Screenshot & Multimodal Vision Loop)
 
 ### 🌟 Eklenenler

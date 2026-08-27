@@ -47,6 +47,7 @@ const TestMentionManager = preload("res://tests/test_mention_manager.gd")
 const TestContextCompactor = preload("res://tests/test_context_compactor.gd")
 const TestNetworkRecovery = preload("res://tests/test_network_recovery.gd")
 const TestViewportScreenshot = preload("res://tests/test_viewport_screenshot.gd")
+const TestUIUXQueueAndInput = preload("res://tests/test_ui_ux_queue_and_input.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -99,7 +100,8 @@ func _init() -> void:
 		TestMentionManager,
 		TestContextCompactor,
 		TestNetworkRecovery,
-		TestViewportScreenshot
+		TestViewportScreenshot,
+		TestUIUXQueueAndInput
 	]
 	
 	var total_passed = 0

@@ -28,13 +28,15 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 ---
 
-## 📍 Faz 3: Canlı LLM SSE Streaming, @Mention & Context Optimizasyonu (Tamamlandı ✅)
+## 📍 Faz 3: Canlı LLM SSE Streaming, @Mention & UX 2.0 (Tamamlandı ✅)
 
 - [x] Gerçek zamanlı LLM SSE akışı ve canlı sohbet baloncuğu güncellemesi.
 - [x] `@mention` ile proje dosyalarını ve sahne ağacı düğümlerini otomatik tamamlama.
 - [x] `AISidebarContextCompactor` ile eski araç çıktılarını 1-2 satırlık özetlere dönüştürme (%70 token tasarrufu).
 - [x] Chat panellerinde fareyle metin seçimi ve `Ctrl+C` kısayolu desteği.
-- [x] Chat geçmişini Markdown ve JSON olarak tek tıkla dışa aktarma (`ChatExporter`).
+- [x] **Enter = Send & Shift+Enter = Newline:** Doğal sohbet etkileşimi, çok satırlı girdi desteği ve @mention popup klavye koruması.
+- [x] **Queued Messages (FIFO Sıralı Mesaj Kuyruğu):** AI çalışırken yeni görev gönderebilme, `📋 Queued Messages (X)` UI paneli, tek tek iptal ve sıralı otomatik yürütme.
+- [x] **Gelişmiş Chat Export 2.0 (`ChatExporter`):** İnsan ve AI dostu zengin Markdown & JSON hiyerarşisi, tool argümanları, diff ve telemetri ayrıştırma.
 
 ---
 
