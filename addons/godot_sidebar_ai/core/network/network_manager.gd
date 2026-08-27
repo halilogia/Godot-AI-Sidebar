@@ -145,6 +145,52 @@ func _status_to_name(status: int) -> String:
 		HTTPClient.STATUS_TLS_HANDSHAKE_ERROR: return "STATUS_TLS_HANDSHAKE_ERROR"
 		_: return "STATUS_" + str(status)
 
+## Yanıt tamponunun geçerli ve tamamlanmış bir yanıt içerip içermediğini denetler.
+## Bağlantı soketi kapandığında (Status 0 veya Status 8) erken başarısızlığı önler.
+static func is_buffer_complete(raw_bytes: PackedByteArray, expected_len: int = -1) -> bool:
+	if raw_bytes.is_empty():
+		return false
+		
+	# 1. Content-Length sağlandıysa ve karşılandıysa
+	if expected_len > 0 and raw_bytes.size() >= expected_len:
+		return true
+		
+	var body_str = raw_bytes.get_string_from_utf8().strip_edges()
+	if body_str.is_empty():
+		return false
+		
+	# 2. SSE [DONE] kontrolü
+	if body_str.ends_with("[DONE]") or "data: [DONE]" in body_str:
+		return true
+		
+	# 3. Geçerli JSON kontrolü
+	if body_str.begins_with("{") and body_str.ends_with("}"):
+		var json = JSON.new()
+		if json.parse(body_str) == OK and json.data is Dictionary:
+			return true
+	elif body_str.begins_with("[") and body_str.ends_with("]"):
+		var json = JSON.new()
+		if json.parse(body_str) == OK and json.data is Array:
+			return true
+			
+	# 4. SSE Akışı tamamlanmış chunk kontrolü
+	if body_str.begins_with("data:"):
+		var lines = body_str.split("\n")
+		var valid_sse_chunk_count = 0
+		for line in lines:
+			var l_clean = line.strip_edges()
+			if l_clean.begins_with("data:"):
+				var payload = l_clean.substr(5).strip_edges()
+				if payload == "[DONE]":
+					return true
+				var p_json = JSON.new()
+				if p_json.parse(payload) == OK and p_json.data is Dictionary:
+					valid_sse_chunk_count += 1
+		if valid_sse_chunk_count > 0:
+			return true
+			
+	return false
+
 func _process(delta: float) -> void:
 	if not _is_request_active or _client == null:
 		return
@@ -157,12 +203,12 @@ func _process(delta: float) -> void:
 		
 	match status:
 		HTTPClient.STATUS_DISCONNECTED:
-			if _raw_response_body.size() > 0:
+			if is_buffer_complete(_raw_response_body, _expected_content_length):
 				_finalize_success()
 			else:
 				_is_request_active = false
-				print("[TIMING] %s | NETWORK_FAILED | Disconnected with 0 bytes" % [get_ts()])
-				request_failed.emit(_current_endpoint, "Bağlantı kapandı (Sunucu yanıt vermedi).")
+				print("[TIMING] %s | NETWORK_FAILED | Disconnected with incomplete/empty body (%d bytes)" % [get_ts(), _raw_response_body.size()])
+				request_failed.emit(_current_endpoint, "Bağlantı kapandı (Sunucu yanıt vermedi veya eksik kaldı).")
 		HTTPClient.STATUS_RESOLVING, HTTPClient.STATUS_CONNECTING:
 			_client.poll()
 		HTTPClient.STATUS_CONNECTED:
@@ -204,19 +250,18 @@ func _process(delta: float) -> void:
 					return
 					
 				# 2. Erken JSON & SSE Doğrulama (Early Completion)
-				var body_str = _raw_response_body.get_string_from_utf8().strip_edges()
-				if body_str.ends_with("[DONE]"):
+				if is_buffer_complete(_raw_response_body, _expected_content_length):
 					_finalize_success()
 					return
-				elif body_str.begins_with("{"):
-					var parsed_test = JSON.parse_string(body_str)
-					if parsed_test != null and parsed_test is Dictionary:
-						_finalize_success()
-						return
 		HTTPClient.STATUS_CONNECTION_ERROR, HTTPClient.STATUS_TLS_HANDSHAKE_ERROR:
-			_is_request_active = false
-			print("[TIMING] %s | NETWORK_ERROR | status=%d" % [get_ts(), status])
-			request_failed.emit(_current_endpoint, "Ağ bağlantı hatası (Status: " + str(status) + ")")
+			# Bağlantı soketi kapandı / sıfırlandı; ancak yanıt tamponu zaten tam/geçerli ise fatal hata sayma
+			if status == HTTPClient.STATUS_CONNECTION_ERROR and is_buffer_complete(_raw_response_body, _expected_content_length):
+				print("[TIMING] %s | CONNECTION_ERROR_RECOVERED | Valid response found in buffer (%d bytes), finalizing." % [get_ts(), _raw_response_body.size()])
+				_finalize_success()
+			else:
+				_is_request_active = false
+				print("[TIMING] %s | NETWORK_ERROR | status=%d bytes=%d" % [get_ts(), status, _raw_response_body.size()])
+				request_failed.emit(_current_endpoint, "Ağ bağlantı hatası (Status: " + str(status) + ")")
 
 func _finalize_success() -> void:
 	var total_dur = Time.get_ticks_msec() - _req_start_msec
