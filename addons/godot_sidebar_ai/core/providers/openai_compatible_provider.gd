@@ -88,28 +88,41 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 		
 	for i in range(messages.size()):
 		var msg = messages[i].duplicate(true)
+		payload_messages.append(msg)
 		
-		# Multimodal görsel parçaları dönüştürme
-		if i == messages.size() - 1 and msg.get("role", "") == "user" and images.size() > 0:
-			if not supports_vision():
-				error_occurred.emit("Seçili model (" + model + ") görsel (Vision) desteğine sahip değil.")
-				return
-				
-			var raw_content = msg.get("content", "")
-			var parts: Array = []
+	# Multimodal görsel parçaları dönüştürme ve mesaja ekleme
+	if images.size() > 0:
+		if not supports_vision():
+			error_occurred.emit("Seçili model (" + model + ") görsel (Vision) desteğine sahip değil.")
+			return
 			
+		var vision_parts: Array = []
+		for img in images:
+			if img is AISidebarVisionInput:
+				vision_parts.append(img.to_openai_content_part())
+				
+		# Eğer son mesaj bir 'user' mesajıysa doğrudan içine ekle
+		if payload_messages.size() > 0 and payload_messages[-1].get("role", "") == "user":
+			var last_msg = payload_messages[-1]
+			var raw_content = last_msg.get("content", "")
+			var parts: Array = []
 			if raw_content is String:
 				parts.append({"type": "text", "text": raw_content})
 			elif raw_content is Array:
 				parts.append_array(raw_content)
-				
-			for img in images:
-				if img is AISidebarVisionInput:
-					parts.append(img.to_openai_content_part())
-					
-			msg["content"] = parts
-			
-		payload_messages.append(msg)
+			parts.append_array(vision_parts)
+			last_msg["content"] = parts
+		else:
+			# Eğer son mesaj 'tool' veya 'assistant' ise (araç çalıştıktan sonra gelen görsel gözlem):
+			# OpenAI standartlarına uygun olarak yeni bir 'user' gözlem mesajı oluştur
+			var parts: Array = [
+				{"type": "text", "text": "Alınan güncel viewport ekran görüntüsü:"}
+			]
+			parts.append_array(vision_parts)
+			payload_messages.append({
+				"role": "user",
+				"content": parts
+			})
 		
 	var use_stream = config.get("stream", true)
 	var body_dict: Dictionary = {
