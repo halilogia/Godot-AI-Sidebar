@@ -38,6 +38,7 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 - [x] **Queued Messages (FIFO Sıralı Mesaj Kuyruğu):** AI çalışırken yeni görev gönderebilme, `📋 Queued Messages (X)` UI paneli, tek tek iptal ve sıralı otomatik yürütme.
 - [x] **Gelişmiş Chat Export 2.0 (`ChatExporter`):** İnsan ve AI dostu zengin Markdown & JSON hiyerarşisi, tool argümanları, diff ve telemetri ayrıştırma.
 - [x] **Agent Clarification / Soru Sorma:** Kritik belirsizliklerde duraklayıp soru sorma (`ask_user`), `ClarificationCard` hızlı seçenekler (`[2D] [3D]`), serbest metin girişi ve kesintisiz devam etme.
+- [x] **Chat Management & Geçmiş Kalıcılığı:** `+ New Chat`, `user://sidebar_ai_chats/` JSON persistence, `📚 History` arama & filtreleme paneli, güvenli sohbet değiştirme, yeniden adlandırma ve silme.
 
 ---
 

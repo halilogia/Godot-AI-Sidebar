@@ -40,6 +40,21 @@ horizontal_alignment = 2
 text_overrun_behavior = 3
 clip_text = true
 
+[node name="NewChatBtn" type="Button" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "+ New"
+flat = true
+
+[node name="HistoryBtn" type="Button" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "📚"
+tooltip_text = "Geçmiş Sohbetler (Chat History)"
+flat = true
+
 [node name="ExportBtn" type="Button" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 focus_mode = 0

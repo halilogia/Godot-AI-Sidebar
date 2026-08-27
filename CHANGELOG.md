@@ -7,6 +7,30 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
+## [2.6.0] - 2026-08-27 (Chat Management, Persistence & History Drawer)
+
+### 🌟 Eklenenler & İyileştirmeler
+* **Chat Management & Oturum Kalıcılığı (`AISidebarChatManager` & `AISidebarChatSession`):**
+  - Tüm konuşmalar Godot projesine bağlı `user://sidebar_ai_chats/` dizininde izole JSON dosyaları halinde saklanır.
+  - Asla API key, token veya hassas veri diske yazılmaz.
+  - Mesajlar, araç çağrıları, araç sonuçları, netleştirmeler ve seans telemetrisi eksiksiz kaydedilir.
+* **`+ New Chat` (Yeni Sohbet Başlatma):**
+  - Aktif konuşmayı otomatik kaydeder, çalışan ajan varsa durdurur, girdi/kuyruk state'ini temizler ve temiz bir oturum başlatır.
+* **`📚 History` (Geçmiş Sohbetler Çekmecesi):**
+  - Başlık çubuğundaki `📚` butonuyla açılıp kapanabilen `AISidebarHistoryPanel` eklendi.
+  - Gerçek zamanlı arama filtresi (`LineEdit`), oluşturulma/güncellenme zamanı ve mesaj sayısı göstergesi.
+  - Aktif konuşma yeşil rozet ve vurgu çerçevesiyle öne çıkarılır.
+* **Sohbet Değiştirme (Chat Switching & State Restoration):**
+  - Geçmişten bir sohbet seçildiğinde mesaj balonları, araç geçmişi ve telemetri kartı hatasız olarak UI'da yeniden oluşturulur.
+  - Eski approval, clarification veya runtime hata döngüleri kesinlikle yeniden tetiklenmez (`isolated context`).
+* **Sohbet Yeniden Adlandırma & Silme:**
+  - `✏️` butonu ile başlık değiştirme, ilk kullanıcı mesajından otomatik başlık türetme (`35 karaktere kadar`).
+  - `🗑️` butonu ve `ConfirmationDialog` ile güvenli kalıcı silme.
+* **Birim Testleri:**
+  - `tests/test_chat_management.gd` eklendi (13 test); toplam test paketi 49'a ve doğrulama sayısı 233'e yükseldi (`%100 ALL PASS`).
+
+---
+
 ## [2.5.0] - 2026-08-27 (Agent Clarification & Ask User Interactive Flow)
 
 ### 🌟 Eklenenler & İyileştirmeler

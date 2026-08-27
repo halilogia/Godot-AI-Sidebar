@@ -27,9 +27,14 @@ const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/com
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
+const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
+const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
+const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
+@onready var new_chat_btn: Button = $MainLayout/HeaderBar/NewChatBtn
+@onready var history_btn: Button = $MainLayout/HeaderBar/HistoryBtn
 @onready var export_btn: Button = $MainLayout/HeaderBar/ExportBtn
 @onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
@@ -60,6 +65,10 @@ var last_applied_change_set: AISidebarChangeSet = null
 var pending_tool_name: String = ""
 var pending_tool_args: Dictionary = {}
 var last_user_prompt: String = ""
+
+# Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
+var current_session: AISidebarChatSession = null
+var history_panel: AISidebarHistoryPanel = null
 
 # Kuyruktaki Mesajlar (FIFO Message Queue)
 var _message_queue: Array[Dictionary] = []
@@ -110,6 +119,10 @@ func _ready() -> void:
 	provider.models_fetched.connect(_on_models_fetched)
 
 	# 2. UI Olayları
+	if new_chat_btn:
+		new_chat_btn.pressed.connect(_on_new_chat_pressed)
+	if history_btn:
+		history_btn.pressed.connect(_on_toggle_history_pressed)
 	if clear_btn:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
@@ -138,6 +151,25 @@ func _ready() -> void:
 		style.content_margin_right = 4
 		style.content_margin_bottom = 4
 		mention_container.add_theme_stylebox_override("panel", style)
+
+	# 3. Geçmiş Paneli (History Drawer)
+	history_panel = AISidebarHistoryPanel.new()
+	history_panel.visible = false
+	$MainLayout.add_child(history_panel)
+	$MainLayout.move_child(history_panel, 2) # ModelBar'ın hemen altına yerleştir
+	
+	history_panel.session_selected.connect(_on_history_session_selected)
+	history_panel.new_chat_requested.connect(_on_new_chat_pressed)
+	history_panel.session_deleted.connect(_on_history_session_deleted)
+	history_panel.session_renamed.connect(_on_history_session_renamed)
+	history_panel.close_requested.connect(_on_history_close_requested)
+
+	# 4. Oturumu Başlat (Varsa son konuşmayı yükle, yoksa temiz yeni başlat)
+	var sessions = AISidebarChatManager.list_sessions()
+	if sessions.size() > 0:
+		_load_session_by_id(sessions[0]["id"])
+	else:
+		_start_new_chat_session()
 	if model_selector:
 		model_selector.item_selected.connect(_on_model_selected)
 	if settings_dialog:
@@ -263,6 +295,8 @@ func _on_export_pressed() -> void:
 		"model": cfg.get("selected_model", "all"),
 		"exported_at": Time.get_datetime_string_from_system()
 	}
+	if current_session and not current_session.telemetry.is_empty():
+		session_meta.merge(current_session.telemetry)
 	var md = AISidebarChatExporter.export_to_markdown(msgs, session_meta)
 	DisplayServer.clipboard_set(md)
 	var save_res = AISidebarChatExporter.save_to_file(md, "md")
@@ -466,6 +500,187 @@ func _on_mention_item_activated(index: int) -> void:
 		mention_container.visible = false
 	input_field.grab_focus()
 
+# --- Chat Management Olayları ve Yardımcıları ---
+
+func _on_new_chat_pressed() -> void:
+	_start_new_chat_session()
+	if history_panel and history_panel.visible:
+		history_panel.refresh_list()
+
+func _on_toggle_history_pressed() -> void:
+	if not history_panel:
+		return
+	history_panel.visible = not history_panel.visible
+	if history_panel.visible:
+		history_panel.set_active_session(current_session.id if current_session else "")
+		history_panel.refresh_list()
+
+func _on_history_session_selected(session_id: String) -> void:
+	if current_session and current_session.id == session_id:
+		return
+	_load_session_by_id(session_id)
+
+func _on_history_session_deleted(session_id: String) -> void:
+	if current_session and current_session.id == session_id:
+		_start_new_chat_session()
+
+func _on_history_session_renamed(session_id: String, new_title: String) -> void:
+	if current_session and current_session.id == session_id:
+		current_session.title = new_title
+		_update_header_title()
+
+func _on_history_close_requested() -> void:
+	if history_panel:
+		history_panel.visible = false
+
+func _start_new_chat_session() -> void:
+	if agent_runner and agent_runner.is_running():
+		_is_user_stopped = true
+		agent_runner.stop()
+		
+	if current_session and agent_context and not agent_context.messages.is_empty():
+		_save_current_session()
+		
+	current_session = AISidebarChatSession.new()
+	if agent_context:
+		agent_context.clear()
+		
+	_clear_all_queue()
+	_clear_ui_stream()
+	_update_header_title()
+	if history_panel:
+		history_panel.set_active_session(current_session.id)
+	set_status_badge(AISidebarI18n.get_text("status_ready"), Color(0.4, 0.8, 0.4))
+
+func _save_current_session() -> void:
+	if current_session == null:
+		return
+	if agent_context:
+		current_session.messages = agent_context.messages.duplicate(true)
+	AISidebarChatManager.save_session(current_session)
+	_update_header_title()
+
+func _load_session_by_id(session_id: String) -> void:
+	if current_session and current_session.id != session_id and agent_context and not agent_context.messages.is_empty():
+		_save_current_session()
+		
+	if agent_runner and agent_runner.is_running():
+		_is_user_stopped = true
+		agent_runner.stop()
+		
+	var loaded = AISidebarChatManager.load_session(session_id)
+	if not loaded:
+		_start_new_chat_session()
+		return
+		
+	current_session = loaded
+	if agent_context:
+		agent_context.clear()
+		agent_context.messages = loaded.messages.duplicate(true)
+		
+	_clear_all_queue()
+	_clear_ui_stream()
+	_rebuild_ui_stream_from_session(loaded)
+	_update_header_title()
+	if history_panel:
+		history_panel.set_active_session(loaded.id)
+		if history_panel.visible:
+			history_panel.refresh_list()
+	set_status_badge(AISidebarI18n.get_text("status_ready"), Color(0.4, 0.8, 0.4))
+	if _auto_scroll_enabled:
+		_scroll_to_bottom()
+
+func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
+	if not message_stream or not sess:
+		return
+		
+	for m in sess.messages:
+		if not m is Dictionary:
+			continue
+		var role = str(m.get("role", ""))
+		var content = m.get("content", "")
+		
+		if role == "user":
+			var txt = ""
+			var vision_inputs: Array = []
+			if content is String:
+				txt = content
+			elif content is Array:
+				for part in content:
+					if part is Dictionary:
+						if part.get("type") == "text":
+							txt = str(part.get("text", ""))
+						elif part.get("type") == "image_url":
+							vision_inputs.append(part)
+			if txt.contains("\n\n==="):
+				var parts_prompt = txt.split("\n\n===")
+				txt = parts_prompt[0]
+			var bubble = AISidebarMessageBubble.new("user", txt, vision_inputs)
+			bubble.meta_clicked.connect(_on_meta_clicked)
+			_add_stream_component(bubble)
+			
+		elif role == "assistant":
+			var txt = str(content) if content != null else ""
+			if not txt.is_empty():
+				var bubble = AISidebarMessageBubble.new("assistant", txt)
+				bubble.meta_clicked.connect(_on_meta_clicked)
+				_add_stream_component(bubble)
+				
+			if m.has("tool_calls") and m["tool_calls"] is Array:
+				var tcs = m["tool_calls"]
+				if tcs.size() > 0:
+					var grp = AISidebarActivityGroup.new(false)
+					grp.meta_clicked.connect(_on_meta_clicked)
+					for tc in tcs:
+						if tc is Dictionary:
+							var fn = tc.get("name", "")
+							var args = tc.get("arguments", {})
+							grp.add_activity("✓", _get_human_tool_title(fn, args), 100, JSON.stringify(args))
+					grp.complete_group()
+					_add_stream_component(grp)
+					
+		elif role == "tool":
+			var fn_name = str(m.get("name", ""))
+			var raw_content = m.get("content", "{}")
+			var parsed = JSON.parse_string(str(raw_content))
+			if fn_name == "ask_user" and parsed is Dictionary and parsed.has("data"):
+				var d = parsed["data"]
+				var q = str(d.get("question", ""))
+				var a = str(d.get("user_answer", ""))
+				var card = AISidebarClarificationCard.new(q, [])
+				card._ready()
+				card.is_answered = true
+				if card._options_container:
+					card._options_container.visible = false
+				if card._input_container:
+					card._input_container.visible = false
+				if card._status_lbl:
+					card._status_lbl.text = "✓ Answered: " + a
+					card._status_lbl.visible = true
+				_add_stream_component(card)
+				
+	if not sess.telemetry.is_empty():
+		var tc = AISidebarTelemetryCard.new(sess.telemetry)
+		_add_stream_component(tc)
+
+func _clear_ui_stream() -> void:
+	if message_stream:
+		for child in message_stream.get_children():
+			child.queue_free()
+	_current_activity_group = null
+	_current_runtime_card = null
+	_current_approval_card = null
+	_current_assistant_bubble = null
+
+func _update_header_title() -> void:
+	if title_label:
+		if current_session and not current_session.title.is_empty() and current_session.title != "New Chat":
+			title_label.text = "Godot AI - " + current_session.title
+			title_label.tooltip_text = current_session.title
+		else:
+			title_label.text = "Godot AI"
+			title_label.tooltip_text = "Godot AI Assistant"
+
 func _on_send_pressed() -> void:
 	if not agent_runner:
 		return
@@ -506,6 +721,10 @@ func _start_task_prompt(prompt_text: String) -> void:
 	_current_runtime_card = null
 	_current_approval_card = null
 	_is_user_stopped = false
+	
+	if current_session == null:
+		current_session = AISidebarChatSession.new()
+	_save_current_session()
 	
 	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
 	agent_runner.start_task(resolved_ctx["augmented_prompt"], prompt_text)
@@ -593,14 +812,13 @@ func _on_clear_pressed() -> void:
 		agent_runner.stop()
 	if agent_context:
 		agent_context.clear()
-	_message_queue.clear()
-	_update_queue_ui()
-	if message_stream:
-		for child in message_stream.get_children():
-			child.queue_free()
-	_current_activity_group = null
-	_current_runtime_card = null
-	_current_approval_card = null
+	if current_session:
+		current_session.messages.clear()
+		current_session.telemetry.clear()
+		_save_current_session()
+	_clear_all_queue()
+	_clear_ui_stream()
+	_update_header_title()
 
 func _on_jump_to_bottom_pressed() -> void:
 	_scroll_to_bottom()
@@ -850,6 +1068,12 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_add_stream_component(telemetry_comp)
 	update_ui_language()
 	
+	if current_session:
+		current_session.telemetry = metrics.duplicate(true)
+		_save_current_session()
+		if history_panel and history_panel.visible:
+			history_panel.refresh_list()
+			
 	_check_and_dispatch_next_queue()
 
 func _on_agent_error(err_msg: String) -> void:
