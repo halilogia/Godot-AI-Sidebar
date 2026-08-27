@@ -23,6 +23,7 @@ enum AgentState {
 	OBSERVING,
 	VERIFYING,
 	WAITING_FOR_APPROVAL,
+	WAITING_FOR_CLARIFICATION,
 	RUNNING_GAME,
 	OBSERVING_RUNTIME,
 	DEBUGGING,
@@ -39,6 +40,7 @@ signal text_received(role: String, message_text: String)
 signal tool_executing(tool_name: String, args: Dictionary)
 signal tool_completed(tool_name: String, result: Dictionary)
 signal approval_requested(tool_name: String, args: Dictionary, change_set: AISidebarChangeSet)
+signal clarification_requested(question: String, options: Array, clarification_id: String)
 signal changes_applied(change_set: AISidebarChangeSet)
 signal verification_started(tool_name: String)
 signal verification_completed(tool_name: String, is_valid: bool, msg: String)
@@ -85,11 +87,14 @@ var runtime_time_msec: int = 0
 var verification_time_msec: int = 0
 var waiting_time_msec: int = 0
 
-# Bekleyen Onay Verisi
+# Bekleyen Onay & Clarification Verisi
 var _pending_tool_name: String = ""
 var _pending_tool_id: String = ""
 var _pending_tool_args: Dictionary = {}
 var _pending_change_set: AISidebarChangeSet = null
+var _pending_clarification_id: String = ""
+var _pending_clarification_question: String = ""
+var _pending_clarification_options: Array = []
 var runtime_debugger: AISidebarRuntimeDebugger = null
 
 static func get_ts() -> String:
@@ -137,6 +142,9 @@ func start_task(user_prompt: String, display_prompt: String = "") -> void:
 	_pending_tool_id = ""
 	_pending_tool_args = {}
 	_pending_change_set = null
+	_pending_clarification_id = ""
+	_pending_clarification_question = ""
+	_pending_clarification_options.clear()
 	
 	# Telemetri Sıfırlama
 	task_start_time_msec = Time.get_ticks_msec()
@@ -170,6 +178,14 @@ func stop() -> void:
 		provider.cancel()
 	if runtime_debugger:
 		runtime_debugger.stop()
+		
+	_pending_clarification_id = ""
+	_pending_clarification_question = ""
+	_pending_clarification_options.clear()
+	_pending_tool_name = ""
+	_pending_tool_id = ""
+	_pending_tool_args = {}
+	_pending_change_set = null
 		
 	_set_state(AgentState.CANCELLED, AISidebarI18n.get_text("agent_stopped"))
 	error_occurred.emit(AISidebarI18n.get_text("agent_stopped"))
@@ -206,6 +222,9 @@ func _finish_task(success: bool) -> void:
 	task_completed.emit(metrics)
 	loop_finished.emit()
 	_pending_vision_inputs.clear()
+	_pending_clarification_id = ""
+	_pending_clarification_question = ""
+	_pending_clarification_options.clear()
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
 ## Kullanıcı bekleyen işlemi onayladı (Approve)
@@ -268,6 +287,37 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 	if context:
 		context.add_tool_result_message(tc_id, fn_name, reject_result)
 	
+	_run_next_step()
+
+## Kullanıcı clarification sorusuna yanıt verdiğinde aynı görevi devam ettirir
+func submit_clarification_response(answer: String) -> void:
+	if current_state != AgentState.WAITING_FOR_CLARIFICATION or _pending_clarification_id.is_empty():
+		return
+		
+	if _waiting_start_time > 0:
+		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
+		_waiting_start_time = 0
+		
+	var tc_id = _pending_clarification_id
+	var question = _pending_clarification_question
+	_pending_clarification_id = ""
+	_pending_clarification_question = ""
+	_pending_clarification_options.clear()
+	
+	print("[TIMING] %s | CLARIFICATION_ANSWERED | answer=%s" % [get_ts(), answer])
+	
+	var result_dict = {
+		"success": true,
+		"data": {
+			"question": question,
+			"user_answer": answer
+		},
+		"message": "Kullanıcı yanıtı: " + answer
+	}
+	if context:
+		context.add_tool_result_message(tc_id, "ask_user", result_dict)
+		
+	_set_state(AgentState.EXECUTING, "Kullanıcı yanıtı alındı, göreve devam ediliyor...")
 	_run_next_step()
 
 ## Çalışma zamanı hatası alındığında otomatik iyileştirme döngüsünü tetikler
@@ -410,6 +460,25 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_last_tool_signature = sig
 				_stagnation_count = 0
 				
+			# Kullanıcıdan Netleştirme İsteme (Clarification Intercept)
+			if fn_name == "ask_user":
+				var question = str(args.get("question", "Lütfen seçiminizi belirtin."))
+				var options_raw = args.get("options", [])
+				var options: Array = []
+				if options_raw is Array:
+					for opt in options_raw:
+						options.append(str(opt))
+						
+				_pending_clarification_id = tc_id
+				_pending_clarification_question = question
+				_pending_clarification_options = options
+				_waiting_start_time = Time.get_ticks_msec()
+				
+				_set_state(AgentState.WAITING_FOR_CLARIFICATION, "Kullanıcıdan yanıt bekleniyor...")
+				print("[TIMING] %s | CLARIFICATION_REQUESTED | question=%s options=%s" % [get_ts(), question, str(options)])
+				clarification_requested.emit(question, options, tc_id)
+				return
+
 			# Değişiklik Öncesi Eski İçerikleri Kaydet (ChangeSet Hazırlığı)
 			var cs = _build_changeset_for_tool(fn_name, args)
 			

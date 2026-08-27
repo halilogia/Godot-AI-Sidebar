@@ -23,6 +23,7 @@ const AISidebarApprovalCard = preload("res://addons/godot_sidebar_ai/ui/componen
 const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
+const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
@@ -97,6 +98,7 @@ func _ready() -> void:
 	agent_runner.tool_executing.connect(_on_agent_tool_executing)
 	agent_runner.tool_completed.connect(_on_agent_tool_completed)
 	agent_runner.approval_requested.connect(_on_agent_approval_requested)
+	agent_runner.clarification_requested.connect(_on_agent_clarification_requested)
 	agent_runner.changes_applied.connect(_on_agent_changes_applied)
 	agent_runner.verification_started.connect(_on_agent_verification_started)
 	agent_runner.verification_completed.connect(_on_agent_verification_completed)
@@ -739,6 +741,22 @@ func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
 			return "Deleted node: " + args.get("node_path", "")
 		_:
 			return tool_name
+
+func _on_agent_clarification_requested(question: String, options: Array, clarification_id: String) -> void:
+	_current_assistant_bubble = null
+	if _current_activity_group:
+		_current_activity_group.complete_group()
+		_current_activity_group = null
+		
+	var card = AISidebarClarificationCard.new(question, options)
+	card.response_submitted.connect(func(ans: String):
+		if agent_runner:
+			agent_runner.submit_clarification_response(ans)
+	)
+	_add_stream_component(card)
+	if _auto_scroll_enabled:
+		_scroll_to_bottom()
+	update_ui_language()
 
 func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISidebarChangeSet) -> void:
 	# Duplicate approval request deduping: Aynı bekleyen işlem için ikinci kart oluşturma

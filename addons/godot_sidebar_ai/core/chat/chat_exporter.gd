@@ -162,9 +162,14 @@ static func _format_tool_message(entry: Dictionary, content_raw: Variant, lines:
 		lines.append(status_badge + ((" — *" + msg + "*") if not msg.is_empty() else ""))
 		lines.append("")
 		
-		# Özel Alan Ayrıştırma: Dosya Değişiklikleri / Diff
+		# Özel Alan Ayrıştırma: Dosya Değişiklikleri / Diff / Clarification
 		if parsed_data.has("data") and parsed_data["data"] is Dictionary:
 			var d = parsed_data["data"]
+			if d.has("question") and d.has("user_answer"):
+				lines.append("#### ❓ User Clarification:")
+				lines.append("- **Question:** " + str(d["question"]))
+				lines.append("- **User Answer:** " + str(d["user_answer"]))
+				lines.append("")
 			if d.has("path") or d.has("file_path"):
 				var f_path = d.get("path", d.get("file_path", ""))
 				lines.append("#### 📝 File Target: `" + str(f_path) + "`")

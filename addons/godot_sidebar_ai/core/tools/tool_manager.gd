@@ -33,6 +33,30 @@ static func get_all_schemas() -> Array:
 		}
 	})
 	
+	# Kullanıcıdan Netleştirme İsteme: ask_user aracı
+	schemas.append({
+		"type": "function",
+		"function": {
+			"name": "ask_user",
+			"description": "Sonucu kökten değiştirecek ve aktif editör bağlamından çıkarılamayan kritik bir belirsizlik olduğunda kullanıcıya soru sorup netleştirme (clarification) ister (Örn: 'Sahne oluştur ve slime yap' dendiğinde 2D mi 3D mi olduğu belirsizse). Önemsiz detaylarda (hız, renk, boyut vb.) KESİNLİKLE soru sormayın, makul varsayımla devam edin.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"question": {
+						"type": "string",
+						"description": "Kullanıcıya sorulacak açık, net ve kısa soru."
+					},
+					"options": {
+						"type": "array",
+						"items": { "type": "string" },
+						"description": "Kullanıcının tek tıkla seçebileceği hızlı seçenekler (örn: ['2D', '3D']). İsteğe bağlıdır."
+					}
+				},
+				"required": ["question"]
+			}
+		}
+	})
+	
 	schemas.append_array(AISidebarSceneTools.get_schemas())
 	schemas.append_array(AISidebarScriptTools.get_schemas())
 	schemas.append_array(AISidebarEditorTools.get_schemas())
@@ -47,8 +71,8 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	
 	var active_tool_names: Dictionary = {}
 	
-	# 1. Çekirdek Araçlar (Core Discovery & Inspection - Daima Erişilebilir)
-	var core_tools = ["search_tools", "analyze_project", "read_script"]
+	# 1. Çekirdek Araçlar (Core Discovery, Clarification & Inspection - Daima Erişilebilir)
+	var core_tools = ["search_tools", "ask_user", "analyze_project", "read_script"]
 	for ct in core_tools:
 		active_tool_names[ct] = true
 		
@@ -163,6 +187,12 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if tool_name == "search_tools":
 		return _search_tools(args)
+	elif tool_name == "ask_user":
+		return AISidebarToolResult.ok({
+			"question": args.get("question", ""),
+			"options": args.get("options", []),
+			"clarification": true
+		}, "Clarification requested.")
 		
 	# 1. Gerçek Yetki Denetimi (Permission Enforcement)
 	if not is_user_approved and AISidebarPermissionPolicy.requires_user_approval(tool_name, args):

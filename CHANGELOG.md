@@ -7,6 +7,26 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
+## [2.5.0] - 2026-08-27 (Agent Clarification & Ask User Interactive Flow)
+
+### 🌟 Eklenenler & İyileştirmeler
+* **Ajan Netleştirme / Soru Sorma Sistemi (`ask_user`):**
+  - Sonucu kökten değiştirecek ve aktif editör bağlamından çıkarılamayan bir belirsizlik olduğunda AI tahmin yürütmek yerine görevi duraklatıp (`WAITING_FOR_CLARIFICATION`) kullanıcıya soru sorar (Örn: "Sahne oluştur ve slime yap" $\rightarrow$ "2D mi 3D mi?").
+  - Önemsiz detaylarda (hız, renk, boyut vb.) veya tek makul seçenek olduğunda soru sormadan makul varsayımla devam eden net karar politikası uygulandı.
+* **Dinamik Clarification UI Kartı (`AISidebarClarificationCard`):**
+  - Soru metni, tek tıkla seçilebilir hızlı seçenek butonları (`[2D] [3D]`), serbest metin giriş alanı (`LineEdit`) ve `Send` butonu.
+  - Yanıt verildiğinde kart kontrolleri kilitlenir ve `✓ Answered: {answer}` geri bildirimi gösterilir.
+* **Kesintisiz Görev Devamı (No Task Duplication):**
+  - Kullanıcı yanıt verdiğinde yeni bağımsız bir görev başlatılmaz; mevcut ajan görevi kaldığı adımdan (`step`), telemetri ve bağlam bütünlüğüyle devam eder.
+* **Durum & Kuyruk Güvenliği:**
+  - `WAITING_FOR_CLARIFICATION` ve `WAITING_FOR_APPROVAL` durumları birbirinden tamamen izole edilmiştir.
+  - Soru bekleyen görev varken kuyruktaki (`_message_queue`) sonraki görevler yanlışlıkla tetiklenmez.
+  - `Stop` / `Clear` komutları netleştirme bekleyen görevi güvenli şekilde iptal eder.
+* **Birim Testleri:**
+  - `tests/test_agent_clarification.gd` eklendi; toplam test paketi 48'e ve doğrulama sayısı 220'ye yükseldi (`%100 ALL PASS`).
+
+---
+
 ## [2.4.0] - 2026-08-27 (Enter=Send, Queued Messages FIFO & Chat Export 2.0)
 
 ### 🌟 Eklenenler & İyileştirmeler

@@ -59,7 +59,7 @@ static func run() -> Dictionary:
 	for s in runtime_schemas:
 		runtime_names.append(s["function"]["name"])
 		
-	var is_runtime_optimized = (runtime_schemas.size() >= 8 and runtime_schemas.size() <= 12)
+	var is_runtime_optimized = (runtime_schemas.size() >= 8 and runtime_schemas.size() <= 14)
 	var has_necessary_runtime = ("play_game" in runtime_names and "get_runtime_errors" in runtime_names and "create_or_update_script" in runtime_names and "validate_script" in runtime_names and "read_script" in runtime_names)
 	var has_no_unrelated_scene = (not "add_node" in runtime_names and not "create_scene" in runtime_names and not "delete_node" in runtime_names)
 	

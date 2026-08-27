@@ -86,5 +86,10 @@ static func get_grounding_prompt_text() -> String:
 	if not active_scr.is_empty():
 		lines.append("Açık Script: " + active_scr)
 		
+	lines.append("=== NETLEŞTİRME KURALI (CLARIFICATION POLICY) ===")
+	lines.append("- Yalnızca sonucu KÖKTEN değiştirecek ve aktif editör bağlamından çıkarılamayan durumlarda 'ask_user' aracını kullanarak kullanıcıya soru sorun (Örn: 'Sahne oluştur ve slime yap' dendiğinde 2D mi 3D mi olduğu hem promptta hem açık sahnede belirsizse).")
+	lines.append("- Belirsizlik sonucu önemli ölçüde değiştirmiyorsa makul varsayım yapıp doğrudan işe başlayın.")
+	lines.append("- Güvenli ve açık bir varsayım varsa veya aktif sahnede zaten Node2D/Node3D varsa soru sormayın, bağlamı takip edin.")
+	lines.append("- Önemsiz detaylar için (hız, renk, boyut vb.) KESİNLİKLE soru sormayın, varsayılan mantıklı değerleri uygulayın.")
 	lines.append("======================================================")
 	return "\n".join(lines)
