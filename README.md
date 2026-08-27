@@ -64,11 +64,19 @@ addons/godot_sidebar_ai/
 
 ## 🚀 Kurulum
 
-1. Bu depoyu indirin veya klonlayın.
-2. `addons/godot_sidebar_ai` klasörünü Godot projenizin `addons/` dizinine kopyalayın.
-3. Godot Editöründe **Project -> Project Settings -> Plugins** menüsüne gidin.
-4. **Godot AI Sidebar** eklentisini **Enable (Etkin)** yapın.
-5. Sol panelde beliren AI paneline tıklayın, Ayarlar (⚙️) butonundan 9Router veya API adresinizi girip çalışmaya başlayın.
+1. [Releases](https://github.com/halilogia/Godot-AI-Sidebar/releases) sayfasından en son `godot-ai-sidebar-v1.0.0.zip` paketini indirin (veya bu depoyu klonlayın).
+2. Paket içindeki `addons/godot_sidebar_ai` klasörünü Godot projenizin `addons/` dizinine kopyalayın:
+   ```text
+   senin_godot_projen/
+   └── addons/
+       └── godot_sidebar_ai/
+           ├── plugin.cfg
+           ├── plugin.gd
+           └── ...
+   ```
+3. Godot Editöründe **Project -> Project Settings -> Plugins** sekmesine gidin.
+4. **Godot AI Sidebar** eklentisinin yanındaki **Enable (Etkin)** kutucuğunu işaretleyin.
+5. Sol dock panelinde AI asistanınız hazır olacaktır. Ayarlar (⚙️) butonundan 9Router veya yerel model API adresinizi girip çalışmaya başlayabilirsiniz.
 
 ---
 
