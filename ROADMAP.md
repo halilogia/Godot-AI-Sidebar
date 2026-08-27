@@ -57,10 +57,11 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 ---
 
-## 📍 Faz 6: Görsel Yapay Zeka & Multimodal Viewport (Vision) (Sırada ⏳)
+## 📍 Faz 6: Görsel Yapay Zeka & Multimodal Viewport (Vision) (Tamamlandı ✅)
 
 - [x] `VisionInput` ve multimodal Base64 OpenAI parça formatı.
-- [ ] Editör Viewport ve 2D/3D sahne ekran görüntüsü alma aracı (`take_viewport_screenshot`).
+- [x] Editör Viewport ve 2D/3D sahne ekran görüntüsü alma aracı (`take_viewport_screenshot`).
+- [x] Ajan döngüsünde görsel gözlemi modele otomatik `image_url` multimodal parçası olarak iletme.
 - [ ] UI hizalama ve seviye tasarımı (Level Design) geri bildirimlerini görsel analiz etme.
 
 ---

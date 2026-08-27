@@ -7,6 +7,16 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
+## [2.3.0] - 2026-08-27 (Viewport Screenshot & Multimodal Vision Loop)
+
+### 🌟 Eklenenler
+* **`take_viewport_screenshot` Aracı:** Godot editörünün aktif 2D veya 3D sahne viewport ekran görüntüsünü alan, token tasarrufu için ölçeklendiren ve diske kaydeden araç eklendi.
+* **Otomatik Multimodal Vision Pipeline:** Viewport görüntüsü alındığında görsel otomatik olarak `AISidebarVisionInput` nesnesine dönüştürülüp modelin bir sonraki promptuna `image_url` parçası olarak enjekte edilir ("sahneyi gör ve düzelt" döngüsü).
+* **Vision Intent Routing:** "gör", "viewport", "hiza", "screenshot" gibi görsel niyet anahtar kelimeleriyle dinamik araç eşleşmesi sağlandı.
+* **Headless & Birim Testleri:** `tests/test_viewport_screenshot.gd` eklendi; toplam test paketi 46'ya ve assertion sayısı 198'e yükseldi (`%100 ALL PASS`).
+
+---
+
 ## [2.2.0] - 2026-08-27 (Real 9Router Protocol Alignment & Live Diagnostics)
 
 ### 🌟 Eklenenler & Düzeltmeler
