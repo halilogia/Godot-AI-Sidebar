@@ -117,6 +117,14 @@ func _ready() -> void:
 		if v_bar:
 			v_bar.value_changed.connect(_on_scroll_value_changed)
 
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	if has_node("MainLayout"):
+		$MainLayout.mouse_filter = Control.MOUSE_FILTER_PASS
+	if chat_scroll:
+		chat_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	if message_stream:
+		message_stream.mouse_filter = Control.MOUSE_FILTER_PASS
+
 	# 3. Başlangıç Yüklemesi
 	update_ui_language()
 	_load_cached_models()

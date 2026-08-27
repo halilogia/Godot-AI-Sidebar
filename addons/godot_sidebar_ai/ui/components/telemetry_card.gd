@@ -31,10 +31,12 @@ func _setup_ui() -> void:
 	style.content_margin_top = 4
 	style.content_margin_right = 8
 	style.content_margin_bottom = 4
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_theme_constant_override("separation", 2)
 	add_child(_vbox)
 	
@@ -53,6 +55,11 @@ func _setup_ui() -> void:
 	_details_lbl.fit_content = true
 	_details_lbl.scroll_active = false
 	_details_lbl.selection_enabled = true
+	_details_lbl.context_menu_enabled = true
+	_details_lbl.shortcut_keys_enabled = true
+	_details_lbl.focus_mode = Control.FOCUS_CLICK
+	_details_lbl.deselect_on_focus_loss_enabled = false
+	_details_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	_details_lbl.add_theme_font_size_override("normal_font_size", 10)
 	_details_lbl.visible = is_expanded
 	_vbox.add_child(_details_lbl)

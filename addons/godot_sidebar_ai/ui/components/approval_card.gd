@@ -20,7 +20,7 @@ var is_resolved: bool = false
 
 var _vbox: VBoxContainer
 var _title_lbl: Label
-var _desc_lbl: Label
+var _desc_lbl: RichTextLabel
 var _buttons_bar: HBoxContainer
 var _approve_btn: Button
 var _reject_btn: Button
@@ -45,20 +45,23 @@ func _setup_ui() -> void:
 	style.content_margin_top = 8
 	style.content_margin_right = 10
 	style.content_margin_bottom = 8
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_theme_constant_override("separation", 6)
 	add_child(_vbox)
 	
 	_title_lbl = Label.new()
 	_title_lbl.text = "Approval Required"
+	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.3))
 	_title_lbl.add_theme_font_size_override("font_size", 12)
 	_vbox.add_child(_title_lbl)
 	
-	_desc_lbl = Label.new()
+	_desc_lbl = RichTextLabel.new()
 	var action_desc = tool_name
 	if tool_name == "delete_node":
 		action_desc = "Delete node: " + args.get("node_path", "")
@@ -66,10 +69,20 @@ func _setup_ui() -> void:
 		action_desc = "Delete file: " + args.get("file_path", "")
 	elif tool_name == "create_or_update_script":
 		action_desc = "Update file: " + args.get("file_path", "")
+	elif tool_name == "replace_file_content":
+		action_desc = "Surgically update file: " + args.get("file_path", "")
 	_desc_lbl.text = action_desc
-	_desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_desc_lbl.add_theme_font_size_override("font_size", 11)
-	_desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+	_desc_lbl.bbcode_enabled = true
+	_desc_lbl.fit_content = true
+	_desc_lbl.scroll_active = false
+	_desc_lbl.selection_enabled = true
+	_desc_lbl.context_menu_enabled = true
+	_desc_lbl.shortcut_keys_enabled = true
+	_desc_lbl.focus_mode = Control.FOCUS_CLICK
+	_desc_lbl.deselect_on_focus_loss_enabled = false
+	_desc_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+	_desc_lbl.add_theme_font_size_override("normal_font_size", 11)
+	_desc_lbl.add_theme_color_override("default_color", Color(0.85, 0.9, 0.95))
 	_vbox.add_child(_desc_lbl)
 	
 	_buttons_bar = HBoxContainer.new()

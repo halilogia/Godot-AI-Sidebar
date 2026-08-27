@@ -27,10 +27,12 @@ func _setup_ui() -> void:
 	style.content_margin_top = 6
 	style.content_margin_right = 8
 	style.content_margin_bottom = 6
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_theme_constant_override("separation", 4)
 	add_child(_vbox)
 	
@@ -47,6 +49,7 @@ func _setup_ui() -> void:
 	
 	_status_list = VBoxContainer.new()
 	_status_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status_list.mouse_filter = Control.MOUSE_FILTER_PASS
 	_status_list.add_theme_constant_override("separation", 2)
 	_vbox.add_child(_status_list)
 
@@ -61,10 +64,12 @@ func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> vo
 		return
 	var row = HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	_status_list.add_child(row)
 	
 	var ic = Label.new()
 	ic.text = icon
+	ic.mouse_filter = Control.MOUSE_FILTER_PASS
 	ic.add_theme_font_size_override("font_size", 11)
 	row.add_child(ic)
 	
@@ -74,6 +79,11 @@ func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> vo
 	lbl.fit_content = true
 	lbl.scroll_active = false
 	lbl.selection_enabled = true
+	lbl.context_menu_enabled = true
+	lbl.shortcut_keys_enabled = true
+	lbl.focus_mode = Control.FOCUS_CLICK
+	lbl.deselect_on_focus_loss_enabled = false
+	lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	lbl.add_theme_font_size_override("normal_font_size", 11)
 	lbl.text = "[color=" + color_hex + "]" + text + "[/color]"
 	lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))

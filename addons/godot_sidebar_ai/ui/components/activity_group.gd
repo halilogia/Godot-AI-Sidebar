@@ -32,10 +32,12 @@ func _setup_ui() -> void:
 	style.content_margin_top = 6
 	style.content_margin_right = 8
 	style.content_margin_bottom = 6
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_theme_constant_override("separation", 4)
 	add_child(_vbox)
 	
@@ -50,6 +52,7 @@ func _setup_ui() -> void:
 	
 	_items_container = VBoxContainer.new()
 	_items_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_items_container.mouse_filter = Control.MOUSE_FILTER_PASS
 	_items_container.add_theme_constant_override("separation", 2)
 	_items_container.visible = is_expanded
 	_vbox.add_child(_items_container)
@@ -97,10 +100,12 @@ func _render_item(item: Dictionary) -> void:
 		
 	var row = HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	_items_container.add_child(row)
 	
 	var icon_lbl = Label.new()
 	icon_lbl.text = item["icon"]
+	icon_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	icon_lbl.add_theme_font_size_override("font_size", 11)
 	if item["icon"] == "✓":
 		icon_lbl.add_theme_color_override("font_color", Color(0.6, 0.8, 0.5))
@@ -116,6 +121,11 @@ func _render_item(item: Dictionary) -> void:
 	title_lbl.fit_content = true
 	title_lbl.scroll_active = false
 	title_lbl.selection_enabled = true
+	title_lbl.context_menu_enabled = true
+	title_lbl.shortcut_keys_enabled = true
+	title_lbl.focus_mode = Control.FOCUS_CLICK
+	title_lbl.deselect_on_focus_loss_enabled = false
+	title_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	title_lbl.add_theme_font_size_override("normal_font_size", 11)
 	title_lbl.text = "[color=#c0caf5]" + item["title"] + "[/color]"
 	title_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
@@ -124,6 +134,7 @@ func _render_item(item: Dictionary) -> void:
 	if item["duration"] >= 0:
 		var dur_lbl = Label.new()
 		dur_lbl.text = "%.1fs" % (item["duration"] / 1000.0)
+		dur_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 		dur_lbl.add_theme_font_size_override("font_size", 10)
 		dur_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
 		row.add_child(dur_lbl)

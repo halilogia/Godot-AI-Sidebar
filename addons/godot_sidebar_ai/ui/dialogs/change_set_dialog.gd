@@ -24,6 +24,28 @@ func _ready() -> void:
 	
 	confirmed.connect(_on_confirmed)
 	canceled.connect(_on_canceled)
+	
+	if header_label:
+		header_label.selection_enabled = true
+		header_label.context_menu_enabled = true
+		header_label.shortcut_keys_enabled = true
+		header_label.focus_mode = Control.FOCUS_CLICK
+		header_label.deselect_on_focus_loss_enabled = false
+		header_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	if summary_label:
+		summary_label.selection_enabled = true
+		summary_label.context_menu_enabled = true
+		summary_label.shortcut_keys_enabled = true
+		summary_label.focus_mode = Control.FOCUS_CLICK
+		summary_label.deselect_on_focus_loss_enabled = false
+		summary_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	if diff_rich_text:
+		diff_rich_text.selection_enabled = true
+		diff_rich_text.context_menu_enabled = true
+		diff_rich_text.shortcut_keys_enabled = true
+		diff_rich_text.focus_mode = Control.FOCUS_CLICK
+		diff_rich_text.deselect_on_focus_loss_enabled = false
+		diff_rich_text.mouse_filter = Control.MOUSE_FILTER_STOP
 
 func show_change_set(tool_name: String, args: Dictionary, cs: AISidebarChangeSet) -> void:
 	current_change_set = cs

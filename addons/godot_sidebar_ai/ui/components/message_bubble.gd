@@ -51,20 +51,24 @@ func _setup_ui() -> void:
 		style.border_color = Color(0.24, 0.28, 0.35, 0.4)
 		style.set_border_width_all(1)
 		
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_theme_constant_override("separation", 4)
 	add_child(_vbox)
 	
 	# Header
 	_header_bar = HBoxContainer.new()
 	_header_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_header_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_child(_header_bar)
 	
 	_role_label = Label.new()
 	_role_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_role_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	_role_label.add_theme_font_size_override("font_size", 11)
 	
 	if role == "user":
@@ -92,6 +96,10 @@ func _setup_ui() -> void:
 	_content_label.scroll_active = false
 	_content_label.selection_enabled = true
 	_content_label.context_menu_enabled = true
+	_content_label.shortcut_keys_enabled = true
+	_content_label.focus_mode = Control.FOCUS_CLICK
+	_content_label.deselect_on_focus_loss_enabled = false
+	_content_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	_content_label.add_theme_font_size_override("normal_font_size", 12)
 	_content_label.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_label)

@@ -43,10 +43,12 @@ func _setup_ui() -> void:
 	style.content_margin_top = 8
 	style.content_margin_right = 10
 	style.content_margin_bottom = 8
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_theme_constant_override("separation", 6)
 	add_child(_vbox)
 	
@@ -57,12 +59,17 @@ func _setup_ui() -> void:
 	_header_lbl.scroll_active = false
 	_header_lbl.selection_enabled = true
 	_header_lbl.context_menu_enabled = true
+	_header_lbl.shortcut_keys_enabled = true
+	_header_lbl.focus_mode = Control.FOCUS_CLICK
+	_header_lbl.deselect_on_focus_loss_enabled = false
+	_header_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	_header_lbl.add_theme_font_size_override("normal_font_size", 12)
 	_header_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_header_lbl)
 	
 	_files_list = VBoxContainer.new()
 	_files_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_files_list.mouse_filter = Control.MOUSE_FILTER_PASS
 	_files_list.add_theme_constant_override("separation", 3)
 	_vbox.add_child(_files_list)
 	
@@ -103,12 +110,19 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 	for d in deltas:
 		var row = HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_theme_constant_override("separation", 6)
 		
 		var name_lbl = RichTextLabel.new()
 		name_lbl.bbcode_enabled = true
 		name_lbl.fit_content = true
 		name_lbl.scroll_active = false
+		name_lbl.selection_enabled = true
+		name_lbl.context_menu_enabled = true
+		name_lbl.shortcut_keys_enabled = true
+		name_lbl.focus_mode = Control.FOCUS_CLICK
+		name_lbl.deselect_on_focus_loss_enabled = false
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_lbl.add_theme_font_size_override("normal_font_size", 11)
@@ -124,6 +138,12 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 		delta_lbl.bbcode_enabled = true
 		delta_lbl.fit_content = true
 		delta_lbl.scroll_active = false
+		delta_lbl.selection_enabled = true
+		delta_lbl.context_menu_enabled = true
+		delta_lbl.shortcut_keys_enabled = true
+		delta_lbl.focus_mode = Control.FOCUS_CLICK
+		delta_lbl.deselect_on_focus_loss_enabled = false
+		delta_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 		delta_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
 		delta_lbl.add_theme_font_size_override("normal_font_size", 11)
 		delta_lbl.text = "[color=#a3be8c]+" + str(d["added"]) + "[/color] [color=#bf616a]-" + str(d["removed"]) + "[/color]"
