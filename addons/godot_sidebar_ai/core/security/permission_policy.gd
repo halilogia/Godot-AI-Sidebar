@@ -14,7 +14,7 @@ enum PermissionLevel {
 
 static func get_tool_permission_level(tool_name: String) -> PermissionLevel:
 	match tool_name:
-		"get_scene_tree", "read_script", "get_project_files", "search_project_assets", "get_selected_nodes", "get_node_properties", "get_editor_errors", "search_tools", "validate_script", "take_editor_screenshot", "take_runtime_screenshot", "analyze_project":
+		"get_scene_tree", "read_script", "get_project_files", "search_project_assets", "get_selected_nodes", "get_node_properties", "get_editor_errors", "search_tools", "validate_script", "take_editor_screenshot", "take_runtime_screenshot", "take_viewport_screenshot", "analyze_project":
 			return PermissionLevel.READ_ONLY
 		"delete_node", "delete_file":
 			return PermissionLevel.DESTRUCTIVE

@@ -161,6 +161,35 @@ static func get_schemas() -> Array:
 					}
 				}
 			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "take_viewport_screenshot",
+				"description": "Godot editörünün aktif 2D veya 3D sahne viewport görüntüsünü alır ve modelin görsel analizi için hazırlar.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"viewport_type": {
+							"type": "string",
+							"enum": ["auto", "2d", "3d", "editor"],
+							"description": "Görüntüsü alınacak viewport tipi. 'auto': aktif sahne kök düğümüne göre otomatik seçer (2D veya 3D), '2d': 2D editör viewport'u, '3d': 3D editör viewport'u, 'editor': tüm editör penceresi (varsayılan: 'auto')."
+						},
+						"viewport_index": {
+							"type": "integer",
+							"description": "3D viewport için indeks (0-3 arası, varsayılan: 0)."
+						},
+						"save_path": {
+							"type": "string",
+							"description": "Kaydedilecek dosya yolu (varsayılan: 'user://ai_viewport_snapshot.png')."
+						},
+						"max_dimension": {
+							"type": "integer",
+							"description": "Görselin maksimum genişlik/yükseklik boyutu (piksel). Token tasarrufu için ölçeklendirilir (varsayılan: 1280, 0 ise orijinal boyut korunur)."
+						}
+					}
+				}
+			}
 		}
 	]
 
@@ -190,6 +219,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _take_editor_screenshot(args)
 		"take_runtime_screenshot":
 			return _take_runtime_screenshot(args)
+		"take_viewport_screenshot":
+			return _take_viewport_screenshot(args)
 		_:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen editör aracı: " + tool_name)
 
@@ -356,3 +387,83 @@ static func _take_editor_screenshot(args: Dictionary) -> Dictionary:
 static func _take_runtime_screenshot(args: Dictionary) -> Dictionary:
 	var path = args.get("save_path", "user://ai_runtime_snapshot.png")
 	return AISidebarRuntimeDebugger.take_runtime_screenshot(path)
+
+static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
+	var save_path = args.get("save_path", "user://ai_viewport_snapshot.png")
+	var requested_type = args.get("viewport_type", "auto").to_lower()
+	var vp_index = int(args.get("viewport_index", 0))
+	var max_dim = int(args.get("max_dimension", 1280))
+	
+	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
+		return AISidebarToolResult.err("EDITOR_REQUIRED", "Viewport ekran görüntüsü için editör GUI gereklidir.")
+		
+	var vp_type_str = requested_type
+	var target_vp: Viewport = null
+	
+	if requested_type == "auto":
+		var root = EditorInterface.get_edited_scene_root() if EditorInterface.has_method("get_edited_scene_root") else null
+		if root is Node3D:
+			vp_type_str = "3d"
+		elif root is Node2D or root is Control:
+			vp_type_str = "2d"
+		else:
+			vp_type_str = "2d"
+			
+	if vp_type_str == "3d":
+		if EditorInterface.has_method("get_editor_viewport_3d"):
+			target_vp = EditorInterface.get_editor_viewport_3d(clampi(vp_index, 0, 3))
+	elif vp_type_str == "2d":
+		if EditorInterface.has_method("get_editor_viewport_2d"):
+			target_vp = EditorInterface.get_editor_viewport_2d()
+	elif vp_type_str == "editor":
+		if EditorInterface.has_method("get_base_control"):
+			var base = EditorInterface.get_base_control()
+			if base: target_vp = base.get_viewport()
+			
+	if not target_vp:
+		if EditorInterface.has_method("get_editor_viewport_2d"):
+			target_vp = EditorInterface.get_editor_viewport_2d()
+		elif EditorInterface.has_method("get_base_control"):
+			var base = EditorInterface.get_base_control()
+			if base: target_vp = base.get_viewport()
+			
+	if not target_vp:
+		return AISidebarToolResult.err("VIEWPORT_NOT_FOUND", "Aktif editör viewport'u bulunamadı.")
+		
+	var tex = target_vp.get_texture()
+	if not tex:
+		return AISidebarToolResult.err("TEXTURE_EMPTY", "Viewport dokusu (texture) alınamadı.")
+		
+	var img = tex.get_image()
+	if not img or img.is_empty():
+		return AISidebarToolResult.err("IMAGE_EMPTY", "Viewport görüntüsü boş.")
+		
+	# Token tasarrufu için ölçeklendirme
+	if max_dim > 0 and (img.get_width() > max_dim or img.get_height() > max_dim):
+		var orig_w = img.get_width()
+		var orig_h = img.get_height()
+		var ratio = float(orig_w) / float(orig_h)
+		var new_w = max_dim
+		var new_h = max_dim
+		if ratio >= 1.0:
+			new_h = maxi(1, int(float(max_dim) / ratio))
+		else:
+			new_w = maxi(1, int(float(max_dim) * ratio))
+		img.resize(new_w, new_h, Image.INTERPOLATE_BILINEAR)
+		
+	var norm_path = AISidebarPathPolicy.normalize_path(save_path)
+	var err = img.save_png(norm_path)
+	if err != OK:
+		return AISidebarToolResult.err("SAVE_FAILED", "Ekran görüntüsü diske kaydedilemedi: " + norm_path)
+		
+	var buffer = img.save_png_to_buffer()
+	var b64 = Marshalls.raw_to_base64(buffer)
+	
+	return AISidebarToolResult.ok({
+		"path": norm_path,
+		"viewport_type": vp_type_str,
+		"width": img.get_width(),
+		"height": img.get_height(),
+		"base64": b64,
+		"has_vision_data": true
+	}, "✓ " + vp_type_str.to_upper() + " Viewport ekran görüntüsü alındı (" + str(img.get_width()) + "x" + str(img.get_height()) + ")")

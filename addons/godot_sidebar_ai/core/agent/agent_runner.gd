@@ -14,6 +14,7 @@ const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/cor
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
 const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd")
+const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 
 enum AgentState {
 	IDLE,
@@ -58,6 +59,7 @@ var _recovery_attempt_count: int = 0
 var max_empty_response_retries: int = 1
 var _empty_response_retry_count: int = 0
 var _unlocked_tools: Array = []
+var _pending_vision_inputs: Array = []
 var last_tools_sent_count: int = 0
 var _last_error_signature: String = ""
 var _last_tool_signature: String = ""
@@ -203,6 +205,7 @@ func _finish_task(success: bool) -> void:
 	print("[TIMING] %s | TASK_COMPLETE | success=%s elapsed=%.3fs llm=%.3fs tool=%.3fs" % [get_ts(), str(success), total_elapsed_sec, llm_time_msec / 1000.0, tool_time_msec / 1000.0])
 	task_completed.emit(metrics)
 	loop_finished.emit()
+	_pending_vision_inputs.clear()
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
 ## Kullanıcı bekleyen işlemi onayladı (Approve)
@@ -334,7 +337,12 @@ func _run_next_step() -> void:
 		print("[TIMING] %s | LLM_REQUEST_START | step=1/%d tools=%d/%d" % [get_ts(), max_steps, last_tools_sent_count, AISidebarToolManager.get_all_schemas().size()])
 		
 	var messages = context.get_messages_for_api()
-	provider.send_chat(messages, tools_schema)
+	if _pending_vision_inputs.size() > 0 and provider.has_method("send_multimodal_chat"):
+		var imgs = _pending_vision_inputs.duplicate()
+		_pending_vision_inputs.clear()
+		provider.send_multimodal_chat(messages, tools_schema, imgs)
+	else:
+		provider.send_chat(messages, tools_schema)
 
 func _on_provider_response(text_content: String, thinking_content: String, tool_calls: Array) -> void:
 	if not is_running():
@@ -561,6 +569,18 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 			final_payload = res_dict
 			
 		context.add_tool_result_message(tool_call_id, tool_name, final_payload)
+		
+	# Görsel Gözlem (Vision Data) Varsa Multimodal Kuyruğuna Ekle
+	if is_valid and res_dict.has("data") and res_dict["data"] is Dictionary:
+		var v_data = res_dict["data"]
+		if v_data.get("has_vision_data", false) == true and not v_data.get("base64", "").is_empty():
+			var vi = AISidebarVisionInput.new(
+				v_data.get("path", ""),
+				v_data.get("base64", ""),
+				int(v_data.get("width", 0)),
+				int(v_data.get("height", 0))
+			)
+			_pending_vision_inputs.append(vi)
 		
 	print("[TIMING] %s | AGENT_CONTINUE | next_step=%d" % [get_ts(), current_step + 1])
 	_run_next_step()

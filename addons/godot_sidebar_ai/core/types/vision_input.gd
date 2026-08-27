@@ -39,6 +39,20 @@ static func from_file(file_path: String) -> RefCounted:
 	var vi = new(file_path, base64, w, h)
 	return vi
 
+## Image nesnesinden doğrudan VisionInput üretir
+static func from_image(img: Image, p_path: String = "", p_mime: String = "image/png") -> RefCounted:
+	if not img or img.is_empty():
+		return null
+	var buffer: PackedByteArray
+	if p_mime == "image/jpeg" or p_mime == "image/jpg":
+		buffer = img.save_jpg_to_buffer(0.85)
+	else:
+		buffer = img.save_png_to_buffer()
+	var base64 = Marshalls.raw_to_base64(buffer)
+	var vi = new(p_path, base64, img.get_width(), img.get_height())
+	vi.mime_type = p_mime
+	return vi
+
 ## OpenAI formatında multimodal image_url content parçası üretir
 func to_openai_content_part() -> Dictionary:
 	return {

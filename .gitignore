@@ -31,3 +31,5 @@ user_secrets.json
 # Agent Brain / Scratch
 brain/
 *.zip
+
+archives/

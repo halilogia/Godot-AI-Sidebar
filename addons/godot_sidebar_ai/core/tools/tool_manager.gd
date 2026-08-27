@@ -53,6 +53,16 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 		active_tool_names[ct] = true
 		
 	# 2. Kategori Anahtar Kelimeleri & Niyet Ayrımı
+	var vision_keywords = [
+		"viewport", "gör", "bak", "görüntü", "resim", "screenshot", "ekran", "vision",
+		"görsel", "hiza", "align", "gözlem", "bakış", "incele"
+	]
+	var has_vision_intent = false
+	for kw in vision_keywords:
+		if kw in text:
+			has_vision_intent = true
+			break
+
 	var runtime_keywords = [
 		"runtime", "error", "hata", "bug", "crash", "play", "oyna", "çalıştır",
 		"run", "test", "debug", "düzelt", "fix", "heal", "screenshot", "ekran",
@@ -90,11 +100,19 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			break
 			
 	# 3. İlgili Kategorileri Aktif Et
+	if has_vision_intent:
+		var vision_tools = [
+			"take_viewport_screenshot", "take_editor_screenshot", "take_runtime_screenshot",
+			"get_active_scene_tree", "get_selected_nodes", "replace_file_content"
+		]
+		for vt in vision_tools:
+			active_tool_names[vt] = true
+
 	if has_runtime_intent:
 		# Runtime / Debug odaklı dar araç seti (~10 araç)
 		var runtime_tools = [
 			"play_game", "stop_game", "restart_game", "get_runtime_errors",
-			"take_runtime_screenshot", "create_or_update_script", "replace_file_content", "validate_script", "read_script"
+			"take_runtime_screenshot", "take_viewport_screenshot", "create_or_update_script", "replace_file_content", "validate_script", "read_script"
 		]
 		for rt in runtime_tools:
 			active_tool_names[rt] = true
@@ -112,17 +130,17 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			"create_scene", "save_scene", "add_node", "delete_node", "rename_node",
 			"duplicate_node", "set_node_property", "connect_signal", "reparent_node",
 			"select_node", "get_active_scene_tree", "get_selected_nodes", "write_files",
-			"list_dir", "create_character_scene", "create_enemy_scene",
+			"list_dir", "take_viewport_screenshot", "create_character_scene", "create_enemy_scene",
 			"create_ui_hud", "create_interactable", "setup_camera_follow"
 		]
 		for sc in scene_tools:
 			active_tool_names[sc] = true
 			
 	# 4. Hiçbir kategori eşleşmediyse varsayılan temel araç kümesini sun
-	if not has_script_intent and not has_scene_intent and not has_runtime_intent:
+	if not has_script_intent and not has_scene_intent and not has_runtime_intent and not has_vision_intent:
 		var default_tools = [
 			"create_or_update_script", "replace_file_content", "create_scene", "save_scene",
-			"play_game", "get_runtime_errors", "write_files", "list_dir", "read_script"
+			"play_game", "get_runtime_errors", "take_viewport_screenshot", "write_files", "list_dir", "read_script"
 		]
 		for dt in default_tools:
 			active_tool_names[dt] = true
