@@ -117,7 +117,7 @@ func _set_state(new_state: AgentState, desc: String = "") -> void:
 	current_state = new_state
 	state_changed.emit(new_state, desc)
 
-func start_task(user_prompt: String) -> void:
+func start_task(user_prompt: String, display_prompt: String = "") -> void:
 	if is_running() or not context or not provider:
 		return
 		
@@ -153,9 +153,10 @@ func start_task(user_prompt: String) -> void:
 	verification_time_msec = 0
 	waiting_time_msec = 0
 	
-	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), user_prompt.left(60)])
+	var shown_prompt = display_prompt if not display_prompt.is_empty() else user_prompt
+	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), shown_prompt.left(60)])
 	context.add_user_message(user_prompt)
-	text_received.emit("user", user_prompt)
+	text_received.emit("user", shown_prompt)
 	
 	_set_state(AgentState.PLANNING, AISidebarI18n.get_text("status_thinking"))
 	_run_next_step()

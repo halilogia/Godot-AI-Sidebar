@@ -95,12 +95,24 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
+[node name="MentionContainer" type="PanelContainer" parent="MainLayout/InputArea"]
+visible = false
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+
+[node name="MentionList" type="ItemList" parent="MainLayout/InputArea/MentionContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 11
+same_column_width = true
+
 [node name="InputField" type="TextEdit" parent="MainLayout/InputArea"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 11
-placeholder_text = "Ask Godot AI... (Ctrl+Enter to send)"
+placeholder_text = "Ask Godot AI... (@ to mention file or node, Ctrl+Enter to send)"
 wrap_mode = 1
 
 [node name="ButtonsBar" type="HBoxContainer" parent="MainLayout/InputArea"]

@@ -136,4 +136,9 @@ func _format_text_with_links_and_code(raw: String) -> String:
 	var regex = RegEx.new()
 	regex.compile("(res://[a-zA-Z0-9_/\\.\\-]+)")
 	result = regex.sub(result, "[color=#88c0d0][url=file:$1]$1[/url][/color]", true)
+	
+	# Node mention'larını vurgula (@Node:...)
+	var node_regex = RegEx.new()
+	node_regex.compile("(@Node:[a-zA-Z0-9_/\\.\\-]+)")
+	result = node_regex.sub(result, "[color=#e5c07b][b]$1[/b][/color]", true)
 	return result

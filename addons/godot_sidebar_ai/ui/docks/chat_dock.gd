@@ -25,6 +25,7 @@ const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
+const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -38,6 +39,8 @@ const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/c
 @onready var message_stream: VBoxContainer = $MainLayout/ChatScroll/MessageStream
 @onready var jump_to_bottom_btn: Button = $MainLayout/InputArea/ButtonsBar/JumpToBottomBtn
 
+@onready var mention_container: PanelContainer = $MainLayout/InputArea/MentionContainer
+@onready var mention_list: ItemList = $MainLayout/InputArea/MentionContainer/MentionList
 @onready var input_field: TextEdit = $MainLayout/InputArea/InputField
 @onready var clear_btn: Button = $MainLayout/InputArea/ButtonsBar/ClearBtn
 @onready var send_btn: Button = $MainLayout/InputArea/ButtonsBar/SendBtn
@@ -62,6 +65,9 @@ var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
 var _current_assistant_bubble: AISidebarMessageBubble = null
 var _auto_scroll_enabled: bool = true
+
+var _active_mention_suggestions: Array[Dictionary] = []
+var _active_mention_query_info: Dictionary = {}
 
 func _ready() -> void:
 	if not Engine.is_editor_hint():
@@ -108,6 +114,20 @@ func _ready() -> void:
 		export_btn.pressed.connect(_on_export_pressed)
 	if input_field:
 		input_field.gui_input.connect(_on_input_gui_input)
+		input_field.text_changed.connect(_on_input_text_changed)
+	if mention_list:
+		mention_list.item_activated.connect(_on_mention_item_activated)
+	if mention_container:
+		var style = StyleBoxFlat.new()
+		style.set_corner_radius_all(6)
+		style.bg_color = Color(0.12, 0.14, 0.18, 0.95)
+		style.border_color = Color(0.3, 0.45, 0.65, 0.8)
+		style.set_border_width_all(1)
+		style.content_margin_left = 4
+		style.content_margin_top = 4
+		style.content_margin_right = 4
+		style.content_margin_bottom = 4
+		mention_container.add_theme_stylebox_override("panel", style)
 	if model_selector:
 		model_selector.item_selected.connect(_on_model_selected)
 	if settings_dialog:
@@ -261,13 +281,115 @@ func _on_model_selected(index: int) -> void:
 
 func _on_input_gui_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
+		if mention_container and mention_container.visible:
+			if event.keycode == KEY_ESCAPE:
+				accept_event()
+				mention_container.visible = false
+				return
+			elif event.keycode == KEY_DOWN:
+				accept_event()
+				_navigate_mention_list(1)
+				return
+			elif event.keycode == KEY_UP:
+				accept_event()
+				_navigate_mention_list(-1)
+				return
+			elif event.keycode == KEY_TAB or (event.keycode == KEY_ENTER and not (event.ctrl_pressed or event.shift_pressed)):
+				var sel = mention_list.get_selected_items()
+				if sel.size() > 0:
+					accept_event()
+					_on_mention_item_activated(sel[0])
+					return
+					
 		if event.keycode == KEY_ENTER and (event.ctrl_pressed or event.shift_pressed):
 			accept_event()
 			_on_send_pressed()
 
+func _navigate_mention_list(dir: int) -> void:
+	if not mention_list or mention_list.item_count == 0:
+		return
+	var cur = 0
+	var sel = mention_list.get_selected_items()
+	if sel.size() > 0:
+		cur = sel[0]
+	var next_idx = posmod(cur + dir, mention_list.item_count)
+	mention_list.select(next_idx)
+	mention_list.ensure_current_is_visible()
+
+func _on_input_text_changed() -> void:
+	if not input_field or not mention_container or not mention_list:
+		return
+		
+	var text = input_field.text
+	var caret_line = input_field.get_caret_line()
+	var caret_col = input_field.get_caret_column()
+	
+	var lines = text.split("\n")
+	var absolute_caret_pos = 0
+	for i in range(mini(caret_line, lines.size())):
+		absolute_caret_pos += lines[i].length() + 1
+	absolute_caret_pos += caret_col
+	absolute_caret_pos = clampi(absolute_caret_pos, 0, text.length())
+	
+	var q_info = AISidebarMentionManager.detect_mention_query(text, absolute_caret_pos)
+	if q_info["active"]:
+		_active_mention_query_info = q_info
+		_active_mention_suggestions = AISidebarMentionManager.get_suggestions(q_info["query"])
+		if _active_mention_suggestions.size() > 0:
+			mention_list.clear()
+			for s in _active_mention_suggestions:
+				var badge = s.get("type_badge", "FILE")
+				var label = "[" + badge + "] " + s.get("label", "") + " (" + s.get("detail", "") + ")"
+				mention_list.add_item(label)
+			mention_list.select(0)
+			mention_container.visible = true
+		else:
+			mention_container.visible = false
+	else:
+		mention_container.visible = false
+
+func _on_mention_item_activated(index: int) -> void:
+	if index < 0 or index >= _active_mention_suggestions.size() or not input_field:
+		if mention_container:
+			mention_container.visible = false
+		return
+		
+	var chosen = _active_mention_suggestions[index]
+	var insert_text = chosen.get("insert_text", "") + " "
+	
+	var text = input_field.text
+	var start_pos = _active_mention_query_info.get("start_pos", -1)
+	var end_pos = _active_mention_query_info.get("end_pos", -1)
+	
+	if start_pos >= 0 and end_pos >= start_pos and end_pos <= text.length():
+		var new_text = text.substr(0, start_pos) + insert_text + text.substr(end_pos)
+		input_field.text = new_text
+		
+		var new_caret_pos = start_pos + insert_text.length()
+		var current_pos = 0
+		var target_line = 0
+		var target_col = 0
+		var lines = new_text.split("\n")
+		for i in range(lines.size()):
+			var l_len = lines[i].length()
+			if current_pos + l_len >= new_caret_pos:
+				target_line = i
+				target_col = new_caret_pos - current_pos
+				break
+			current_pos += l_len + 1
+		input_field.set_caret_line(target_line)
+		input_field.set_caret_column(target_col)
+		
+	if mention_container:
+		mention_container.visible = false
+	input_field.grab_focus()
+
 func _on_send_pressed() -> void:
 	if not agent_runner:
 		return
+		
+	if mention_container:
+		mention_container.visible = false
 		
 	if agent_runner.is_running():
 		agent_runner.stop()
@@ -285,9 +407,12 @@ func _on_send_pressed() -> void:
 	_current_runtime_card = null
 	_current_approval_card = null
 	
-	agent_runner.start_task(user_text)
+	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(user_text)
+	agent_runner.start_task(resolved_ctx["augmented_prompt"], user_text)
 
 func _on_clear_pressed() -> void:
+	if mention_container:
+		mention_container.visible = false
 	if agent_runner and agent_runner.is_running():
 		agent_runner.stop()
 	if agent_context:

@@ -43,6 +43,7 @@ const TestMaxStepsAndTelemetry = preload("res://tests/test_max_steps_and_telemet
 const TestDynamicToolFiltering = preload("res://tests/test_dynamic_tool_filtering.gd")
 const TestSurgicalFileEditing = preload("res://tests/test_surgical_file_editing.gd")
 const TestStreamingAndSSE = preload("res://tests/test_streaming_and_sse.gd")
+const TestMentionManager = preload("res://tests/test_mention_manager.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -91,7 +92,8 @@ func _init() -> void:
 		TestMaxStepsAndTelemetry,
 		TestDynamicToolFiltering,
 		TestSurgicalFileEditing,
-		TestStreamingAndSSE
+		TestStreamingAndSSE,
+		TestMentionManager
 	]
 	
 	var total_passed = 0
