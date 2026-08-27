@@ -23,6 +23,10 @@ Thumbs.db
 
 # Addon user secrets / local config
 addons/godot_sidebar_ai/config.json
+.env
+.env.*
+*.env
+user_secrets.json
 
 # Agent Brain / Scratch
 brain/

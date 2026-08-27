@@ -146,11 +146,13 @@ func _status_to_name(status: int) -> String:
 		_: return "STATUS_" + str(status)
 
 ## Yanıt tamponunun geçerli ve tamamlanmış bir yanıt içerip içermediğini denetler.
+## Gerçek 9Router / OpenAI SSE protokolü ile tam uyumludur:
 ## 1. Content-Length varsa ve tam karşılandıysa tamamlanmıştır.
-## 2. SSE akışında (data:) SADECE ve SADECE [DONE] belirteci geldiğinde tamamlanmıştır.
-## 3. Non-streaming JSON yanıtlarında geçerli ve kapanmış bir JSON nesnesi/dizisi varsa tamamlanmıştır.
-## Asla tek bir ara SSE chunk'ını veya boş rol tanımlı ilk chunk'ı tamamlanmış saymaz.
-static func is_buffer_complete(raw_bytes: PackedByteArray, expected_len: int = -1) -> bool:
+## 2. SSE akışında [DONE] belirteci veya finish_reason ("stop", "tool_calls", "length") geldiğinde tamamlanmıştır.
+## 3. Bağlantı kapandığında (is_connection_closed=true) tamponda geçerli content/tool verisi varsa kurtarılır.
+## 4. Non-streaming JSON yanıtlarında geçerli ve kapanmış bir JSON nesnesi varsa tamamlanmıştır.
+## Yalnızca boş rol tanımı içeren veya tamamen boş/bozuk tamponları asla başarılı saymaz.
+static func is_buffer_complete(raw_bytes: PackedByteArray, expected_len: int = -1, is_connection_closed: bool = false) -> bool:
 	if raw_bytes.is_empty():
 		return false
 		
@@ -162,9 +164,41 @@ static func is_buffer_complete(raw_bytes: PackedByteArray, expected_len: int = -
 	if body_str.is_empty():
 		return false
 		
-	# 2. SSE Akışı Kontrolü: Yalnızca [DONE] belirteci ile tamamlanır!
+	# 2. SSE Akışı (Server-Sent Events) Kontrolü
 	if body_str.begins_with("data:") or "data:" in body_str:
-		return body_str.ends_with("[DONE]") or "data: [DONE]" in body_str
+		# 2a. Açık [DONE] belirteci
+		if body_str.ends_with("[DONE]") or "data: [DONE]" in body_str:
+			return true
+			
+		# 2b. Final finish_reason kontrolü ("stop", "tool_calls", "length")
+		if "\"finish_reason\":\"stop\"" in body_str or "\"finish_reason\": \"stop\"" in body_str \
+		   or "\"finish_reason\":\"tool_calls\"" in body_str or "\"finish_reason\": \"tool_calls\"" in body_str \
+		   or "\"finish_reason\":\"length\"" in body_str or "\"finish_reason\": \"length\"" in body_str:
+			return true
+			
+		# 2c. Bağlantı kapandıysa (Socket Closed / Status 8) ve tamponda gerçek veri varsa
+		if is_connection_closed:
+			var lines = body_str.split("\n")
+			var has_real_content = false
+			for line in lines:
+				var l_clean = line.strip_edges()
+				if l_clean.begins_with("data:"):
+					var payload = l_clean.substr(5).strip_edges()
+					if payload == "[DONE]":
+						return true
+					var p_json = JSON.parse_string(payload)
+					if p_json is Dictionary and p_json.has("choices") and p_json["choices"].size() > 0:
+						var c = p_json["choices"][0]
+						var delta = c.get("delta", {})
+						var txt = delta.get("content", "")
+						var tools = delta.get("tool_calls", [])
+						var reason = c.get("finish_reason", null)
+						if (txt != null and not str(txt).is_empty()) or (tools is Array and tools.size() > 0) or (reason != null and str(reason) != "null" and not str(reason).is_empty()):
+							has_real_content = true
+			return has_real_content
+			
+		# Aktif STATUS_BODY sırasında henüz finish_reason veya [DONE] gelmediyse akış devam eder
+		return false
 		
 	# 3. Non-Streaming JSON Kontrolü
 	if body_str.begins_with("{") and body_str.ends_with("}"):
@@ -190,7 +224,7 @@ func _process(delta: float) -> void:
 		
 	match status:
 		HTTPClient.STATUS_DISCONNECTED:
-			if is_buffer_complete(_raw_response_body, _expected_content_length):
+			if is_buffer_complete(_raw_response_body, _expected_content_length, true):
 				_finalize_success()
 			else:
 				_is_request_active = false
@@ -237,12 +271,12 @@ func _process(delta: float) -> void:
 					return
 					
 				# 2. Erken JSON & SSE Doğrulama (Early Completion)
-				if is_buffer_complete(_raw_response_body, _expected_content_length):
+				if is_buffer_complete(_raw_response_body, _expected_content_length, false):
 					_finalize_success()
 					return
 		HTTPClient.STATUS_CONNECTION_ERROR, HTTPClient.STATUS_TLS_HANDSHAKE_ERROR:
 			# Bağlantı soketi kapandı / sıfırlandı; ancak yanıt tamponu zaten tam/geçerli ise fatal hata sayma
-			if status == HTTPClient.STATUS_CONNECTION_ERROR and is_buffer_complete(_raw_response_body, _expected_content_length):
+			if status == HTTPClient.STATUS_CONNECTION_ERROR and is_buffer_complete(_raw_response_body, _expected_content_length, true):
 				print("[TIMING] %s | CONNECTION_ERROR_RECOVERED | Valid response found in buffer (%d bytes), finalizing." % [get_ts(), _raw_response_body.size()])
 				_finalize_success()
 			else:
