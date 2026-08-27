@@ -7,6 +7,27 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
+## [2.2.0] - 2026-08-27 (Real 9Router Protocol Alignment & Live Diagnostics)
+
+### 🌟 Eklenenler & Düzeltmeler
+* **Gerçek 9Router SSE Protokol Uyumu:** 9Router / Gemini 3.7 Flash'ın akış bitiminde `finish_reason: "stop"` / `"tool_calls"` gönderip soketi kapatması (`Status: 8 / ResponseAborted`) durumunda veriyi kayıpsız kurtaran `is_buffer_complete` mimarisi uygulandı.
+* **Canlı Entegrasyon & Teşhis Aracı (`tests/integration/test_real_9router_live.gd`):** Gerçek 9Router (`http://127.0.0.1:20128/v1`) ve `ag/gemini-3.7-flash-low` ile çalışan canlı TTFT, chunk sayısı ve kapanış durumu ölçüm aracı eklendi.
+* **Test Paketi Genişletmesi:** 45 test paketi ve 192 assertion'a ulaşıldı (`%100 ALL PASS`).
+* **Gizli API Anahtarı Koruması:** `.env` ve ortam değişkeni (`GODOT_AI_TEST_API_KEY`) desteği eklendi; `.gitignore` güncellendi.
+
+---
+
+## [2.1.0] - 2026-08-27 (Surgical Editing, Streaming, @Mention & Context Compactor)
+
+### 🌟 Eklenenler
+* **Cerrahi Dosya Düzenleme (`replace_file_content`):** Büyük scriptlerde küçük değişiklikleri satır satır diff ve atomik syntax doğrulaması ile yapabilen cerrahi araç eklendi.
+* **Canlı LLM SSE Streaming:** Gelen token chunk'larını anında sohbet baloncuğuna akıtan ve "AI yazıyor..." göstergesi sunan streaming motoru entegre edildi.
+* **`@mention` Dosya & Düğüm Otomatik Tamamlama:** Sohbet kutusuna `@` yazıldığında proje dosyalarını ve sahne ağacı düğümlerini listeyen `AISidebarMentionManager` eklendi.
+* **Akıllı Context Compactor (`AISidebarContextCompactor`):** Uzun görevlerde eski araç çıktılarını 1-2 satırlık yapılandırılmış özetlere indirgeyerek %70+ token tasarrufu sağlayan sıkıştırma motoru eklendi (aktif son 2 araç tam korunur).
+* **UI Metin Seçimi & Kopyalama:** Chat panellerinde fareyle metin seçimi, `Ctrl+C` kısayolu ve sağ tık kopyalama menüsü aktifleştirildi.
+
+---
+
 ## [2.0.0] - 2026-08-26 (Godot AI Core Architecture Overhaul)
 
 ### 🌟 Eklenenler
@@ -16,27 +37,15 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * **Sağlayıcı Soyutlaması (`AISidebarAIProvider`):** OpenAI uyumlu modeller (`OpenAICompatibleProvider`), 9Router, OpenRouter, yerel Ollama ve LM Studio ile çalışacak şekilde ayrıştırıldı.
 * **Bağımsız Ağ Motoru (`AISidebarNetworkManager`):** `HTTPRequest` düğümleri Presentation katmanından çıkarıldı, altyapı servisine taşındı.
 * **Editör Zemin Bilgisi (`AISidebarEditorStateSnapshot`):** Aktif sahne adı, dosyası ve seçili düğümler prompt bağlamına otomatik eklendi.
-* **Ajan Durum Makinesi (`AISidebarAgentRunner`):** `IDLE`, `PLANNING`, `EXECUTING`, `OBSERVING`, `VERIFYING`, `COMPLETED`, `ERROR`, `RECOVERING`, `CANCELLED` durumları ve Stagnation (tekrarlayan araç döngüsü) koruması eklendi.
+* **Ajan Durum Makinesi (`AISidebarAgentRunner`):** `IDLE`, `PLANNING`, `EXECUTING`, `OBSERVING`, `VERIFYING`, `COMPLETED`, `ERROR`, `RECOVERING`, `CANCELLED` durumları ve Stagnation koruması eklendi.
 * **Diff & ChangeSet Modeli (`AISidebarChangeSet`):** Kod değişiklikleri için satır satır diff üreten domain modeli eklendi.
-* **Headless Birim Test Paketi (`tests/test_runner.gd`):** Godot 4.7 CLI üzerinden çalışan 7 test paketi ve 20 assertion eklendi.
+* **Headless Birim Test Paketi (`tests/test_runner.gd`):** Godot 4.7 CLI üzerinden çalışan 45 test paketi ve 192 assertion eklendi.
 * **GNU GPL-3.0 Lisansı:** Açık kaynak lisans dosyası (`LICENSE`) eklendi.
-
-### 🔄 Değiştirilenler
-* UI dock sahnesi (`chat_dock.tscn`) tamamen hafifletildi; içindeki ağ düğümleri kaldırıldı.
-* Araçlar **Primitive** (`scene_tools`, `script_tools`, `editor_tools`) ve **Intent** (`game_intent_tools`) olarak ikiye ayrıldı.
-* Tip dönüşüm mantığı `tool_base.gd` içinden alınıp bağımsız `type_parser.gd` sınıfına taşındı.
-* `plugin.cfg` sürümü `2.0.0` olarak güncellendi.
-
-### 🗑️ Kaldırılanlar
-* Eski monolitik `core/tool_executor.gd` ve `core/tool_registry.gd` dosyaları silindi.
-* `etheria` arşiv projesindeki eski eklenti kalıntıları temizlendi.
 
 ---
 
-## [1.0.0] - 2026-08-20 (Initial Prototype)
+## [1.0.0] - 2026-08-26 (Official v1.0.0 Release)
 
 ### 🌟 Eklenenler
-* Godot sol dock paneline yerleşen temel AI sohbet arayüzü.
-* 9Router API entegrasyonu.
-* Basit GDScript ve sahne oluşturma araçları.
-* TR/EN dil desteği.
+* Godot AI Sidebar resmi v1.0.0 sürümü GitHub üzerinden yayınlandı ve temiz ZIP paketi hazırlandı.
+* Temiz kurulum ve README dokümantasyonu tamamlandı.

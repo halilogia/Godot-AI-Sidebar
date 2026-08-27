@@ -4,7 +4,7 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 ---
 
-## 📍 Faz 1: Çekirdek Mimari, Güvenlik ve Temiz Temel (Tamamlandı ✅ - v2.0)
+## 📍 Faz 1: Çekirdek Mimari, Güvenlik ve Temiz Temel (Tamamlandı ✅)
 
 - [x] Clean Architecture ve katı SRP (1 Dosya = 1 İş) refaktörü.
 - [x] Merkezi `EditorMutationService` ile %100 Undo/Redo (Ctrl+Z) sahne mutasyonu.
@@ -13,48 +13,61 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 - [x] UI katmanından `HTTPRequest` ve ağ mantığının tamamen sökülmesi.
 - [x] `EditorStateSnapshot` ile dinamik editör zeminleme (grounding context).
 - [x] Ajan durum makinesi (State Machine) ve Stagnation (sonsuz döngü) koruması.
-- [x] Godot 4.7 headless test altyapısı ve 7 birim test paketi.
+- [x] Godot 4.7 headless test altyapısı (45 test paketi / 192 assertion).
 - [x] GNU GPL-3.0 lisansı ve Türkçe/İngilizce çift dil desteği.
 
 ---
 
-## 📍 Faz 2: Görsel Diff & İnteraktif ChangeSet Onay Penceresi (Sırada ⏳)
+## 📍 Faz 2: Cerrahi Kod Düzenleme, Diff & Güvenli Onay (Tamamlandı ✅)
 
-- [ ] `ChangeSetDialog` görsel arayüzü (Yeşil eklenen satırlar `+`, Kırmızı silinen satırlar `-`).
-- [ ] Kod ve sahne değişikliklerinde kullanıcıya "Uygula (Apply)" veya "Reddet (Reject)" seçeneği.
-- [ ] Uygulanan değişikliklerin anında `EditorUndoRedoManager` geçmişine tek parça olarak işlenmesi.
-- [ ] Dosya bazlı geri alma (Rollback) geçmişi paneli.
+- [x] `replace_file_content` ile 400 satırlık scriptlerde satır satır cerrahi değişiklik.
+- [x] Satır bazlı Diff (`+` yeşil, `-` kırmızı) ve `ChangeSet` domain modeli.
+- [x] Atomik GDScript syntax doğrulaması (diske bozuk kod yazılmasını engelleme).
+- [x] Tek yüzeyli inline `ApprovalCard` onay/red kartları ve çift onay engeli.
+- [x] Atomik Rollback (Undo) mekanizması.
 
 ---
 
-## 📍 Faz 3: Çalışma Zamanı Denetimi & Hata Ayıklama (Runtime Debugging)
+## 📍 Faz 3: Canlı LLM SSE Streaming, @Mention & Context Optimizasyonu (Tamamlandı ✅)
 
-- [ ] Oyun çalışırken canlı ClassDB ve Node ağacı sorgulama (`runtime_get_state`).
+- [x] Gerçek zamanlı LLM SSE akışı ve canlı sohbet baloncuğu güncellemesi.
+- [x] `@mention` ile proje dosyalarını ve sahne ağacı düğümlerini otomatik tamamlama.
+- [x] `AISidebarContextCompactor` ile eski araç çıktılarını 1-2 satırlık özetlere dönüştürme (%70 token tasarrufu).
+- [x] Chat panellerinde fareyle metin seçimi ve `Ctrl+C` kısayolu desteği.
+- [x] Chat geçmişini Markdown ve JSON olarak tek tıkla dışa aktarma (`ChatExporter`).
+
+---
+
+## 📍 Faz 4: Gerçek 9Router Protokol Uyumu & Canlı Teşhis (Tamamlandı ✅)
+
+- [x] 9Router / Gemini 3.7 Flash `finish_reason: "stop"` + soket kapanışını (`Status: 8`) kayıpsız karşılama.
+- [x] Windows `localhost` $\rightarrow$ `127.0.0.1` 30 saniyelik gecikme önleme mekanizması.
+- [x] `tests/integration/test_real_9router_live.gd` ile canlı TTFT, chunk ve model doğrulaması.
+- [x] Gizli API anahtarı yönetimi (`.env` ve ortam değişkeni güvenliği).
+
+---
+
+## 📍 Faz 5: Çalışma Zamanı Denetimi & Hata Ayıklama (Runtime Debugging & Healing) (Kısmen Tamamlandı 🔄)
+
+- [x] `RuntimeObservation` ve `SourceMapper` ile çalışma zamanı stack trace haritalama.
+- [x] Modelin runtime hatalarını otomatik düzeltmesi için `Self-Healing` döngüsü.
+- [ ] Oyun çalışırken canlı ClassDB ve Node ağacı görsel sorgulama dock'u.
 - [ ] Çalışma zamanı deterministik kare ilerletme (`runtime_freeze`, `runtime_step`).
-- [ ] Çalışma zamanı hata yakalama (Runtime Stack Trace & Exception auto-recovery).
 - [ ] Oyun esnasında girdi simülasyonu (`input_injection`).
 
 ---
 
-## 📍 Faz 4: Görsel Yapay Zeka & Multimodal Viewport (Vision)
+## 📍 Faz 6: Görsel Yapay Zeka & Multimodal Viewport (Vision) (Sırada ⏳)
 
+- [x] `VisionInput` ve multimodal Base64 OpenAI parça formatı.
 - [ ] Editör Viewport ve 2D/3D sahne ekran görüntüsü alma aracı (`take_viewport_screenshot`).
-- [ ] Görsel modeller (Gemini Flash, Claude Sonnet vb.) için sahne görüntüsünü otomatik prompta ekleme.
 - [ ] UI hizalama ve seviye tasarımı (Level Design) geri bildirimlerini görsel analiz etme.
 
 ---
 
-## 📍 Faz 5: Doğrudan Sağlayıcı Genişletmeleri (Native Providers)
-
-- [ ] `AnthropicProvider` (Doğrudan Claude `/v1/messages` akış desteği).
-- [ ] `GeminiProvider` (Doğrudan Google AI Studio `/v1beta` akış desteği).
-- [ ] `LocalOllamaProvider` (İnternetsiz, tamamen yerel çalışan LLM modelleri için tek tık yapılandırma).
-
----
-
-## 📍 Faz 6: Genişletilmiş Motor Araçları (Extended Tool Ecosystem)
+## 📍 Faz 7: Genişletilmiş Motor Araçları & CLI Agent Desteği (Gelecek 🔮)
 
 - [ ] **TileMap & Seviye Araçları:** Otomatik 2D/3D tilemap döşeme ve zindan üretimi.
-- [ ] **AnimationPlayer & AnimationTree Araçları:** Kodla animasyon anahtarları ve blend tree kurulumu.
+- [ ] **AnimationPlayer Araçları:** Kodla animasyon anahtarları ve blend tree kurulumu.
 - [ ] **Shader Composer:** Canlı `.gdshader` üretimi, hata denetimi ve görsel materyal oluşturma.
-- [ ] **Ses ve Fizik:** AudioStreamPlayer otomasyonu, 2D/3D RayCast ve Collision optimizasyonu.
+- [ ] **Headless CLI Agent:** Editör açılmadan CI/CD üzerinden otonom oyun testi ve kod refaktörü.
