@@ -94,14 +94,14 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 		# Runtime / Debug odaklı dar araç seti (~10 araç)
 		var runtime_tools = [
 			"play_game", "stop_game", "restart_game", "get_runtime_errors",
-			"take_runtime_screenshot", "create_or_update_script", "validate_script", "read_script"
+			"take_runtime_screenshot", "create_or_update_script", "replace_file_content", "validate_script", "read_script"
 		]
 		for rt in runtime_tools:
 			active_tool_names[rt] = true
 			
 	if has_script_intent:
 		var script_tools = [
-			"create_or_update_script", "validate_script", "write_files",
+			"create_or_update_script", "replace_file_content", "validate_script", "write_files",
 			"delete_file", "list_dir", "get_open_scripts", "read_script"
 		]
 		for st in script_tools:
@@ -121,7 +121,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	# 4. Hiçbir kategori eşleşmediyse varsayılan temel araç kümesini sun
 	if not has_script_intent and not has_scene_intent and not has_runtime_intent:
 		var default_tools = [
-			"create_or_update_script", "create_scene", "save_scene",
+			"create_or_update_script", "replace_file_content", "create_scene", "save_scene",
 			"play_game", "get_runtime_errors", "write_files", "list_dir", "read_script"
 		]
 		for dt in default_tools:

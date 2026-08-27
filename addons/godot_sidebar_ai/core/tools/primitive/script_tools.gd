@@ -106,6 +106,22 @@ static func get_schemas() -> Array:
 					"required": ["file_path"]
 				}
 			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "replace_file_content",
+				"description": "Mevcut bir dosyada belirli bir kod bloğunu cerrahi (surgical) olarak yeni kod bloğuyla değiştirir. Tüm dosyayı baştan sona yeniden yazmak yerine sadece değişecek kısmı güncellemek için kullanılır.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"file_path": { "type": "string", "description": "Değiştirilecek dosya yolu (örn: res://scripts/Player.gd)." },
+						"target_code": { "type": "string", "description": "Dosyada tam olarak eşleşmesi gereken mevcut kod bloğu." },
+						"replacement_code": { "type": "string", "description": "Hedef kodun yerine yazılacak yeni kod bloğu." }
+					},
+					"required": ["file_path", "target_code", "replacement_code"]
+				}
+			}
 		}
 	]
 
@@ -115,6 +131,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _read_script(args)
 		"create_or_update_script":
 			return _create_or_update_script(args)
+		"replace_file_content":
+			return _replace_file_content(args)
 		"delete_file":
 			return _delete_file(args)
 		"write_files":
@@ -182,6 +200,87 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		"file_path": path,
 		"is_new": is_new,
 		"message": "Script başarıyla yazıldı (" + ("Yeni" if is_new else "Güncellendi") + "): " + path
+	})
+	res["change_set"] = cs
+	return res
+
+static func _replace_file_content(args: Dictionary) -> Dictionary:
+	var raw_path = args.get("file_path", "")
+	var target_code = args.get("target_code", "")
+	var replacement_code = args.get("replacement_code", "")
+	
+	if target_code.is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "target_code parametresi boş olamaz.")
+		
+	var safe_check = AISidebarPathPolicy.is_safe_to_write(raw_path)
+	if not safe_check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+		
+	var path = safe_check["path"]
+	if not FileAccess.file_exists(path):
+		return AISidebarToolResult.err("FILE_NOT_FOUND", "Değiştirilecek dosya bulunamadı: " + path)
+		
+	var file = FileAccess.open(path, FileAccess.READ)
+	if not file:
+		return AISidebarToolResult.err("READ_ERROR", "Dosya okunamadı: " + path)
+		
+	var old_content = file.get_as_text()
+	file.close()
+	
+	# 1. Eşleşme kontrolü (0 eşleşme, 1 eşleşme, >1 eşleşme)
+	var first_idx = old_content.find(target_code)
+	if first_idx == -1:
+		return AISidebarToolResult.err("TARGET_NOT_FOUND", "Hedef kod bloğu dosyada bulunamadı: " + path)
+		
+	var second_idx = old_content.find(target_code, first_idx + target_code.length())
+	if second_idx != -1:
+		var occurrences = 0
+		var pos = 0
+		while true:
+			pos = old_content.find(target_code, pos)
+			if pos == -1:
+				break
+			occurrences += 1
+			pos += target_code.length()
+			
+		return AISidebarToolResult.err(
+			"MULTIPLE_TARGETS_FOUND",
+			"Hedef kod dosyada birden fazla kez (" + str(occurrences) + " kez) bulundu. Lütfen etrafındaki satırları da ekleyerek hedefi daha spesifik belirtin: " + path
+		)
+		
+	# 2. Cerrahi Değiştirme (Surgical Replacement)
+	var new_content = old_content.substr(0, first_idx) + replacement_code + old_content.substr(first_idx + target_code.length())
+	
+	# 3. Diske yazmadan önce in-memory syntax validation (.gd ise)
+	if path.ends_with(".gd"):
+		var val_res = AISidebarVerificationPipeline.validate_script_source(new_content)
+		if not val_res.get("success", false):
+			var err_msg = val_res.get("error", {}).get("message", "Sözdizimi hatası") if val_res.get("error") is Dictionary else str(val_res.get("error", "Sözdizimi hatası"))
+			return AISidebarToolResult.err("SCRIPT_SYNTAX_ERROR", "Değişiklik sonrası kod sözdizimi hatası içeriyor, dosya değiştirilmedi: " + err_msg, false, val_res)
+			
+	# 4. ChangeSet oluştur ve uygula
+	var cs = AISidebarChangeSet.new(
+		path,
+		AISidebarChangeSet.ChangeType.MODIFY_FILE,
+		new_content,
+		old_content,
+		"Cerrahi kod güncellemesi: " + path
+	)
+	var apply_res = cs.apply()
+	if not apply_res["success"]:
+		return AISidebarToolResult.err("WRITE_ERROR", apply_res["error"])
+		
+	var old_hash = old_content.md5_text()
+	var new_hash = new_content.md5_text()
+	var diff_text = cs.get_diff_text()
+	
+	var res = AISidebarToolResult.ok({
+		"file_path": path,
+		"replacements": 1,
+		"old_content_hash": old_hash,
+		"new_content_hash": new_hash,
+		"diff": diff_text,
+		"message": "Kod bloğu cerrahi olarak başarıyla güncellendi: " + path
 	})
 	res["change_set"] = cs
 	return res

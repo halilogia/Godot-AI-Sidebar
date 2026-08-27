@@ -457,6 +457,23 @@ func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarCh
 			var f = FileAccess.open(path, FileAccess.READ)
 			if f: old_c = f.get_as_text(); f.close()
 		return AISidebarChangeSet.new(path, c_type, args.get("content", ""), old_c, "Script güncellemesi")
+	elif fn_name == "replace_file_content":
+		var path = args.get("file_path", "")
+		var target_code = args.get("target_code", "")
+		var replacement_code = args.get("replacement_code", "")
+		var old_c = ""
+		var new_c = ""
+		if FileAccess.file_exists(path):
+			var f = FileAccess.open(path, FileAccess.READ)
+			if f:
+				old_c = f.get_as_text()
+				f.close()
+				var idx = old_c.find(target_code)
+				if idx != -1:
+					new_c = old_c.substr(0, idx) + replacement_code + old_content_after(old_c, idx, target_code.length())
+				else:
+					new_c = old_c
+		return AISidebarChangeSet.new(path, AISidebarChangeSet.ChangeType.MODIFY_FILE, new_c, old_c, "Cerrahi kod güncellemesi")
 	elif fn_name == "write_files":
 		var cs = AISidebarChangeSet.new("", AISidebarChangeSet.ChangeType.MODIFY_FILE, "", "", "Toplu dosya yazımı")
 		var f_arr = args.get("files", [])
@@ -476,9 +493,12 @@ func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarCh
 		return AISidebarChangeSet.new(args.get("node_path", ""), AISidebarChangeSet.ChangeType.MUTATE_SCENE, "", "", "Düğüm silme: " + args.get("node_path", ""))
 	return null
 
+func old_content_after(s: String, idx: int, len_target: int) -> String:
+	return s.substr(idx + len_target)
+
 func _classify_telemetry_op(fn_name: String, args: Dictionary) -> void:
 	match fn_name:
-		"create_or_update_script", "create_scene", "save_scene":
+		"create_or_update_script", "replace_file_content", "delete_file", "create_scene", "save_scene":
 			file_ops_count += 1
 		"write_files":
 			var files_arr = args.get("files", [])

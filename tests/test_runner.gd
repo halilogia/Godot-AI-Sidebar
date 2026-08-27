@@ -41,6 +41,7 @@ const TestRuntimeStateMachine = preload("res://tests/test_runtime_state_machine.
 const TestApprovalAndSelfHealing = preload("res://tests/test_approval_and_self_healing.gd")
 const TestMaxStepsAndTelemetry = preload("res://tests/test_max_steps_and_telemetry.gd")
 const TestDynamicToolFiltering = preload("res://tests/test_dynamic_tool_filtering.gd")
+const TestSurgicalFileEditing = preload("res://tests/test_surgical_file_editing.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -87,7 +88,8 @@ func _init() -> void:
 		TestRuntimeStateMachine,
 		TestApprovalAndSelfHealing,
 		TestMaxStepsAndTelemetry,
-		TestDynamicToolFiltering
+		TestDynamicToolFiltering,
+		TestSurgicalFileEditing
 	]
 	
 	var total_passed = 0

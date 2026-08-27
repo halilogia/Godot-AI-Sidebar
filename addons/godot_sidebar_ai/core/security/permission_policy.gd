@@ -32,8 +32,8 @@ static func requires_user_approval(tool_name: String, args: Dictionary = {}) -> 
 			return false
 		return true
 		
-	# Eğer bir dosya sıfırdan yazılmıyor da mevcut bir dosya eziliyorsa
-	if tool_name == "create_or_update_script":
+	# Eğer bir dosya sıfırdan yazılmıyor da mevcut bir dosya eziliyorsa veya cerrahi değiştiriliyorsa
+	if tool_name in ["create_or_update_script", "replace_file_content"]:
 		var path = args.get("file_path", "")
 		if not path.is_empty() and FileAccess.file_exists(path):
 			var req_overwrite = cfg.get("require_overwrite_approval", true)
