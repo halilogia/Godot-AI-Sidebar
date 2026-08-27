@@ -146,7 +146,10 @@ func _status_to_name(status: int) -> String:
 		_: return "STATUS_" + str(status)
 
 ## Yanıt tamponunun geçerli ve tamamlanmış bir yanıt içerip içermediğini denetler.
-## Bağlantı soketi kapandığında (Status 0 veya Status 8) erken başarısızlığı önler.
+## 1. Content-Length varsa ve tam karşılandıysa tamamlanmıştır.
+## 2. SSE akışında (data:) SADECE ve SADECE [DONE] belirteci geldiğinde tamamlanmıştır.
+## 3. Non-streaming JSON yanıtlarında geçerli ve kapanmış bir JSON nesnesi/dizisi varsa tamamlanmıştır.
+## Asla tek bir ara SSE chunk'ını veya boş rol tanımlı ilk chunk'ı tamamlanmış saymaz.
 static func is_buffer_complete(raw_bytes: PackedByteArray, expected_len: int = -1) -> bool:
 	if raw_bytes.is_empty():
 		return false
@@ -159,11 +162,11 @@ static func is_buffer_complete(raw_bytes: PackedByteArray, expected_len: int = -
 	if body_str.is_empty():
 		return false
 		
-	# 2. SSE [DONE] kontrolü
-	if body_str.ends_with("[DONE]") or "data: [DONE]" in body_str:
-		return true
+	# 2. SSE Akışı Kontrolü: Yalnızca [DONE] belirteci ile tamamlanır!
+	if body_str.begins_with("data:") or "data:" in body_str:
+		return body_str.ends_with("[DONE]") or "data: [DONE]" in body_str
 		
-	# 3. Geçerli JSON kontrolü
+	# 3. Non-Streaming JSON Kontrolü
 	if body_str.begins_with("{") and body_str.ends_with("}"):
 		var json = JSON.new()
 		if json.parse(body_str) == OK and json.data is Dictionary:
@@ -171,22 +174,6 @@ static func is_buffer_complete(raw_bytes: PackedByteArray, expected_len: int = -
 	elif body_str.begins_with("[") and body_str.ends_with("]"):
 		var json = JSON.new()
 		if json.parse(body_str) == OK and json.data is Array:
-			return true
-			
-	# 4. SSE Akışı tamamlanmış chunk kontrolü
-	if body_str.begins_with("data:"):
-		var lines = body_str.split("\n")
-		var valid_sse_chunk_count = 0
-		for line in lines:
-			var l_clean = line.strip_edges()
-			if l_clean.begins_with("data:"):
-				var payload = l_clean.substr(5).strip_edges()
-				if payload == "[DONE]":
-					return true
-				var p_json = JSON.new()
-				if p_json.parse(payload) == OK and p_json.data is Dictionary:
-					valid_sse_chunk_count += 1
-		if valid_sse_chunk_count > 0:
 			return true
 			
 	return false
