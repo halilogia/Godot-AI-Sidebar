@@ -60,6 +60,7 @@ var last_user_prompt: String = ""
 var _current_activity_group: AISidebarActivityGroup = null
 var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
+var _current_assistant_bubble: AISidebarMessageBubble = null
 var _auto_scroll_enabled: bool = true
 
 func _ready() -> void:
@@ -77,6 +78,7 @@ func _ready() -> void:
 	# Sinyal Bağlantıları
 	agent_runner.state_changed.connect(_on_agent_state_changed)
 	agent_runner.thinking_received.connect(_on_agent_thinking_received)
+	agent_runner.chunk_received.connect(_on_agent_chunk_received)
 	agent_runner.text_received.connect(_on_agent_text_received)
 	agent_runner.tool_executing.connect(_on_agent_tool_executing)
 	agent_runner.tool_completed.connect(_on_agent_tool_completed)
@@ -347,14 +349,40 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 func _on_agent_thinking_received(thinking: String) -> void:
 	pass
 
+func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> void:
+	if not text_delta.is_empty():
+		if _current_activity_group:
+			_current_activity_group.complete_group()
+			_current_activity_group = null
+			
+		if _current_assistant_bubble == null or not is_instance_valid(_current_assistant_bubble):
+			_current_assistant_bubble = AISidebarMessageBubble.new("assistant", "")
+			_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
+			_add_stream_component(_current_assistant_bubble)
+			
+		_current_assistant_bubble.append_text(text_delta)
+		set_status_badge("⚡ AI Typing...", Color(1.0, 0.8, 0.2))
+		if _auto_scroll_enabled:
+			_scroll_to_bottom()
+
 func _on_agent_text_received(role: String, text: String) -> void:
 	if _current_activity_group:
 		_current_activity_group.complete_group()
 		_current_activity_group = null
 		
-	var bubble = AISidebarMessageBubble.new(role, text)
-	bubble.meta_clicked.connect(_on_meta_clicked)
-	_add_stream_component(bubble)
+	if role == "assistant":
+		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
+			_current_assistant_bubble.finalize_stream(text)
+			_current_assistant_bubble = null
+		else:
+			var bubble = AISidebarMessageBubble.new(role, text)
+			bubble.meta_clicked.connect(_on_meta_clicked)
+			_add_stream_component(bubble)
+	else:
+		_current_assistant_bubble = null
+		var bubble = AISidebarMessageBubble.new(role, text)
+		bubble.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(bubble)
 
 func _ensure_activity_group() -> AISidebarActivityGroup:
 	if not _current_activity_group:
@@ -364,6 +392,7 @@ func _ensure_activity_group() -> AISidebarActivityGroup:
 	return _current_activity_group
 
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
+	_current_assistant_bubble = null
 	var grp = _ensure_activity_group()
 	var human_title = _get_human_tool_title(tool_name, args)
 	grp.add_activity("▶", human_title, -1, JSON.stringify(args))
@@ -493,6 +522,7 @@ func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
 	set_status_badge("⚡ Agent Step " + str(current_step) + " / " + str(max_steps), Color(1.0, 0.8, 0.2))
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
+	_current_assistant_bubble = null
 	if _current_activity_group:
 		_current_activity_group.complete_group()
 		_current_activity_group = null
@@ -502,6 +532,7 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	update_ui_language()
 
 func _on_agent_error(err_msg: String) -> void:
+	_current_assistant_bubble = null
 	if _current_activity_group:
 		_current_activity_group.complete_group()
 		_current_activity_group = null

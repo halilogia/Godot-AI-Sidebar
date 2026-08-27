@@ -33,6 +33,7 @@ enum AgentState {
 
 signal state_changed(new_state: AgentState, state_description: String)
 signal thinking_received(thinking_text: String)
+signal chunk_received(text_delta: String, thinking_delta: String)
 signal text_received(role: String, message_text: String)
 signal tool_executing(tool_name: String, args: Dictionary)
 signal tool_completed(tool_name: String, result: Dictionary)
@@ -101,7 +102,13 @@ func _init(p_provider: AISidebarAIProvider = null, p_context: AISidebarAgentCont
 	
 	if provider:
 		provider.response_received.connect(_on_provider_response)
+		provider.chunk_received.connect(_on_provider_chunk)
 		provider.error_occurred.connect(_on_provider_error)
+
+func _on_provider_chunk(text_delta: String, thinking_delta: String) -> void:
+	if not is_running():
+		return
+	chunk_received.emit(text_delta, thinking_delta)
 
 func is_running() -> bool:
 	return current_state != AgentState.IDLE and current_state != AgentState.COMPLETED and current_state != AgentState.ERROR and current_state != AgentState.CANCELLED

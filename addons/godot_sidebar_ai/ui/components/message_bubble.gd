@@ -33,6 +33,14 @@ func set_message(p_role: String, p_text: String) -> void:
 	text_content = p_text
 	_render_content()
 
+func append_text(chunk: String) -> void:
+	text_content += chunk
+	_render_content()
+
+func finalize_stream(final_text: String) -> void:
+	text_content = final_text
+	_render_content()
+
 func _setup_ui() -> void:
 	# Stil ve Kenarlık
 	var style = StyleBoxFlat.new()

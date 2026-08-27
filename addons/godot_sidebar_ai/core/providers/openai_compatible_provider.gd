@@ -11,6 +11,7 @@ const AISidebarSSEParser = preload("res://addons/godot_sidebar_ai/core/network/s
 
 var network_manager: AISidebarNetworkManager
 var _provider_req_start_msec: int = 0
+var _stream_buffer: String = ""
 
 static func get_ts() -> String:
 	var dt = Time.get_time_dict_from_system()
@@ -21,6 +22,7 @@ func _init(p_network_manager: AISidebarNetworkManager = null) -> void:
 	network_manager = p_network_manager
 	if network_manager:
 		network_manager.request_completed.connect(_on_network_completed)
+		network_manager.response_chunk_received.connect(_on_network_chunk)
 		network_manager.request_failed.connect(_on_network_failed)
 
 func supports_vision() -> bool:
@@ -33,6 +35,7 @@ func supports_vision() -> bool:
 	return false
 
 func cancel() -> void:
+	_stream_buffer = ""
 	if network_manager:
 		network_manager.cancel_all()
 
@@ -65,6 +68,7 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 		error_occurred.emit("Ağ yöneticisi başlatılmamış.")
 		return
 		
+	_stream_buffer = ""
 	var config = AISidebarConfig.load_config()
 	var base_url = get_clean_base_url(config.get("base_url", "http://localhost:20128/v1"))
 	var api_key = config.get("api_key", "").strip_edges()
@@ -107,7 +111,7 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 			
 		payload_messages.append(msg)
 		
-	var use_stream = config.get("stream", false)
+	var use_stream = config.get("stream", true)
 	var body_dict: Dictionary = {
 		"model": model,
 		"messages": payload_messages,
@@ -122,13 +126,40 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 	var body_str = JSON.stringify(body_dict)
 	
 	_provider_req_start_msec = Time.get_ticks_msec()
-	print("[TIMING] %s | LLM_REQUEST_START | model=%s messages=%d tools=%d" % [get_ts(), model, payload_messages.size(), tools_schema.size()])
+	print("[TIMING] %s | LLM_REQUEST_START | model=%s messages=%d tools=%d stream=%s" % [get_ts(), model, payload_messages.size(), tools_schema.size(), str(use_stream)])
 	
 	var err = network_manager.post_request(chat_url, headers, body_str)
 	if err != OK:
 		error_occurred.emit("İstek başlatılamadı (Hata: " + str(err) + ")")
 
+func _on_network_chunk(endpoint_type: String, chunk_str: String) -> void:
+	if endpoint_type != "chat":
+		return
+		
+	_stream_buffer += chunk_str
+	var lines = _stream_buffer.split("\n")
+	# Son tamamlanmamış olabilecek satırı tamponda tut
+	_stream_buffer = lines[-1]
+	
+	for i in range(lines.size() - 1):
+		var line = lines[i].strip_edges()
+		if line.begins_with("data:"):
+			var json_str = line.trim_prefix("data:").strip_edges()
+			if json_str == "[DONE]" or json_str.is_empty():
+				continue
+			var chunk = JSON.parse_string(json_str)
+			if chunk is Dictionary and chunk.has("choices") and chunk["choices"].size() > 0:
+				var c = chunk["choices"][0]
+				var delta = c.get("delta", {})
+				var text_delta = delta.get("content", "")
+				var thinking_delta = delta.get("reasoning_content", delta.get("reasoning", ""))
+				if text_delta != null and not str(text_delta).is_empty():
+					chunk_received.emit(str(text_delta), "")
+				if thinking_delta != null and not str(thinking_delta).is_empty():
+					chunk_received.emit("", str(thinking_delta))
+
 func _on_network_completed(endpoint_type: String, response_code: int, response_str: String) -> void:
+	_stream_buffer = ""
 	if endpoint_type == "models":
 		var json_res = JSON.parse_string(response_str)
 		var model_ids: Array = []
@@ -167,5 +198,6 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 			)
 
 func _on_network_failed(endpoint_type: String, error_msg: String) -> void:
+	_stream_buffer = ""
 	print("[TIMING] %s | PROVIDER_NETWORK_FAILED | endpoint=%s err=%s" % [get_ts(), endpoint_type, error_msg])
 	error_occurred.emit(error_msg)

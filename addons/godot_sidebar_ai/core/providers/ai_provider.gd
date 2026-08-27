@@ -6,6 +6,7 @@ class_name AISidebarAIProvider
 
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 
+signal chunk_received(text_delta: String, thinking_delta: String)
 signal response_received(text_content: String, thinking_content: String, tool_calls: Array)
 signal models_fetched(models: Array)
 signal error_occurred(error_message: String)

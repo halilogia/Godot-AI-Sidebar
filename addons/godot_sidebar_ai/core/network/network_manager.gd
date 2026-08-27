@@ -6,6 +6,7 @@ class_name AISidebarNetworkManager
 ## Windows loopback (localhost -> 127.0.0.1) gecikmelerini önler, bağlantı durumlarını milisaniye bazında raporlar.
 
 signal request_completed(endpoint_type: String, response_code: int, response_str: String)
+signal response_chunk_received(endpoint_type: String, chunk_str: String)
 signal request_failed(endpoint_type: String, error_message: String)
 
 var _client: HTTPClient = null
@@ -193,6 +194,9 @@ func _process(delta: float) -> void:
 			var chunk = _client.read_response_body_chunk()
 			if chunk.size() > 0:
 				_raw_response_body.append_array(chunk)
+				var chunk_str = chunk.get_string_from_utf8()
+				if not chunk_str.is_empty():
+					response_chunk_received.emit(_current_endpoint, chunk_str)
 				
 				# 1. Content-Length ile tamamlama
 				if _expected_content_length > 0 and _raw_response_body.size() >= _expected_content_length:
