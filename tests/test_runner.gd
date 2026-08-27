@@ -44,6 +44,7 @@ const TestDynamicToolFiltering = preload("res://tests/test_dynamic_tool_filterin
 const TestSurgicalFileEditing = preload("res://tests/test_surgical_file_editing.gd")
 const TestStreamingAndSSE = preload("res://tests/test_streaming_and_sse.gd")
 const TestMentionManager = preload("res://tests/test_mention_manager.gd")
+const TestContextCompactor = preload("res://tests/test_context_compactor.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -93,7 +94,8 @@ func _init() -> void:
 		TestDynamicToolFiltering,
 		TestSurgicalFileEditing,
 		TestStreamingAndSSE,
-		TestMentionManager
+		TestMentionManager,
+		TestContextCompactor
 	]
 	
 	var total_passed = 0

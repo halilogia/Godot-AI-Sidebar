@@ -7,6 +7,7 @@ class_name AISidebarAgentContext
 const AISidebarEditorStateSnapshot = preload("res://addons/godot_sidebar_ai/core/state/editor_state_snapshot.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
 const AISidebarSourceMapper = preload("res://addons/godot_sidebar_ai/core/runtime/source_mapper.gd")
+const AISidebarContextCompactor = preload("res://addons/godot_sidebar_ai/core/agent/context_compactor.gd")
 
 var messages: Array = []
 var recent_actions: Array = []
@@ -100,7 +101,8 @@ func add_runtime_error_context(obs: AISidebarRuntimeObservation) -> void:
 	_auto_compact_if_needed()
 
 ## Model API'sine gönderilmeden önce dinamik editör zeminlemesini (Grounding) ekler
-func get_messages_for_api() -> Array:
+## ve eski tool sonuçlarını token optimizasyonu için sıkıştırır (Context Compaction).
+func get_messages_for_api(keep_recent_tools: int = 2) -> Array:
 	var api_messages: Array = []
 	
 	# Dinamik Editör Durumu (Aktif Sahne, Seçili Düğüm, Açık Script)
@@ -110,7 +112,9 @@ func get_messages_for_api() -> Array:
 		"content": grounding
 	})
 	
-	for m in messages:
+	# Eski tool çıktılarını yapılandırılmış özetlere dönüştür
+	var compacted_msgs = AISidebarContextCompactor.compact_messages(messages, keep_recent_tools)
+	for m in compacted_msgs:
 		api_messages.append(m)
 		
 	return api_messages
