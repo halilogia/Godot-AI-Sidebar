@@ -17,21 +17,29 @@ Bu dizin, Godot AI Core eklentisinin geliştirme araçlarını, örnek oyun proj
 
 ## 🚀 `sync-example` Kullanım Kılavuzu
 
-Ana repo kökündeki `addons/godot_sidebar_ai/` eklentisini `examples/` klasörü içindeki oyun projelerine aktarmak ve `project.godot` dosyasında otomatik olarak etkinleştirmek için kullanılır.
+Ana repo kökündeki `addons/godot_sidebar_ai/` eklentisini hem `examples/` altındaki projelere hem de kullanıcının **Belgeler (Documents)** klasöründeki Godot oyunlarına aktarmak ve `project.godot` dosyasında otomatik olarak etkinleştirmek için kullanılır.
 
 ### 1. Çift Tıklayarak Çalıştırma (İnteraktif Menü)
-Doğrudan **`sync-example.bat`** dosyasına çift tıklayın. Karşınıza şu interaktif menü gelir:
+Doğrudan **`sync-example.bat`** dosyasına çift tıklayın. Script hem `examples/` klasörünü hem de `Belgeler` klasörünüzdeki Godot projelerini otomatik olarak listeler:
 
 ```text
-'examples' altında bulunan oyun projeleri:
-  [1] yeni-oyun-projesi
-  [N] Yeni bir örnek oyun projesi oluştur
-  [A] Tüm projelere senkronize et
+Bulunan Godot Oyun Projeleri:
+
+--- [Repo / Examples Klasörü] ---
+  [1] yeni-oyun-projesi 	(examples\yeni-oyun-projesi)
+
+--- [Kullanıcı Belgeler / Documents Klasörü] ---
+  [2] yeni-oyun-projesi 	(Documents\yeni-oyun-projesi)
+  [3] kingdom-hex       	(Documents\ChatGPT\New project\kingdom-hex)
+
+--- [İşlemler] ---
+  [N] Yeni bir oyun projesi oluştur
+  [A] Bulunan tüm projelere senkronize et (3 proje)
   [Q] Çıkış
 ```
 
-* Proje numarasını girerek seçtiğiniz oyuna eklentiyi kopyalayabilirsiniz.
-* **`N`** tuşuna basarak sıfırdan yeni bir oyun klasörü ve `project.godot` oluşturabilirsiniz.
+* Proje numarasını girerek seçtiğiniz oyuna eklentiyi kopyalayabilir veya bağlayabilirsiniz.
+* **`N`** tuşuna basarak ister `examples/` içine ister `Belgeler` klasörüne sıfırdan yeni bir Godot projesi açabilirsiniz.
 
 ---
 

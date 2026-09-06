@@ -50,6 +50,7 @@ const TestViewportScreenshot = preload("res://tests/test_viewport_screenshot.gd"
 const TestUIUXQueueAndInput = preload("res://tests/test_ui_ux_queue_and_input.gd")
 const TestAgentClarification = preload("res://tests/test_agent_clarification.gd")
 const TestChatManagement = preload("res://tests/test_chat_management.gd")
+const TestTSCNVerification = preload("res://tests/test_tscn_verification.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -105,7 +106,8 @@ func _init() -> void:
 		TestViewportScreenshot,
 		TestUIUXQueueAndInput,
 		TestAgentClarification,
-		TestChatManagement
+		TestChatManagement,
+		TestTSCNVerification
 	]
 	
 	var total_passed = 0

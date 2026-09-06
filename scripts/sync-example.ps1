@@ -1,8 +1,8 @@
 ﻿# ==============================================================================
-# Godot AI Core — Examples Proje Senkronizasyon ve Otomasyon Yöneticisi
+# Godot AI Core — Oyun Projeleri Senkronizasyon ve Otomasyon Yöneticisi
 # ==============================================================================
-# Bu script, 'addons/godot_sidebar_ai' eklentisini 'examples/' altındaki oyun
-# projelerine kopyalar, günceller veya canlı olarak izler (watch mode).
+# Bu script, 'addons/godot_sidebar_ai' eklentisini hem 'examples/' altındaki hem de
+# 'Belgeler' (Documents) klasöründeki Godot oyun projelerine kopyalar veya bağlar.
 # ==============================================================================
 
 param (
@@ -14,6 +14,7 @@ param (
     [switch]$Link,
     [string]$NewProject = ""
 )
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -32,9 +33,10 @@ if (Test-Path (Join-Path $CandidateRoot "addons\godot_sidebar_ai")) {
 
 $SourceAddonDir = Join-Path $RepoRoot "addons\godot_sidebar_ai"
 $ExamplesDir = Join-Path $RepoRoot "examples"
+$DocsDir = [Environment]::GetFolderPath("MyDocuments")
 
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "   Godot AI Core - Example Proje Otomasyon Yöneticisi   " -ForegroundColor Cyan
+Write-Host "   Godot AI Core - Oyun Projesi Otomasyon Yöneticisi    " -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 
 # 1. Kaynak Eklenti Doğrulaması
@@ -82,7 +84,7 @@ function Enable-PluginInProject([string]$ProjectGodotPath) {
 # Yardımcı Fonksiyon: Tek bir projeye senkronizasyon yap
 function Sync-ToProject([string]$TargetProjectPath, [bool]$UseJunction = $false) {
     $projectName = Split-Path $TargetProjectPath -Leaf
-    Write-Host "`n>> Projeye uygulanıyor: $projectName" -ForegroundColor Yellow
+    Write-Host "`n>> Projeye uygulanıyor: $projectName ($TargetProjectPath)" -ForegroundColor Yellow
 
     $targetAddonsDir = Join-Path $TargetProjectPath "addons"
     $targetPluginDir = Join-Path $targetAddonsDir "godot_sidebar_ai"
@@ -117,7 +119,6 @@ function Sync-ToProject([string]$TargetProjectPath, [bool]$UseJunction = $false)
             New-Item -ItemType Directory -Path $targetPluginDir | Out-Null
         }
 
-        # Robocopy ile kopyala, eğer hedefte config.json varsa üzerine yazma
         $excludeFiles = @()
         if ($hasExistingConfig) {
             $excludeFiles += "config.json"
@@ -159,7 +160,50 @@ function Sync-ToProject([string]$TargetProjectPath, [bool]$UseJunction = $false)
     Enable-PluginInProject -ProjectGodotPath $projectGodot
 }
 
-# 3. Yeni Proje Oluşturma İsteği Varsa
+# Yardımcı Fonksiyon: Tüm Godot Projelerini Tara (examples/ + Belgeler)
+function Get-AllGodotProjects() {
+    $list = @()
+
+    # 1. examples/ Klasöründekiler
+    if (Test-Path $ExamplesDir) {
+        Get-ChildItem -Path $ExamplesDir -Directory | ForEach-Object {
+            $pg = Join-Path $_.FullName "project.godot"
+            if (Test-Path $pg) {
+                $list += [PSCustomObject]@{
+                    Name = $_.Name
+                    Path = $_.FullName
+                    Location = "Examples (Repo İçi)"
+                    DisplayHint = "examples\$($_.Name)"
+                }
+            }
+        }
+    }
+
+    # 2. Belgeler (Documents) Klasöründekiler (Derinlik: 2)
+    if (Test-Path $DocsDir) {
+        Get-ChildItem -Path $DocsDir -Directory -Depth 2 -ErrorAction SilentlyContinue | ForEach-Object {
+            $pg = Join-Path $_.FullName "project.godot"
+            if ((Test-Path $pg) -and ($_.FullName -ne $RepoRoot) -and ($_.FullName -ne (Join-Path $RepoRoot "examples"))) {
+                # Zaten listede yoksa ekle
+                $pFullName = $_.FullName
+                $already = $list | Where-Object { $_.Path -eq $pFullName }
+                if (-not $already) {
+                    $relHint = if ($pFullName.StartsWith($DocsDir)) { "Documents" + $pFullName.Substring($DocsDir.Length) } else { $pFullName }
+                    $list += [PSCustomObject]@{
+                        Name = $_.Name
+                        Path = $pFullName
+                        Location = "Belgeler (Documents)"
+                        DisplayHint = $relHint
+                    }
+                }
+            }
+        }
+    }
+
+    return $list
+}
+
+# 3. Yeni Proje Oluşturma
 if (-not [string]::IsNullOrWhiteSpace($NewProject)) {
     $newProjectPath = Join-Path $ExamplesDir $NewProject
     if (Test-Path $newProjectPath) {
@@ -185,42 +229,86 @@ enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
     exit 0
 }
 
-# 4. Hedef Proje(leri) Belirleme
+# 4. Projeleri Tara ve Hedef Belirle
+$allProjects = Get-AllGodotProjects
 $targetProjects = @()
 
 if ($All) {
-    Get-ChildItem -Path $ExamplesDir -Directory | ForEach-Object {
-        $pg = Join-Path $_.FullName "project.godot"
-        if (Test-Path $pg) { $targetProjects += $_.FullName }
-    }
-    if ($targetProjects.Count -eq 0) {
-        Write-Host "HATA: 'examples/' altında project.godot içeren proje bulunamadı." -ForegroundColor Red
+    if ($allProjects.Count -eq 0) {
+        Write-Host "HATA: Ne 'examples/' altında ne de 'Belgeler' klasöründe Godot projesi bulunamadı." -ForegroundColor Red
         exit 1
     }
+    $allProjects | ForEach-Object { $targetProjects += $_.Path }
 } elseif (-not [string]::IsNullOrWhiteSpace($ProjectName)) {
-    $directPath = if ([System.IO.Path]::IsPathRooted($ProjectName)) { $ProjectName } else { Join-Path $ExamplesDir $ProjectName }
-    if (-not (Test-Path $directPath)) {
-        Write-Host "HATA: Belirtilen proje yolu bulunamadı: $directPath" -ForegroundColor Red
-        exit 1
+    # Doğrudan girilen isim veya yol kontrolü
+    if ([System.IO.Path]::IsPathRooted($ProjectName) -and (Test-Path $ProjectName)) {
+        $targetProjects += $ProjectName
+    } else {
+        # İsme göre eşleştir
+        $matches = $allProjects | Where-Object { $_.Name -eq $ProjectName }
+        if ($matches.Count -eq 1) {
+            $targetProjects += $matches[0].Path
+        } elseif ($matches.Count -gt 1) {
+            Write-Host "`nBirden fazla '$ProjectName' adlı proje bulundu:" -ForegroundColor Yellow
+            for ($m = 0; $m -lt $matches.Count; $m++) {
+                Write-Host "  [$($m + 1)] $($matches[$m].Name) -> $($matches[$m].DisplayHint)" -ForegroundColor Cyan
+            }
+            $c = Read-Host "Lütfen hangisine uygulanacağını seçin (1-$($matches.Count))"
+            $idx = [int]$c - 1
+            if ($idx -ge 0 -and $idx -lt $matches.Count) {
+                $targetProjects += $matches[$idx].Path
+            } else {
+                Write-Host "Geçersiz seçim!" -ForegroundColor Red
+                exit 1
+            }
+        } else {
+            # Bulunamadıysa examples altında ara
+            $fallback = Join-Path $ExamplesDir $ProjectName
+            if (Test-Path $fallback) {
+                $targetProjects += $fallback
+            } else {
+                Write-Host "HATA: '$ProjectName' isimli proje ne 'examples/' içinde ne de 'Belgeler' altında bulunamadı." -ForegroundColor Red
+                exit 1
+            }
+        }
     }
-    $targetProjects += $directPath
 } else {
-    # İnteraktif Seçim Menüsü
-    $availableProjects = @()
-    Get-ChildItem -Path $ExamplesDir -Directory | ForEach-Object {
-        $pg = Join-Path $_.FullName "project.godot"
-        if (Test-Path $pg) {
-            $availableProjects += $_
+    # İnteraktif Menü
+    Write-Host "`nBulunan Godot Oyun Projeleri:" -ForegroundColor White
+    
+    $examplesList = $allProjects | Where-Object { $_.Location -like "*Examples*" }
+    $docsList = $allProjects | Where-Object { $_.Location -like "*Belgeler*" }
+
+    $index = 1
+    $indexedProjects = @{}
+
+    if ($examplesList.Count -gt 0) {
+        Write-Host "`n--- [Repo / Examples Klasörü] ---" -ForegroundColor DarkCyan
+        foreach ($p in $examplesList) {
+            Write-Host "  [$index] $($p.Name)  `t($($p.DisplayHint))" -ForegroundColor Cyan
+            $indexedProjects[$index] = $p.Path
+            $index++
         }
     }
 
-    Write-Host "`n'examples' altında bulunan oyun projeleri:" -ForegroundColor White
-    for ($i = 0; $i -lt $availableProjects.Count; $i++) {
-        $pName = $availableProjects[$i].Name
-        Write-Host "  [$($i + 1)] $pName" -ForegroundColor Cyan
+    if ($docsList.Count -gt 0) {
+        Write-Host "`n--- [Kullanıcı Belgeler / Documents Klasörü] ---" -ForegroundColor DarkGreen
+        foreach ($p in $docsList) {
+            Write-Host "  [$index] $($p.Name)  `t($($p.DisplayHint))" -ForegroundColor Green
+            $indexedProjects[$index] = $p.Path
+            $index++
+        }
     }
-    Write-Host "  [N] Yeni bir örnek oyun projesi oluştur" -ForegroundColor Green
-    Write-Host "  [A] Tüm projelere senkronize et" -ForegroundColor Magenta
+
+    if ($allProjects.Count -eq 0) {
+        Write-Host "  (Hiçbir Godot projesi bulunamadı)" -ForegroundColor Gray
+    }
+
+    Write-Host "`n--- [İşlemler] ---" -ForegroundColor White
+    Write-Host "  [N] Yeni bir oyun projesi oluştur" -ForegroundColor Yellow
+    if ($allProjects.Count -gt 0) {
+        Write-Host "  [A] Bulunan tüm projelere senkronize et ($($allProjects.Count) proje)" -ForegroundColor Magenta
+    }
     Write-Host "  [Q] Çıkış" -ForegroundColor Gray
 
     $choice = Read-Host "`nLütfen bir seçim yapın"
@@ -229,17 +317,27 @@ if ($All) {
         Write-Host "İşlem iptal edildi." -ForegroundColor Gray
         exit 0
     } elseif ($choice -match '^[Aa]$') {
-        $availableProjects | ForEach-Object { $targetProjects += $_.FullName }
+        $allProjects | ForEach-Object { $targetProjects += $_.Path }
     } elseif ($choice -match '^[Nn]$') {
         $projName = Read-Host "Yeni proje adı (ör: space-shooter)"
         if ([string]::IsNullOrWhiteSpace($projName)) {
             Write-Host "Proje adı boş olamaz." -ForegroundColor Red
             exit 1
         }
-        $newProjectPath = Join-Path $ExamplesDir $projName
-        New-Item -ItemType Directory -Path $newProjectPath | Out-Null
-        $newProjectGodot = Join-Path $newProjectPath "project.godot"
-        $godotContent = @"
+        Write-Host "Nerede oluşturulsun?" -ForegroundColor White
+        Write-Host "  [1] examples/ klasörü (Repo İçi)" -ForegroundColor Cyan
+        Write-Host "  [2] Belgelerim (Documents) klasörü" -ForegroundColor Green
+        $locChoice = Read-Host "Seçiminiz (Varsayılan: 1)"
+        
+        $baseDir = if ($locChoice -eq "2") { $DocsDir } else { $ExamplesDir }
+        $newProjectPath = Join-Path $baseDir $projName
+
+        if (Test-Path $newProjectPath) {
+            Write-Host "UYARI: Bu konumda '$projName' zaten mevcut!" -ForegroundColor Yellow
+        } else {
+            New-Item -ItemType Directory -Path $newProjectPath | Out-Null
+            $newProjectGodot = Join-Path $newProjectPath "project.godot"
+            $godotContent = @"
 ; Engine configuration file.
 config_version=5
 
@@ -250,15 +348,16 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [editor_plugins]
 enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
 "@
-        [System.IO.File]::WriteAllText($newProjectGodot, $godotContent, [System.Text.Encoding]::UTF8)
-        Write-Host "Yeni proje oluşturuldu: $newProjectPath" -ForegroundColor Green
+            [System.IO.File]::WriteAllText($newProjectGodot, $godotContent, [System.Text.Encoding]::UTF8)
+            Write-Host "Yeni proje oluşturuldu: $newProjectPath" -ForegroundColor Green
+        }
         $targetProjects += $newProjectPath
     } elseif ($choice -match '^\d+$') {
-        $idx = [int]$choice - 1
-        if ($idx -ge 0 -and $idx -lt $availableProjects.Count) {
-            $targetProjects += $availableProjects[$idx].FullName
+        $num = [int]$choice
+        if ($indexedProjects.ContainsKey($num)) {
+            $targetProjects += $indexedProjects[$num]
         } else {
-            Write-Host "Geçersiz seçim!" -ForegroundColor Red
+            Write-Host "Geçersiz seçim numarası!" -ForegroundColor Red
             exit 1
         }
     } else {
@@ -285,6 +384,7 @@ if ($Watch) {
     $watchTargetPluginDir = Join-Path $watchTarget "addons\godot_sidebar_ai"
 
     Write-Host "`n[CANLI İZLEME AKTİF] 'addons/godot_sidebar_ai' klasöründeki değişiklikler anında aktarılıyor..." -ForegroundColor Cyan
+    Write-Host "Hedef: $watchTarget" -ForegroundColor White
     Write-Host "Durdurmak için Ctrl+C tuşlarına basın.`n" -ForegroundColor Gray
 
     $watcher = New-Object System.IO.FileSystemWatcher
