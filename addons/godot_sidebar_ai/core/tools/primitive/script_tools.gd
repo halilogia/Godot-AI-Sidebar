@@ -174,18 +174,13 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		
 	var path = safe_check["path"]
 	
-	# Diske yazmadan önce in-memory syntax validation
-	if path.ends_with(".gd"):
-		var val_res = AISidebarVerificationPipeline.validate_script_source(content, path)
-		if not val_res.get("success", false):
-			var err_msg = val_res.get("error", {}).get("message", "Sözdizimi hatası") if val_res.get("error") is Dictionary else str(val_res.get("error", "Sözdizimi hatası"))
-			return AISidebarToolResult.err("SCRIPT_SYNTAX_ERROR", "Kod sözdizimi hatası içeriyor, dosya yazılmadı: " + err_msg, false, val_res)
-	elif path.ends_with(".tscn") or path.ends_with(".tres"):
-		var val_res = AISidebarVerificationPipeline.validate_tscn_source(content, path)
-		if not val_res.get("success", false):
-			var err_code = val_res.get("error", {}).get("code", "TSCN_SYNTAX_ERROR") if val_res.get("error") is Dictionary else "TSCN_SYNTAX_ERROR"
-			var err_msg = val_res.get("error", {}).get("message", "Sahne sözdizimi hatası") if val_res.get("error") is Dictionary else str(val_res.get("error", "Sahne sözdizimi hatası"))
-			return AISidebarToolResult.err(err_code, "Sahne formatı hatası içeriyor, dosya yazılmadı: " + err_msg, false, val_res)
+	# Diske yazmadan önce in-memory validation (Unified Pipeline)
+	var val_res = AISidebarVerificationPipeline.validate_source(content, path)
+	if not val_res.get("success", false):
+		var err_obj = val_res.get("error", {})
+		var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
+		var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
+		return AISidebarToolResult.err(err_code, "Dosya doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
 			
 	var old_content = ""
 	var is_new = not FileAccess.file_exists(path)
@@ -257,18 +252,13 @@ static func _replace_file_content(args: Dictionary) -> Dictionary:
 	# 2. Cerrahi Değiştirme (Surgical Replacement)
 	var new_content = old_content.substr(0, first_idx) + replacement_code + old_content.substr(first_idx + target_code.length())
 	
-	# 3. Diske yazmadan önce in-memory syntax validation (.gd veya .tscn ise)
-	if path.ends_with(".gd"):
-		var val_res = AISidebarVerificationPipeline.validate_script_source(new_content, path)
-		if not val_res.get("success", false):
-			var err_msg = val_res.get("error", {}).get("message", "Sözdizimi hatası") if val_res.get("error") is Dictionary else str(val_res.get("error", "Sözdizimi hatası"))
-			return AISidebarToolResult.err("SCRIPT_SYNTAX_ERROR", "Değişiklik sonrası kod sözdizimi hatası içeriyor, dosya değiştirilmedi: " + err_msg, false, val_res)
-	elif path.ends_with(".tscn") or path.ends_with(".tres"):
-		var val_res = AISidebarVerificationPipeline.validate_tscn_source(new_content, path)
-		if not val_res.get("success", false):
-			var err_code = val_res.get("error", {}).get("code", "TSCN_SYNTAX_ERROR") if val_res.get("error") is Dictionary else "TSCN_SYNTAX_ERROR"
-			var err_msg = val_res.get("error", {}).get("message", "Sahne sözdizimi hatası") if val_res.get("error") is Dictionary else str(val_res.get("error", "Sahne sözdizimi hatası"))
-			return AISidebarToolResult.err(err_code, "Değişiklik sonrası sahne formatı hatası içeriyor, dosya değiştirilmedi: " + err_msg, false, val_res)
+	# 3. Diske yazmadan önce in-memory validation (Unified Pipeline)
+	var val_res = AISidebarVerificationPipeline.validate_source(new_content, path)
+	if not val_res.get("success", false):
+		var err_obj = val_res.get("error", {})
+		var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
+		var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
+		return AISidebarToolResult.err(err_code, "Değişiklik sonrası doğrulama başarısız, dosya değiştirilmedi: " + err_msg, false, val_res)
 			
 	# 4. ChangeSet oluştur ve uygula
 	var cs = AISidebarChangeSet.new(
