@@ -502,7 +502,7 @@ func _on_input_text_changed() -> void:
 		if _active_slash_suggestions.size() > 0:
 			mention_list.clear()
 			for s in _active_slash_suggestions:
-				var label = "[" + s["type_badge"] + "] " + s["label"] + " — " + s["detail"]
+				var label = s["label"] + " — " + s["detail"]
 				mention_list.add_item(label)
 			mention_list.select(0)
 			mention_container.visible = true

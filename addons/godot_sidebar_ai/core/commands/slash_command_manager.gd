@@ -11,15 +11,18 @@ const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security
 
 ## Komut Tanım Modeli
 static var _commands: Dictionary = {}
+static var _is_initializing: bool = false
 
 static func get_commands() -> Dictionary:
-	if _commands.is_empty():
+	if _commands.is_empty() and not _is_initializing:
+		_is_initializing = true
 		_init_default_commands()
+		_is_initializing = false
 	return _commands
 
 static func register_command(name: String, description: String, usage: String, risk: int, execute_fn: Callable) -> void:
 	var key = name.strip_edges().to_lower().trim_prefix("/")
-	get_commands()[key] = {
+	_commands[key] = {
 		"name": key,
 		"description": description,
 		"usage": usage,
