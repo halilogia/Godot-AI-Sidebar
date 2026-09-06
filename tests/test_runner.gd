@@ -52,6 +52,7 @@ const TestAgentClarification = preload("res://tests/test_agent_clarification.gd"
 const TestChatManagement = preload("res://tests/test_chat_management.gd")
 const TestTSCNVerification = preload("res://tests/test_tscn_verification.gd")
 const TestAutoApprove = preload("res://tests/test_auto_approve.gd")
+const TestSlashCommands = preload("res://tests/test_slash_commands.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -109,7 +110,8 @@ func _init() -> void:
 		TestAgentClarification,
 		TestChatManagement,
 		TestTSCNVerification,
-		TestAutoApprove
+		TestAutoApprove,
+		TestSlashCommands
 	]
 	
 	var total_passed = 0

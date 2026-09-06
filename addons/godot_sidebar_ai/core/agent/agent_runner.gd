@@ -165,7 +165,7 @@ func start_task(user_prompt: String, display_prompt: String = "") -> void:
 	
 	var shown_prompt = display_prompt if not display_prompt.is_empty() else user_prompt
 	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), shown_prompt.left(60)])
-	context.add_user_message(user_prompt)
+	context.add_user_message(user_prompt, false, display_prompt)
 	text_received.emit("user", shown_prompt)
 	
 	_set_state(AgentState.PLANNING, AISidebarI18n.get_text("status_thinking"))

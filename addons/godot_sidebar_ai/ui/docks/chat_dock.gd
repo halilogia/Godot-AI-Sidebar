@@ -31,6 +31,7 @@ const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/ch
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
 const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
+const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -88,6 +89,9 @@ var _auto_scroll_enabled: bool = true
 
 var _active_mention_suggestions: Array[Dictionary] = []
 var _active_mention_query_info: Dictionary = {}
+var _active_slash_suggestions: Array[Dictionary] = []
+var _active_slash_query_info: Dictionary = {}
+var _session_base_messages: Array = []
 
 func _ready() -> void:
 	if not Engine.is_editor_hint():
@@ -487,6 +491,29 @@ func _on_input_text_changed() -> void:
 	absolute_caret_pos += caret_col
 	absolute_caret_pos = clampi(absolute_caret_pos, 0, text.length())
 	
+	# 1. Önce Slash Command (/) kontrolü
+	var slash_q = AISidebarSlashCommandManager.detect_slash_query(text, absolute_caret_pos)
+	if slash_q["active"]:
+		_active_slash_query_info = slash_q
+		_active_mention_query_info.clear()
+		_active_slash_suggestions = AISidebarSlashCommandManager.get_suggestions(slash_q["query"])
+		_active_mention_suggestions.clear()
+		
+		if _active_slash_suggestions.size() > 0:
+			mention_list.clear()
+			for s in _active_slash_suggestions:
+				var label = "[" + s["type_badge"] + "] " + s["label"] + " — " + s["detail"]
+				mention_list.add_item(label)
+			mention_list.select(0)
+			mention_container.visible = true
+			return
+		else:
+			mention_container.visible = false
+			return
+			
+	# 2. @Mention kontrolü
+	_active_slash_query_info.clear()
+	_active_slash_suggestions.clear()
 	var q_info = AISidebarMentionManager.detect_mention_query(text, absolute_caret_pos)
 	if q_info["active"]:
 		_active_mention_query_info = q_info
@@ -505,7 +532,36 @@ func _on_input_text_changed() -> void:
 		mention_container.visible = false
 
 func _on_mention_item_activated(index: int) -> void:
-	if index < 0 or index >= _active_mention_suggestions.size() or not input_field:
+	if not input_field:
+		if mention_container:
+			mention_container.visible = false
+		return
+		
+	# Eğer aktif olan Slash Command önerisi ise:
+	if _active_slash_suggestions.size() > 0:
+		if index < 0 or index >= _active_slash_suggestions.size():
+			if mention_container: mention_container.visible = false
+			return
+		var chosen_cmd = _active_slash_suggestions[index]
+		var insert_text = chosen_cmd.get("insert_text", "")
+		var text = input_field.text
+		var start_pos = _active_slash_query_info.get("start_pos", -1)
+		var end_pos = _active_slash_query_info.get("end_pos", -1)
+		
+		if start_pos >= 0 and end_pos >= start_pos and end_pos <= text.length():
+			var new_text = text.substr(0, start_pos) + insert_text + text.substr(end_pos)
+			input_field.text = new_text
+			var new_caret_pos = start_pos + insert_text.length()
+			_set_input_caret_position(new_text, new_caret_pos)
+			
+		_active_slash_suggestions.clear()
+		_active_slash_query_info.clear()
+		if mention_container: mention_container.visible = false
+		input_field.grab_focus()
+		return
+		
+	# @Mention Tamamlama
+	if index < 0 or index >= _active_mention_suggestions.size():
 		if mention_container:
 			mention_container.visible = false
 		return
@@ -520,25 +576,29 @@ func _on_mention_item_activated(index: int) -> void:
 	if start_pos >= 0 and end_pos >= start_pos and end_pos <= text.length():
 		var new_text = text.substr(0, start_pos) + insert_text + text.substr(end_pos)
 		input_field.text = new_text
-		
 		var new_caret_pos = start_pos + insert_text.length()
-		var current_pos = 0
-		var target_line = 0
-		var target_col = 0
-		var lines = new_text.split("\n")
-		for i in range(lines.size()):
-			var l_len = lines[i].length()
-			if current_pos + l_len >= new_caret_pos:
-				target_line = i
-				target_col = new_caret_pos - current_pos
-				break
-			current_pos += l_len + 1
-		input_field.set_caret_line(target_line)
-		input_field.set_caret_column(target_col)
+		_set_input_caret_position(new_text, new_caret_pos)
 		
+	_active_mention_suggestions.clear()
+	_active_mention_query_info.clear()
 	if mention_container:
 		mention_container.visible = false
 	input_field.grab_focus()
+
+func _set_input_caret_position(text: String, new_caret_pos: int) -> void:
+	var current_pos = 0
+	var target_line = 0
+	var target_col = 0
+	var lines = text.split("\n")
+	for i in range(lines.size()):
+		var l_len = lines[i].length()
+		if current_pos + l_len >= new_caret_pos:
+			target_line = i
+			target_col = new_caret_pos - current_pos
+			break
+		current_pos += l_len + 1
+	input_field.set_caret_line(target_line)
+	input_field.set_caret_column(target_col)
 
 # --- Chat Management Olayları ve Yardımcıları ---
 
@@ -582,6 +642,7 @@ func _start_new_chat_session() -> void:
 		_save_current_session()
 		
 	current_session = AISidebarChatSession.new()
+	_session_base_messages.clear()
 	if agent_context:
 		agent_context.clear()
 		
@@ -596,7 +657,9 @@ func _save_current_session() -> void:
 	if current_session == null:
 		return
 	if agent_context:
-		current_session.messages = agent_context.messages.duplicate(true)
+		var combined = _session_base_messages.duplicate(true)
+		combined.append_array(agent_context.messages)
+		current_session.messages = combined
 	AISidebarChatManager.save_session(current_session)
 	_update_header_title()
 
@@ -614,6 +677,7 @@ func _load_session_by_id(session_id: String) -> void:
 		return
 		
 	current_session = loaded
+	_session_base_messages.clear()
 	if agent_context:
 		agent_context.clear()
 		agent_context.messages = loaded.messages.duplicate(true)
@@ -640,10 +704,12 @@ func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 		var role = str(m.get("role", ""))
 		var content = m.get("content", "")
 		
-		if role == "user":
+		if role == "user" or role == "command" or role == "slash_command":
 			var txt = ""
 			var vision_inputs: Array = []
-			if content is String:
+			if m.has("display_text") and not str(m["display_text"]).is_empty():
+				txt = str(m["display_text"])
+			elif content is String:
 				txt = content
 			elif content is Array:
 				for part in content:
@@ -655,7 +721,10 @@ func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 			if txt.contains("\n\n==="):
 				var parts_prompt = txt.split("\n\n===")
 				txt = parts_prompt[0]
-			var bubble = AISidebarMessageBubble.new("user", txt, vision_inputs)
+			var bubble_role = role
+			if bubble_role == "user" and txt.begins_with("/"):
+				bubble_role = "command"
+			var bubble = AISidebarMessageBubble.new(bubble_role, txt, vision_inputs)
 			bubble.meta_clicked.connect(_on_meta_clicked)
 			_add_stream_component(bubble)
 			
@@ -741,11 +810,19 @@ func _on_send_pressed() -> void:
 	input_field.text = ""
 	_is_user_stopped = false
 	
-	# Eğer ajan şu anda başka bir görev çalıştırıyorsa -> Mesajı Kuyruğa Al
+	# 1. Slash Command Kontrolü (/)
+	if user_text.begins_with("/"):
+		var parsed_cmd = AISidebarSlashCommandManager.parse(user_text)
+		if parsed_cmd.get("is_command", false):
+			_handle_slash_command_execution(parsed_cmd, user_text)
+			return
+			
+	# 2. Normal Mesaj Akışı: Eğer ajan şu anda başka bir görev çalıştırıyorsa -> Mesajı Kuyruğa Al
 	if agent_runner.is_running():
 		var queue_item = {
 			"id": "q_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
 			"prompt": user_text,
+			"display_prompt": user_text,
 			"created_at": Time.get_unix_time_from_system()
 		}
 		_message_queue.append(queue_item)
@@ -755,8 +832,73 @@ func _on_send_pressed() -> void:
 	# Ajan boşta ise görevi hemen başlat
 	_start_task_prompt(user_text)
 
-func _start_task_prompt(prompt_text: String) -> void:
-	last_user_prompt = prompt_text
+func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -> void:
+	if parsed_cmd.has("error"):
+		# Bilinmeyen slash komutu
+		var cmd_bubble = AISidebarMessageBubble.new("command", raw_text)
+		cmd_bubble.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(cmd_bubble)
+		
+		var err_msg = "❌ " + parsed_cmd["error"] + "\n\nKullanılabilir komutları görmek için `/help` yazabilirsiniz."
+		var err_bubble = AISidebarMessageBubble.new("assistant", err_msg)
+		err_bubble.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(err_bubble)
+		return
+		
+	var cmd_name = parsed_cmd["name"]
+	var cmd_args = parsed_cmd["args"]
+	var exec_context = {"agent_context": agent_context}
+	var result = AISidebarSlashCommandManager.execute_command(cmd_name, cmd_args, exec_context)
+	var action = result.get("action", "")
+	
+	if action == "local_response":
+		var cmd_bubble = AISidebarMessageBubble.new("command", raw_text)
+		cmd_bubble.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(cmd_bubble)
+		
+		var reply_text = result.get("message", "")
+		var assistant_bubble = AISidebarMessageBubble.new("assistant", reply_text)
+		assistant_bubble.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(assistant_bubble)
+		
+		if current_session == null:
+			current_session = AISidebarChatSession.new()
+			
+		if cmd_name == "clear":
+			# Önceki sohbet geçmişini base listeye sabitle
+			_session_base_messages = current_session.messages.duplicate(true)
+			_session_base_messages.append({"role": "command", "content": raw_text})
+			_session_base_messages.append({"role": "assistant", "content": reply_text})
+			current_session.messages = _session_base_messages.duplicate(true)
+			if agent_context:
+				agent_context.clear()
+		else:
+			current_session.messages.append({"role": "command", "content": raw_text})
+			current_session.messages.append({"role": "assistant", "content": reply_text})
+			
+		_save_current_session()
+		return
+		
+	elif action == "run_agent":
+		var prompt = result.get("prompt", "")
+		var display_prompt = result.get("display_prompt", raw_text)
+		
+		if agent_runner.is_running():
+			var queue_item = {
+				"id": "q_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
+				"prompt": prompt,
+				"display_prompt": display_prompt,
+				"created_at": Time.get_unix_time_from_system()
+			}
+			_message_queue.append(queue_item)
+			_update_queue_ui()
+			return
+			
+		_start_task_prompt(prompt, display_prompt)
+
+func _start_task_prompt(prompt_text: String, display_prompt: String = "") -> void:
+	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
+	last_user_prompt = final_display
 	_current_activity_group = null
 	_current_runtime_card = null
 	_current_approval_card = null
@@ -767,7 +909,7 @@ func _start_task_prompt(prompt_text: String) -> void:
 	_save_current_session()
 	
 	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
-	agent_runner.start_task(resolved_ctx["augmented_prompt"], prompt_text)
+	agent_runner.start_task(resolved_ctx["augmented_prompt"], final_display)
 
 func _update_queue_ui() -> void:
 	if not _queue_container or not _queue_items_vbox:
@@ -796,7 +938,8 @@ func _update_queue_ui() -> void:
 		item_row.add_child(num_label)
 		
 		var prompt_label = Label.new()
-		prompt_label.text = str(item.get("prompt", "")).replace("\n", " ")
+		var label_text = str(item.get("display_prompt", item.get("prompt", ""))).replace("\n", " ")
+		prompt_label.text = label_text
 		prompt_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prompt_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		prompt_label.clip_text = true
@@ -836,13 +979,14 @@ func _check_and_dispatch_next_queue() -> void:
 		_update_queue_ui()
 		if next_item is Dictionary and next_item.has("prompt"):
 			var next_prompt = str(next_item["prompt"])
+			var next_disp = str(next_item.get("display_prompt", next_prompt))
 			var t = get_tree()
 			if t:
 				t.create_timer(0.05).timeout.connect(func():
-					_start_task_prompt(next_prompt)
+					_start_task_prompt(next_prompt, next_disp)
 				)
 			else:
-				_start_task_prompt(next_prompt)
+				_start_task_prompt(next_prompt, next_disp)
 
 func _on_clear_pressed() -> void:
 	if mention_container:
@@ -852,6 +996,7 @@ func _on_clear_pressed() -> void:
 		agent_runner.stop()
 	if agent_context:
 		agent_context.clear()
+	_session_base_messages.clear()
 	if current_session:
 		current_session.messages.clear()
 		current_session.telemetry.clear()
@@ -942,7 +1087,10 @@ func _on_agent_text_received(role: String, text: String) -> void:
 			_add_stream_component(bubble)
 	else:
 		_current_assistant_bubble = null
-		var bubble = AISidebarMessageBubble.new(role, text)
+		var bubble_role = role
+		if bubble_role == "user" and text.begins_with("/"):
+			bubble_role = "command"
+		var bubble = AISidebarMessageBubble.new(bubble_role, text)
 		bubble.meta_clicked.connect(_on_meta_clicked)
 		_add_stream_component(bubble)
 

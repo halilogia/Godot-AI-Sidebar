@@ -19,11 +19,14 @@ func clear() -> void:
 func size() -> int:
 	return messages.size()
 
-func add_user_message(text: String, _grounding: bool = false) -> void:
-	messages.append({
+func add_user_message(text: String, _grounding: bool = false, display_text: String = "") -> void:
+	var msg = {
 		"role": "user",
 		"content": text
-	})
+	}
+	if not display_text.is_empty():
+		msg["display_text"] = display_text
+	messages.append(msg)
 	_auto_compact_if_needed()
 
 func add_assistant_message(text: String) -> void:

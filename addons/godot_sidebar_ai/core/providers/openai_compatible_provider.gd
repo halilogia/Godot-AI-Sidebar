@@ -88,6 +88,8 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 		
 	for i in range(messages.size()):
 		var msg = messages[i].duplicate(true)
+		if msg.has("display_text"):
+			msg.erase("display_text")
 		payload_messages.append(msg)
 		
 	# Multimodal görsel parçaları dönüştürme ve mesaja ekleme

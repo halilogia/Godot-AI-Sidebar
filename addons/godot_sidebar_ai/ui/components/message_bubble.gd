@@ -56,6 +56,10 @@ func _setup_ui() -> void:
 		style.bg_color = Color(0.18, 0.22, 0.28, 0.85)
 		style.border_color = Color(0.35, 0.45, 0.6, 0.6)
 		style.set_border_width_all(1)
+	elif role == "command" or role == "slash_command":
+		style.bg_color = Color(0.16, 0.14, 0.24, 0.9)
+		style.border_color = Color(0.65, 0.45, 0.95, 0.8)
+		style.set_border_width_all(1)
 	else:
 		style.bg_color = Color(0.14, 0.16, 0.20, 0.85)
 		style.border_color = Color(0.24, 0.28, 0.35, 0.4)
@@ -84,6 +88,9 @@ func _setup_ui() -> void:
 	if role == "user":
 		_role_label.text = "You"
 		_role_label.add_theme_color_override("font_color", Color(0.55, 0.75, 1.0))
+	elif role == "command" or role == "slash_command":
+		_role_label.text = "⚡ Slash Command"
+		_role_label.add_theme_color_override("font_color", Color(0.85, 0.6, 1.0))
 	else:
 		_role_label.text = "Godot AI"
 		_role_label.add_theme_color_override("font_color", Color(0.53, 0.75, 0.82))
