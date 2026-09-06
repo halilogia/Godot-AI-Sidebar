@@ -82,6 +82,13 @@ text_overrun_behavior = 3
 clip_text = true
 fit_to_longest_item = false
 
+[node name="ApproveModeBtn" type="Button" parent="MainLayout/ModelBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "🛡️ Manual"
+flat = true
+
 [node name="RefreshModelsBtn" type="Button" parent="MainLayout/ModelBar"]
 layout_mode = 2
 focus_mode = 0

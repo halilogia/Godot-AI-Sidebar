@@ -7,6 +7,7 @@ class_name AISidebarSceneTools
 const AISidebarTypeParser = preload("res://addons/godot_sidebar_ai/core/types/type_parser.gd")
 const AISidebarMutationService = preload("res://addons/godot_sidebar_ai/core/mutations/editor_mutation_service.gd")
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
+const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
 
 static func _get_root() -> Node:
 	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
@@ -290,6 +291,13 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 		
 	# File-First: Eğer doğrudan .tscn içeriği verilmişse metin olarak kaydet
 	if not tscn_content.strip_edges().is_empty():
+		var val_res = AISidebarVerificationPipeline.validate_source(tscn_content, scene_path)
+		if not val_res.get("success", false):
+			var err_obj = val_res.get("error", {})
+			var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
+			var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
+			return AISidebarToolResult.err(err_code, "Sahne doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
+			
 		var f = FileAccess.open(scene_path, FileAccess.WRITE)
 		if not f:
 			return AISidebarToolResult.err("WRITE_ERROR", "Sahne dosyası yazılamadı: " + scene_path)

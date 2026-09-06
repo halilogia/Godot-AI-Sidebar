@@ -30,6 +30,7 @@ const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
 const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
+const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -38,6 +39,7 @@ const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/componen
 @onready var export_btn: Button = $MainLayout/HeaderBar/ExportBtn
 @onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
+@onready var approve_mode_btn: Button = $MainLayout/ModelBar/ApproveModeBtn
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
 @onready var settings_btn: Button = $MainLayout/ModelBar/SettingsBtn
 
@@ -129,6 +131,8 @@ func _ready() -> void:
 		send_btn.pressed.connect(_on_send_pressed)
 	if settings_btn:
 		settings_btn.pressed.connect(_on_settings_pressed)
+	if approve_mode_btn:
+		approve_mode_btn.pressed.connect(_on_approve_mode_pressed)
 	if refresh_models_btn:
 		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
 	if lang_toggle_btn:
@@ -281,6 +285,42 @@ func update_ui_language() -> void:
 			send_btn.text = "Send"
 			AISidebarIconHelper.apply_icon(send_btn, "send")
 			send_btn.tooltip_text = ""
+			
+	_update_approve_mode_ui()
+
+func _update_approve_mode_ui() -> void:
+	if not approve_mode_btn:
+		return
+	var mode = AISidebarPermissionPolicy.get_auto_approve_mode()
+	match mode:
+		AISidebarPermissionPolicy.AutoApproveMode.MANUAL:
+			approve_mode_btn.text = AISidebarI18n.get_text("mode_manual")
+			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_manual") + " (Her riskli işlemde onay sorulur)"
+			approve_mode_btn.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
+			approve_mode_btn.text = AISidebarI18n.get_text("mode_auto")
+			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_auto") + " (Güvenli kod/dosya yazımları otomatik, silme onaylı)"
+			approve_mode_btn.add_theme_color_override("font_color", Color(0.4, 0.9, 0.5))
+		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
+			approve_mode_btn.text = AISidebarI18n.get_text("mode_full_auto")
+			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_full_auto") + " (Tüm araçlar otomatik onaylanır, PathPolicy kalkanı devrededir)"
+			approve_mode_btn.add_theme_color_override("font_color", Color(0.9, 0.45, 0.95))
+
+func _on_approve_mode_pressed() -> void:
+	var current_mode = AISidebarPermissionPolicy.get_auto_approve_mode()
+	var next_mode = AISidebarPermissionPolicy.AutoApproveMode.MANUAL
+	match current_mode:
+		AISidebarPermissionPolicy.AutoApproveMode.MANUAL:
+			next_mode = AISidebarPermissionPolicy.AutoApproveMode.AUTO
+		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
+			next_mode = AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO
+		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
+			next_mode = AISidebarPermissionPolicy.AutoApproveMode.MANUAL
+	AISidebarPermissionPolicy.set_auto_approve_mode(next_mode)
+	_update_approve_mode_ui()
+	if agent_runner and not agent_runner.is_running():
+		var mode_txt = AISidebarPermissionPolicy.get_mode_name(next_mode)
+		set_status_badge(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", Color(0.4, 0.8, 0.4))
 
 func _on_export_pressed() -> void:
 	var msgs: Array = []
@@ -855,7 +895,8 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 	update_ui_language()
 	match new_state:
 		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
-			set_status_badge(state_desc, Color(0.4, 0.8, 0.4))
+			var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
+			set_status_badge(state_desc + " [" + mode_txt + "]", Color(0.4, 0.8, 0.4))
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
 			set_status_badge("⏳ Waiting Approval", Color(1.0, 0.5, 0.2))
 		AISidebarAgentRunner.AgentState.RUNNING_GAME:

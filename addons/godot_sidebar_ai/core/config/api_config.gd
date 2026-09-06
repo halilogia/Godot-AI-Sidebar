@@ -20,7 +20,8 @@ const DEFAULT_CONFIG = {
 	# İzin ve Güvenlik Ayarları
 	"auto_safe_edits": true,
 	"require_delete_approval": true,
-	"require_overwrite_approval": true
+	"require_overwrite_approval": true,
+	"auto_approve_mode": "MANUAL"
 }
 
 static func load_config() -> Dictionary:

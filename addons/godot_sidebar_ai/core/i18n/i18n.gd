@@ -39,7 +39,12 @@ const STRINGS: Dictionary = {
 		"label_temperature": "Sıcaklık (Temperature):",
 		"label_max_iterations": "Maksimum Ajan Adımı (Loop Limit):",
 		"label_system_prompt": "Sistem Promptu:",
-		"placeholder_base_url": "http://localhost:20128/v1 veya https://openrouter.ai/api/v1"
+		"placeholder_base_url": "http://localhost:20128/v1 veya https://openrouter.ai/api/v1",
+		"mode_manual": "🛡️ Manuel",
+		"mode_auto": "⚡ Auto",
+		"mode_full_auto": "🚀 Full Auto",
+		"tooltip_approve_mode": "Onay Modu (Manuel / Auto / Full Auto)",
+		"label_auto_approve_mode": "Auto Approve Modu:"
 	},
 	"en": {
 		"app_title": "Godot AI Core",
@@ -73,7 +78,12 @@ const STRINGS: Dictionary = {
 		"label_temperature": "Temperature:",
 		"label_max_iterations": "Max Agent Iterations (Loop Limit):",
 		"label_system_prompt": "System Prompt:",
-		"placeholder_base_url": "http://localhost:20128/v1 or https://openrouter.ai/api/v1"
+		"placeholder_base_url": "http://localhost:20128/v1 or https://openrouter.ai/api/v1",
+		"mode_manual": "🛡️ Manual",
+		"mode_auto": "⚡ Auto",
+		"mode_full_auto": "🚀 Full Auto",
+		"tooltip_approve_mode": "Approval Mode (Manual / Auto / Full Auto)",
+		"label_auto_approve_mode": "Auto Approve Mode:"
 	}
 }
 

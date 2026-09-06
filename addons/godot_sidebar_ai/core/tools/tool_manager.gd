@@ -8,6 +8,8 @@ class_name AISidebarToolManager
 
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
+const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
+const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/scene_tools.gd")
 const AISidebarScriptTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/script_tools.gd")
 const AISidebarEditorTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/editor_tools.gd")
@@ -194,7 +196,13 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 			"clarification": true
 		}, "Clarification requested.")
 		
-	# 1. Gerçek Yetki Denetimi (Permission Enforcement)
+	# 1. Verification-First: Doğrulama Onaydan Önce Çalışır (Pipeline Gate)
+	# Hatalı kod tespit edilirse onay sorulmaz, diske yazılmaz, doğrudan AI modeline dönülür.
+	var pre_val = _pre_verify_write_candidate(tool_name, args)
+	if not pre_val.is_empty() and not pre_val.get("success", true):
+		return pre_val
+		
+	# 2. Yetki Denetimi & Onay Politikası (Permission & Approval Policy)
 	if not is_user_approved and AISidebarPermissionPolicy.requires_user_approval(tool_name, args):
 		return AISidebarToolResult.err(
 			"APPROVAL_REQUIRED",
@@ -245,3 +253,98 @@ static func _search_tools(args: Dictionary) -> Dictionary:
 		"count": matches.size(),
 		"tools": matches
 	})
+
+## Diske yazmadan veya onay sormadan önce kod doğrulaması (Pipeline Gate)
+static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> Dictionary:
+	match tool_name:
+		"create_or_update_script":
+			var raw_path = args.get("file_path", "")
+			var content = args.get("content", "")
+			var safe_check = AISidebarPathPolicy.is_safe_to_write(raw_path)
+			if not safe_check["safe"]:
+				return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+			var path = safe_check["path"]
+			var val_res = AISidebarVerificationPipeline.validate_source(content, path)
+			if not val_res.get("success", false):
+				var err_obj = val_res.get("error", {})
+				var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
+				var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
+				return AISidebarToolResult.err(err_code, "Dosya doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
+				
+		"replace_file_content":
+			var raw_path = args.get("file_path", "")
+			var target_code = args.get("target_code", "")
+			var replacement_code = args.get("replacement_code", "")
+			if target_code.is_empty():
+				return AISidebarToolResult.err("INVALID_ARGUMENT", "target_code parametresi boş olamaz.")
+			var safe_check = AISidebarPathPolicy.is_safe_to_write(raw_path)
+			if not safe_check["safe"]:
+				return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+			var path = safe_check["path"]
+			if not FileAccess.file_exists(path):
+				return AISidebarToolResult.err("FILE_NOT_FOUND", "Değiştirilecek dosya bulunamadı: " + path)
+			var file = FileAccess.open(path, FileAccess.READ)
+			if not file:
+				return AISidebarToolResult.err("READ_ERROR", "Dosya okunamadı: " + path)
+			var old_content = file.get_as_text()
+			file.close()
+			var first_idx = old_content.find(target_code)
+			if first_idx == -1:
+				return AISidebarToolResult.err("TARGET_NOT_FOUND", "Hedef kod bloğu dosyada bulunamadı: " + path)
+			var second_idx = old_content.find(target_code, first_idx + target_code.length())
+			if second_idx != -1:
+				var occurrences = 0
+				var pos = 0
+				while true:
+					pos = old_content.find(target_code, pos)
+					if pos == -1:
+						break
+					occurrences += 1
+					pos += target_code.length()
+				return AISidebarToolResult.err("MULTIPLE_TARGETS_FOUND", "Hedef kod dosyada birden fazla kez (" + str(occurrences) + " kez) bulundu: " + path)
+			var new_content = old_content.substr(0, first_idx) + replacement_code + old_content.substr(first_idx + target_code.length())
+			var val_res = AISidebarVerificationPipeline.validate_source(new_content, path)
+			if not val_res.get("success", false):
+				var err_obj = val_res.get("error", {})
+				var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
+				var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
+				return AISidebarToolResult.err(err_code, "Dosya doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
+
+		"write_files":
+			var files_arr = args.get("files", [])
+			if not (files_arr is Array) or files_arr.is_empty():
+				return AISidebarToolResult.err("INVALID_ARGUMENT", "'files' listesi boş veya geçersiz.")
+			for f_item in files_arr:
+				if f_item is Dictionary:
+					var raw_p = f_item.get("file_path", "")
+					var safe_chk = AISidebarPathPolicy.is_safe_to_write(raw_p)
+					if not safe_chk["safe"]:
+						return AISidebarToolResult.err("PERMISSION_DENIED", "Güvenlik engeli: " + safe_chk["reason"] + " (" + raw_p + ")")
+			var val_res = AISidebarVerificationPipeline.validate_batch_files(files_arr)
+			if not val_res.get("success", false):
+				var err_obj = val_res.get("error", {})
+				var err_code = err_obj.get("code", "BATCH_VALIDATION_FAILED") if err_obj is Dictionary else "BATCH_VALIDATION_FAILED"
+				var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
+				return AISidebarToolResult.err(err_code, "Toplu dosya yazımı doğrulanamadı: " + err_msg, false, val_res)
+
+		"create_scene":
+			var scene_path = args.get("scene_path", "")
+			var tscn_content = args.get("tscn_content", "")
+			if not tscn_content.strip_edges().is_empty():
+				var safe_check = AISidebarPathPolicy.is_safe_to_write(scene_path)
+				if not safe_check["safe"]:
+					return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+				var val_res = AISidebarVerificationPipeline.validate_source(tscn_content, scene_path)
+				if not val_res.get("success", false):
+					var err_obj = val_res.get("error", {})
+					var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
+					var err_msg = err_obj.get("message", "Sahne doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Sahne doğrulama hatası"))
+					return AISidebarToolResult.err(err_code, "Sahne doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
+
+		"delete_file":
+			var raw_path = args.get("file_path", "")
+			var safe_check = AISidebarPathPolicy.is_safe_to_delete(raw_path)
+			if not safe_check["safe"]:
+				return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
+
+	return {}
