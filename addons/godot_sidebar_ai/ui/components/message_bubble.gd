@@ -12,6 +12,7 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 
 var role: String = "assistant"
 var text_content: String = ""
+var vision_inputs: Array = []
 
 var _vbox: VBoxContainer
 var _header_bar: HBoxContainer
@@ -19,9 +20,10 @@ var _role_label: Label
 var _copy_btn: Button
 var _content_label: RichTextLabel
 
-func _init(p_role: String = "assistant", p_text: String = "") -> void:
+func _init(p_role: String = "assistant", p_text: String = "", p_vision_inputs: Array = []) -> void:
 	role = p_role
 	text_content = p_text
+	vision_inputs = p_vision_inputs
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
