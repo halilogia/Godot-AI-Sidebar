@@ -39,12 +39,13 @@ const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core
 @onready var new_chat_btn: Button = $MainLayout/HeaderBar/NewChatBtn
 @onready var history_btn: Button = $MainLayout/HeaderBar/HistoryBtn
 @onready var export_btn: Button = $MainLayout/HeaderBar/ExportBtn
-@onready var lang_toggle_btn: Button = $MainLayout/HeaderBar/LangToggleBtn
+@onready var lang_toggle_btn: Button = get_node_or_null("MainLayout/HeaderBar/LangToggleBtn")
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
 @onready var approve_mode_btn: Button = $MainLayout/ModelBar/ApproveModeBtn
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
 @onready var settings_btn: Button = $MainLayout/ModelBar/SettingsBtn
 
+@onready var input_area: VBoxContainer = get_node_or_null("MainLayout/InputArea")
 @onready var chat_scroll: ScrollContainer = $MainLayout/ChatScroll
 @onready var message_stream: VBoxContainer = $MainLayout/ChatScroll/MessageStream
 @onready var jump_to_bottom_btn: Button = $MainLayout/InputArea/ButtonsBar/JumpToBottomBtn
@@ -198,12 +199,8 @@ func _ready() -> void:
 	history_panel.session_renamed.connect(_on_history_session_renamed)
 	history_panel.close_requested.connect(_on_history_close_requested)
 
-	# 4. Oturumu Başlat (Varsa son konuşmayı yükle, yoksa temiz yeni başlat)
-	var sessions = AISidebarChatManager.list_sessions()
-	if sessions.size() > 0:
-		_load_session_by_id(sessions[0]["id"])
-	else:
-		_start_new_chat_session()
+	# 4. Oturumu Başlat (Her açılışta daima temiz ve yeni bir sohbet başlat)
+	_start_new_chat_session()
 	if model_selector:
 		model_selector.item_selected.connect(_on_model_selected)
 	if settings_dialog:
@@ -629,20 +626,28 @@ func _set_input_caret_position(text: String, new_caret_pos: int) -> void:
 
 # --- Chat Management Olayları ve Yardımcıları ---
 
+func set_history_view_visible(is_visible: bool) -> void:
+	if history_panel:
+		history_panel.visible = is_visible
+		if is_visible:
+			history_panel.set_active_session(current_session.id if current_session else "")
+			history_panel.refresh_list()
+	if chat_scroll:
+		chat_scroll.visible = not is_visible
+	if input_area:
+		input_area.visible = not is_visible
+
 func _on_new_chat_pressed() -> void:
+	set_history_view_visible(false)
 	_start_new_chat_session()
-	if history_panel and history_panel.visible:
-		history_panel.refresh_list()
 
 func _on_toggle_history_pressed() -> void:
 	if not history_panel:
 		return
-	history_panel.visible = not history_panel.visible
-	if history_panel.visible:
-		history_panel.set_active_session(current_session.id if current_session else "")
-		history_panel.refresh_list()
+	set_history_view_visible(not history_panel.visible)
 
 func _on_history_session_selected(session_id: String) -> void:
+	set_history_view_visible(false)
 	if current_session and current_session.id == session_id:
 		return
 	_load_session_by_id(session_id)
@@ -657,8 +662,7 @@ func _on_history_session_renamed(session_id: String, new_title: String) -> void:
 		_update_header_title()
 
 func _on_history_close_requested() -> void:
-	if history_panel:
-		history_panel.visible = false
+	set_history_view_visible(false)
 
 func _start_new_chat_session() -> void:
 	if agent_runner and agent_runner.is_running():

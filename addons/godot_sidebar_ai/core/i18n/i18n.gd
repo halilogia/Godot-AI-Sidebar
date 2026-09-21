@@ -49,7 +49,18 @@ const STRINGS: Dictionary = {
 		"provider_antigravity": "Google Antigravity CLI (Resmi, Yerel, Doğrudan Oturum)",
 		"provider_openai": "OpenAI Uyumlu (9Router, Ollama, OpenRouter, LM Studio)",
 		"hint_temp_ideal": "💡 Kodlama için önerilen: 0.20 (Düşük halüsinasyon, tutarlı sözdizimi). Fare tekerleği kilitlenmiştir.",
-		"btn_reset_temp": "↺ 0.20 (İdeal)"
+		"btn_reset_temp": "↺ 0.20 (İdeal)",
+		"tab_provider": "🔌 Sağlayıcı",
+		"tab_parameters": "⚡ Model & Parametreler",
+		"tab_appearance": "🎨 Görünüm & Dil",
+		"tab_system_prompt": "📝 Sistem Promptu",
+		"label_language": "Arayüz Dili (Language):",
+		"btn_reset_prompt": "↺ Varsayılan Promptu Geri Yükle",
+		"hint_prompt_reset": "Cerrahi dosya düzenleme ve araç odaklı varsayılan promptu yükler.",
+		"history_title": "📚 Sohbet Geçmişi",
+		"history_search_placeholder": "Geçmiş sohbetlerde ara...",
+		"history_empty": "Henüz kayıtlı geçmiş sohbet bulunmuyor.",
+		"history_not_found": "Aramaya uygun sohbet bulunamadı."
 	},
 	"en": {
 		"app_title": "Godot AI Core",
@@ -93,7 +104,18 @@ const STRINGS: Dictionary = {
 		"provider_antigravity": "Google Antigravity CLI (Official, Local, Direct Session)",
 		"provider_openai": "OpenAI-Compatible (9Router, Ollama, OpenRouter, LM Studio)",
 		"hint_temp_ideal": "💡 Recommended for coding: 0.20 (Low hallucination, strict syntax). Mouse wheel is locked.",
-		"btn_reset_temp": "↺ 0.20 (Ideal)"
+		"btn_reset_temp": "↺ 0.20 (Ideal)",
+		"tab_provider": "🔌 Provider",
+		"tab_parameters": "⚡ Model & Parameters",
+		"tab_appearance": "🎨 Appearance & Language",
+		"tab_system_prompt": "📝 System Prompt",
+		"label_language": "Interface Language:",
+		"btn_reset_prompt": "↺ Restore Default Prompt",
+		"hint_prompt_reset": "Restores the default file-first surgical editing system prompt.",
+		"history_title": "📚 Chat History",
+		"history_search_placeholder": "Search past chats...",
+		"history_empty": "No past conversations found.",
+		"history_not_found": "No matching conversations found."
 	}
 }
 

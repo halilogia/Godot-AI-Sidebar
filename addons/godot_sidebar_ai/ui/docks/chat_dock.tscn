@@ -61,13 +61,6 @@ focus_mode = 0
 tooltip_text = "Sohbeti Dışa Aktar (Export Chat)"
 flat = true
 
-[node name="LangToggleBtn" type="Button" parent="MainLayout/HeaderBar"]
-layout_mode = 2
-focus_mode = 0
-theme_override_font_sizes/font_size = 10
-text = "TR"
-flat = true
-
 [node name="ModelBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
 size_flags_horizontal = 3

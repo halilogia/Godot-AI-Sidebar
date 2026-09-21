@@ -6,6 +6,7 @@ const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
+const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 
 class MockClarificationProvider extends AISidebarAIProvider:
 	var response_queue: Array = []
@@ -31,6 +32,9 @@ static func run() -> Dictionary:
 	var passed = 0
 	var failed = 0
 	var errors: Array = []
+	
+	var prev_mode = AISidebarPermissionPolicy.get_auto_approve_mode()
+	AISidebarPermissionPolicy.set_auto_approve_mode(AISidebarPermissionPolicy.AutoApproveMode.MANUAL)
 	
 	# Test 1: Ambiguous Request -> Clarification Requested
 	var mock1 = MockClarificationProvider.new()
@@ -242,4 +246,5 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 10 (ask_user direct execution) failed: " + str(direct_exec))
 		
+	AISidebarPermissionPolicy.set_auto_approve_mode(prev_mode)
 	return {"name": "AgentClarificationTests", "passed": passed, "failed": failed, "errors": errors}

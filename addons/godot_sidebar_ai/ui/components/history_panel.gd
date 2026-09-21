@@ -14,6 +14,8 @@ signal close_requested()
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+
 var active_session_id: String = ""
 
 var _search_input: LineEdit
@@ -29,9 +31,9 @@ var _rename_input: LineEdit
 var _session_to_rename: String = ""
 
 func _init() -> void:
-	custom_minimum_size = Vector2(0, 200)
+	custom_minimum_size = Vector2(0, 0)
 	size_flags_horizontal = SIZE_EXPAND_FILL
-	size_flags_vertical = SIZE_FILL
+	size_flags_vertical = SIZE_EXPAND_FILL
 	_setup_ui()
 	_setup_dialogs()
 
@@ -40,8 +42,8 @@ func _ready() -> void:
 
 func _setup_ui() -> void:
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.13, 0.16, 0.98)
-	style.border_color = Color(0.24, 0.28, 0.35, 1.0)
+	style.bg_color = Color(0.09, 0.10, 0.13, 0.98)
+	style.border_color = Color(0.20, 0.23, 0.30, 1.0)
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(6)
 	style.content_margin_left = 8
@@ -53,7 +55,7 @@ func _setup_ui() -> void:
 	var main_vbox = VBoxContainer.new()
 	main_vbox.size_flags_horizontal = SIZE_EXPAND_FILL
 	main_vbox.size_flags_vertical = SIZE_EXPAND_FILL
-	main_vbox.add_theme_constant_override("separation", 6)
+	main_vbox.add_theme_constant_override("separation", 8)
 	add_child(main_vbox)
 	
 	# 1. Başlık Çubuğu
@@ -61,13 +63,14 @@ func _setup_ui() -> void:
 	header_hbox.size_flags_horizontal = SIZE_EXPAND_FILL
 	
 	var title_lbl = Label.new()
-	title_lbl.text = "📚 Chat History"
+	title_lbl.text = AISidebarI18n.get_text("history_title")
 	title_lbl.add_theme_font_size_override("font_size", 12)
 	title_lbl.size_flags_horizontal = SIZE_EXPAND_FILL
 	header_hbox.add_child(title_lbl)
 	
 	var new_btn = Button.new()
-	new_btn.text = "+ New Chat"
+	new_btn.text = "+ New"
+	new_btn.tooltip_text = "Yeni Sohbet Başlat"
 	new_btn.flat = true
 	new_btn.focus_mode = FOCUS_NONE
 	new_btn.add_theme_font_size_override("font_size", 10)
@@ -76,6 +79,7 @@ func _setup_ui() -> void:
 	
 	var close_btn = Button.new()
 	close_btn.text = "✕"
+	close_btn.tooltip_text = "Kapat ve Sohbete Dön"
 	close_btn.flat = true
 	close_btn.focus_mode = FOCUS_NONE
 	close_btn.add_theme_font_size_override("font_size", 11)
@@ -86,10 +90,21 @@ func _setup_ui() -> void:
 	
 	# 2. Arama Girişi
 	_search_input = LineEdit.new()
-	_search_input.placeholder_text = "Search past chats..."
+	_search_input.placeholder_text = AISidebarI18n.get_text("history_search_placeholder")
 	_search_input.clear_button_enabled = true
 	_search_input.add_theme_font_size_override("font_size", 10)
 	_search_input.text_changed.connect(_on_search_text_changed)
+	
+	var s_style = StyleBoxFlat.new()
+	s_style.bg_color = Color(0.13, 0.15, 0.19, 1.0)
+	s_style.border_color = Color(0.24, 0.27, 0.35, 1.0)
+	s_style.set_border_width_all(1)
+	s_style.set_corner_radius_all(4)
+	s_style.content_margin_left = 6
+	s_style.content_margin_right = 6
+	s_style.content_margin_top = 4
+	s_style.content_margin_bottom = 4
+	_search_input.add_theme_stylebox_override("normal", s_style)
 	main_vbox.add_child(_search_input)
 	
 	# 3. Kaydırılabilir Sohbet Listesi
@@ -102,7 +117,7 @@ func _setup_ui() -> void:
 	_items_vbox = VBoxContainer.new()
 	_items_vbox.size_flags_horizontal = SIZE_EXPAND_FILL
 	_items_vbox.size_flags_vertical = SIZE_EXPAND_FILL
-	_items_vbox.add_theme_constant_override("separation", 4)
+	_items_vbox.add_theme_constant_override("separation", 5)
 	scroll.add_child(_items_vbox)
 	
 	main_vbox.add_child(scroll)
@@ -160,7 +175,7 @@ func _render_items() -> void:
 			
 	if filtered.is_empty():
 		var empty_lbl = Label.new()
-		empty_lbl.text = "Geçmiş sohbet bulunamadı." if query.is_empty() else "Aramaya uygun sohbet yok."
+		empty_lbl.text = AISidebarI18n.get_text("history_empty") if query.is_empty() else AISidebarI18n.get_text("history_not_found")
 		empty_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		empty_lbl.add_theme_font_size_override("font_size", 10)
 		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
