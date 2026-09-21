@@ -48,7 +48,7 @@ Bu problemi çözmek için endüstride **Katmanlı Hafıza Mimarisi (Tiered Memo
 | **`AGENTS.md`** *(Önerilen Standart)* | Tüm AI Ajanları (Evrensel) | Proje genel kurallarını, test komutlarını ve katı mimari ilkeleri anlatır. | Proje kimliği, SRP kuralları, test komutları, preload kuralı, güvenlik sandbox'ı. |
 | **`README.md`** | İnsan Geliştiriciler & Kullanıcılar | Projeyi tanıtmak, özelliklerini anlatmak ve kurulum adımlarını göstermek. | Özellik listesi, ekran görüntüleri, kurulum rehberi, release linkleri. |
 | **`CHANGELOG.md`** | İnsan & AI | Sürümler arasındaki somut değişiklik geçmişi. | Keep a Changelog formatında eklenenler, düzeltilenler ve kaldırılanlar. |
-| **`ROADMAP.md`** | İnsan & AI | Projenin tamamlanan ve gelecekteki fazları. | Faz 1-7 kontrol listesi, tamamlanan ve sıradaki kilometre taşları. |
+| **`ROADMAP.md`** | İnsan & AI | Projenin tamamlanan ve gelecekteki fazları. | Faz 1-8 kontrol listesi, tamamlanan ve sıradaki kilometre taşları. |
 | **`ARCHITECTURE.md`** | Geliştirici & AI Mimarlar | Katmanlar, bağımlılıklar ve veri akış diyagramları. | Mermaid şemaları, presentation/domain/infra sorumlulukları. |
 | **`brain/knowledge.md`** | AI Karar Destek Sistemi | Çözülen bug'lar, işletim sistemi ve ağ gariplikleri. | 9Router SSE `finish_reason` kapanış davranışı, Windows localhost DNS çözümü. |
 

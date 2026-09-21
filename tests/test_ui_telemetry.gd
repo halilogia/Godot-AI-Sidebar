@@ -193,7 +193,7 @@ static func run() -> Dictionary:
 		errors.append("Test 9 (Live HistoryPanel inspection) failed: total=" + str(panel_stats["total_inspected"]))
 	panel.queue_free()
 
-	# --- Test 10: execute_tool Uçtan Uca Public JSON Çağrısı (Gerçek ChatDock Sahnesi @sidebar & Subpath & Hata Yönetimi) ---
+	# --- Test 10: Real ChatDock Scene E2E (Instantiated chat_dock.tscn @sidebar & Subpath & Error Handling) ---
 	var dock_scene = load("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn") as PackedScene
 	var real_dock = dock_scene.instantiate() if dock_scene else null
 	if real_dock:
@@ -215,7 +215,7 @@ static func run() -> Dictionary:
 			passed += 1
 		else:
 			failed += 1
-			errors.append("Test 10 (Real ChatDock E2E JSON calls) failed: sb=" + str(ok_sidebar) + " sub=" + str(ok_subpath) + " hist=" + str(ok_history) + " inv=" + str(ok_invalid))
+			errors.append("Test 10 (Real ChatDock Scene E2E JSON calls) failed: sb=" + str(ok_sidebar) + " sub=" + str(ok_subpath) + " hist=" + str(ok_history) + " inv=" + str(ok_invalid))
 		
 		AISidebarUITelemetryTools.register_sidebar_dock(null)
 		real_dock.queue_free()

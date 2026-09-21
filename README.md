@@ -84,8 +84,8 @@ addons/godot_sidebar_ai/
 
 ## 🚀 Kurulum
 
-1. [Releases](https://github.com/halilogia/Godot-AI-Sidebar/releases) sayfasından en son `godot-ai-sidebar-v2.7.0.zip` paketini indirin (veya bu depoyu klonlayın).
-2. Paket içindeki `addons/godot_sidebar_ai` klasörünü Godot projenizin `addons/` dizinine kopyalayın:
+1. Bu depoyu klonlayın (`git clone https://github.com/halilogia/Godot-AI-Sidebar.git`) veya [Releases](https://github.com/halilogia/Godot-AI-Sidebar/releases) sayfasından en son yayınlanan sürüm arşivini indirin.
+2. Depo içindeki `addons/godot_sidebar_ai` klasörünü Godot projenizin `addons/` dizinine kopyalayın:
    ```text
    senin_godot_projen/
    └── addons/
@@ -100,13 +100,14 @@ addons/godot_sidebar_ai/
 
 ---
 
-## 🧪 Test ve Tip Denetleme
+## 🧪 Test ve Doğrulama
 
-### 1. Statik Tip ve Sözdizimi Kontrolü (TypeScript Tarzı)
+### 1. Headless GDScript Derleme ve Sahne Doğrulama (Compilation Validator)
+`typecheck.ps1` scripti, `tools/typecheck.gd` aracılığıyla eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) dizinlerindeki tüm GDScript ve `.tscn` dosyalarını (113 script, 4 sahne) Godot motoru üzerinden statik olarak derleyip sözdizimi hatalarını yakalar:
 ```powershell
 ./typecheck.ps1
 ```
-*(VS Code içinde `Ctrl+Shift+B` kısayolunu da kullanabilirsiniz)*
+*(VS Code içinde `Ctrl+Shift+B` kısayolu ile derleme görevini de tetikleyebilirsiniz)*
 
 ### 2. Headless Master Test Suite (54 Test Paketi / 291 Assertion)
 ```bash

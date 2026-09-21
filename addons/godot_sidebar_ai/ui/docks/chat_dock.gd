@@ -980,7 +980,7 @@ func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -
 		cmd_bubble.meta_clicked.connect(_on_meta_clicked)
 		_add_stream_component(cmd_bubble)
 		
-		var err_msg = "❌ " + parsed_cmd["error"] + "\n\nKullanılabilir komutları görmek için `/help` yazabilirsiniz."
+		var err_msg = parsed_cmd["error"] + "\n\nKullanılabilir komutları görmek için `/help` yazabilirsiniz."
 		var err_bubble = AISidebarMessageBubble.new("assistant", err_msg)
 		err_bubble.meta_clicked.connect(_on_meta_clicked)
 		_add_stream_component(err_bubble)
@@ -1065,7 +1065,7 @@ func _update_queue_ui() -> void:
 		
 	_queue_container.visible = true
 	if _queue_title_label:
-		_queue_title_label.text = "📋 Queued Messages (%d)" % _message_queue.size()
+		_queue_title_label.text = "Queued Messages (%d)" % _message_queue.size()
 		
 	for i in range(_message_queue.size()):
 		var item = _message_queue[i]
@@ -1357,17 +1357,17 @@ func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
 		var res = cs.rollback()
 		var grp = _ensure_activity_group()
 		if res.get("success", false):
-			grp.add_activity("↩", "Undo successful: changes reverted", 50)
+			grp.add_activity("✓", "Undo successful: changes reverted", 50)
 		else:
-			grp.add_activity("❌", "Undo failed: " + res.get("error", "Error"), 50)
+			grp.add_activity("✕", "Undo failed: " + res.get("error", "Error"), 50)
 
 func _on_agent_verification_started(tool_name: String) -> void:
 	var grp = _ensure_activity_group()
-	grp.add_activity("🔍", "Verifying " + tool_name + "...", -1)
+	grp.add_activity("•", "Verifying " + tool_name + "...", -1)
 
 func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: String) -> void:
 	var grp = _ensure_activity_group()
-	var icon = "✓" if is_valid else "⚠️"
+	var icon = "✓" if is_valid else "!"
 	grp.add_activity(icon, "Verification: " + msg, 50)
 
 func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
@@ -1377,13 +1377,13 @@ func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 		_add_stream_component(_current_runtime_card)
 		
 	if obs.has_errors():
-		_current_runtime_card.add_status("❌", "Runtime Error: " + obs.format_diagnostic_prompt(), "#bf616a")
+		_current_runtime_card.add_status("✕", "Runtime Error: " + obs.format_diagnostic_prompt(), "#bf616a")
 	else:
 		_current_runtime_card.add_status("✓", "No runtime errors detected", "#a3be8c")
 
 func _on_agent_debugging_started(summary: String) -> void:
 	var grp = _ensure_activity_group()
-	grp.add_activity("🐞", "Auto-diagnosing runtime error: " + summary, -1)
+	grp.add_activity("•", "Auto-diagnosing runtime error: " + summary, -1)
 
 func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
 	set_status_badge("Step " + str(current_step) + " / " + str(max_steps), AISidebarTheme.COLOR_ACCENT)
