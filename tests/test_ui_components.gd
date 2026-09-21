@@ -9,6 +9,7 @@ const AISidebarApprovalCard = preload("res://addons/godot_sidebar_ai/ui/componen
 const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -136,5 +137,50 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 7 (ErrorCard retry and selectable) failed.")
 	e_card.queue_free()
+	
+	# Test 8: AISidebarTheme Token ve Factory Doğrulaması
+	var user_style = AISidebarTheme.create_bubble_user_style()
+	var asst_style = AISidebarTheme.create_bubble_assistant_style()
+	var cmd_style = AISidebarTheme.create_bubble_command_style()
+	var app_bg = AISidebarTheme.create_app_bg_style()
+	var accent_btn = AISidebarTheme.create_accent_button_style(false, false)
+	var ghost_btn = AISidebarTheme.create_ghost_button_style(false)
+	if user_style is StyleBoxFlat and asst_style is StyleBoxFlat and cmd_style is StyleBoxFlat and app_bg is StyleBoxFlat and accent_btn is StyleBoxFlat and ghost_btn is StyleBoxFlat:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 8 (AISidebarTheme styles) failed.")
+
+	# Test 9: MessageBubble Tema Entegrasyonu (User / Assistant / Command)
+	var u_bubble = AISidebarMessageBubble.new("user", "Hello AI")
+	u_bubble._ready()
+	var u_panel = u_bubble.get_theme_stylebox("panel")
+	var a_bubble = AISidebarMessageBubble.new("assistant", "Hello User")
+	a_bubble._ready()
+	var a_panel = a_bubble.get_theme_stylebox("panel")
+	if u_panel != null and a_panel != null and u_bubble._role_label.get_theme_color("font_color") == AISidebarTheme.COLOR_ACCENT:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 9 (MessageBubble theme integration) failed.")
+	u_bubble.queue_free()
+	a_bubble.queue_free()
+
+	# Test 10: ChatDock Gerçek Sahne Tema Uygulaması (_apply_theme)
+	var dock_scene = load("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
+	if dock_scene:
+		var dock = dock_scene.instantiate()
+		dock._ready()
+		var root_panel = dock.get_theme_stylebox("panel")
+		var is_themed = root_panel is StyleBoxFlat and dock.title_label.get_theme_font_size("font_size") == AISidebarTheme.FONT_SIZE_HEADER and dock.send_btn.has_theme_stylebox_override("normal")
+		if is_themed:
+			passed += 1
+		else:
+			failed += 1
+			errors.append("Test 10 (ChatDock _apply_theme) failed.")
+		dock.queue_free()
+	else:
+		failed += 1
+		errors.append("Test 10 (ChatDock scene load) failed.")
 	
 	return {"name": "UIComponentsTests", "passed": passed, "failed": failed, "errors": errors}

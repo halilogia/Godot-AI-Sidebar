@@ -9,6 +9,7 @@ signal meta_clicked(meta: Variant)
 signal copy_code_requested(code_text: String)
 
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 
 var role: String = "assistant"
 var text_content: String = ""
@@ -44,26 +45,13 @@ func finalize_stream(final_text: String) -> void:
 	_render_content()
 
 func _setup_ui() -> void:
-	# Stil ve Kenarlık
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(6)
-	style.content_margin_left = 10
-	style.content_margin_top = 8
-	style.content_margin_right = 10
-	style.content_margin_bottom = 8
-	
+	var style: StyleBoxFlat
 	if role == "user":
-		style.bg_color = Color(0.18, 0.22, 0.28, 0.85)
-		style.border_color = Color(0.35, 0.45, 0.6, 0.6)
-		style.set_border_width_all(1)
+		style = AISidebarTheme.create_bubble_user_style()
 	elif role == "command" or role == "slash_command":
-		style.bg_color = Color(0.16, 0.14, 0.24, 0.9)
-		style.border_color = Color(0.65, 0.45, 0.95, 0.8)
-		style.set_border_width_all(1)
+		style = AISidebarTheme.create_bubble_command_style()
 	else:
-		style.bg_color = Color(0.14, 0.16, 0.20, 0.85)
-		style.border_color = Color(0.24, 0.28, 0.35, 0.4)
-		style.set_border_width_all(1)
+		style = AISidebarTheme.create_bubble_assistant_style()
 		
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", style)
@@ -71,7 +59,7 @@ func _setup_ui() -> void:
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", 4)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
 	add_child(_vbox)
 	
 	# Header
@@ -83,17 +71,17 @@ func _setup_ui() -> void:
 	_role_label = Label.new()
 	_role_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_role_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_role_label.add_theme_font_size_override("font_size", 11)
+	_role_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 	
 	if role == "user":
 		_role_label.text = "You"
-		_role_label.add_theme_color_override("font_color", Color(0.55, 0.75, 1.0))
+		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_ACCENT)
 	elif role == "command" or role == "slash_command":
-		_role_label.text = "⚡ Slash Command"
-		_role_label.add_theme_color_override("font_color", Color(0.85, 0.6, 1.0))
+		_role_label.text = "Slash Command"
+		_role_label.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95))
 	else:
 		_role_label.text = "Godot AI"
-		_role_label.add_theme_color_override("font_color", Color(0.53, 0.75, 0.82))
+		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 		
 	_header_bar.add_child(_role_label)
 	
@@ -101,6 +89,8 @@ func _setup_ui() -> void:
 	_copy_btn.flat = true
 	_copy_btn.focus_mode = Control.FOCUS_NONE
 	_copy_btn.tooltip_text = "Metni Kopyala"
+	_copy_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+	_copy_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
 	AISidebarIconHelper.apply_icon(_copy_btn, "copy")
 	_copy_btn.pressed.connect(_on_copy_pressed)
 	_header_bar.add_child(_copy_btn)
@@ -117,7 +107,8 @@ func _setup_ui() -> void:
 	_content_label.focus_mode = Control.FOCUS_CLICK
 	_content_label.deselect_on_focus_loss_enabled = false
 	_content_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	_content_label.add_theme_font_size_override("normal_font_size", 12)
+	_content_label.add_theme_font_size_override("normal_font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_content_label.add_theme_color_override("default_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_content_label.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_label)
 

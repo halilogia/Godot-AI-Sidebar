@@ -34,6 +34,7 @@ const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/componen
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -123,6 +124,7 @@ func _setup_provider() -> void:
 		agent_runner.set_provider(provider)
 
 func _ready() -> void:
+	_apply_theme()
 	if not Engine.is_editor_hint():
 		return
 		
@@ -176,17 +178,6 @@ func _ready() -> void:
 		input_field.text_changed.connect(_on_input_text_changed)
 	if mention_list:
 		mention_list.item_activated.connect(_on_mention_item_activated)
-	if mention_container:
-		var style = StyleBoxFlat.new()
-		style.set_corner_radius_all(6)
-		style.bg_color = Color(0.12, 0.14, 0.18, 0.95)
-		style.border_color = Color(0.3, 0.45, 0.65, 0.8)
-		style.set_border_width_all(1)
-		style.content_margin_left = 4
-		style.content_margin_top = 4
-		style.content_margin_right = 4
-		style.content_margin_bottom = 4
-		mention_container.add_theme_stylebox_override("panel", style)
 
 	# 3. Geçmiş Paneli (History Drawer)
 	history_panel = AISidebarHistoryPanel.new()
@@ -223,11 +214,130 @@ func _ready() -> void:
 
 	_setup_queue_ui()
 
-	# 3. Başlangıç Yüklemesi
+	# 5. Başlangıç Yüklemesi
 	update_ui_language()
 	_load_cached_models()
 	if provider:
 		provider.fetch_models()
+
+func _apply_theme() -> void:
+	# 1. Root PanelContainer & Background
+	add_theme_stylebox_override("panel", AISidebarTheme.create_app_bg_style())
+	
+	# 2. MainLayout & Container Gaps
+	if has_node("MainLayout"):
+		$MainLayout.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	if has_node("MainLayout/HeaderBar"):
+		$MainLayout/HeaderBar.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	if has_node("MainLayout/ModelBar"):
+		$MainLayout/ModelBar.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	if has_node("MainLayout/InputArea"):
+		$MainLayout/InputArea.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	if has_node("MainLayout/InputArea/ButtonsBar"):
+		$MainLayout/InputArea/ButtonsBar.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+
+	# 3. HeaderBar Typography & Buttons
+	if title_label:
+		title_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_HEADER)
+		title_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	if status_badge:
+		status_badge.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	if new_chat_btn:
+		new_chat_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+		new_chat_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+		new_chat_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_ghost_button_style(true))
+		new_chat_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		new_chat_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+		new_chat_btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	if history_btn:
+		history_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+		history_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+		history_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_ghost_button_style(true))
+		history_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		history_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+		history_btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	if export_btn:
+		export_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+		export_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+		export_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_ghost_button_style(true))
+		export_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		export_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+		export_btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+
+	# 4. ModelBar
+	if model_selector:
+		model_selector.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
+		model_selector.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style())
+		model_selector.add_theme_stylebox_override("pressed", AISidebarTheme.create_card_active_style())
+		model_selector.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+		model_selector.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	if approve_mode_btn:
+		approve_mode_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XXS))
+		approve_mode_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XXS))
+		approve_mode_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	if refresh_models_btn:
+		refresh_models_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+		refresh_models_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+		refresh_models_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_ghost_button_style(true))
+	if settings_btn:
+		settings_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+		settings_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+		settings_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_ghost_button_style(true))
+
+	# 5. Message Stream
+	if message_stream:
+		message_stream.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+
+	# 6. Mention Popup
+	if mention_container:
+		mention_container.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
+	if mention_list:
+		mention_list.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+
+	# 7. Input Area & Buttons
+	if input_field:
+		input_field.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
+		input_field.add_theme_stylebox_override("focus", AISidebarTheme.create_input_focus_style())
+		input_field.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+		input_field.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+		input_field.add_theme_color_override("font_placeholder_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	if clear_btn:
+		clear_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+		clear_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+		clear_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_ghost_button_style(true))
+		clear_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+		clear_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+		clear_btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	if jump_to_bottom_btn:
+		jump_to_bottom_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XXS))
+		jump_to_bottom_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XXS))
+		jump_to_bottom_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		jump_to_bottom_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+
+	_update_send_button_style()
+
+func _update_send_button_style() -> void:
+	if not send_btn:
+		return
+	if agent_runner and agent_runner.is_running():
+		var stop_normal = StyleBoxFlat.new()
+		stop_normal.bg_color = AISidebarTheme.COLOR_ERROR
+		stop_normal.set_corner_radius_all(AISidebarTheme.RADIUS_MD)
+		stop_normal.content_margin_left = AISidebarTheme.SPACE_MD
+		stop_normal.content_margin_right = AISidebarTheme.SPACE_MD
+		stop_normal.content_margin_top = AISidebarTheme.SPACE_XS + 1
+		stop_normal.content_margin_bottom = AISidebarTheme.SPACE_XS + 1
+		var stop_hover = stop_normal.duplicate()
+		stop_hover.bg_color = Color(1.0, 0.45, 0.45, 1.0)
+		send_btn.add_theme_stylebox_override("normal", stop_normal)
+		send_btn.add_theme_stylebox_override("hover", stop_hover)
+		send_btn.add_theme_stylebox_override("pressed", stop_normal)
+	else:
+		send_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_accent_button_style(false, false))
+		send_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_accent_button_style(true, false))
+		send_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_accent_button_style(false, true))
+	send_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	send_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
 
 func _setup_queue_ui() -> void:
 	if not has_node("MainLayout/InputArea"):
@@ -236,25 +346,16 @@ func _setup_queue_ui() -> void:
 	
 	_queue_container = PanelContainer.new()
 	_queue_container.visible = false
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(4)
-	style.bg_color = Color(0.14, 0.16, 0.22, 0.95)
-	style.border_color = Color(0.35, 0.45, 0.6, 0.7)
-	style.set_border_width_all(1)
-	style.content_margin_left = 6
-	style.content_margin_top = 4
-	style.content_margin_right = 6
-	style.content_margin_bottom = 4
-	_queue_container.add_theme_stylebox_override("panel", style)
+	_queue_container.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
+	vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
 	
 	var header = HBoxContainer.new()
 	_queue_title_label = Label.new()
-	_queue_title_label.text = "📋 Queued Messages (0)"
-	_queue_title_label.add_theme_font_size_override("font_size", 10)
-	_queue_title_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	_queue_title_label.text = "Queued Messages (0)"
+	_queue_title_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_queue_title_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	header.add_child(_queue_title_label)
 	
 	var spacer = Control.new()
@@ -265,14 +366,16 @@ func _setup_queue_ui() -> void:
 	_queue_clear_btn.text = "Clear All"
 	_queue_clear_btn.flat = true
 	_queue_clear_btn.focus_mode = Control.FOCUS_NONE
-	_queue_clear_btn.add_theme_font_size_override("font_size", 9)
-	_queue_clear_btn.add_theme_color_override("font_color", Color(0.8, 0.5, 0.5))
+	_queue_clear_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+	_queue_clear_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+	_queue_clear_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_queue_clear_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
 	_queue_clear_btn.pressed.connect(_clear_all_queue)
 	header.add_child(_queue_clear_btn)
 	vbox.add_child(header)
 	
 	_queue_items_vbox = VBoxContainer.new()
-	_queue_items_vbox.add_theme_constant_override("separation", 2)
+	_queue_items_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
 	vbox.add_child(_queue_items_vbox)
 	
 	_queue_container.add_child(vbox)
@@ -315,6 +418,7 @@ func update_ui_language() -> void:
 			send_btn.text = "Send"
 			AISidebarIconHelper.apply_icon(send_btn, "send")
 			send_btn.tooltip_text = ""
+		_update_send_button_style()
 			
 	_update_approve_mode_ui()
 
@@ -326,15 +430,15 @@ func _update_approve_mode_ui() -> void:
 		AISidebarPermissionPolicy.AutoApproveMode.MANUAL:
 			approve_mode_btn.text = AISidebarI18n.get_text("mode_manual")
 			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_manual") + " (Her riskli işlemde onay sorulur)"
-			approve_mode_btn.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
 			approve_mode_btn.text = AISidebarI18n.get_text("mode_auto")
 			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_auto") + " (Güvenli kod/dosya yazımları otomatik, silme onaylı)"
-			approve_mode_btn.add_theme_color_override("font_color", Color(0.4, 0.9, 0.5))
+			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
 			approve_mode_btn.text = AISidebarI18n.get_text("mode_full_auto")
 			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_full_auto") + " (Tüm araçlar otomatik onaylanır, PathPolicy kalkanı devrededir)"
-			approve_mode_btn.add_theme_color_override("font_color", Color(0.9, 0.45, 0.95))
+			approve_mode_btn.add_theme_color_override("font_color", Color(0.85, 0.55, 0.95))
 
 func _on_approve_mode_pressed() -> void:
 	var current_mode = AISidebarPermissionPolicy.get_auto_approve_mode()
