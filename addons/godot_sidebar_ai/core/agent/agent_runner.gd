@@ -112,6 +112,20 @@ func _init(p_provider: AISidebarAIProvider = null, p_context: AISidebarAgentCont
 		provider.chunk_received.connect(_on_provider_chunk)
 		provider.error_occurred.connect(_on_provider_error)
 
+func set_provider(p_provider: AISidebarAIProvider) -> void:
+	if provider:
+		if provider.response_received.is_connected(_on_provider_response):
+			provider.response_received.disconnect(_on_provider_response)
+		if provider.chunk_received.is_connected(_on_provider_chunk):
+			provider.chunk_received.disconnect(_on_provider_chunk)
+		if provider.error_occurred.is_connected(_on_provider_error):
+			provider.error_occurred.disconnect(_on_provider_error)
+	provider = p_provider
+	if provider:
+		provider.response_received.connect(_on_provider_response)
+		provider.chunk_received.connect(_on_provider_chunk)
+		provider.error_occurred.connect(_on_provider_error)
+
 func _on_provider_chunk(text_delta: String, thinking_delta: String) -> void:
 	if not is_running():
 		return

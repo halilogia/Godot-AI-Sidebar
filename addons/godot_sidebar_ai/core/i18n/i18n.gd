@@ -44,7 +44,12 @@ const STRINGS: Dictionary = {
 		"mode_auto": "⚡ Auto",
 		"mode_full_auto": "🚀 Full Auto",
 		"tooltip_approve_mode": "Onay Modu (Manuel / Auto / Full Auto)",
-		"label_auto_approve_mode": "Auto Approve Modu:"
+		"label_auto_approve_mode": "Auto Approve Modu:",
+		"label_provider_type": "AI Sağlayıcı Modeli (Provider):",
+		"provider_antigravity": "Google Antigravity CLI (Resmi, Yerel, Doğrudan Oturum)",
+		"provider_openai": "OpenAI Uyumlu (9Router, Ollama, OpenRouter, LM Studio)",
+		"hint_temp_ideal": "💡 Kodlama için önerilen: 0.20 (Düşük halüsinasyon, tutarlı sözdizimi). Fare tekerleği kilitlenmiştir.",
+		"btn_reset_temp": "↺ 0.20 (İdeal)"
 	},
 	"en": {
 		"app_title": "Godot AI Core",
@@ -83,7 +88,12 @@ const STRINGS: Dictionary = {
 		"mode_auto": "⚡ Auto",
 		"mode_full_auto": "🚀 Full Auto",
 		"tooltip_approve_mode": "Approval Mode (Manual / Auto / Full Auto)",
-		"label_auto_approve_mode": "Auto Approve Mode:"
+		"label_auto_approve_mode": "Auto Approve Mode:",
+		"label_provider_type": "AI Provider Mode:",
+		"provider_antigravity": "Google Antigravity CLI (Official, Local, Direct Session)",
+		"provider_openai": "OpenAI-Compatible (9Router, Ollama, OpenRouter, LM Studio)",
+		"hint_temp_ideal": "💡 Recommended for coding: 0.20 (Low hallucination, strict syntax). Mouse wheel is locked.",
+		"btn_reset_temp": "↺ 0.20 (Ideal)"
 	}
 }
 

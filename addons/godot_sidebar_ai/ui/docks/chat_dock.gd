@@ -9,6 +9,7 @@ const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialo
 const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/network/network_manager.gd")
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarOpenAICompatibleProvider = preload("res://addons/godot_sidebar_ai/core/providers/openai_compatible_provider.gd")
+const AISidebarAGYProvider = preload("res://addons/godot_sidebar_ai/core/providers/agy_cli_provider.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
@@ -93,6 +94,32 @@ var _active_slash_suggestions: Array[Dictionary] = []
 var _active_slash_query_info: Dictionary = {}
 var _session_base_messages: Array = []
 
+func _exit_tree() -> void:
+	if provider and provider.has_method("stop_process"):
+		provider.stop_process()
+
+func _setup_provider() -> void:
+	var cfg = AISidebarConfig.load_config()
+	var prov_type = cfg.get("provider_type", "antigravity_cli")
+	
+	if provider:
+		if provider.has_method("stop_process"):
+			provider.stop_process()
+		if provider.models_fetched.is_connected(_on_models_fetched):
+			provider.models_fetched.disconnect(_on_models_fetched)
+			
+	if prov_type == "openai_compatible":
+		if not network_manager:
+			network_manager = AISidebarNetworkManager.new()
+			add_child(network_manager)
+		provider = AISidebarOpenAICompatibleProvider.new(network_manager)
+	else:
+		provider = AISidebarAGYProvider.new()
+		
+	provider.models_fetched.connect(_on_models_fetched)
+	if agent_runner:
+		agent_runner.set_provider(provider)
+
 func _ready() -> void:
 	if not Engine.is_editor_hint():
 		return
@@ -101,8 +128,8 @@ func _ready() -> void:
 	network_manager = AISidebarNetworkManager.new()
 	add_child(network_manager)
 	
-	provider = AISidebarOpenAICompatibleProvider.new(network_manager)
 	agent_context = AISidebarAgentContext.new()
+	_setup_provider()
 	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
 	
 	# Sinyal Bağlantıları
@@ -122,7 +149,6 @@ func _ready() -> void:
 	agent_runner.error_occurred.connect(_on_agent_error)
 	agent_runner.task_completed.connect(_on_agent_task_completed)
 	agent_runner.step_progress.connect(_on_agent_step_progress)
-	provider.models_fetched.connect(_on_models_fetched)
 
 	# 2. UI Olayları
 	if new_chat_btn:
@@ -410,6 +436,7 @@ func _on_settings_pressed() -> void:
 
 func _on_settings_saved() -> void:
 	update_ui_language()
+	_setup_provider()
 	if provider:
 		provider.fetch_models()
 

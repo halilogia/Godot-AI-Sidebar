@@ -166,41 +166,44 @@ function Get-AllGodotProjects() {
 
     # 1. examples/ Klasöründekiler
     if (Test-Path $ExamplesDir) {
-        Get-ChildItem -Path $ExamplesDir -Directory | ForEach-Object {
-            $pg = Join-Path $_.FullName "project.godot"
-            if (Test-Path $pg) {
-                $list += [PSCustomObject]@{
-                    Name = $_.Name
-                    Path = $_.FullName
-                    Location = "Examples (Repo İçi)"
-                    DisplayHint = "examples\$($_.Name)"
-                }
+        Get-ChildItem -Path $ExamplesDir -Filter "project.godot" -Recurse -Depth 2 -ErrorAction SilentlyContinue | ForEach-Object {
+            $projDir = $_.Directory.FullName
+            $list += [PSCustomObject]@{
+                Name = $_.Directory.Name
+                Path = $projDir
+                Location = "Examples (Repo İçi)"
+                DisplayHint = "examples\$($_.Directory.Name)"
             }
         }
     }
 
-    # 2. Belgeler (Documents) Klasöründekiler (Derinlik: 2)
-    if (Test-Path $DocsDir) {
-        Get-ChildItem -Path $DocsDir -Directory -Depth 2 -ErrorAction SilentlyContinue | ForEach-Object {
-            $pg = Join-Path $_.FullName "project.godot"
-            if ((Test-Path $pg) -and ($_.FullName -ne $RepoRoot) -and ($_.FullName -ne (Join-Path $RepoRoot "examples"))) {
-                # Zaten listede yoksa ekle
-                $pFullName = $_.FullName
-                $already = $list | Where-Object { $_.Path -eq $pFullName }
-                if (-not $already) {
-                    $relHint = if ($pFullName.StartsWith($DocsDir)) { "Documents" + $pFullName.Substring($DocsDir.Length) } else { $pFullName }
-                    $list += [PSCustomObject]@{
-                        Name = $_.Name
-                        Path = $pFullName
-                        Location = "Belgeler (Documents)"
-                        DisplayHint = $relHint
+    # 2. Belgeler (Documents) Klasöründekiler (Derinlik: 3)
+    $searchDocsDirs = @($DocsDir)
+    $personalDir = [Environment]::GetFolderPath("Personal")
+    if ($personalDir -and (Test-Path $personalDir) -and ($searchDocsDirs -notcontains $personalDir)) {
+        $searchDocsDirs += $personalDir
+    }
+
+    foreach ($sDir in $searchDocsDirs) {
+        if (Test-Path $sDir) {
+            Get-ChildItem -Path $sDir -Filter "project.godot" -Recurse -Depth 3 -ErrorAction SilentlyContinue | ForEach-Object {
+                $projDir = $_.Directory.FullName
+                if (($projDir -ne $RepoRoot) -and (-not $projDir.StartsWith($RepoRoot))) {
+                    $already = $list | Where-Object { $_.Path -eq $projDir }
+                    if (-not $already) {
+                        $list += [PSCustomObject]@{
+                            Name = $_.Directory.Name
+                            Path = $projDir
+                            Location = "Belgeler (Documents)"
+                            DisplayHint = $projDir
+                        }
                     }
                 }
             }
         }
     }
 
-    return $list
+    return ,$list
 }
 
 # 3. Yeni Proje Oluşturma
@@ -230,7 +233,7 @@ enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
 }
 
 # 4. Projeleri Tara ve Hedef Belirle
-$allProjects = Get-AllGodotProjects
+$allProjects = @(Get-AllGodotProjects)
 $targetProjects = @()
 
 if ($All) {
@@ -245,7 +248,7 @@ if ($All) {
         $targetProjects += $ProjectName
     } else {
         # İsme göre eşleştir
-        $matches = $allProjects | Where-Object { $_.Name -eq $ProjectName }
+        $matches = @($allProjects | Where-Object { $_.Name -eq $ProjectName })
         if ($matches.Count -eq 1) {
             $targetProjects += $matches[0].Path
         } elseif ($matches.Count -gt 1) {
@@ -276,8 +279,8 @@ if ($All) {
     # İnteraktif Menü
     Write-Host "`nBulunan Godot Oyun Projeleri:" -ForegroundColor White
     
-    $examplesList = $allProjects | Where-Object { $_.Location -like "*Examples*" }
-    $docsList = $allProjects | Where-Object { $_.Location -like "*Belgeler*" }
+    $examplesList = @($allProjects | Where-Object { $_.Location -like "*Examples*" })
+    $docsList = @($allProjects | Where-Object { $_.Location -like "*Belgeler*" })
 
     $index = 1
     $indexedProjects = @{}
@@ -292,9 +295,9 @@ if ($All) {
     }
 
     if ($docsList.Count -gt 0) {
-        Write-Host "`n--- [Kullanıcı Belgeler / Documents Klasörü] ---" -ForegroundColor DarkGreen
+        Write-Host "`n--- [Kullanıcı Belgeler / Documents Klasörü ($DocsDir)] ---" -ForegroundColor DarkGreen
         foreach ($p in $docsList) {
-            Write-Host "  [$index] $($p.Name)  `t($($p.DisplayHint))" -ForegroundColor Green
+            Write-Host "  [$index] $($p.Name) -> $($p.DisplayHint)" -ForegroundColor Green
             $indexedProjects[$index] = $p.Path
             $index++
         }
