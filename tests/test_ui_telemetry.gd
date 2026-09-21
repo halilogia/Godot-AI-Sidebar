@@ -198,21 +198,24 @@ static func run() -> Dictionary:
 	var real_dock = dock_scene.instantiate() if dock_scene else null
 	if real_dock:
 		real_dock.name = "GodotAISidebar"
+		real_dock._ready()
 		AISidebarUITelemetryTools.register_sidebar_dock(real_dock)
 		
 		var res_sidebar = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar"})
 		var res_subpath = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar/MainLayout/HeaderBar/TitleLabel"})
+		var res_history = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar/HistoryPanel"})
 		var res_invalid = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "NonExistentPath_XYZ_999"})
 		
 		var ok_sidebar = res_sidebar.get("success", false) and res_sidebar.get("data", {}).get("total_nodes_inspected", 0) >= 5
 		var ok_subpath = res_subpath.get("success", false) and res_subpath.get("data", {}).get("telemetry", {}).get("name", "") == "TitleLabel"
+		var ok_history = res_history.get("success", false) and res_history.get("data", {}).get("telemetry", {}).get("name", "") == "HistoryPanel"
 		var ok_invalid = (res_invalid.get("success", true) == false) and res_invalid.get("error", {}).get("code", "") == "NODE_NOT_FOUND"
 		
-		if ok_sidebar and ok_subpath and ok_invalid:
+		if ok_sidebar and ok_subpath and ok_history and ok_invalid:
 			passed += 1
 		else:
 			failed += 1
-			errors.append("Test 10 (Real ChatDock E2E JSON calls) failed: sb=" + str(ok_sidebar) + " sub=" + str(ok_subpath) + " inv=" + str(ok_invalid))
+			errors.append("Test 10 (Real ChatDock E2E JSON calls) failed: sb=" + str(ok_sidebar) + " sub=" + str(ok_subpath) + " hist=" + str(ok_history) + " inv=" + str(ok_invalid))
 		
 		AISidebarUITelemetryTools.register_sidebar_dock(null)
 		real_dock.queue_free()

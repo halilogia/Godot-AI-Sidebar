@@ -44,7 +44,21 @@ const COLOR_TEXT_MUTED = Color(0.45, 0.48, 0.55, 1.0)
 const COLOR_SUCCESS = Color(0.25, 0.80, 0.45, 1.0)
 const COLOR_WARNING = Color(0.90, 0.70, 0.25, 1.0)
 const COLOR_ERROR = Color(0.90, 0.35, 0.35, 1.0)
+const COLOR_ERROR_HOVER = Color(1.0, 0.45, 0.45, 1.0)
 const COLOR_ACCENT = Color(0.30, 0.55, 0.95, 1.0)
+const COLOR_ACCENT_HOVER = Color(0.38, 0.62, 0.98, 1.0)
+const COLOR_ACCENT_PRESSED = Color(0.20, 0.45, 0.80, 1.0)
+
+# Semantik Renk ve Balon Tokenları (Design Tokens)
+const COLOR_BUBBLE_USER = Color(0.14, 0.20, 0.30, 0.95)
+const COLOR_BUBBLE_USER_BORDER = Color(0.25, 0.38, 0.55, 0.75)
+const COLOR_BUBBLE_ASSISTANT = Color(0.11, 0.13, 0.17, 0.98)
+const COLOR_BUBBLE_COMMAND = Color(0.15, 0.14, 0.22, 0.95)
+const COLOR_BUBBLE_COMMAND_BORDER = Color(0.35, 0.30, 0.55, 0.7)
+const COLOR_ROLE_COMMAND = Color(0.75, 0.55, 0.95, 1.0)
+const COLOR_MODE_FULL_AUTO = Color(0.85, 0.55, 0.95, 1.0)
+const COLOR_WHITE = Color(1.0, 1.0, 1.0, 1.0)
+const COLOR_TRANSPARENT = Color(0, 0, 0, 0)
 
 # 5. Factory Metotları
 static func create_app_bg_style() -> StyleBoxFlat:
@@ -122,8 +136,8 @@ static func create_dialog_style() -> StyleBoxFlat:
 
 static func create_bubble_user_style() -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.14, 0.20, 0.30, 0.95)
-	style.border_color = Color(0.25, 0.38, 0.55, 0.75)
+	style.bg_color = COLOR_BUBBLE_USER
+	style.border_color = COLOR_BUBBLE_USER_BORDER
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(RADIUS_LG)
 	style.content_margin_left = 10
@@ -134,7 +148,7 @@ static func create_bubble_user_style() -> StyleBoxFlat:
 
 static func create_bubble_assistant_style() -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.11, 0.13, 0.17, 0.98)
+	style.bg_color = COLOR_BUBBLE_ASSISTANT
 	style.border_color = COLOR_BORDER_SUBTLE
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(RADIUS_LG)
@@ -146,8 +160,8 @@ static func create_bubble_assistant_style() -> StyleBoxFlat:
 
 static func create_bubble_command_style() -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.15, 0.14, 0.22, 0.95)
-	style.border_color = Color(0.35, 0.30, 0.55, 0.7)
+	style.bg_color = COLOR_BUBBLE_COMMAND
+	style.border_color = COLOR_BUBBLE_COMMAND_BORDER
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(RADIUS_LG)
 	style.content_margin_left = 10
@@ -159,9 +173,9 @@ static func create_bubble_command_style() -> StyleBoxFlat:
 static func create_accent_button_style(is_hover: bool = false, is_pressed: bool = false) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
 	if is_pressed:
-		style.bg_color = Color(0.20, 0.45, 0.80, 1.0)
+		style.bg_color = COLOR_ACCENT_PRESSED
 	elif is_hover:
-		style.bg_color = Color(0.38, 0.62, 0.98, 1.0)
+		style.bg_color = COLOR_ACCENT_HOVER
 	else:
 		style.bg_color = COLOR_ACCENT
 	style.set_border_width_all(0)
@@ -179,7 +193,7 @@ static func create_ghost_button_style(is_hover: bool = false) -> StyleBoxFlat:
 		style.border_color = COLOR_BORDER_HOVER
 		style.set_border_width_all(1)
 	else:
-		style.bg_color = Color(0, 0, 0, 0)
+		style.bg_color = COLOR_TRANSPARENT
 		style.set_border_width_all(0)
 	style.set_corner_radius_all(RADIUS_SM)
 	style.content_margin_left = SPACE_XS + 2

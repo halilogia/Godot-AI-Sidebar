@@ -7,6 +7,26 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
+## [2.7.0] - 2026-09-22 (AI UI Telemetry, Headless Static Typecheck & Centralized Design System)
+
+### 🌟 Eklenenler & İyileştirmeler
+* **Merkezi Tasarım Sistemi & Semantik Tokenlar (`AISidebarTheme`):**
+  - Modern VS Code ve Cursor tarzı derin slate ve midnight dark (`#07080b`, `#111317`, `#181d28`) arayüz teması.
+  - Rol bazlı (`user`, `assistant`, `command`) dinamik mesaj kartları ve StyleBoxFlat factory metotları.
+  - Ghost buton stili (`create_ghost_button_style`), odak bordürleri (`create_input_focus_style`) ve dinamik Send/Stop aksan butonu.
+  - Tüketici emojileri (`⏳`, `▶`, `🐞`, `❌`, `⚡`) temizlendi; profesyonel minimalist durum göstergeleri semantik durum tokenlarına bağlandı (`COLOR_SUCCESS`, `COLOR_WARNING`, `COLOR_ERROR`, `COLOR_ACCENT`).
+* **AI-Native UI Layout Telemetri Motoru (`inspect_ui_layout`):**
+  - Salt-okunur (read-only) güvenlik profiliyle LLM'nin hem açık sahneyi (`@edited_scene`) hem de kendi arayüzünü (`@sidebar`, `@sidebar/HistoryPanel`, `@sidebar/QueueContainer`) denetleyebilmesi sağlandı.
+  - Konteyner kümülatif taşma kontrolü (`UI_CONTAINER_OVERFLOW` aggregate min dimensions).
+  - Efektif görünürlük kontrolü (`_is_node_effectively_visible`) ve StyleBoxFlat / font boyutu tema analizi (`include_theme_details`).
+* **Headless Statik Tip & Sözdizimi Kontrolcüsü (`typecheck.ps1` & `tools/typecheck.gd`):**
+  - Godot editörünü açmadan veya oyunu başlatmadan 1.5 saniyede projedeki tüm 113 GDScript ve 4 Sahne dosyasını statik derleyerek denetleyen TypeScript (`tsc --noEmit`) benzeri araç.
+  - VS Code entegrasyonu: `Ctrl+Shift+B` kısayoluyla tek tuşla anında derleme testi.
+* **Birim & Entegrasyon Test Güvencesi:**
+  - `tests/test_ui_telemetry.gd` ve `tests/test_ui_components.gd` genişletildi; 54 test paketi ve 291 assertion %100 yeşil (`ALL PASS`).
+
+---
+
 ## [2.6.0] - 2026-08-27 (Chat Management, Persistence & History Drawer)
 
 ### 🌟 Eklenenler & İyileştirmeler

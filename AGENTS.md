@@ -55,14 +55,14 @@
 Yeni bir özellik veya düzeltme yapıldığında sırasıyla şu komutlar koşulmalıdır:
 
 ```bash
-# 1. Tüm Birim ve Mantık Testleri (45 Test Paketi / 192 Assertion)
-& "C:\Users\Halil Emre\Desktop\Godot_v4.7.2-stable_win64.exe" --headless --path "C:\Users\Halil Emre\Desktop\GitHub\Private\Godot AI Sidebar" -s "res://tests/test_runner.gd"
+# 1. Headless Statik Tip ve Sözdizimi Derleme Kontrolü (113 GDScript, 4 Sahne)
+powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
 
-# 2. GDScript Derleme / Sözdizimi Kontrolü
-& "C:\Users\Halil Emre\Desktop\Godot_v4.7.2-stable_win64.exe" --headless --path "C:\Users\Halil Emre\Desktop\GitHub\Private\Godot AI Sidebar" --check-only
+# 2. Tüm Birim ve Mantık Testleri (54 Test Paketi / 291 Assertion)
+& "C:\Users\Halil Emre\Desktop\Godot_v4.7.2-stable_win64.exe" --headless --path "C:\Users\Halil Emre\Desktop\GitHub\Public\Godot AI Sidebar" -s "res://tests/test_runner.gd"
 
 # 3. Canlı 9Router & Model Entegrasyon Testi (127.0.0.1:20128)
-& "C:\Users\Halil Emre\Desktop\Godot_v4.7.2-stable_win64.exe" --headless --path "C:\Users\Halil Emre\Desktop\GitHub\Private\Godot AI Sidebar" -s "res://tests/integration/test_real_9router_live.gd"
+& "C:\Users\Halil Emre\Desktop\Godot_v4.7.2-stable_win64.exe" --headless --path "C:\Users\Halil Emre\Desktop\GitHub\Public\Godot AI Sidebar" -s "res://tests/integration/test_real_9router_live.gd"
 ```
 
 ---

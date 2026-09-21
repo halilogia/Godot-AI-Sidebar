@@ -104,7 +104,7 @@ func b():
 		errors.append("Test 4 (SCRIPT_SYNTAX_ERROR) failed: " + str(res4))
 		
 	# Test 5: PermissionPolicy entegrasyonu (Mevcut dosya için overwrite onayı istemeli)
-	var req_appr = AISidebarPermissionPolicy.requires_user_approval("replace_file_content", {"file_path": test_file})
+	var req_appr = AISidebarPermissionPolicy.requires_user_approval("replace_file_content", {"file_path": test_file}, AISidebarPermissionPolicy.AutoApproveMode.MANUAL)
 	if req_appr == true:
 		passed += 1
 	else:

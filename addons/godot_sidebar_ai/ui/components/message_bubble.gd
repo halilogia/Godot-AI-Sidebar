@@ -78,7 +78,7 @@ func _setup_ui() -> void:
 		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_ACCENT)
 	elif role == "command" or role == "slash_command":
 		_role_label.text = "Slash Command"
-		_role_label.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95))
+		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_ROLE_COMMAND)
 	else:
 		_role_label.text = "Godot AI"
 		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)

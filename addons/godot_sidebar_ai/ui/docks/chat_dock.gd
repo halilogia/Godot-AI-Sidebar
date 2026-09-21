@@ -124,6 +124,8 @@ func _setup_provider() -> void:
 		agent_runner.set_provider(provider)
 
 func _ready() -> void:
+	_setup_history_panel()
+	_setup_queue_ui()
 	_apply_theme()
 	if not Engine.is_editor_hint():
 		return
@@ -179,18 +181,6 @@ func _ready() -> void:
 	if mention_list:
 		mention_list.item_activated.connect(_on_mention_item_activated)
 
-	# 3. Geçmiş Paneli (History Drawer)
-	history_panel = AISidebarHistoryPanel.new()
-	history_panel.visible = false
-	$MainLayout.add_child(history_panel)
-	$MainLayout.move_child(history_panel, 2) # ModelBar'ın hemen altına yerleştir
-	
-	history_panel.session_selected.connect(_on_history_session_selected)
-	history_panel.new_chat_requested.connect(_on_new_chat_pressed)
-	history_panel.session_deleted.connect(_on_history_session_deleted)
-	history_panel.session_renamed.connect(_on_history_session_renamed)
-	history_panel.close_requested.connect(_on_history_close_requested)
-
 	# 4. Oturumu Başlat (Her açılışta daima temiz ve yeni bir sohbet başlat)
 	_start_new_chat_session()
 	if model_selector:
@@ -211,8 +201,6 @@ func _ready() -> void:
 		chat_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	if message_stream:
 		message_stream.mouse_filter = Control.MOUSE_FILTER_PASS
-
-	_setup_queue_ui()
 
 	# 5. Başlangıç Yüklemesi
 	update_ui_language()
@@ -328,7 +316,7 @@ func _update_send_button_style() -> void:
 		stop_normal.content_margin_top = AISidebarTheme.SPACE_XS + 1
 		stop_normal.content_margin_bottom = AISidebarTheme.SPACE_XS + 1
 		var stop_hover = stop_normal.duplicate()
-		stop_hover.bg_color = Color(1.0, 0.45, 0.45, 1.0)
+		stop_hover.bg_color = AISidebarTheme.COLOR_ERROR_HOVER
 		send_btn.add_theme_stylebox_override("normal", stop_normal)
 		send_btn.add_theme_stylebox_override("hover", stop_hover)
 		send_btn.add_theme_stylebox_override("pressed", stop_normal)
@@ -336,8 +324,23 @@ func _update_send_button_style() -> void:
 		send_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_accent_button_style(false, false))
 		send_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_accent_button_style(true, false))
 		send_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_accent_button_style(false, true))
-	send_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	send_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_WHITE)
 	send_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+
+func _setup_history_panel() -> void:
+	if history_panel or not has_node("MainLayout"):
+		return
+	history_panel = AISidebarHistoryPanel.new()
+	history_panel.name = "HistoryPanel"
+	history_panel.visible = false
+	$MainLayout.add_child(history_panel)
+	$MainLayout.move_child(history_panel, 2)
+	
+	history_panel.session_selected.connect(_on_history_session_selected)
+	history_panel.new_chat_requested.connect(_on_new_chat_pressed)
+	history_panel.session_deleted.connect(_on_history_session_deleted)
+	history_panel.session_renamed.connect(_on_history_session_renamed)
+	history_panel.close_requested.connect(_on_history_close_requested)
 
 func _setup_queue_ui() -> void:
 	if not has_node("MainLayout/InputArea"):
@@ -345,6 +348,7 @@ func _setup_queue_ui() -> void:
 	var input_area = $MainLayout/InputArea
 	
 	_queue_container = PanelContainer.new()
+	_queue_container.name = "QueueContainer"
 	_queue_container.visible = false
 	_queue_container.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
 	
@@ -438,7 +442,7 @@ func _update_approve_mode_ui() -> void:
 		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
 			approve_mode_btn.text = AISidebarI18n.get_text("mode_full_auto")
 			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_full_auto") + " (Tüm araçlar otomatik onaylanır, PathPolicy kalkanı devrededir)"
-			approve_mode_btn.add_theme_color_override("font_color", Color(0.85, 0.55, 0.95))
+			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_MODE_FULL_AUTO)
 
 func _on_approve_mode_pressed() -> void:
 	var current_mode = AISidebarPermissionPolicy.get_auto_approve_mode()
@@ -454,7 +458,7 @@ func _on_approve_mode_pressed() -> void:
 	_update_approve_mode_ui()
 	if agent_runner and not agent_runner.is_running():
 		var mode_txt = AISidebarPermissionPolicy.get_mode_name(next_mode)
-		set_status_badge(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", Color(0.4, 0.8, 0.4))
+		set_status_badge(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
 
 func _on_export_pressed() -> void:
 	var msgs: Array = []
@@ -487,7 +491,8 @@ func _on_export_pressed() -> void:
 			
 	if status_badge:
 		var prev = status_badge.text
-		status_badge.text = "Exported ✓"
+		status_badge.text = "Exported"
+		status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 		var t = get_tree()
 		if t:
 			var timer = t.create_timer(2.0)
@@ -527,11 +532,11 @@ func _on_models_fetched(models: Array) -> void:
 	AISidebarConfig.save_config(cfg)
 	
 	_populate_model_selector(models)
-	set_status_badge("Ready", Color(0.4, 0.8, 0.4))
+	set_status_badge("Ready", AISidebarTheme.COLOR_SUCCESS)
 
 func _on_refresh_models_pressed() -> void:
 	if provider:
-		set_status_badge("Refreshing...", Color(1.0, 0.8, 0.2))
+		set_status_badge("Refreshing...", AISidebarTheme.COLOR_WARNING)
 		provider.fetch_models()
 
 func _on_settings_pressed() -> void:
@@ -787,7 +792,7 @@ func _start_new_chat_session() -> void:
 	_update_header_title()
 	if history_panel:
 		history_panel.set_active_session(current_session.id)
-	set_status_badge(AISidebarI18n.get_text("status_ready"), Color(0.4, 0.8, 0.4))
+	set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
 
 func _save_current_session() -> void:
 	if current_session == null:
@@ -826,7 +831,7 @@ func _load_session_by_id(session_id: String) -> void:
 		history_panel.set_active_session(loaded.id)
 		if history_panel.visible:
 			history_panel.refresh_list()
-	set_status_badge(AISidebarI18n.get_text("status_ready"), Color(0.4, 0.8, 0.4))
+	set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
 	if _auto_scroll_enabled:
 		_scroll_to_bottom()
 
@@ -1177,17 +1182,17 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 	match new_state:
 		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
 			var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
-			set_status_badge(state_desc + " [" + mode_txt + "]", Color(0.4, 0.8, 0.4))
+			set_status_badge(state_desc + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
-			set_status_badge("⏳ Waiting Approval", Color(1.0, 0.5, 0.2))
+			set_status_badge("Waiting Approval", AISidebarTheme.COLOR_WARNING)
 		AISidebarAgentRunner.AgentState.RUNNING_GAME:
-			set_status_badge("▶ Running Game", Color(0.3, 0.7, 1.0))
+			set_status_badge("Running Game", AISidebarTheme.COLOR_ACCENT)
 		AISidebarAgentRunner.AgentState.DEBUGGING:
-			set_status_badge("🐞 Debugging", Color(1.0, 0.4, 0.4))
+			set_status_badge("Debugging", AISidebarTheme.COLOR_ERROR)
 		AISidebarAgentRunner.AgentState.ERROR:
-			set_status_badge("❌ " + state_desc, Color(1.0, 0.3, 0.3))
+			set_status_badge(state_desc, AISidebarTheme.COLOR_ERROR)
 		_:
-			set_status_badge("⚡ " + state_desc, Color(1.0, 0.8, 0.2))
+			set_status_badge(state_desc, AISidebarTheme.COLOR_WARNING)
 
 func _on_agent_thinking_received(thinking: String) -> void:
 	pass
@@ -1204,7 +1209,7 @@ func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> voi
 			_add_stream_component(_current_assistant_bubble)
 			
 		_current_assistant_bubble.append_text(text_delta)
-		set_status_badge("⚡ AI Typing...", Color(1.0, 0.8, 0.2))
+		set_status_badge("AI Typing...", AISidebarTheme.COLOR_WARNING)
 		if _auto_scroll_enabled:
 			_scroll_to_bottom()
 
@@ -1381,7 +1386,7 @@ func _on_agent_debugging_started(summary: String) -> void:
 	grp.add_activity("🐞", "Auto-diagnosing runtime error: " + summary, -1)
 
 func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
-	set_status_badge("⚡ Agent Step " + str(current_step) + " / " + str(max_steps), Color(1.0, 0.8, 0.2))
+	set_status_badge("Step " + str(current_step) + " / " + str(max_steps), AISidebarTheme.COLOR_ACCENT)
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_current_assistant_bubble = null
