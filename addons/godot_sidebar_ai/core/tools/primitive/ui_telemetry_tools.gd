@@ -62,10 +62,15 @@ static func _inspect_ui_layout(args: Dictionary) -> Dictionary:
 	
 	var target_node = _resolve_target_node(root_path, target_override)
 	if not target_node:
-		return AISidebarToolResult.err(
-			"NODE_NOT_FOUND",
-			"Belirtilen UI kök düğümü bulunamadı veya açık bir sahne/dock yok: '" + root_path + "'"
-		)
+		var err_msg = "Belirtilen UI kök düğümü bulunamadı veya açık bir sahne/dock yok: '" + root_path + "'"
+		var err_code = "NODE_NOT_FOUND"
+		if root_path == "@edited_scene" or root_path.begins_with("@edited_scene/"):
+			err_code = "EDITOR_SCENE_REQUIRED"
+			err_msg = "Editörde açık bir sahne kökü bulunamadı (@edited_scene). Lütfen önce bir sahne açın."
+		elif root_path == "@sidebar" or root_path.begins_with("@sidebar/"):
+			err_code = "SIDEBAR_NOT_INITIALIZED"
+			err_msg = "Aktif bir Godot AI Sidebar dock örneği bulunamadı (@sidebar)."
+		return AISidebarToolResult.err(err_code, err_msg)
 		
 	var warnings: Array[Dictionary] = []
 	var stats = {"total_inspected": 0}
@@ -158,7 +163,7 @@ static func _resolve_target_node(path_str: String, target_override: Node = null)
 	)
 	if is_edited_target:
 		var sc_root = _get_edited_scene_root()
-		if not sc_root:
+		if not sc_root and clean_path.is_empty():
 			var tree = Engine.get_main_loop() as SceneTree
 			if tree:
 				if tree.current_scene:

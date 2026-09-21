@@ -169,8 +169,6 @@ func _ready() -> void:
 		approve_mode_btn.pressed.connect(_on_approve_mode_pressed)
 	if refresh_models_btn:
 		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
-	if lang_toggle_btn:
-		lang_toggle_btn.pressed.connect(_on_lang_toggle_pressed)
 	if export_btn:
 		export_btn.pressed.connect(_on_export_pressed)
 	if input_field:
@@ -282,10 +280,6 @@ func _setup_queue_ui() -> void:
 	input_area.move_child(_queue_container, 0)
 
 func update_ui_language() -> void:
-	var current_lang = AISidebarI18n.get_current_language().to_upper()
-	if lang_toggle_btn:
-		lang_toggle_btn.text = current_lang
-		lang_toggle_btn.tooltip_text = AISidebarI18n.get_text("tooltip_lang")
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
 		export_btn.tooltip_text = "Sohbeti Dışa Aktar / Kopyala (Export Chat)"
@@ -445,10 +439,6 @@ func _on_settings_saved() -> void:
 	_setup_provider()
 	if provider:
 		provider.fetch_models()
-
-func _on_lang_toggle_pressed() -> void:
-	AISidebarI18n.toggle_language()
-	update_ui_language()
 
 func _on_model_selected(index: int) -> void:
 	if index >= 0 and index < current_model_list.size():

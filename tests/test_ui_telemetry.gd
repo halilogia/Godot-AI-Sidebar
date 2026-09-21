@@ -193,25 +193,32 @@ static func run() -> Dictionary:
 		errors.append("Test 9 (Live HistoryPanel inspection) failed: total=" + str(panel_stats["total_inspected"]))
 	panel.queue_free()
 
-	# --- Test 10: execute_tool Uçtan Uca Public JSON Çağrısı (@sidebar & Subpath & Hata Yönetimi) ---
-	# Gerçek LLM'nin çağıracağı format: {"root_path": "@sidebar"}
-	AISidebarUITelemetryTools.register_sidebar_dock(root)
-	
-	var res_sidebar = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar"})
-	var res_subpath = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar/TestVBox/TestButton"})
-	var res_invalid = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "NonExistentPath_XYZ_999"})
-	
-	var ok_sidebar = res_sidebar.get("success", false) and res_sidebar.get("data", {}).get("total_nodes_inspected", 0) >= 3
-	var ok_subpath = res_subpath.get("success", false) and res_subpath.get("data", {}).get("telemetry", {}).get("name", "") == "TestButton"
-	var ok_invalid = (res_invalid.get("success", true) == false) and res_invalid.get("error", {}).get("code", "") == "NODE_NOT_FOUND"
-	
-	if ok_sidebar and ok_subpath and ok_invalid:
-		passed += 1
+	# --- Test 10: execute_tool Uçtan Uca Public JSON Çağrısı (Gerçek ChatDock Sahnesi @sidebar & Subpath & Hata Yönetimi) ---
+	var dock_scene = load("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn") as PackedScene
+	var real_dock = dock_scene.instantiate() if dock_scene else null
+	if real_dock:
+		real_dock.name = "GodotAISidebar"
+		AISidebarUITelemetryTools.register_sidebar_dock(real_dock)
+		
+		var res_sidebar = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar"})
+		var res_subpath = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar/MainLayout/HeaderBar/TitleLabel"})
+		var res_invalid = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "NonExistentPath_XYZ_999"})
+		
+		var ok_sidebar = res_sidebar.get("success", false) and res_sidebar.get("data", {}).get("total_nodes_inspected", 0) >= 5
+		var ok_subpath = res_subpath.get("success", false) and res_subpath.get("data", {}).get("telemetry", {}).get("name", "") == "TitleLabel"
+		var ok_invalid = (res_invalid.get("success", true) == false) and res_invalid.get("error", {}).get("code", "") == "NODE_NOT_FOUND"
+		
+		if ok_sidebar and ok_subpath and ok_invalid:
+			passed += 1
+		else:
+			failed += 1
+			errors.append("Test 10 (Real ChatDock E2E JSON calls) failed: sb=" + str(ok_sidebar) + " sub=" + str(ok_subpath) + " inv=" + str(ok_invalid))
+		
+		AISidebarUITelemetryTools.register_sidebar_dock(null)
+		real_dock.queue_free()
 	else:
 		failed += 1
-		errors.append("Test 10 (End-to-end JSON tool calls) failed: sb=" + str(ok_sidebar) + " sub=" + str(ok_subpath) + " inv=" + str(ok_invalid))
-	
-	AISidebarUITelemetryTools.register_sidebar_dock(null)
+		errors.append("Test 10 failed: chat_dock.tscn yüklenemedi.")
 
 	# --- Test 11: include_theme_details Sözleşme Doğrulaması ---
 	var themed_ctrl = PanelContainer.new()
