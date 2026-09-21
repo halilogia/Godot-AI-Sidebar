@@ -29,6 +29,7 @@ addons/godot_sidebar_ai/config.json
 user_secrets.json
 
 # Agent Brain / Scratch
+brain/
 *.zip
 
 archives/

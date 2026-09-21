@@ -28,14 +28,14 @@ Bu problemi çözmek için endüstride **Katmanlı Hafıza Mimarisi (Tiered Memo
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
 │ 2. ALAN VE BİLGİ KATMANI (Knowledge Base & Memory L2)       │
-│    • brain/knowledge.md (Öğrenilen kritik teknik bilgiler)  │
+│    • docs/KNOWLEDGE.md (Öğrenilen kritik teknik bilgiler)  │
 │    • ARCHITECTURE.md (Mimari şema ve bağımlılıklar)        │
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
 │ 3. DEVİR VE İLERLEME KATMANI (Session Handoff / L3)         │
 │    • CHANGELOG.md & ROADMAP.md (Neredeyiz, sırada ne var?)   │
-│    • brain/tasks.md / HANDOFF.md (Canlı görev durumu)       │
+│    • ROADMAP.md / tasks (Canlı görev durumu)                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -50,7 +50,7 @@ Bu problemi çözmek için endüstride **Katmanlı Hafıza Mimarisi (Tiered Memo
 | **`CHANGELOG.md`** | İnsan & AI | Sürümler arasındaki somut değişiklik geçmişi. | Keep a Changelog formatında eklenenler, düzeltilenler ve kaldırılanlar. |
 | **`ROADMAP.md`** | İnsan & AI | Projenin tamamlanan ve gelecekteki fazları. | Faz 1-8 kontrol listesi, tamamlanan ve sıradaki kilometre taşları. |
 | **`ARCHITECTURE.md`** | Geliştirici & AI Mimarlar | Katmanlar, bağımlılıklar ve veri akış diyagramları. | Mermaid şemaları, presentation/domain/infra sorumlulukları. |
-| **`brain/knowledge.md`** | AI Karar Destek Sistemi | Çözülen bug'lar, işletim sistemi ve ağ gariplikleri. | 9Router SSE `finish_reason` kapanış davranışı, Windows localhost DNS çözümü. |
+| **`docs/KNOWLEDGE.md`** | AI Karar Destek Sistemi | Çözülen bug'lar, işletim sistemi ve ağ gariplikleri. | 9Router SSE `finish_reason` kapanış davranışı, Windows localhost DNS çözümü. |
 
 ---
 
@@ -58,7 +58,7 @@ Bu problemi çözmek için endüstride **Katmanlı Hafıza Mimarisi (Tiered Memo
 
 Yeni bir sohbet başlattığınızda yapay zekaya sadece şunu söylemeniz yeterlidir:
 
-> *"Projeyi anlamak için lütfen önce `AGENTS.md` ve `brain/knowledge.md` dosyalarını oku."*
+> *"Projeyi anlamak için lütfen önce `AGENTS.md` ve `docs/KNOWLEDGE.md` dosyalarını oku."*
 
 Veya çoğu modern ajan (Antigravity, Claude Code, Cursor) proje kökündeki `AGENTS.md` dosyasını ilk adımda **otomatik olarak** context'e yükler. Böylece:
 * Ajan aynı hataları tekrarlamaz,

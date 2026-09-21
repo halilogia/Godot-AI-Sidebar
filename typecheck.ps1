@@ -22,7 +22,11 @@ if (-not $GodotBin) {
 if (-not $GodotBin) {
     # Search Desktop dynamically without hardcoded user paths
     $desktopPath = [System.Environment]::GetFolderPath('Desktop')
-    $found = Get-ChildItem -Path $desktopPath -Filter "Godot*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+    # Prioritize 4.7+ binary if multiple versions exist on Desktop
+    $found = Get-ChildItem -Path $desktopPath -Filter "*4.7*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $found) {
+        $found = Get-ChildItem -Path $desktopPath -Filter "Godot*.exe" -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+    }
     if ($found) {
         $GodotBin = $found.FullName
     }
@@ -33,6 +37,7 @@ if (-not $GodotBin -or -not (Test-Path $GodotBin)) {
     exit 1
 }
 
+Write-Host "Using Godot: $GodotBin" -ForegroundColor DarkGray
 Write-Host "Checking all GDScripts and Scenes statically using Godot headless..." -ForegroundColor Cyan
 & $GodotBin --headless --path $ProjectPath -s "res://tools/typecheck.gd"
 exit $LASTEXITCODE

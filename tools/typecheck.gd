@@ -1,9 +1,9 @@
 @tool
 extends SceneTree
 
-## Godot AI Core - Headless Static Typecheck & Compilation Validator
-## Tıpkı TypeScript'in 'tsc --noEmit' komutu gibi projedeki tüm .gd ve .tscn dosyalarını
-## Godot GUI açılmadan derler, sözdizimi ve import hatalarını yakalar.
+## Godot AI Core - Headless GDScript Compilation & Scene Load Validator
+## Eklenti (addons/godot_sidebar_ai) ve test (tests) altındaki tüm .gd ve .tscn dosyalarını
+## Godot GUI açılmadan statik olarak yükleyip derler, sözdizimi ve sahne hatalarını yakalar.
 
 func _init() -> void:
 	print("==================================================")
