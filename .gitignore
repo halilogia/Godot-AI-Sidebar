@@ -30,6 +30,9 @@ user_secrets.json
 
 # Agent Brain / Scratch
 brain/
+.gemini/
+.antigravity/
+transcripts/
 *.zip
 
 archives/
