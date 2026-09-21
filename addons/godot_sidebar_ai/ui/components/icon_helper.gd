@@ -12,11 +12,22 @@ static func get_icon(name: String) -> Texture2D:
 		return _icon_cache[name]
 		
 	var path = "res://addons/godot_sidebar_ai/assets/icons/" + name + ".svg"
-	if ResourceLoader.exists(path):
-		var tex = load(path) as Texture2D
-		if tex:
+	
+	# 1. Doğrudan SVG dosyasından ImageTexture üret (Import cache ve headless bağımlılığı olmadan temiz yükleme)
+	if FileAccess.file_exists(path):
+		var abs_path = ProjectSettings.globalize_path(path)
+		var img = Image.load_from_file(abs_path)
+		if img and not img.is_empty():
+			var tex = ImageTexture.create_from_image(img)
 			_icon_cache[name] = tex
 			return tex
+
+	# 2. Alternatif: ResourceLoader üzerinden yükleme
+	if ResourceLoader.exists(path):
+		var res = ResourceLoader.load(path)
+		if res is Texture2D:
+			_icon_cache[name] = res
+			return res
 			
 	return null
 

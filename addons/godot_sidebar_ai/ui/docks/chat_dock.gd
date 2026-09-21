@@ -39,7 +39,7 @@ const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core
 @onready var new_chat_btn: Button = $MainLayout/HeaderBar/NewChatBtn
 @onready var history_btn: Button = $MainLayout/HeaderBar/HistoryBtn
 @onready var export_btn: Button = $MainLayout/HeaderBar/ExportBtn
-@onready var lang_toggle_btn: Button = get_node_or_null("MainLayout/HeaderBar/LangToggleBtn")
+@onready var model_bar: HBoxContainer = get_node_or_null("MainLayout/ModelBar")
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
 @onready var approve_mode_btn: Button = $MainLayout/ModelBar/ApproveModeBtn
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
@@ -286,6 +286,12 @@ func update_ui_language() -> void:
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
 		export_btn.tooltip_text = "Sohbeti Dışa Aktar / Kopyala (Export Chat)"
+	if history_btn:
+		AISidebarIconHelper.apply_icon(history_btn, "history")
+		history_btn.text = "" if history_btn.icon else "Hist"
+		history_btn.tooltip_text = AISidebarI18n.get_text("history_title")
+	if new_chat_btn:
+		new_chat_btn.tooltip_text = AISidebarI18n.get_text("history_btn_new")
 		
 	if title_label:
 		title_label.text = AISidebarI18n.get_text("app_title")
@@ -636,6 +642,8 @@ func set_history_view_visible(is_visible: bool) -> void:
 		chat_scroll.visible = not is_visible
 	if input_area:
 		input_area.visible = not is_visible
+	if model_bar:
+		model_bar.visible = not is_visible
 
 func _on_new_chat_pressed() -> void:
 	set_history_view_visible(false)

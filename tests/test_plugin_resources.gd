@@ -12,7 +12,7 @@ static func run() -> Dictionary:
 		var settings_packed = load(settings_path)
 		if settings_packed is PackedScene:
 			var inst = settings_packed.instantiate()
-			if inst is AcceptDialog and inst.has_node("VBox/UrlContainer/BaseUrlEdit"):
+			if inst is AcceptDialog and (inst.has_node("VBox/UrlContainer/BaseUrlEdit") or inst.find_child("BaseUrlEdit", true, false) != null):
 				passed += 1
 				inst.queue_free()
 			else:

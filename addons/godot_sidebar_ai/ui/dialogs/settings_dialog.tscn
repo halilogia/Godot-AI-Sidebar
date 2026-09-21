@@ -5,82 +5,267 @@
 [node name="SettingsDialog" type="AcceptDialog"]
 title = "AI Model ve API Ayarları"
 initial_position = 2
-size = Vector2i(550, 480)
+size = Vector2i(740, 560)
 script = ExtResource("1_setdg")
 
-[node name="VBox" type="VBoxContainer" parent="."]
+[node name="MainHBox" type="HBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 542.0
-offset_bottom = 431.0
-theme_override_constants/separation = 8
+offset_right = -8.0
+offset_bottom = -49.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
 
-[node name="UrlContainer" type="VBoxContainer" parent="VBox"]
+[node name="NavPanel" type="PanelContainer" parent="MainHBox"]
+custom_minimum_size = Vector2(175, 0)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="VBox/UrlContainer"]
+[node name="NavVBox" type="VBoxContainer" parent="MainHBox/NavPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="NavTitle" type="Label" parent="MainHBox/NavPanel/NavVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Kategoriler"
+
+[node name="BtnNavProvider" type="Button" parent="MainHBox/NavPanel/NavVBox"]
+layout_mode = 2
+text = "Sağlayıcı (Provider)"
+alignment = 0
+
+[node name="BtnNavParams" type="Button" parent="MainHBox/NavPanel/NavVBox"]
+layout_mode = 2
+text = "Parametreler"
+alignment = 0
+
+[node name="BtnNavAppearance" type="Button" parent="MainHBox/NavPanel/NavVBox"]
+layout_mode = 2
+text = "Görünüm & Dil"
+alignment = 0
+
+[node name="BtnNavPrompt" type="Button" parent="MainHBox/NavPanel/NavVBox"]
+layout_mode = 2
+text = "Sistem Promptu"
+alignment = 0
+
+[node name="ContentScroll" type="ScrollContainer" parent="MainHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="PagesContainer" type="VBoxContainer" parent="MainHBox/ContentScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="PageProvider" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ProviderCard" type="PanelContainer" parent="MainHBox/ContentScroll/PagesContainer/PageProvider"]
+layout_mode = 2
+
+[node name="ProviderVBox" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/ProviderCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/ProviderCard/ProviderVBox"]
+layout_mode = 2
+text = "AI Sağlayıcı Modeli (Provider):"
+
+[node name="ProviderSelector" type="OptionButton" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/ProviderCard/ProviderVBox"]
+layout_mode = 2
+
+[node name="HintLabel" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/ProviderCard/ProviderVBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="EndpointCard" type="PanelContainer" parent="MainHBox/ContentScroll/PagesContainer/PageProvider"]
+layout_mode = 2
+
+[node name="EndpointVBox" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/EndpointCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UrlContainer" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/EndpointCard/EndpointVBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/EndpointCard/EndpointVBox/UrlContainer"]
 layout_mode = 2
 text = "API Base URL (OpenAI Uyumlu):"
 
-[node name="BaseUrlEdit" type="LineEdit" parent="VBox/UrlContainer"]
+[node name="BaseUrlEdit" type="LineEdit" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/EndpointCard/EndpointVBox/UrlContainer"]
 layout_mode = 2
 placeholder_text = "http://localhost:20128/v1"
 
-[node name="KeyContainer" type="VBoxContainer" parent="VBox"]
+[node name="KeyContainer" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/EndpointCard/EndpointVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="VBox/KeyContainer"]
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/EndpointCard/EndpointVBox/KeyContainer"]
 layout_mode = 2
 text = "API Key (Varsa):"
 
-[node name="ApiKeyEdit" type="LineEdit" parent="VBox/KeyContainer"]
+[node name="ApiKeyEdit" type="LineEdit" parent="MainHBox/ContentScroll/PagesContainer/PageProvider/EndpointCard/EndpointVBox/KeyContainer"]
 layout_mode = 2
 secret = true
 
-[node name="TempContainer" type="VBoxContainer" parent="VBox"]
+[node name="PageParams" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="TempCard" type="PanelContainer" parent="MainHBox/ContentScroll/PagesContainer/PageParams"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="VBox/TempContainer"]
+[node name="TempVBox" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HeaderBox" type="HBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox/HeaderBox"]
 layout_mode = 2
 text = "Sıcaklık (Temperature):"
 
-[node name="TempSlider" type="HSlider" parent="VBox/TempContainer"]
+[node name="Spacer" type="Control" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox/HeaderBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TempValLabel" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox/HeaderBox"]
+layout_mode = 2
+text = "0.20 (Varsayılan)"
+
+[node name="TempSlider" type="HSlider" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox"]
 layout_mode = 2
 max_value = 2.0
 step = 0.05
 value = 0.2
 scrollable = false
 
-[node name="TempValLabel" type="Label" parent="VBox/TempContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
-theme_override_font_sizes/font_size = 11
-text = "0.2"
-horizontal_alignment = 2
-
-[node name="MaxIterContainer" type="VBoxContainer" parent="VBox"]
+[node name="TempActionRow" type="HBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="VBox/MaxIterContainer"]
+[node name="TempHintLabel" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox/TempActionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="ResetTempBtn" type="Button" parent="MainHBox/ContentScroll/PagesContainer/PageParams/TempCard/TempVBox/TempActionRow"]
+layout_mode = 2
+text = "Varsayılana Sıfırla (0.20)"
+
+[node name="MaxIterCard" type="PanelContainer" parent="MainHBox/ContentScroll/PagesContainer/PageParams"]
+layout_mode = 2
+
+[node name="MaxIterVBox" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageParams/MaxIterCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageParams/MaxIterCard/MaxIterVBox"]
 layout_mode = 2
 text = "Maksimum Ajan Adım Sayısı (Güvenlik Sınırı):"
 
-[node name="MaxIterSpin" type="SpinBox" parent="VBox/MaxIterContainer"]
+[node name="MaxIterSpin" type="SpinBox" parent="MainHBox/ContentScroll/PagesContainer/PageParams/MaxIterCard/MaxIterVBox"]
 layout_mode = 2
 min_value = 1.0
 max_value = 50.0
 value = 20.0
 
-[node name="PromptContainer" type="VBoxContainer" parent="VBox"]
+[node name="MaxIterHint" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageParams/MaxIterCard/MaxIterVBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="PageAppearance" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="LangCard" type="PanelContainer" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance"]
+layout_mode = 2
+
+[node name="LangVBox" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/LangCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/LangCard/LangVBox"]
+layout_mode = 2
+text = "Arayüz Dili (Interface Language):"
+
+[node name="LangSelector" type="OptionButton" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/LangCard/LangVBox"]
+layout_mode = 2
+
+[node name="LangHint" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/LangCard/LangVBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="ApprovalCard" type="PanelContainer" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance"]
+layout_mode = 2
+
+[node name="ApprovalVBox" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/ApprovalCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/ApprovalCard/ApprovalVBox"]
+layout_mode = 2
+text = "Araç Onay Modu (Approval Mode):"
+
+[node name="ApproveModeSelector" type="OptionButton" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/ApprovalCard/ApprovalVBox"]
+layout_mode = 2
+
+[node name="ApprovalHint" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PageAppearance/ApprovalCard/ApprovalVBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="PagePrompt" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="PromptCard" type="PanelContainer" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Label" type="Label" parent="VBox/PromptContainer"]
+[node name="PromptVBox" type="VBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt/PromptCard"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="HeaderRow" type="HBoxContainer" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt/PromptCard/PromptVBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt/PromptCard/PromptVBox/HeaderRow"]
 layout_mode = 2
 text = "Sistem Promptu (System Prompt):"
 
-[node name="SysPromptEdit" type="TextEdit" parent="VBox/PromptContainer"]
-custom_minimum_size = Vector2(0, 100)
+[node name="Spacer" type="Control" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt/PromptCard/PromptVBox/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ResetPromptBtn" type="Button" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt/PromptCard/PromptVBox/HeaderRow"]
+layout_mode = 2
+text = "Varsayılana Sıfırla"
+
+[node name="SysPromptEdit" type="TextEdit" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt/PromptCard/PromptVBox"]
+custom_minimum_size = Vector2(0, 240)
 layout_mode = 2
 size_flags_vertical = 3
 wrap_mode = 1
+
+[node name="PromptHint" type="Label" parent="MainHBox/ContentScroll/PagesContainer/PagePrompt/PromptCard/PromptVBox"]
+layout_mode = 2
+autowrap_mode = 3
