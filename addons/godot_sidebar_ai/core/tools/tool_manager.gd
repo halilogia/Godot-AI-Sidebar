@@ -14,6 +14,7 @@ const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/pr
 const AISidebarScriptTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/script_tools.gd")
 const AISidebarEditorTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/editor_tools.gd")
 const AISidebarGameIntentTools = preload("res://addons/godot_sidebar_ai/core/tools/intent/game_intent_tools.gd")
+const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -63,6 +64,7 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarScriptTools.get_schemas())
 	schemas.append_array(AISidebarEditorTools.get_schemas())
 	schemas.append_array(AISidebarGameIntentTools.get_schemas())
+	schemas.append_array(AISidebarUITelemetryTools.get_schemas())
 	
 	return schemas
 
@@ -129,7 +131,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	if has_vision_intent:
 		var vision_tools = [
 			"take_viewport_screenshot", "take_editor_screenshot", "take_runtime_screenshot",
-			"get_active_scene_tree", "get_selected_nodes", "replace_file_content"
+			"get_active_scene_tree", "get_selected_nodes", "replace_file_content", "inspect_ui_layout"
 		]
 		for vt in vision_tools:
 			active_tool_names[vt] = true
@@ -156,11 +158,21 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			"create_scene", "save_scene", "add_node", "delete_node", "rename_node",
 			"duplicate_node", "set_node_property", "connect_signal", "reparent_node",
 			"select_node", "get_active_scene_tree", "get_selected_nodes", "write_files",
-			"list_dir", "take_viewport_screenshot", "create_character_scene", "create_enemy_scene",
+			"list_dir", "take_viewport_screenshot", "inspect_ui_layout", "create_character_scene", "create_enemy_scene",
 			"create_ui_hud", "create_interactable", "setup_camera_follow"
 		]
 		for sc in scene_tools:
 			active_tool_names[sc] = true
+
+	var ui_keywords = [
+		"ui", "layout", "telemetri", "telemetry", "inspect", "arayüz", "buton", "button",
+		"panel", "label", "container", "theme", "tasarım", "design", "overflow", "font"
+	]
+	for kw in ui_keywords:
+		if kw in text:
+			active_tool_names["inspect_ui_layout"] = true
+			active_tool_names["take_viewport_screenshot"] = true
+			break
 			
 	# 4. Hiçbir kategori eşleşmediyse varsayılan temel araç kümesini sun
 	if not has_script_intent and not has_scene_intent and not has_runtime_intent and not has_vision_intent:
@@ -226,7 +238,12 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 		if s["function"]["name"] == tool_name:
 			return AISidebarEditorTools.execute(tool_name, args)
 			
-	# 5. Yüksek Seviyeli Intent Araçları
+	# 5. UI Telemetri Araçları
+	for s in AISidebarUITelemetryTools.get_schemas():
+		if s["function"]["name"] == tool_name:
+			return AISidebarUITelemetryTools.execute(tool_name, args)
+			
+	# 6. Yüksek Seviyeli Intent Araçları
 	for s in AISidebarGameIntentTools.get_schemas():
 		if s["function"]["name"] == tool_name:
 			return AISidebarGameIntentTools.execute(tool_name, args)
