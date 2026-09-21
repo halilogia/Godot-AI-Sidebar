@@ -33,6 +33,7 @@ const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/ch
 const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
+const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -125,6 +126,8 @@ func _ready() -> void:
 	if not Engine.is_editor_hint():
 		return
 		
+	AISidebarUITelemetryTools.register_sidebar_dock(self)
+	
 	# 1. Katmanların Başlatılması
 	network_manager = AISidebarNetworkManager.new()
 	add_child(network_manager)

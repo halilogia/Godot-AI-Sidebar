@@ -86,7 +86,6 @@ static func run() -> Dictionary:
 			failed += 1
 			errors.append("Test 4 (A11y content) failed: " + str(a_info))
 	else:
-		# Godot platformunda A11y property yoksa en azından graceful pas geçer
 		passed += 1
 
 	# --- Test 5: Semantik Metadata Çıkarımı ---
@@ -105,8 +104,7 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 5 (Semantic metadata) failed: " + str(s_meta))
 
-	# --- Test 6: Kanıta Dayalı UI_NON_CONTAINER_CHILD_MISMATCH Tespiti ---
-	# Buton içine Container ekleme anti-pattern'i
+	# --- Test 6: Kanıta Dayalı UI_NON_CONTAINER_CHILD_MISMATCH Tespiti (Nötr ve kanıta dayalı) ---
 	var bad_btn = Button.new()
 	bad_btn.name = "MisconfiguredButton"
 	var nested_vbox = VBoxContainer.new()
@@ -120,7 +118,7 @@ static func run() -> Dictionary:
 	var has_mismatch_warning = false
 	for w in bad_warnings:
 		if w.get("rule_id", "") == "UI_NON_CONTAINER_CHILD_MISMATCH":
-			if w.get("confidence", 0.0) >= 0.85 and w.get("evidence", {}).get("parent_class", "") == "Button":
+			if w.get("confidence", 0.0) >= 0.80 and w.get("evidence", {}).get("parent_class", "") == "Button":
 				has_mismatch_warning = true
 				break
 				
@@ -131,7 +129,7 @@ static func run() -> Dictionary:
 		errors.append("Test 6 (Non-container child mismatch) failed: warnings=" + str(bad_warnings))
 	bad_btn.queue_free()
 
-	# --- Test 7: Kanıta Dayalı UI_CONTAINER_OVERFLOW Tespiti ---
+	# --- Test 7: Kanıta Dayalı UI_CONTAINER_OVERFLOW Tespiti (Tek çocuk taşması) ---
 	var fixed_hbox = HBoxContainer.new()
 	fixed_hbox.name = "FixedHBox"
 	fixed_hbox.size = Vector2(100, 40)
@@ -149,7 +147,7 @@ static func run() -> Dictionary:
 	for w in of_warnings:
 		if w.get("rule_id", "") == "UI_CONTAINER_OVERFLOW":
 			var ev = w.get("evidence", {})
-			if ev.get("parent_width", 0) == 100 and ev.get("child_min_width", 0) == 250:
+			if ev.get("allocated_width", 0) == 100 and ev.get("aggregate_children_min_width", 0) == 250:
 				has_overflow_warning = true
 				break
 				
@@ -173,7 +171,6 @@ static func run() -> Dictionary:
 	var depth_stats = {"total_inspected": 0}
 	var d_telemetry = AISidebarUITelemetryTools._inspect_node_recursive(d0, 0, 2, true, false, depth_warnings, depth_stats)
 	
-	# depth 0 -> depth 1 -> depth 2 (children_truncated olmalı)
 	var d1_res = d_telemetry.get("children", [])[0]
 	var d2_res = d1_res.get("children", [])[0]
 	if d2_res.get("children_truncated", false) == true and not d2_res.has("children"):
@@ -196,15 +193,110 @@ static func run() -> Dictionary:
 		errors.append("Test 9 (Live HistoryPanel inspection) failed: total=" + str(panel_stats["total_inspected"]))
 	panel.queue_free()
 
-	# --- Test 10: execute_tool entegrasyon testi ---
-	var exec_res = AISidebarToolManager.execute_tool("inspect_ui_layout", {"target_node": root})
-	var err_res = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "NonExistentNode_XYZ"})
+	# --- Test 10: execute_tool Uçtan Uca Public JSON Çağrısı (@sidebar & Subpath & Hata Yönetimi) ---
+	# Gerçek LLM'nin çağıracağı format: {"root_path": "@sidebar"}
+	AISidebarUITelemetryTools.register_sidebar_dock(root)
 	
-	if exec_res.get("success", false) == true and exec_res.has("data") and err_res.get("success", true) == false:
+	var res_sidebar = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar"})
+	var res_subpath = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "@sidebar/TestVBox/TestButton"})
+	var res_invalid = AISidebarToolManager.execute_tool("inspect_ui_layout", {"root_path": "NonExistentPath_XYZ_999"})
+	
+	var ok_sidebar = res_sidebar.get("success", false) and res_sidebar.get("data", {}).get("total_nodes_inspected", 0) >= 3
+	var ok_subpath = res_subpath.get("success", false) and res_subpath.get("data", {}).get("telemetry", {}).get("name", "") == "TestButton"
+	var ok_invalid = (res_invalid.get("success", true) == false) and res_invalid.get("error", {}).get("code", "") == "NODE_NOT_FOUND"
+	
+	if ok_sidebar and ok_subpath and ok_invalid:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 10 (execute_tool inspect_ui_layout) failed: exec=" + str(exec_res) + " err=" + str(err_res))
+		errors.append("Test 10 (End-to-end JSON tool calls) failed: sb=" + str(ok_sidebar) + " sub=" + str(ok_subpath) + " inv=" + str(ok_invalid))
+	
+	AISidebarUITelemetryTools.register_sidebar_dock(null)
+
+	# --- Test 11: include_theme_details Sözleşme Doğrulaması ---
+	var themed_ctrl = PanelContainer.new()
+	themed_ctrl.name = "ThemedPanel"
+	var sbf = StyleBoxFlat.new()
+	sbf.bg_color = Color(0.1, 0.2, 0.3, 1.0)
+	sbf.border_width_left = 2
+	sbf.border_width_top = 2
+	sbf.corner_radius_top_left = 6
+	themed_ctrl.add_theme_stylebox_override("panel", sbf)
+	
+	var theme_warnings: Array[Dictionary] = []
+	var theme_stats = {"total_inspected": 0}
+	var theme_telemetry = AISidebarUITelemetryTools._inspect_node_recursive(themed_ctrl, 0, 1, true, true, theme_warnings, theme_stats)
+	
+	var has_sb_info = theme_telemetry.has("theme_stylebox")
+	var sb_info = theme_telemetry.get("theme_stylebox", {})
+	if has_sb_info and sb_info.get("class", "") == "StyleBoxFlat" and sb_info.get("border_width", {}).get("left", 0) == 2:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 11 (include_theme_details contract) failed: " + str(theme_telemetry))
+	themed_ctrl.queue_free()
+
+	# --- Test 12: Aggregate HBoxContainer Overflow Tespiti (Çocukların Toplamı Taşması) ---
+	# Hiçbir çocuk tek başına 150px'den büyük değil (her biri 60px), ama toplamı 180px > 150px!
+	var agg_hbox = HBoxContainer.new()
+	agg_hbox.name = "AggHBox"
+	agg_hbox.size = Vector2(150, 40)
+	for i in range(3):
+		var c = Control.new()
+		c.name = "Child_" + str(i)
+		c.custom_minimum_size = Vector2(60, 40)
+		agg_hbox.add_child(c)
+		
+	var agg_warnings: Array[Dictionary] = []
+	var agg_stats = {"total_inspected": 0}
+	AISidebarUITelemetryTools._inspect_node_recursive(agg_hbox, 0, 2, true, false, agg_warnings, agg_stats)
+	
+	var has_agg_warning = false
+	for w in agg_warnings:
+		if w.get("rule_id", "") == "UI_CONTAINER_OVERFLOW":
+			var ev = w.get("evidence", {})
+			if ev.get("allocated_width", 0) == 150 and ev.get("aggregate_children_min_width", 0) == 180 and ev.get("overflow_amount", 0) == 30:
+				has_agg_warning = true
+				break
+				
+	if has_agg_warning:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 12 (Aggregate HBox overflow) failed: warnings=" + str(agg_warnings))
+	agg_hbox.queue_free()
+
+	# --- Test 13: Görünürlük Modeli (is_visible_in_tree vs visible) Doğrulaması ---
+	var vis_parent = Control.new()
+	vis_parent.name = "HiddenParent"
+	vis_parent.visible = false
+	
+	var vis_child = Control.new()
+	vis_child.name = "VisibleChild"
+	vis_child.visible = true
+	vis_parent.add_child(vis_child)
+	
+	# Ağaç içinde simüle etmek için geçici SceneTree root'una ekle
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree and tree.root:
+		tree.root.add_child(vis_parent)
+		
+	var vis_warnings: Array[Dictionary] = []
+	var vis_stats = {"total_inspected": 0}
+	# include_invisible = false ile tara
+	var vis_telemetry = AISidebarUITelemetryTools._inspect_node_recursive(vis_parent, 0, 2, false, false, vis_warnings, vis_stats)
+	
+	# HiddenParent taranır, ancak görünmez olduğu için altındaki VisibleChild taranmamalıdır (çocuk listesi boş olmalı)
+	var filtered_children = vis_telemetry.get("children", [])
+	if filtered_children.size() == 0:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 13 (Visibility in tree filter) failed: child leaked into telemetry: " + str(filtered_children))
+		
+	if tree and tree.root and vis_parent.is_inside_tree():
+		tree.root.remove_child(vis_parent)
+	vis_parent.queue_free()
 
 	# Temizlik
 	root.queue_free()

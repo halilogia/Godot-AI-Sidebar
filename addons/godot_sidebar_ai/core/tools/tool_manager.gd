@@ -165,8 +165,8 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names[sc] = true
 
 	var ui_keywords = [
-		"ui", "layout", "telemetri", "telemetry", "inspect", "arayüz", "buton", "button",
-		"panel", "label", "container", "theme", "tasarım", "design", "overflow", "font"
+		"ui", "layout", "telemetri", "telemetry", "inspect_ui", "inspect layout", "arayüz", "buton", "button",
+		"panel", "label", "container", "theme", "tasarım", "design", "overflow", "font", "sidebar"
 	]
 	for kw in ui_keywords:
 		if kw in text:
