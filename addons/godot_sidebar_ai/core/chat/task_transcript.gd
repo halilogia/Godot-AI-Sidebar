@@ -12,6 +12,10 @@ class_name AISidebarTaskTranscript
 
 const MAX_STORED_CHARS: int = 4000
 const MAX_EVENTS_PER_TASK: int = 500
+## Everything Export boyut sınırları (makul, deterministik, flag'li truncation).
+const MAX_TEXT_CHARS: int = 4000
+const MAX_ARGS_CHARS: int = 8000
+const MAX_PAYLOAD_CHARS: int = 8000
 
 var tasks: Array = []
 var orphan_events: Array = []
@@ -30,12 +34,13 @@ static func redact_secrets(raw: String) -> String:
 		"(?i)(\"?(api[_-]?key|bearer|authorization|secret|password|passwd|access[_-]?token|refresh[_-]?token|client[_-]?secret)\"?\\s*[:=]\\s*\")(.*?)(\")",
 		"(?i)(Bearer\\s+)[A-Za-z0-9\\-._~+/=]{6,}",
 		"(?i)(\"?(token)\"?\\s*[:=]\\s*\")(.*?)(\")",
+		"(?i)\\b((password|passwd|pwd|api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token)\\s*=\\s*)([^\\s\"',;]+)",
 	]
 	for p in patterns:
 		var re = RegEx.new()
 		if re.compile(p) != OK:
 			continue
-		if p.contains("Bearer\\s"):
+		if p.contains("Bearer\\s") or p.contains("\\b("):
 			out = re.sub(out, "$1[REDACTED]", true)
 		else:
 			out = re.sub(out, "$1[REDACTED]$4", true)
@@ -47,6 +52,15 @@ static func truncate_text(s: String, max_len: int = MAX_STORED_CHARS) -> String:
 	if s.length() > max_len:
 		return s.left(max_len) + "... [truncated]"
 	return s
+
+## Kısaltma durumunu açıkça bildiren varyant: {"text": ..., "truncated": bool}.
+## Export kaydında veri kaybı gizlenmez; JSON transcript bayrağı taşır.
+static func truncate_flagged(s: String, max_len: int = MAX_STORED_CHARS) -> Dictionary:
+	if s == null:
+		return {"text": "", "truncated": false}
+	if s.length() > max_len:
+		return {"text": s.left(max_len) + "... [truncated]", "truncated": true}
+	return {"text": s, "truncated": false}
 
 func clear() -> void:
 	tasks.clear()

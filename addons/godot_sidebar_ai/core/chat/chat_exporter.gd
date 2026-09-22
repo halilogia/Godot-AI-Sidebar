@@ -214,15 +214,49 @@ static func _format_system_message(entry: Dictionary, content_raw: Variant, line
 	lines.append("---")
 	lines.append("")
 
+## Recursive hassas-veri redaction (Dictionary/Array/String yürüyüşü).
+## JSON export history/metadata/tasks alanları ham veri taşıyabilir; nested
+## secret'lar (or. {"auth": {"api_key": "sk-..."}}) burada temizlenir.
+static func redact_recursive(v: Variant) -> Variant:
+	if v is String:
+		return _rx(str(v))
+	if v is Array:
+		var out: Array = []
+		for item in (v as Array):
+			out.append(redact_recursive(item))
+		return out
+	if v is Dictionary:
+		var out_d: Dictionary = {}
+		for k in (v as Dictionary).keys():
+			var kv = (v as Dictionary)[k]
+			# Hassas anahtar + skaler değer → tamamını maskele; container ise
+			# içine in (nested secret yine yakalanır, güvenli alanlar korunur).
+			if _is_sensitive_key(str(k)) and not (kv is Dictionary) and not (kv is Array):
+				out_d[k] = "[REDACTED]"
+			else:
+				out_d[k] = redact_recursive(kv)
+		return out_d
+	return v
+
+static func _is_sensitive_key(k: String) -> bool:
+	var lk = k.strip_edges().to_lower()
+	var sensitive = [
+		"api_key", "apikey", "api-key", "bearer", "authorization",
+		"secret", "client_secret", "password", "passwd", "pwd",
+		"token", "access_token", "refresh_token", "auth_token", "id_token",
+		"credentials", "credential", "auth", "auth_header", "session_token", "private_key"
+	]
+	return lk in sensitive
+
 ## Yapılandırılmış tam JSON export formatı
 static func export_to_json(history: Array, session_meta: Dictionary = {}) -> String:
 	var export_dict: Dictionary = {
 		"export_version": "2.0",
 		"format": "godot_ai_chat_export",
 		"exported_at": Time.get_datetime_string_from_system(),
-		"metadata": session_meta,
+		"metadata": redact_recursive(session_meta),
 		"total_messages": history.size(),
-		"messages": history
+		"messages": redact_recursive(history)
 	}
 	return JSON.stringify(export_dict, "  ")
 
@@ -293,16 +327,17 @@ static func export_transcript_to_markdown(tasks: Array, history: Array = [], ses
 	return "\n".join(lines)
 
 ## Everything Export (JSON): Markdown ile aynı complete transcript.
+## Hassas değerler recursive redaction ile temizlenir (ham history/metadata dahil).
 static func export_transcript_to_json(tasks: Array, history: Array = [], session_meta: Dictionary = {}) -> String:
 	var export_dict: Dictionary = {
 		"export_version": "3.0",
 		"format": "godot_ai_transcript_export",
 		"exported_at": Time.get_datetime_string_from_system(),
-		"metadata": session_meta,
+		"metadata": redact_recursive(session_meta),
 		"total_tasks": tasks.size() if tasks != null else 0,
-		"tasks": tasks if tasks != null else [],
+		"tasks": redact_recursive(tasks if tasks != null else []),
 		"total_messages": history.size() if history != null else 0,
-		"messages": history if history != null else []
+		"messages": redact_recursive(history if history != null else [])
 	}
 	return JSON.stringify(export_dict, "  ")
 
@@ -386,17 +421,27 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 		"tool_call":
 			var calls = d.get("calls", [])
 			var parts: PackedStringArray = []
+			var arg_blocks: PackedStringArray = []
 			if calls is Array:
 				for c in calls:
 					if c is Dictionary:
 						parts.append("`" + str(c.get("name", "?")) + "`")
 						if str(c.get("name", "")) == "propose_plan" and not str(c.get("args", "")).is_empty():
 							_append_plan_args_to_bucket(c.get("args", ""), buckets)
+						var c_args = str(c.get("args", "")).strip_edges()
+						if not c_args.is_empty() and c_args != "{}":
+							var aview = c_args.left(1500)
+							var anote = ""
+							if c_args.length() > 1500 or bool(c.get("args_truncated", false)):
+								anote = "\n_[args truncated in view — full value in JSON export]_"
+							arg_blocks.append("`" + str(c.get("name", "?")) + "` args:\n\n```json\n" + _rx(aview) + "\n```" + anote)
 			var line = "Tool requested: " + (", ".join(parts) if parts.size() > 0 else "(unknown)")
 			var extra = _rx(str(d.get("text", "")))
 			if not extra.strip_edges().is_empty():
 				line += " — " + extra.left(300)
 			(buckets["tool_call"] as Array).append(line)
+			for ab in arg_blocks:
+				(buckets["tool_call"] as Array).append(ab)
 		"tool_result":
 			var tool = str(d.get("tool", "tool"))
 			if tool == "ask_user":
@@ -405,6 +450,13 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 				var ok = bool(d.get("success", false))
 				var m = _rx(str(d.get("message", "")))
 				(buckets["tool_result"] as Array).append(("✅ " if ok else "❌ ") + "`" + tool + "`" + ((" — " + m) if not m.is_empty() else ""))
+				var payload = str(d.get("payload", "")).strip_edges()
+				if not payload.is_empty():
+					var pview = payload.left(2000)
+					var pnote = ""
+					if payload.length() > 2000 or bool(d.get("payload_truncated", false)):
+						pnote = "\n_[payload truncated in view — full value in JSON export]_"
+					(buckets["tool_result"] as Array).append("<details><summary>Payload: `" + tool + "`</summary>\n\n```json\n" + _rx(pview) + "\n```" + pnote + "\n</details>")
 		"clarification_requested":
 			(buckets["clarification"] as Array).append("**Q:** " + _rx(str(d.get("question", ""))) + _format_options_line(d.get("options", [])))
 		"clarification_answered":

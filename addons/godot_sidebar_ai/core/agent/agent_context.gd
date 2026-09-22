@@ -55,7 +55,8 @@ func add_user_message(text: String, _grounding: bool = false, display_text: Stri
 				v_parts.append(vi)
 		msg["vision_inputs"] = v_parts
 	messages.append(msg)
-	get_transcript().record("user", {"text": AISidebarTaskTranscript.truncate_text(text, 2000), "display_text": AISidebarTaskTranscript.truncate_text(display_text, 500), "has_images": vision_inputs.size() > 0})
+	var user_t = AISidebarTaskTranscript.truncate_flagged(text, AISidebarTaskTranscript.MAX_TEXT_CHARS)
+	get_transcript().record("user", {"text": user_t["text"], "text_truncated": user_t["truncated"], "display_text": AISidebarTaskTranscript.truncate_text(display_text, 500), "has_images": vision_inputs.size() > 0})
 	_auto_compact_if_needed()
 
 func add_assistant_message(text: String) -> void:
@@ -63,7 +64,8 @@ func add_assistant_message(text: String) -> void:
 		"role": "assistant",
 		"content": text
 	})
-	get_transcript().record("assistant", {"text": AISidebarTaskTranscript.truncate_text(text, 2000)})
+	var a_t = AISidebarTaskTranscript.truncate_flagged(text, AISidebarTaskTranscript.MAX_TEXT_CHARS)
+	get_transcript().record("assistant", {"text": a_t["text"], "text_truncated": a_t["truncated"]})
 
 ## OpenAI Uyumlu Assistant Tool Call mesajı ekler
 func add_assistant_tool_call_message(text: String, tool_calls: Array) -> void:
@@ -104,11 +106,18 @@ func add_assistant_tool_call_message(text: String, tool_calls: Array) -> void:
 	var tc_summary: Array = []
 	for tc in tool_calls:
 		var tc_entry = {"name": str(tc.get("name", "")), "id": str(tc.get("id", ""))}
-		# Plan ve clarification içerikleri export için gerekli; diğer araçların
-		# büyük argümanları (dosya içerikleri) transcript'i şişirmesin.
-		var tc_nm = str(tc.get("name", ""))
-		if tc_nm == "propose_plan" or tc_nm == "ask_user":
-			tc_entry["args"] = AISidebarTaskTranscript.truncate_text(JSON.stringify(tc.get("arguments", {})), 4000)
+		# Everything Export: TÜM araçların argümanları saklanır (redacted + boyut sınırlı).
+		# Orijinal tc sözlüğü ASLA mutate edilmez (runner argümanlarla çalışır).
+		var raw_args = tc.get("arguments", {})
+		var args_str = "{}"
+		if raw_args is Dictionary:
+			args_str = JSON.stringify(raw_args)
+		elif raw_args is String:
+			args_str = raw_args
+		var redacted_args = AISidebarTaskTranscript.redact_secrets(args_str)
+		var flagged_args = AISidebarTaskTranscript.truncate_flagged(redacted_args, AISidebarTaskTranscript.MAX_ARGS_CHARS)
+		tc_entry["args"] = flagged_args["text"]
+		tc_entry["args_truncated"] = flagged_args["truncated"]
 		tc_summary.append(tc_entry)
 	get_transcript().record("tool_call", {"text": AISidebarTaskTranscript.truncate_text(text, 1000), "calls": tc_summary})
 
@@ -125,10 +134,16 @@ func add_tool_result_message(tool_call_id: String, tool_name: String, result: Di
 		"name": tool_name,
 		"content": JSON.stringify(result)
 	})
+	var payload_flagged = AISidebarTaskTranscript.truncate_flagged(
+		AISidebarTaskTranscript.redact_secrets(JSON.stringify(result)),
+		AISidebarTaskTranscript.MAX_PAYLOAD_CHARS
+	)
 	var res_data = {
 		"tool": tool_name,
 		"success": bool(result.get("success", false)),
 		"message": AISidebarTaskTranscript.truncate_text(str(result.get("message", "")), 500),
+		"payload": payload_flagged["text"],
+		"payload_truncated": payload_flagged["truncated"],
 	}
 	if tool_name == "ask_user" and result.get("data") is Dictionary:
 		var d: Dictionary = result["data"]

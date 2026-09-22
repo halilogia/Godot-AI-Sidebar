@@ -8,6 +8,7 @@ class_name AISidebarActivityGroup
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 
 var is_expanded: bool = false
 var is_active: bool = true
@@ -124,25 +125,9 @@ func complete_group_keep_open(keep_open: bool = false) -> void:
 	# Kullanıcı başlığa tıklayarak ayrıntıları tekrar açabilir.
 	set_expanded(keep_open)
 
-## Credential sızıntısını engelle: api_key / bearer / secret / password / token değerlerini maskele.
+## Credential sızıntısını engelle (tek kaynak: AISidebarTaskTranscript.redact_secrets).
 static func redact_secrets(raw: String) -> String:
-	if raw == null or raw.is_empty():
-		return raw if raw != null else ""
-	var out = raw
-	var patterns = [
-		"(?i)(\"?(api[_-]?key|bearer|authorization|secret|password|passwd|access[_-]?token|refresh[_-]?token|client[_-]?secret)\"?\\s*[:=]\\s*\")(.*?)(\")",
-		"(?i)(Bearer\\s+)[A-Za-z0-9\\-._~+/=]{6,}",
-		"(?i)(\"?(token)\"?\\s*[:=]\\s*\")(.*?)(\")",
-	]
-	for p in patterns:
-		var re = RegEx.new()
-		if re.compile(p) != OK:
-			continue
-		if p.contains("Bearer\\s"):
-			out = re.sub(out, "$1[REDACTED]", true)
-		else:
-			out = re.sub(out, "$1[REDACTED]$4", true)
-	return out
+	return AISidebarTaskTranscript.redact_secrets(raw)
 
 static func summarize_error(raw: String, max_len: int = 180) -> String:
 	if raw == null:

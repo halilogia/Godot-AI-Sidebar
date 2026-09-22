@@ -164,4 +164,101 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T11 (legacy exporter intact) failed.")
 
+	# 12. Normal tool arguments export ediliyor (sadece plan/ask_user değil)
+	var ctx12 = AISidebarAgentContext.new()
+	ctx12.begin_task("Script yaz", "")
+	ctx12.add_assistant_tool_call_message("", [{"name": "create_or_update_script", "arguments": {"file_path": "res://HexCell.gd", "content": "extends Node3D\n"}}])
+	ctx12.end_task("completed", "", {"success": true})
+	var tasks12 = ctx12.get_transcript().to_data()
+	var md12 = AISidebarChatExporter.export_transcript_to_markdown(tasks12, [], {})
+	var js12 = AISidebarChatExporter.export_transcript_to_json(tasks12, [], {})
+	if "HexCell.gd" in md12 and "extends Node3D" in md12 and "HexCell.gd" in js12 and "extends Node3D" in js12:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T12 (normal tool args export) failed.")
+
+	# 13. Tool result payload export ediliyor (message ötesi veri)
+	var ctx13 = AISidebarAgentContext.new()
+	ctx13.begin_task("Dosya yaz", "")
+	ctx13.add_tool_result_message("call_9", "create_or_update_script", {"success": true, "data": {"file_path": "res://HexCell.gd", "action": "created", "lines": 42}, "message": "Script created."})
+	ctx13.end_task("completed", "", {"success": true})
+	var tasks13 = ctx13.get_transcript().to_data()
+	var md13 = AISidebarChatExporter.export_transcript_to_markdown(tasks13, [], {})
+	var js13 = AISidebarChatExporter.export_transcript_to_json(tasks13, [], {})
+	if "Payload" in md13 and "created" in md13 and "42" in js13 and "HexCell.gd" in js13:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T13 (tool result payload export) failed.")
+
+	# 14. Nested secret redaction çalışıyor
+	var nested = {"auth": {"api_key": "sk-nested-123", "user": "u"}, "items": [{"password": "pw-456"}, "safe"], "token": "tok-789"}
+	var clean14 = AISidebarChatExporter.redact_recursive(nested)
+	var flat14 = JSON.stringify(clean14)
+	if not "sk-nested-123" in flat14 and not "pw-456" in flat14 and not "tok-789" in flat14 and clean14["auth"]["user"] == "u" and clean14["items"][1] == "safe" and "[REDACTED]" in flat14:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T14 (nested redaction) failed: " + flat14)
+
+	# 15. Markdown ve JSON secret sızdırmıyor (args + history + metadata)
+	var ctx15 = AISidebarAgentContext.new()
+	ctx15.begin_task("Uzak çağrı", "")
+	ctx15.add_assistant_tool_call_message("", [{"name": "mcp_call", "arguments": {"api_key": "sk-live-555", "target": "srv"}}])
+	ctx15.add_tool_result_message("call_m", "mcp_call", {"success": true, "data": {"session_token": "sess-666"}, "message": "done"})
+	ctx15.end_task("completed", "", {"success": true})
+	var tasks15 = ctx15.get_transcript().to_data()
+	var hist15 = [{"role": "user", "content": "call with password=hunter2 inside"}, {"role": "assistant", "content": "Bearer abcdef123456 used"}]
+	var meta15 = {"model": "x", "refresh_token": "rt-777"}
+	var md15 = AISidebarChatExporter.export_transcript_to_markdown(tasks15, hist15, meta15)
+	var js15 = AISidebarChatExporter.export_transcript_to_json(tasks15, hist15, meta15)
+	var leaks = ["sk-live-555", "sess-666", "hunter2", "abcdef123456", "rt-777"]
+	var leaked15 = false
+	for s in leaks:
+		if s in md15 or s in js15:
+			leaked15 = true
+	if not leaked15 and "[REDACTED]" in md15 and "[REDACTED]" in js15:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T15 (md+json no-leak) failed.")
+
+	# 16. Truncation deterministik (bayrak + marker + tekrarlanabilirlik)
+	var big_args = {"file_path": "res://Big.gd", "content": "x".repeat(20000), "api_key": "sk-big-888"}
+	var ctx16 = AISidebarAgentContext.new()
+	ctx16.begin_task("Büyük yazım", "")
+	ctx16.add_assistant_tool_call_message("", [{"name": "create_or_update_script", "arguments": big_args}])
+	ctx16.end_task("completed", "", {"success": true})
+	var ev16 = ctx16.get_transcript().to_data()[0]["events"]
+	var call_ev = {}
+	for e in ev16:
+		if e is Dictionary and str(e.get("t", "")) == "tool_call":
+			call_ev = e
+	var c0 = (call_ev.get("data", {}).get("calls", []) as Array)[0]
+	var md16a = AISidebarChatExporter.export_transcript_to_markdown(ctx16.get_transcript().to_data(), [], {})
+	var md16b = AISidebarChatExporter.export_transcript_to_markdown(ctx16.get_transcript().to_data(), [], {})
+	if bool(c0.get("args_truncated", false)) and "[truncated]" in str(c0.get("args", "")) and not "sk-big-888" in str(c0.get("args", "")) and md16a == md16b and "[REDACTED]" in md16a:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T16 (deterministic truncation) failed.")
+
+	# 17. Compaction sonrasında full task data (args + payload) hâlâ export ediliyor
+	var ctx17 = AISidebarAgentContext.new()
+	ctx17.begin_task("Uzun inşa", "")
+	ctx17.add_assistant_tool_call_message("", [{"name": "create_or_update_script", "arguments": {"file_path": "res://Keep1.gd", "content": "UNIQUE_MARKER_ARGS_17"}}])
+	ctx17.add_tool_result_message("call_k", "create_or_update_script", {"success": true, "data": {"file_path": "res://Keep1.gd", "marker": "UNIQUE_MARKER_PAYLOAD_17"}, "message": "ok"})
+	for i in range(25):
+		ctx17.add_user_message("Dolgu %d" % i, false, "", [])
+		ctx17.add_tool_result_message("call_f%d" % i, "read_script", {"success": true, "data": {}, "message": "ok"})
+	ctx17.end_task("completed", "", {"success": true})
+	var md17 = AISidebarChatExporter.export_transcript_to_markdown(ctx17.get_transcript().to_data(), ctx17.messages, {})
+	var js17 = AISidebarChatExporter.export_transcript_to_json(ctx17.get_transcript().to_data(), ctx17.messages, {})
+	if ctx17.messages.size() < 53 and "UNIQUE_MARKER_ARGS_17" in md17 and "UNIQUE_MARKER_PAYLOAD_17" in md17 and "UNIQUE_MARKER_ARGS_17" in js17 and "UNIQUE_MARKER_PAYLOAD_17" in js17:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T17 (compaction full-data survival) failed: msgs=%d" % ctx17.messages.size())
+
 	return {"name": "EverythingExportTests", "passed": passed, "failed": failed, "errors": errors}
