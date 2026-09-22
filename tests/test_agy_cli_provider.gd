@@ -10,12 +10,12 @@ static func run() -> Dictionary:
 
 	var prov = AISidebarAGYProvider.new()
 
-	# Test 1: Capabilities
-	if prov.supports_vision() and prov.supports_streaming() and prov.supports_tool_calling():
+	# Test 1: Capabilities (Vision must be false for AGY CLI stream-json adapter)
+	if not prov.supports_vision() and prov.supports_streaming() and prov.supports_tool_calling():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("AGY Provider yetenekleri (vision, streaming, tool_calling) hatalı.")
+		errors.append("AGY Provider yetenekleri (supports_vision must be false, streaming, tool_calling) hatalı.")
 
 	# Test 2: Official Model List Fetch
 	var fetched_models: Array = []
@@ -86,6 +86,20 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Prompt formatlama yönergesi eksik veya hatalı: " + formatted_prompt)
+
+	# Test 8: Multimodal Vision Guard Regression Test
+	var captured_errors: Array = []
+	var on_err = func(err: String):
+		captured_errors.append(err)
+	prov.error_occurred.connect(on_err)
+	var dummy_img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	var dummy_vi = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd").from_image(dummy_img)
+	prov.send_multimodal_chat([], [], [dummy_vi])
+	if captured_errors.size() > 0 and "desteklememektedir" in captured_errors[0]:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("AGY Provider multimodal rejection guard failed: " + str(captured_errors))
 
 	# Temizlik
 	prov.stop_process()

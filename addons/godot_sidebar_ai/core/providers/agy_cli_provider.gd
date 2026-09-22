@@ -58,8 +58,9 @@ func _ensure_sandbox_dir() -> String:
 	return _sandbox_dir
 
 func supports_vision() -> bool:
-	# Gemini Flash ve Claude Sonnet modelleri multimodal destekler
-	return true
+	# AGY CLI stream-json stdin arayüzü doğrudan görsel/multimodal veri aktarımını desteklemez.
+	# Görsel analizi için OpenAI-uyumlu sağlayıcı (9Router, OpenRouter vb.) kullanılmalıdır.
+	return false
 
 func supports_tool_calling() -> bool:
 	return true
@@ -168,6 +169,10 @@ func send_chat(messages: Array, tools_schema: Array) -> void:
 	send_multimodal_chat(messages, tools_schema, [])
 
 func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -> void:
+	if images.size() > 0:
+		error_occurred.emit("Antigravity CLI (agy) sağlayıcısı şu anda doğrudan görsel (Vision) girdilerini desteklememektedir. Görsel analizi için lütfen Ayarlar'dan OpenAI-Uyumlu Sağlayıcıyı (9Router/OpenRouter/Ollama) seçin.")
+		return
+
 	var cfg = AISidebarConfig.load_config()
 	var model = cfg.get("selected_model", "gemini-3.8-flash-low")
 	if not model in OFFICIAL_MODELS:
