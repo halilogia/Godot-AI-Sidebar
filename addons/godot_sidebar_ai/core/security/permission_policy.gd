@@ -137,7 +137,7 @@ static func _init_default_risks() -> void:
 	var read_only_tools = [
 		"get_scene_tree", "read_script", "get_project_files", "search_project_assets",
 		"get_selected_nodes", "get_node_properties", "get_editor_errors", "get_runtime_errors",
-		"search_tools", "ask_user", "validate_script", "take_editor_screenshot",
+		"search_tools", "ask_user", "propose_plan", "validate_script", "take_editor_screenshot",
 		"take_runtime_screenshot", "take_viewport_screenshot", "analyze_project",
 		"list_dir", "get_open_scripts", "open_script", "inspect_ui_layout",
 		"inspect_runtime_tree", "inspect_runtime_node"

@@ -56,6 +56,7 @@ const TestSlashCommands = preload("res://tests/test_slash_commands.gd")
 const TestAGYCLIProvider = preload("res://tests/test_agy_cli_provider.gd")
 const TestUITelemetry = preload("res://tests/test_ui_telemetry.gd")
 const TestRuntimeInspection = preload("res://tests/test_runtime_inspection.gd")
+const TestImplementationPlanning = preload("res://tests/test_implementation_planning.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -117,7 +118,8 @@ func _init() -> void:
 		TestSlashCommands,
 		TestAGYCLIProvider,
 		TestUITelemetry,
-		TestRuntimeInspection
+		TestRuntimeInspection,
+		TestImplementationPlanning
 	]
 	
 	var total_passed = 0

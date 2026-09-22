@@ -76,6 +76,10 @@ static func run() -> Dictionary:
 	var mock_p = MockTelemetryProvider.new()
 	var ctx = AISidebarAgentContext.new()
 	var runner = AISidebarAgentRunner.new(mock_p, ctx)
+	# "3D Player oluştur" artık planlama kapısını tetikler (orta kapsamlı istek).
+	# Bu testin amacı TOPLU YAZMA TELEMETRİSİDİR, planlama akışı değil; bu yüzden
+	# eski hızlı icra yolunu açıkça seçiyoruz.
+	runner.enable_planning_gate = false
 	
 	mock_p.response_queue = [
 		{

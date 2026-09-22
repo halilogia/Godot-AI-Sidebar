@@ -33,6 +33,7 @@ graph TD
 
     subgraph Application ["🤖 Application Layer (core/agent/ & core/chat/ & core/commands/)"]
         AgentRunner["agent_runner.gd (State Machine & Streaming Forwarder)"]
+        PlanningPolicy["planning_policy.gd (Kapsam Siniflandirici & Mutation Guard)"]
         AgentContext["agent_context.gd (Context Window)"]
         ContextCompactor["context_compactor.gd (Token Optimization)"]
         ChatManager["chat_manager.gd / chat_session.gd (Persistence)"]
@@ -50,6 +51,7 @@ graph TD
         PathPolicy["path_policy.gd (Security Sandbox)"]
         PermissionPolicy["permission_policy.gd (Approval Classification)"]
         ChangeSet["change_set.gd (Diff Engine)"]
+        ImplementationPlan["implementation_plan.gd (Plan Veri Modeli)"]
     end
 
     subgraph Runtime ["🐞 Runtime Inspection (core/runtime/)"]
@@ -81,6 +83,7 @@ graph TD
     AgentRunner --> ToolManager
     AgentRunner --> AIProvider
     AgentRunner --> VerificationPipeline
+    AgentRunner --> PlanningPolicy
     AgentContext --> ContextCompactor
     AgentContext --> EditorSnapshot
     ToolManager --> PrimitiveTools
@@ -110,12 +113,14 @@ graph TD
 * **[`message_bubble.gd`](addons/godot_sidebar_ai/ui/components/message_bubble.gd):** Metin seçimi (`selection_enabled`), `Ctrl+C` kısayolu ve akıcı BBCode link formatı sunan modüler mesaj baloncuğu.
 * **[`approval_card.gd`](addons/godot_sidebar_ai/ui/components/approval_card.gd):** Dosya yazma/silme gibi kritik işlemlerde kullanıcıdan onay isteyen tek yüzeyli interaktif kart.
 * **[`clarification_card.gd`](addons/godot_sidebar_ai/ui/components/clarification_card.gd):** Ajan kritik bir belirsizlikte durduğunda (`WAITING_FOR_CLARIFICATION`) gösterilen soru kartı; tek tık seçenek butonları ve serbest metin girişi sunar.
+* **[`plan_card.gd`](addons/godot_sidebar_ai/ui/components/plan_card.gd):** Ajan bir implementation planı sunduğunda (`WAITING_FOR_PLAN_APPROVAL`) gösterilen kart. Planı `ImplementationPlan.to_markdown()` çıktısı olarak render eder ve `[Planı Uygula]` / `[İptal]` kararını toplar. `ApprovalCard` ile aynı yaşam döngüsünü izler (modal açmaz, kendini `resolved` işaretler).
 * **[`activity_group.gd`](addons/godot_sidebar_ai/ui/components/activity_group.gd):** Ajanın arka plan araç çağrılarını ve doğrulama adımlarını katlanabilir grupta toplayan bileşen.
 * **[`history_panel.gd`](addons/godot_sidebar_ai/ui/components/history_panel.gd):** Geçmiş sohbet oturumlarını listeleme, arama ve yükleme paneli.
 * **[`welcome_card.gd`](addons/godot_sidebar_ai/ui/components/welcome_card.gd):** Boş sohbet durumunda hızlı başlangıç önerileri sunan karşılama kartı.
 
 ### 2. 🤖 Application Katmanı (`core/agent/`, `core/chat/`, `core/commands/`)
-* **[`agent_runner.gd`](addons/godot_sidebar_ai/core/agent/agent_runner.gd):** Ajan durum makinesini (State Machine) yönetir (`IDLE ➔ PLANNING ➔ EXECUTING ➔ OBSERVING ➔ VERIFYING ➔ COMPLETED`, ayrıca `WAITING_FOR_APPROVAL` ve `WAITING_FOR_CLARIFICATION`).
+* **[`agent_runner.gd`](addons/godot_sidebar_ai/core/agent/agent_runner.gd):** Ajan durum makinesini (State Machine) yönetir (`IDLE ➔ PLANNING ➔ EXECUTING ➔ OBSERVING ➔ VERIFYING ➔ COMPLETED`, ayrıca `WAITING_FOR_APPROVAL`, `WAITING_FOR_CLARIFICATION` ve `WAITING_FOR_PLAN_APPROVAL`).
+* **[`planning_policy.gd`](addons/godot_sidebar_ai/core/agent/planning_policy.gd):** Uygulama planlama katmanının **deterministik** karar merkezi. Modelin davranışına bırakılmadan (a) bir isteğin plan gerektirip gerektirmediğini sınıflandırır (`should_plan`), (b) plan fazında hangi araçların engelleneceğini belirler (`is_mutation_blocked`, fail-closed). Risk listesi tekrar yazılmaz; `PermissionPolicy` risk kayıt defteri tek doğruluk kaynağı olarak kullanılır.
 * **[`context_compactor.gd`](addons/godot_sidebar_ai/core/agent/context_compactor.gd):** Eski araç çıktılarını 1-2 satırlık özetlere dönüştürerek token tasarrufu sağlar.
 * **[`chat_manager.gd`](addons/godot_sidebar_ai/core/chat/chat_manager.gd) / [`chat_session.gd`](addons/godot_sidebar_ai/core/chat/chat_session.gd):** Oturum kalıcılığı. Konuşmalar projeye bağlı `user://sidebar_ai_chats/` dizininde izole JSON dosyaları olarak saklanır; API anahtarı veya token asla diske yazılmaz.
 * **[`mention_manager.gd`](addons/godot_sidebar_ai/core/chat/mention_manager.gd):** `@` yazıldığında dosya ve sahne düğümlerini tarayıp güvenli context limitiyle prompta enjekte eder.
@@ -127,6 +132,26 @@ graph TD
 * **[`verification_pipeline.gd`](addons/godot_sidebar_ai/core/verification/verification_pipeline.gd):** Diske yazılmadan önce GDScript sözdizimini derleme motoruyla doğrular.
 * **[`permission_policy.gd`](addons/godot_sidebar_ai/core/security/permission_policy.gd):** İşlemleri yetki sınıflarına ayırır ve `MANUAL` / `AUTO` / `FULL_AUTO` onay moduna göre kullanıcı onayı gerekip gerekmediğine karar verir.
 * **[`ui_telemetry_tools.gd`](addons/godot_sidebar_ai/core/tools/telemetry/ui_telemetry_tools.gd):** Godot Control/Container hiyerarşisini, taşma ve tema detaylarını denetleyen telemetri motoru.
+* **[`implementation_plan.gd`](addons/godot_sidebar_ai/core/types/implementation_plan.gd):** Kullanıcıya gösterilen planın veri modeli. Planı yapılandırılmış alanlardan (`goal`, `affected_files`, `steps`, `dependencies`, `verification`, `risks`) üretir ve Markdown artifact'a çevirir. **Modelin gizli reasoning'i bu modele hiç girmez.**
+
+### 3.1 📋 Uygulama Planlama Katmanı (Implementation Planning Layer)
+
+Orta/büyük kapsamlı isteklerde ajan doğrudan araç çağrılarına geçmez:
+
+```mermaid
+graph LR
+    A["User Request"] --> B["Kapsam Siniflandirma<br/>(should_plan)"]
+    B -->|"trivial"| F["Hizli Execution<br/>(eski davranis)"]
+    B -->|"orta/buyuk"| C["Inspection + Clarification<br/>(salt-okuma)"]
+    C --> D["propose_plan<br/>(WAITING_FOR_PLAN_APPROVAL)"]
+    D -->|"Plani Uygula"| E["Execution + Verification"]
+    D -->|"Iptal"| X["CANCELLED<br/>(hicbir mutation yok)"]
+```
+
+* **Ayrim:** `Clarification` ile `Planning` aynı şey değildir. Clarification kritik mimari belirsizliği çözer; plan ise ondan SONRA somut adımları sunar.
+* **`propose_plan` bir araçtır:** `ask_user` ile birebir aynı intercept deseniyle yakalanır; çalıştırılmaz, kullanıcıya sunulur. Böylece LLM'in serbest metni parse edilmez.
+* **Plan/Execution ayrımı:** Plan fazında yalnızca salt-okuma araçları şemada sunulur ve `is_mutation_blocked` guard'ı değiştirici çağrıları deterministik olarak reddeder. Plan reddedilirse hiçbir mutation yapılmamış olur.
+* **Onay anlamı:** Plan onayı **niyet** onayıdır; riskli araçlar execution sırasında yine tek tek `ApprovalCard` ile onaylanır.
 
 ### 4. 🐞 Runtime Inspection Katmanı (`core/runtime/`)
 * **[`debugger_plugin.gd`](addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd):** `EditorDebuggerPlugin` tabanlı köprü; editör ile çalışan oyun arasında mesaj kanalı kurar.
@@ -150,14 +175,19 @@ Birim, mantık ve entegrasyon testleri üç ayrı seviyede koşulur:
 ```bash
 powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
 ```
-*Tüm eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) scriptlerini (129 GDScript, 4 Sahne) statik olarak yükleyip derleme hatalarını doğrular.*
+*Tüm eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) scriptlerini (135 GDScript, 4 Sahne) statik olarak yükleyip derleme hatalarını doğrular.*
 
-2. **Headless Master Test Suite (55 Test Paketi / 331 Assertion):**
+2. **Headless Master Test Suite (56 Test Paketi / 358 Assertion):**
 ```bash
 godot --headless --path . -s res://tests/test_runner.gd
 ```
 
-3. **Canlı 9Router Entegrasyon Testi (Canlı Socket + Model Çağrısı):**
+3. **Planlama Akışı Uçtan Uca Entegrasyon Testi (deterministik, LLM'siz):**
+```bash
+godot --headless --path . -s res://tests/integration/test_planning_flow.gd
+```
+
+4. **Canlı 9Router Entegrasyon Testi (Canlı Socket + Model Çağrısı):**
 ```bash
 godot --headless --path . -s res://tests/integration/test_real_9router_live.gd
 ```

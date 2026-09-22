@@ -15,6 +15,7 @@ const AISidebarScriptTools = preload("res://addons/godot_sidebar_ai/core/tools/p
 const AISidebarEditorTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/editor_tools.gd")
 const AISidebarGameIntentTools = preload("res://addons/godot_sidebar_ai/core/tools/intent/game_intent_tools.gd")
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
+const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -59,7 +60,29 @@ static func get_all_schemas() -> Array:
 			}
 		}
 	})
-	
+
+	# Uygulama Planı Sunumu: propose_plan aracı
+	schemas.append({
+		"type": "function",
+		"function": {
+			"name": "propose_plan",
+			"description": "Orta/büyük kapsamlı bir üretim isteğinde, KOD YAZMADAN ÖNCE kullanıcıya uygulanabilir bir implementation plan sunar ve onay ister. Plan onaylanana kadar hiçbir değiştirici araç (dosya yazma/silme, sahne veya düğüm mutasyonu) çalıştırılamaz. Plan somut olmalıdır: 'sistem oluştur ve test et' gibi genel ifadeler YETERSİZDİR; gerçek dosya yolları, sıralı ve uygulanabilir adımlar ve somut doğrulama ölçütleri içermelidir.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"goal": { "type": "string", "description": "Planın tek cümlelik amacı (ör. 'Oynanabilir hex grid sistemi oluşturmak')." },
+					"affected_files": { "type": "array", "items": { "type": "string" }, "description": "Etkilenecek gerçek dosya yolları (ör. 'res://scripts/HexGrid.gd')." },
+					"steps": { "type": "array", "items": { "type": "string" }, "description": "Sıralı, uygulanabilir adımlar (ör. 'HexGrid modelinde koordinat dönüşümü ve komşu araması ekle')." },
+					"dependencies": { "type": "array", "items": { "type": "string" }, "description": "Ön koşullar / bağımlılıklar (isteğe bağlı)." },
+					"verification": { "type": "array", "items": { "type": "string" }, "description": "Planın nasıl doğrulanacağı (ör. 'Üretilen düğüm hiyerarşisini doğrula', 'Projeyi çalıştırıp hata olmadığını kontrol et')." },
+					"risks": { "type": "array", "items": { "type": "string" }, "description": "Bilinen riskler (isteğe bağlı)." },
+					"tools": { "type": "array", "items": { "type": "string" }, "description": "Kullanılacak araçlar (isteğe bağlı)." }
+				},
+				"required": ["goal", "steps", "verification"]
+			}
+		}
+	})
+
 	schemas.append_array(AISidebarSceneTools.get_schemas())
 	schemas.append_array(AISidebarScriptTools.get_schemas())
 	schemas.append_array(AISidebarEditorTools.get_schemas())
@@ -68,15 +91,16 @@ static func get_all_schemas() -> Array:
 	
 	return schemas
 
-## Kullanıcı isteği veya konuşma bağlamına göre yalnızca ilgili araç şemalarını filtreler
-static func get_relevant_schemas(context_text: String, explicitly_unlocked: Array = []) -> Array:
+## Kullanıcı isteği veya konuşma bağlamına göre yalnızca ilgili araç şemalarını filtreler.
+## read_only_only = true ise (planlama fazı) yalnızca mutation ÜRETMEYEN araçlar sunulur.
+static func get_relevant_schemas(context_text: String, explicitly_unlocked: Array = [], read_only_only: bool = false) -> Array:
 	var all_schemas = get_all_schemas()
 	var text = context_text.to_lower()
 	
 	var active_tool_names: Dictionary = {}
 	
-	# 1. Çekirdek Araçlar (Core Discovery, Clarification & Inspection - Daima Erişilebilir)
-	var core_tools = ["search_tools", "ask_user", "analyze_project", "read_script"]
+	# 1. Çekirdek Araçlar (Core Discovery, Clarification, Planning & Inspection - Daima Erişilebilir)
+	var core_tools = ["search_tools", "ask_user", "propose_plan", "analyze_project", "read_script"]
 	for ct in core_tools:
 		active_tool_names[ct] = true
 		
@@ -196,6 +220,9 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	for s in all_schemas:
 		var fn_name = s.get("function", {}).get("name", "")
 		if active_tool_names.has(fn_name):
+			# Planlama fazı: yalnızca mutation üretmeyen araçlar sunulur.
+			if read_only_only and AISidebarPlanningPolicy.is_mutation_blocked(fn_name):
+				continue
 			filtered_schemas.append(s)
 			
 	return filtered_schemas
@@ -209,6 +236,19 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 			"options": args.get("options", []),
 			"clarification": true
 		}, "Clarification requested.")
+	elif tool_name == "propose_plan":
+		# Araç hiçbir mutasyon yapmaz; plan verisini olduğu gibi döner.
+		# AgentRunner bu çağrıyı intercept ederek kullanıcı onayına sunar.
+		return AISidebarToolResult.ok({
+			"goal": args.get("goal", ""),
+			"affected_files": args.get("affected_files", []),
+			"steps": args.get("steps", []),
+			"dependencies": args.get("dependencies", []),
+			"verification": args.get("verification", []),
+			"risks": args.get("risks", []),
+			"tools": args.get("tools", []),
+			"plan": true
+		}, "Implementation plan proposed.")
 		
 	# 1. Verification-First: Doğrulama Onaydan Önce Çalışır (Pipeline Gate)
 	# Hatalı kod tespit edilirse onay sorulmaz, diske yazılmaz, doğrudan AI modeline dönülür.

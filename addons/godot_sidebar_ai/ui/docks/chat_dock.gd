@@ -25,6 +25,7 @@ const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/component
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
+const AISidebarPlanCard = preload("res://addons/godot_sidebar_ai/ui/components/plan_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
@@ -99,6 +100,7 @@ var _attachment_remove_btn: Button = null
 var _current_activity_group: AISidebarActivityGroup = null
 var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
+var _current_plan_card: AISidebarPlanCard = null
 var _current_assistant_bubble: AISidebarMessageBubble = null
 var _auto_scroll_enabled: bool = true
 var _welcome_card: AISidebarWelcomeCard = null
@@ -179,6 +181,7 @@ func _ready() -> void:
 	agent_runner.tool_completed.connect(_on_agent_tool_completed)
 	agent_runner.approval_requested.connect(_on_agent_approval_requested)
 	agent_runner.clarification_requested.connect(_on_agent_clarification_requested)
+	agent_runner.plan_proposed.connect(_on_agent_plan_proposed)
 	agent_runner.changes_applied.connect(_on_agent_changes_applied)
 	agent_runner.verification_started.connect(_on_agent_verification_started)
 	agent_runner.verification_completed.connect(_on_agent_verification_completed)
@@ -1033,6 +1036,7 @@ func _clear_ui_stream() -> void:
 	_current_activity_group = null
 	_current_runtime_card = null
 	_current_approval_card = null
+	_current_plan_card = null
 	_current_assistant_bubble = null
 	_welcome_card = null
 
@@ -1390,6 +1394,9 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
 			_stop_thinking_timer()
 			set_status_badge("Waiting Approval", AISidebarTheme.COLOR_WARNING)
+		AISidebarAgentRunner.AgentState.WAITING_FOR_PLAN_APPROVAL:
+			_stop_thinking_timer()
+			set_status_badge(AISidebarI18n.get_text("status_waiting_plan"), AISidebarTheme.COLOR_WARNING)
 		AISidebarAgentRunner.AgentState.RUNNING_GAME:
 			_stop_thinking_timer()
 			set_status_badge("Running Game", AISidebarTheme.COLOR_ACCENT)
@@ -1551,6 +1558,43 @@ func _on_reject_pressed() -> void:
 		_current_approval_card.mark_rejected()
 	if agent_runner:
 		agent_runner.reject_pending_action()
+
+## Ajandan uygulama planı geldi. Execution HENÜZ başlamadı;
+## kullanıcı onayı bekleniyor.
+func _on_agent_plan_proposed(plan) -> void:
+	_current_assistant_bubble = null
+	if _current_activity_group:
+		_current_activity_group.complete_group()
+		_current_activity_group = null
+
+	if not guard_plan_card_integrity(plan):
+		return
+
+	_current_plan_card = AISidebarPlanCard.new(plan)
+	_current_plan_card.plan_applied.connect(_on_plan_applied)
+	_current_plan_card.plan_cancelled.connect(_on_plan_cancelled)
+	_add_stream_component(_current_plan_card)
+	if _auto_scroll_enabled:
+		_scroll_to_bottom()
+
+## Plan verisi kullanıcıya gösterilebilecek kadar anlamlı mı?
+## (Eksik plan için boş kart göstermemek adına basit bir bütünlük kontrolü.)
+func guard_plan_card_integrity(plan) -> bool:
+	if plan == null or not plan.has_method("is_valid"):
+		return false
+	return plan.is_valid()
+
+func _on_plan_applied() -> void:
+	if _current_plan_card and is_instance_valid(_current_plan_card):
+		_current_plan_card.mark_applied()
+	if agent_runner:
+		agent_runner.approve_plan()
+
+func _on_plan_cancelled() -> void:
+	if _current_plan_card and is_instance_valid(_current_plan_card):
+		_current_plan_card.mark_cancelled()
+	if agent_runner:
+		agent_runner.reject_plan()
 
 func _on_view_diff_pressed(cs: AISidebarChangeSet = null) -> void:
 	var cs_to_show = cs if cs else (pending_change_set if pending_change_set else last_applied_change_set)

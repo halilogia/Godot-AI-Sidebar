@@ -15,6 +15,8 @@ const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/cha
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
 const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
+const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
+const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
 
 enum AgentState {
 	IDLE,
@@ -24,6 +26,7 @@ enum AgentState {
 	VERIFYING,
 	WAITING_FOR_APPROVAL,
 	WAITING_FOR_CLARIFICATION,
+	WAITING_FOR_PLAN_APPROVAL,
 	RUNNING_GAME,
 	OBSERVING_RUNTIME,
 	DEBUGGING,
@@ -41,6 +44,12 @@ signal tool_executing(tool_name: String, args: Dictionary)
 signal tool_completed(tool_name: String, result: Dictionary)
 signal approval_requested(tool_name: String, args: Dictionary, change_set: AISidebarChangeSet)
 signal clarification_requested(question: String, options: Array, clarification_id: String)
+## Kullanıcıya uygulama planı sunuldu (execution henüz BAŞLAMADI).
+signal plan_proposed(plan: AISidebarImplementationPlan)
+## Kullanıcı planı onayladı; execution başlıyor.
+signal plan_approved(plan: AISidebarImplementationPlan)
+## Kullanıcı planı reddetti; hiçbir mutation yapılmadı.
+signal plan_rejected(plan: AISidebarImplementationPlan)
 signal changes_applied(change_set: AISidebarChangeSet)
 signal verification_started(tool_name: String)
 signal verification_completed(tool_name: String, is_valid: bool, msg: String)
@@ -95,6 +104,13 @@ var _pending_change_set: AISidebarChangeSet = null
 var _pending_clarification_id: String = ""
 var _pending_clarification_question: String = ""
 var _pending_clarification_options: Array = []
+
+## Uygulama Planlama Katmanı.
+## false yapilirsa planlama kapisi tamamen devre disi kalir ve eski hizli
+## execution davranisi birebir korunur (mevcut yurutme testleri bunu kullanir).
+var enable_planning_gate: bool = true
+var _plan_phase_active: bool = false
+var _pending_plan: AISidebarImplementationPlan = null
 var runtime_debugger: AISidebarRuntimeDebugger = null
 
 static func get_ts() -> String:
@@ -159,6 +175,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	_pending_clarification_id = ""
 	_pending_clarification_question = ""
 	_pending_clarification_options.clear()
+	_pending_plan = null
 	_pending_vision_inputs.clear()
 	if initial_vision_inputs.size() > 0:
 		_pending_vision_inputs.append_array(initial_vision_inputs)
@@ -184,7 +201,14 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), shown_prompt.left(60)])
 	context.add_user_message(user_prompt, false, display_prompt, initial_vision_inputs)
 	text_received.emit("user", shown_prompt)
-	
+
+	# Uygulama Planlama Kapisi: yalnizca orta/buyuk kapsamli isteklerde acilir.
+	# Kucuk/tekil isteklerde (or. "speed degerini 300 yap") eski hizli davranis korunur.
+	_plan_phase_active = enable_planning_gate and AISidebarPlanningPolicy.should_plan(user_prompt)
+	if _plan_phase_active:
+		print("[TIMING] %s | PLAN_PHASE_START | plan onayi gerekli" % get_ts())
+		context.add_user_message(AISidebarPlanningPolicy.build_plan_directive(user_prompt))
+
 	_set_state(AgentState.PLANNING, AISidebarI18n.get_text("status_thinking"))
 	_run_next_step()
 
@@ -199,6 +223,8 @@ func stop() -> void:
 	_pending_clarification_id = ""
 	_pending_clarification_question = ""
 	_pending_clarification_options.clear()
+	_pending_plan = null
+	_plan_phase_active = false
 	_pending_tool_name = ""
 	_pending_tool_id = ""
 	_pending_tool_args = {}
@@ -337,6 +363,44 @@ func submit_clarification_response(answer: String) -> void:
 	_set_state(AgentState.EXECUTING, "Kullanıcı yanıtı alındı, göreve devam ediliyor...")
 	_run_next_step()
 
+## Kullanıcı sunulan implementation planını onayladı.
+## Bu andan itibaren plan fazı KAPANIR; mevcut execution loop'u (tam araç seti ile) devralır.
+func approve_plan() -> void:
+	if current_state != AgentState.WAITING_FOR_PLAN_APPROVAL:
+		return
+
+	if _waiting_start_time > 0:
+		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
+		_waiting_start_time = 0
+
+	var plan = _pending_plan
+	_pending_plan = null
+	_plan_phase_active = false
+
+	print("[TIMING] %s | PLAN_APPROVED" % get_ts())
+	plan_approved.emit(plan)
+	_set_state(AgentState.EXECUTING, "Plan onaylandı, uygulanıyor...")
+	_run_next_step()
+
+## Kullanıcı planı reddetti.
+## Bu noktaya kadar HICBIR mutation yapılmadı; görev sonlandırılır.
+func reject_plan(reason: String = "Kullanıcı planı reddetti.") -> void:
+	if current_state != AgentState.WAITING_FOR_PLAN_APPROVAL:
+		return
+
+	if _waiting_start_time > 0:
+		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
+		_waiting_start_time = 0
+
+	var plan = _pending_plan
+	_pending_plan = null
+	_plan_phase_active = false
+
+	print("[TIMING] %s | PLAN_REJECTED | reason=%s" % [get_ts(), reason])
+	plan_rejected.emit(plan)
+	_set_state(AgentState.CANCELLED, reason)
+	_finish_task(false)
+
 ## Çalışma zamanı hatası alındığında otomatik iyileştirme döngüsünü tetikler
 func handle_runtime_error(obs: AISidebarRuntimeObservation) -> void:
 	if not is_running():
@@ -395,7 +459,8 @@ func _run_next_step() -> void:
 				if c is String:
 					context_text += " " + c
 				
-	var tools_schema = AISidebarToolManager.get_relevant_schemas(context_text, _unlocked_tools)
+	# Planlama fazinda modele yalnizca mutation URETMEYEN araclar sunulur.
+	var tools_schema = AISidebarToolManager.get_relevant_schemas(context_text, _unlocked_tools, _plan_phase_active)
 	last_tools_sent_count = tools_schema.size()
 	
 	if current_step > 1:
@@ -455,7 +520,6 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			var args: Dictionary = tc.get("arguments", {})
 			
 			tool_calls_count += 1
-			_classify_telemetry_op(fn_name, args)
 			if not fn_name in _unlocked_tools:
 				_unlocked_tools.append(fn_name)
 			
@@ -495,6 +559,38 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				print("[TIMING] %s | CLARIFICATION_REQUESTED | question=%s options=%s" % [get_ts(), question, str(options)])
 				clarification_requested.emit(question, options, tc_id)
 				return
+
+			# Uygulama Planı Sunumu (Plan Review Intercept)
+			# ask_user gibi: araç ÇALIŞTIRILMAZ, plan kullanıcıya sunulur ve onay beklenir.
+			if fn_name == "propose_plan":
+				var plan = AISidebarImplementationPlan.new(args)
+				_pending_plan = plan
+				_waiting_start_time = Time.get_ticks_msec()
+
+				_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")
+				print("[TIMING] %s | PLAN_PROPOSED | steps=%d files=%d" % [get_ts(), plan.steps.size(), plan.affected_files.size()])
+				plan_proposed.emit(plan)
+				return
+
+			# Mutation Guard: plan fazı aktifken değiştirici araç çağrılamaz.
+			# Bu kontrol LLM davranışına bırakılmaz; DETERMINISTIK olarak uygulanır.
+			# Stagnation kontrolünden SONRA çalışır ki tekrarlanan engellenmiş çağrılar
+			# modeli uyaran mevcut mekanizmayı atlamasın.
+			if _plan_phase_active and AISidebarPlanningPolicy.is_mutation_blocked(fn_name):
+				print("[TIMING] %s | PLAN_PHASE_MUTATION_BLOCKED | tool=%s" % [get_ts(), fn_name])
+				var blocked = AISidebarToolResult.err(
+					"PLAN_PHASE_MUTATION_BLOCKED",
+					"Plan onaylanmadan '" + fn_name + "' çalıştırılamaz. Lütfen önce 'propose_plan' ile plan sunun.",
+					true
+				)
+				if context:
+					context.add_tool_result_message(tc_id, fn_name, blocked)
+				_run_next_step()
+				return
+
+			# Telemetri sınıflandırması guard'dan SONRA yapılır; böylece engellenen
+			# (hiç çalışmayan) bir işlem 'file_ops' / 'editor_ops' olarak SAYILMAZ.
+			_classify_telemetry_op(fn_name, args)
 
 			# Değişiklik Öncesi Eski İçerikleri Kaydet (ChangeSet Hazırlığı)
 			var cs = _build_changeset_for_tool(fn_name, args)
