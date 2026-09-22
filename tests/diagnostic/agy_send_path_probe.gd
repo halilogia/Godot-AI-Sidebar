@@ -120,6 +120,7 @@ func _on_error(msg: String) -> void:
 
 func _on_complete(_m: Dictionary) -> void:
 	_t_response = Time.get_ticks_usec()
+	_phase = 9
 
 func _finish() -> void:
 	print("")
