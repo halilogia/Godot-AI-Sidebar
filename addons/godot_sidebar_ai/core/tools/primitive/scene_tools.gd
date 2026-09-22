@@ -283,20 +283,30 @@ static func validate_scene_parse(scene_path: String) -> Dictionary:
 	var state = (loaded as PackedScene).get_state()
 	return AISidebarToolResult.ok({"scene_path": scene_path, "parse_validated": true, "node_count": state.get_node_count()})
 
+static func _default_edited_root():
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
+		return EditorInterface.get_edited_scene_root()
+	return null
+
+static func _has_live_editor() -> bool:
+	return Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root")
+
 ## Editörde açık sahne doğrulaması: istenen path gerçekten aktif mi?
-static func confirm_active_scene(scene_path: String) -> Dictionary:
-	if not (Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root")):
-		return AISidebarToolResult.err("EDITOR_REQUIRED", "Aktif sahne doğrulaması editör gerektirir.", true)
+## root_provider boşsa editör okunur; testler sahte provider enjekte eder.
+## NOT: Tool kontratı senkron olduğu için frame yield YOKTUR (await, senkron
+## çağırıcıları bozar). Eşleşmezse recoverable hata döner; retry, agent turunda olur.
+static func confirm_active_scene(scene_path: String, max_attempts: int = 3, root_provider: Callable = Callable()) -> Dictionary:
 	var wanted = AISidebarPathPolicy.normalize_path(scene_path)
-	for _attempt in range(2):
-		var edited = EditorInterface.get_edited_scene_root()
-		var active_path = ""
-		if edited:
-			active_path = AISidebarPathPolicy.normalize_path(str(edited.scene_file_path))
-		if not active_path.is_empty() and active_path == wanted:
-			return AISidebarToolResult.ok({"scene_path": wanted, "active_scene_path": active_path, "active_scene_confirmed": true})
-	var edited_now = EditorInterface.get_edited_scene_root()
-	var actual = AISidebarPathPolicy.normalize_path(str(edited_now.scene_file_path)) if edited_now else ""
+	var use_provider = root_provider.is_valid()
+	if not use_provider and not _has_live_editor():
+		return AISidebarToolResult.err("EDITOR_REQUIRED", "Aktif sahne doğrulaması editör gerektirir.", true)
+	var actual = ""
+	for _attempt in range(maxi(1, max_attempts)):
+		var edited = root_provider.call() if use_provider else _default_edited_root()
+		if edited != null:
+			actual = AISidebarPathPolicy.normalize_path(str(edited.scene_file_path))
+		if not actual.is_empty() and actual == wanted:
+			return AISidebarToolResult.ok({"scene_path": wanted, "active_scene_path": actual, "active_scene_confirmed": true})
 	return AISidebarToolResult.err("ACTIVE_SCENE_NOT_CONFIRMED", "İstenen sahne aktif değil: beklenen=" + wanted + " aktif=" + actual, true, {"scene_path": wanted, "active_scene_path": actual})
 
 static func _create_scene(args: Dictionary) -> Dictionary:
@@ -327,7 +337,14 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 			var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
 			return AISidebarToolResult.err(err_code, "Sahne doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
 
+		# Overwrite rollback: mevcut içeriği sakla; parse başarısızsa birebir geri yükle.
 		var existed_before = FileAccess.file_exists(scene_path)
+		var old_content = ""
+		if existed_before:
+			var rf = FileAccess.open(scene_path, FileAccess.READ)
+			if rf:
+				old_content = rf.get_as_text()
+				rf.close()
 		var f = FileAccess.open(scene_path, FileAccess.WRITE)
 		if not f:
 			return AISidebarToolResult.err("WRITE_ERROR", "Sahne dosyası yazılamadı: " + scene_path)
@@ -336,11 +353,25 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 		# Gerçek parse: yazılan dosya Godot tarafından yüklenebilmeli.
 		var parse_res = validate_scene_parse(scene_path)
 		if not parse_res.get("success", false):
-			if not existed_before and FileAccess.file_exists(scene_path):
+			var restored = false
+			var restore_verified = false
+			if existed_before:
+				var wf = FileAccess.open(scene_path, FileAccess.WRITE)
+				if wf:
+					wf.store_string(old_content)
+					wf.close()
+					restored = true
+					var vf = FileAccess.open(scene_path, FileAccess.READ)
+					if vf:
+						restore_verified = (vf.get_as_text() == old_content)
+						vf.close()
+			elif FileAccess.file_exists(scene_path):
 				DirAccess.remove_absolute(scene_path)
+				restored = true
+				restore_verified = not FileAccess.file_exists(scene_path)
 			var perr = parse_res.get("error", {})
 			var pmsg = perr.get("message", "Parse hatası") if perr is Dictionary else str(perr)
-			return AISidebarToolResult.err("SCENE_PARSE_ERROR", "Sahne parse edilemedi, oluşturuldu olarak raporlanmıyor: " + pmsg, false, {"scene_path": scene_path})
+			return AISidebarToolResult.err("SCENE_PARSE_ERROR", "Sahne parse edilemedi, oluşturuldu olarak raporlanmıyor: " + pmsg, false, {"scene_path": scene_path, "existed_before": existed_before, "restored": restored, "restore_verified": restore_verified})
 		parse_validated = true
 	else:
 		if not ClassDB.class_exists(root_type):
