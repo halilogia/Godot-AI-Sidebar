@@ -65,6 +65,7 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 - [x] `VisionInput` ve multimodal Base64 OpenAI parça formatı.
 - [x] Editör Viewport ve 2D/3D sahne ekran görüntüsü alma aracı (`take_viewport_screenshot`).
+- [x] Pano (Clipboard) Görseli Desteği (`Ctrl+V`): Panodaki görüntüyü (`PrtScr` / `Win+Shift+S`) algılama, önizleme çipi ve kullanıcı mesaj balonunda gösterme.
 - [x] Ajan döngüsünde görsel gözlemi modele otomatik `image_url` multimodal parçası olarak iletme.
 - [ ] UI hizalama ve seviye tasarımı (Level Design) geri bildirimlerini görsel analiz etme.
 
@@ -84,4 +85,4 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 - [x] **AI-Native UI Layout Telemetri Motoru (`inspect_ui_layout`):** `@edited_scene` ve `@sidebar` semantik hedefleri, efektif görünürlük filtreleri, kümülatif konteyner taşma kontrolü (`UI_CONTAINER_OVERFLOW`) ve tema özellik analizi.
 - [x] **Headless Statik Tip & Sözdizimi Derleyicisi (`typecheck.ps1` & `tools/typecheck.gd`):** Godot'yu açmadan 1.5 saniyede 113 script ve 4 sahneyi denetleme; VS Code `Ctrl+Shift+B` derleme entegrasyonu.
 - [x] **Merkezi `AISidebarTheme` Tasarım Sistemi:** Modern Dark Slate & Midnight Dark token mimarisi, dinamik aksan butonları, ghost butonlar, odak bordürleri ve minimalist durum göstergeleri.
-- [x] **54 Test Paketi / 291 Assertion:** Headless test runner ile %100 yeşil birim ve entegrasyon test güvencesi.
+- [x] **54 Test Paketi / 296 Assertion:** Headless test runner ile %100 yeşil birim ve entegrasyon test güvencesi.
