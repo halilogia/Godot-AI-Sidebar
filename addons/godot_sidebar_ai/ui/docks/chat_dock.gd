@@ -88,6 +88,7 @@ var _queue_clear_btn: Button = null
 
 # Pano Görseli Eki (Clipboard Image Attachment)
 var _attached_vision_input: AISidebarVisionInput = null
+var _last_sent_vision_input: AISidebarVisionInput = null
 var _current_user_vision_inputs: Array = []
 var _attachment_container: PanelContainer = null
 var _attachment_preview: TextureRect = null
@@ -437,16 +438,22 @@ func _setup_attachment_ui() -> void:
 	input_area.add_child(_attachment_container)
 	input_area.move_child(_attachment_container, input_field.get_index())
 
+func _attach_vision_input(vi: AISidebarVisionInput) -> void:
+	if vi == null:
+		return
+	_attached_vision_input = vi
+	if _attachment_preview:
+		_attachment_preview.texture = vi.get_texture()
+	if _attachment_label:
+		_attachment_label.text = "📷 Pano Görseli (%dx%d)" % [vi.width, vi.height]
+	if _attachment_container:
+		_attachment_container.visible = true
+
 func _attach_image_from_clipboard(img: Image) -> void:
 	if not img or img.is_empty():
 		return
-	_attached_vision_input = AISidebarVisionInput.from_image(img)
-	if _attachment_preview:
-		_attachment_preview.texture = ImageTexture.create_from_image(img)
-	if _attachment_label:
-		_attachment_label.text = "📷 Pano Görseli (%dx%d)" % [img.get_width(), img.get_height()]
-	if _attachment_container:
-		_attachment_container.visible = true
+	var vi = AISidebarVisionInput.from_image(img)
+	_attach_vision_input(vi)
 
 func _clear_attached_image() -> void:
 	_attached_vision_input = null
@@ -1036,6 +1043,7 @@ func _on_send_pressed() -> void:
 		return
 		
 	input_field.text = ""
+	_last_sent_vision_input = attached_img
 	_clear_attached_image()
 	_is_user_stopped = false
 	
@@ -1504,6 +1512,7 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 			history_panel.refresh_list()
 			
 	_check_and_dispatch_next_queue()
+	_last_sent_vision_input = null
 
 func _on_agent_error(err_msg: String) -> void:
 	_current_assistant_bubble = null
@@ -1511,10 +1520,16 @@ func _on_agent_error(err_msg: String) -> void:
 		_current_activity_group.complete_group()
 		_current_activity_group = null
 		
+	# Hata durumunda veya model reddettiğinde görsel ekinin kaybolmasını önle (P2 UX Fix)
+	if _last_sent_vision_input != null and _attached_vision_input == null:
+		_attach_vision_input(_last_sent_vision_input)
+
 	var err_comp = AISidebarErrorCard.new(err_msg)
+	var vi_to_retry = _last_sent_vision_input
 	err_comp.retry_requested.connect(func():
 		if not last_user_prompt.is_empty():
-			agent_runner.start_task(last_user_prompt)
+			var vi_arr: Array = [vi_to_retry] if vi_to_retry != null else []
+			agent_runner.start_task(last_user_prompt, "", vi_arr)
 	)
 	_add_stream_component(err_comp)
 	update_ui_language()

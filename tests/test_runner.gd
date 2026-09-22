@@ -55,6 +55,7 @@ const TestAutoApprove = preload("res://tests/test_auto_approve.gd")
 const TestSlashCommands = preload("res://tests/test_slash_commands.gd")
 const TestAGYCLIProvider = preload("res://tests/test_agy_cli_provider.gd")
 const TestUITelemetry = preload("res://tests/test_ui_telemetry.gd")
+const TestRuntimeInspection = preload("res://tests/test_runtime_inspection.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -115,7 +116,8 @@ func _init() -> void:
 		TestAutoApprove,
 		TestSlashCommands,
 		TestAGYCLIProvider,
-		TestUITelemetry
+		TestUITelemetry,
+		TestRuntimeInspection
 	]
 	
 	var total_passed = 0

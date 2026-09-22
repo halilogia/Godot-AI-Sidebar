@@ -210,4 +210,21 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 11 (chat_dock_attachment_ui_lifecycle) failed: attached=" + str(has_attached) + " cleared=" + str(has_cleared))
 
+	# Test 12: Attachment Preservation on Error (P2 UX Regression Test)
+	var dock2 = dock_scene.instantiate()
+	dock2._ready()
+	dock2._attach_image_from_clipboard(test_img)
+	var vi_ref = dock2._attached_vision_input
+	dock2._last_sent_vision_input = vi_ref
+	dock2._clear_attached_image()
+	# Simüle edilen sağlayıcı hatası (örn. AGY vision reddi)
+	dock2._on_agent_error("Antigravity CLI görsel girdisini desteklemiyor")
+	var restored_ok = (dock2._attached_vision_input != null and dock2._attachment_container.visible == true)
+	dock2.queue_free()
+	if restored_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 12 (attachment_preservation_on_error) failed: Görsel eki hata anında geri yüklenmedi.")
+
 	return {"name": "UIUXQueueAndInputTests", "passed": passed, "failed": failed, "errors": errors}

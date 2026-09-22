@@ -55,18 +55,19 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 - [x] `RuntimeObservation` ve `SourceMapper` ile çalışma zamanı stack trace haritalama.
 - [x] Modelin runtime hatalarını otomatik düzeltmesi için `Self-Healing` döngüsü.
+- [x] **Yerleşik Godot Debugger Köprüsü (EditorDebuggerPlugin + EngineDebugger):** `inspect_runtime_tree` ve `inspect_runtime_node` ile canlı hiyerarşi (Remote Scene Tree) ve güvenli özellik sorgulama (POC).
 - [ ] Oyun çalışırken canlı ClassDB ve Node ağacı görsel sorgulama dock'u.
 - [ ] Çalışma zamanı deterministik kare ilerletme (`runtime_freeze`, `runtime_step`).
 - [ ] Oyun esnasında girdi simülasyonu (`input_injection`).
 
 ---
 
-## 📍 Faz 6: Görsel Yapay Zeka & Multimodal Viewport (Vision) (Tamamlandı ✅)
+## 📍 Faz 6: Görsel Yapay Zeka & Multimodal Viewport (Vision) (Kod Tamamlandı / Manuel GUI Doğrulaması Bekliyor 🔄)
 
 - [x] `VisionInput` ve multimodal Base64 OpenAI parça formatı.
 - [x] Editör Viewport ve 2D/3D sahne ekran görüntüsü alma aracı (`take_viewport_screenshot`).
-- [x] Pano (Clipboard) Görseli Desteği (`Ctrl+V`): Panodaki görüntüyü (`PrtScr` / `Win+Shift+S`) algılama, önizleme çipi ve kullanıcı mesaj balonunda gösterme.
-- [x] Ajan döngüsünde görsel gözlemi modele otomatik `image_url` multimodal parçası olarak iletme.
+- [x] Pano (Clipboard) Görseli Desteği (`Ctrl+V`): Panodaki görüntüyü (`PrtScr` / `Win+Shift+S`) algılama, önizleme çipi, seans kalıcılığı ve hata anında ek koruma (P2 UX Fix).
+- [x] Ajan döngüsünde görsel gözlemi modele otomatik `image_url` multimodal parçası olarak iletme (OpenAI-uyumlu sağlayıcılar için doğrulanmış).
 - [ ] UI hizalama ve seviye tasarımı (Level Design) geri bildirimlerini görsel analiz etme.
 
 ---

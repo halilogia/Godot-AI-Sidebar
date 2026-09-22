@@ -6,6 +6,7 @@ class_name AISidebarEditorTools
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd")
+const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd")
 
 static func get_schemas() -> Array:
 	return [
@@ -190,6 +191,34 @@ static func get_schemas() -> Array:
 					}
 				}
 			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "inspect_runtime_tree",
+				"description": "Çalışan oyunun canlı sahne ağacını (Remote Scene Tree) hiyerarşik olarak listeler. Oyunun çalışır durumda olması (play_game) gerekir.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"path": { "type": "string", "description": "İncelenecek düğüm yolu (boş bırakılırsa kök 'root'tan başlar)." },
+						"max_depth": { "type": "integer", "description": "Maksimum hiyerarşi derinliği (varsayılan: 3)." }
+					}
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
+				"name": "inspect_runtime_node",
+				"description": "Çalışan oyundaki belirli bir canlı düğümün güvenli özelliklerini (name, type, position, rotation, scale, visible, process_mode) sorgular.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"node_path": { "type": "string", "description": "Sorgulanacak düğüm yolu (örn: 'root/Main/Player')." }
+					},
+					"required": ["node_path"]
+				}
+			}
 		}
 	]
 
@@ -221,6 +250,10 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _take_runtime_screenshot(args)
 		"take_viewport_screenshot":
 			return _take_viewport_screenshot(args)
+		"inspect_runtime_tree":
+			return _inspect_runtime_tree(args)
+		"inspect_runtime_node":
+			return _inspect_runtime_node(args)
 		_:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen editör aracı: " + tool_name)
 
@@ -467,3 +500,64 @@ static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 		"base64": b64,
 		"has_vision_data": true
 	}, "✓ " + vp_type_str.to_upper() + " Viewport ekran görüntüsü alındı (" + str(img.get_width()) + "x" + str(img.get_height()) + ")")
+
+static func _inspect_runtime_tree(args: Dictionary) -> Dictionary:
+	var path = args.get("path", "")
+	var max_depth = int(args.get("max_depth", 3))
+	
+	var is_playing = false
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("is_playing_scene"):
+		is_playing = EditorInterface.is_playing_scene()
+		
+	if not is_playing:
+		return AISidebarToolResult.err(
+			"GAME_NOT_RUNNING",
+			"Oyun şu anda çalışmıyor. Canlı sahne ağacını incelemek için önce oyunu başlatın (play_game veya F5)."
+		)
+		
+	var dbg = AISidebarDebuggerPlugin.instance
+	if not dbg or not dbg.has_active_session():
+		return AISidebarToolResult.err(
+			"DEBUGGER_NOT_CONNECTED",
+			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı. Lütfen bir saniye sonra tekrar deneyin."
+		)
+		
+	var resp = dbg.query_sync("inspect_tree", [path, max_depth])
+	if not resp.get("success", false):
+		return AISidebarToolResult.err(
+			resp.get("error", "INSPECT_FAILED"),
+			resp.get("message", "Çalışma zamanı sahne ağacı sorgulanamadı.")
+		)
+		
+	return AISidebarToolResult.ok(resp.get("tree", {}), "✓ Canlı sahne ağacı başarıyla alındı.")
+
+static func _inspect_runtime_node(args: Dictionary) -> Dictionary:
+	var node_path = args.get("node_path", "")
+	if node_path.is_empty():
+		return AISidebarToolResult.err("MISSING_ARGUMENT", "'node_path' parametresi zorunludur.")
+		
+	var is_playing = false
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("is_playing_scene"):
+		is_playing = EditorInterface.is_playing_scene()
+		
+	if not is_playing:
+		return AISidebarToolResult.err(
+			"GAME_NOT_RUNNING",
+			"Oyun şu anda çalışmıyor. Düğüm özelliklerini incelemek için önce oyunu başlatın (play_game veya F5)."
+		)
+		
+	var dbg = AISidebarDebuggerPlugin.instance
+	if not dbg or not dbg.has_active_session():
+		return AISidebarToolResult.err(
+			"DEBUGGER_NOT_CONNECTED",
+			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı."
+		)
+		
+	var resp = dbg.query_sync("inspect_node", [node_path])
+	if not resp.get("success", false):
+		return AISidebarToolResult.err(
+			resp.get("error", "INSPECT_FAILED"),
+			resp.get("message", "Düğüm özellikleri sorgulanamadı: " + node_path)
+		)
+		
+	return AISidebarToolResult.ok(resp.get("node", {}), "✓ Düğüm özellikleri başarıyla alındı: " + node_path)
