@@ -102,6 +102,22 @@ func get_current_task() -> Dictionary:
 		return (tasks[tasks.size() - 1] as Dictionary).duplicate(true)
 	return {}
 
+## Durmuş taskı aynı id ile yeniden açar (devam et; yeni task_id YOK).
+func reopen_task(task_id: String) -> bool:
+	if task_id.strip_edges().is_empty():
+		return false
+	if has_running_task():
+		return str(tasks[_running_idx].get("id", "")) == task_id
+	for i in range(tasks.size()):
+		if str(tasks[i].get("id", "")) == task_id:
+			tasks[i]["status"] = "running"
+			tasks[i]["ended_at"] = ""
+			tasks[i]["stop_reason"] = ""
+			(tasks[i]["events"] as Array).append({"t": "task_resumed", "ts": now_ts(), "step": _step_mark, "data": {}})
+			_running_idx = i
+			return true
+	return false
+
 ## Gerçek tool başarı hükmü: outer wrapper `success=true` olsa bile data/status/error
 ## içindeki açık başarısızlığı yakalar (or. validate_script: outer ok + data.success=false).
 ## Dönüş: {"success": bool, "error": String}

@@ -235,6 +235,40 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	_set_state(AgentState.PLANNING, AISidebarI18n.get_text("status_thinking"))
 	_run_next_step()
 
+func get_elapsed_s() -> float:
+	if task_start_time_msec <= 0:
+		return 0.0
+	return snappedf((Time.get_ticks_msec() - task_start_time_msec) / 1000.0, 0.1)
+
+## Pause sonrası continuation: AYNI task_id ile kaldığı step'ten devam.
+## start_task'tan farklı: sayaçlar/step sıfırlanmaz, unlock'lar korunur.
+## Dönüş: resume başladıysa true (bulunamazsa false -> dock normal task açar).
+func resume_task(cp: Dictionary, resume_text: String, display_text: String = "devam et") -> bool:
+	if is_running() or context == null or provider == null:
+		return false
+	if cp.is_empty() or not bool(cp.get("resumable", false)):
+		return false
+	var task_id = str(cp.get("task_id", ""))
+	if not context.get_transcript().reopen_task(task_id):
+		return false
+	current_step = maxi(0, int(cp.get("current_step", 0)))
+	var cp_max = int(cp.get("max_steps", 0))
+	if cp_max > 0:
+		max_steps = cp_max
+	var kept_elapsed = float(cp.get("elapsed_s", 0.0))
+	task_start_time_msec = Time.get_ticks_msec() - int(kept_elapsed * 1000.0) if kept_elapsed > 0.0 else Time.get_ticks_msec()
+	_last_tool_signature = ""
+	_stagnation_count = 0
+	_empty_response_retry_count = 0
+	_plan_phase_active = false
+	_pending_vision_inputs.clear()
+	print("[TIMING] %s | TASK_RESUMED | id=%s step=%d/%d" % [get_ts(), task_id, current_step, max_steps])
+	context.add_user_message(resume_text, false, display_text, [])
+	text_received.emit("user", display_text)
+	_set_state(AgentState.PLANNING, AISidebarI18n.get_text("status_thinking"))
+	_run_next_step()
+	return true
+
 func stop() -> void:
 	if not is_running():
 		return

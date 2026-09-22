@@ -68,6 +68,7 @@ const TestCopyChat = preload("res://tests/test_copy_chat.gd")
 const TestMultiToolAndSceneGuard = preload("res://tests/test_multi_tool_and_scene_guard.gd")
 const TestSceneReliability = preload("res://tests/test_scene_reliability.gd")
 const TestRuntimeVisionChain = preload("res://tests/test_runtime_vision_chain.gd")
+const TestPauseResume = preload("res://tests/test_pause_resume.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -141,7 +142,8 @@ func _init() -> void:
 		TestCopyChat,
 		TestMultiToolAndSceneGuard,
 		TestSceneReliability,
-		TestRuntimeVisionChain
+		TestRuntimeVisionChain,
+		TestPauseResume
 	]
 	
 	var total_passed = 0

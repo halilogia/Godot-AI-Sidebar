@@ -14,6 +14,8 @@ var telemetry: Dictionary = {}
 var metadata: Dictionary = {}
 ## Compaction-proof task transcript (Everything Export kaynağı, geriye uyumlu).
 var transcript_tasks: Array = []
+## Pause/Resume checkpoint (tek slot; geriye uyumlu).
+var checkpoint: Dictionary = {}
 
 func _init(p_id: String = "", p_title: String = "New Chat") -> void:
 	var now = Time.get_datetime_string_from_system()
@@ -58,7 +60,8 @@ func to_dict() -> Dictionary:
 		"messages": messages,
 		"telemetry": telemetry,
 		"metadata": metadata,
-		"transcript_tasks": transcript_tasks
+		"transcript_tasks": transcript_tasks,
+		"checkpoint": checkpoint
 	}
 
 static func from_dict(d: Dictionary):
@@ -71,4 +74,6 @@ static func from_dict(d: Dictionary):
 	session.metadata = d.get("metadata", {}).duplicate(true)
 	var tt = d.get("transcript_tasks", [])
 	session.transcript_tasks = tt.duplicate(true) if tt is Array else []
+	var ck = d.get("checkpoint", {})
+	session.checkpoint = (ck as Dictionary).duplicate(true) if ck is Dictionary else {}
 	return session

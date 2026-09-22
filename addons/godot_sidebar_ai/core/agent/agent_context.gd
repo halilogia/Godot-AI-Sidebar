@@ -146,11 +146,16 @@ func add_tool_result_message(tool_call_id: String, tool_name: String, result: Di
 	)
 	# Outer wrapper success=true olsa bile payload'daki gerçek hüküm esas alınır.
 	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
+	var err_code = ""
+	var _err = result.get("error", null)
+	if _err is Dictionary:
+		err_code = str((_err as Dictionary).get("code", ""))
 	var res_data = {
 		"tool": tool_name,
 		"success": bool(outcome["success"]),
 		"message": AISidebarTaskTranscript.truncate_text(str(result.get("message", "")), 500),
 		"effective_error": str(outcome["error"]),
+		"error_code": err_code,
 		"payload": payload_flagged["text"],
 		"payload_truncated": payload_flagged["truncated"],
 	}

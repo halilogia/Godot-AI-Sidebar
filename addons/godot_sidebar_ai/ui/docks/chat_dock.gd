@@ -29,6 +29,7 @@ const AISidebarPlanCard = preload("res://addons/godot_sidebar_ai/ui/components/p
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
+const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
 const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
@@ -1009,6 +1010,8 @@ func _load_session_by_id(session_id: String) -> void:
 	_clear_ui_stream()
 	_rebuild_ui_stream_from_session(loaded)
 	_show_welcome_card_if_empty()
+	if current_session.checkpoint is Dictionary and bool(current_session.checkpoint.get("resumable", false)):
+		_show_paused_badge(int(current_session.checkpoint.get("current_step", 0)), int(current_session.checkpoint.get("max_steps", 20)))
 	_update_header_title()
 	if history_panel:
 		history_panel.set_active_session(loaded.id)
@@ -1244,8 +1247,67 @@ func _on_send_pressed() -> void:
 		_update_queue_ui()
 		return
 		
+	# 3. Continuation: boştayken resume komutu + resumable checkpoint varsa devam et
+	if not agent_runner.is_running() and AISidebarTaskCheckpoint.is_resume_command(user_text) and _has_resumable_checkpoint():
+		input_field.text = ""
+		_resume_paused_task(user_text)
+		return
+
 	# Ajan boşta ise görevi hemen başlat
 	_start_task_prompt(user_text, "", vision_inputs)
+
+## Resumable checkpoint var mı? (session'da saklı tek slot)
+func _has_resumable_checkpoint() -> bool:
+	return current_session != null and current_session.checkpoint is Dictionary and bool(current_session.checkpoint.get("resumable", false))
+
+func _active_scene_path_now() -> String:
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
+		var edited = EditorInterface.get_edited_scene_root()
+		if edited:
+			return str(edited.scene_file_path)
+	return ""
+
+## Durmuş tasktan checkpoint üret, session'a yaz, Paused rozeti göster.
+func _refresh_pause_checkpoint() -> void:
+	if agent_context == null or current_session == null or agent_runner == null:
+		return
+	var task = agent_context.get_transcript().get_current_task()
+	if task.is_empty():
+		return
+	var live = {
+		"current_step": agent_runner.current_step,
+		"maximum_steps": agent_runner.max_steps,
+		"elapsed_s": agent_runner.get_elapsed_s(),
+	}
+	live["max_steps"] = live["maximum_steps"]
+	var cp = AISidebarTaskCheckpoint.build(task, live, _active_scene_path_now())
+	current_session.checkpoint = cp
+	_save_current_session()
+	if bool(cp.get("resumable", false)):
+		_show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
+
+func _show_paused_badge(cur: int, mx: int) -> void:
+	if not status_badge:
+		return
+	status_badge.text = "⏸ Paused — Step %d/%d" % [cur, mx]
+	status_badge.tooltip_text = "Devam etmek için 'devam et' yazın. Başka bir mesaj yeni task başlatır."
+	status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
+
+func _resume_paused_task(user_text: String) -> void:
+	if current_session == null:
+		return
+	var cp = (current_session.checkpoint as Dictionary).duplicate(true)
+	_hide_welcome_card()
+	_last_sent_vision_input = null
+	_is_user_stopped = false
+	_current_user_vision_inputs.clear()
+	if current_session == null:
+		current_session = AISidebarChatSession.new()
+	var msg = AISidebarTaskCheckpoint.build_resume_message(cp)
+	if agent_runner and agent_runner.resume_task(cp, msg, user_text):
+		return
+	# Checkpoint geçersizse güvenli düşüş: normal yeni task.
+	_start_task_prompt(user_text, "", [])
 
 func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -> void:
 	if parsed_cmd.has("error"):
@@ -1325,8 +1387,10 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	
 	if current_session == null:
 		current_session = AISidebarChatSession.new()
+	# Yeni task eskisini geçersiz kılar (devam yolu buradan geçmez).
+	current_session.checkpoint = {}
 	_save_current_session()
-	
+
 	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
 	if agent_context:
 		agent_context.begin_task(prompt_text, final_display)
@@ -1425,6 +1489,7 @@ func _on_clear_pressed() -> void:
 		current_session.messages.clear()
 		current_session.telemetry.clear()
 		current_session.transcript_tasks.clear()
+		current_session.checkpoint = {}
 		_save_current_session()
 	_clear_all_queue()
 	_clear_ui_stream()
@@ -2006,6 +2071,11 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	
 	if current_session:
 		current_session.telemetry = metrics.duplicate(true)
+		if t_ok:
+			# Başarıyla biten taskın resume ihtiyacı kalmaz.
+			current_session.checkpoint = {}
+		else:
+			_refresh_pause_checkpoint()
 		_save_current_session()
 		if history_panel and history_panel.visible:
 			history_panel.refresh_list()
@@ -2040,6 +2110,8 @@ func _on_agent_error(err_msg: String) -> void:
 	if agent_context and agent_context.get_transcript().has_running_task():
 		var e_status = "cancelled" if _is_user_stopped else "failed"
 		agent_context.end_task(e_status, err_msg)
+	# Stop/fail sonrası kaldığı noktadan devam için checkpoint üret.
+	_refresh_pause_checkpoint()
 	if _current_activity_group:
 		if is_task_limit_error(err_msg):
 			var grp = _current_activity_group
