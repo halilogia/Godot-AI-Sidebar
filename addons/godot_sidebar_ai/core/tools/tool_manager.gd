@@ -41,7 +41,7 @@ static func get_all_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": "ask_user",
-			"description": "Sonucu kökten değiştirecek ve aktif editör bağlamından çıkarılamayan kritik bir belirsizlik olduğunda kullanıcıya soru sorup netleştirme (clarification) ister (Örn: 'Sahne oluştur ve slime yap' dendiğinde 2D mi 3D mi olduğu belirsizse). Önemsiz detaylarda (hız, renk, boyut vb.) KESİNLİKLE soru sormayın, makul varsayımla devam edin.",
+			"description": "Sonucu kökten değiştirecek ve aktif editör bağlamından çıkarılamayan kritik bir mimari veya kapsam belirsizliği olduğunda kullanıcıya soru sorup netleştirme (clarification) ister (Örn: 'Sahne oluştur ve slime yap' dendiğinde 2D mi 3D mi olduğu belirsizse veya 'hexagon oluştur' dendiğinde tekil bir obje mi yoksa oynanabilir bir ızgara haritası mı olduğu belirsizse). Önemsiz detaylarda (hız, renk, boyut vb.) KESİNLİKLE soru sormayın, makul varsayımla devam edin.",
 			"parameters": {
 				"type": "object",
 				"properties": {

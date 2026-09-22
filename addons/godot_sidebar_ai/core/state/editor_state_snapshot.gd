@@ -86,10 +86,10 @@ static func get_grounding_prompt_text() -> String:
 	if not active_scr.is_empty():
 		lines.append("Açık Script: " + active_scr)
 		
-	lines.append("=== NETLEŞTİRME KURALI (CLARIFICATION POLICY) ===")
-	lines.append("- Yalnızca sonucu KÖKTEN değiştirecek ve aktif editör bağlamından çıkarılamayan durumlarda 'ask_user' aracını kullanarak kullanıcıya soru sorun (Örn: 'Sahne oluştur ve slime yap' dendiğinde 2D mi 3D mi olduğu hem promptta hem açık sahnede belirsizse).")
-	lines.append("- Belirsizlik sonucu önemli ölçüde değiştirmiyorsa makul varsayım yapıp doğrudan işe başlayın.")
-	lines.append("- Güvenli ve açık bir varsayım varsa veya aktif sahnede zaten Node2D/Node3D varsa soru sormayın, bağlamı takip edin.")
-	lines.append("- Önemsiz detaylar için (hız, renk, boyut vb.) KESİNLİKLE soru sormayın, varsayılan mantıklı değerleri uygulayın.")
-	lines.append("======================================================")
+	lines.append("=== NETLEŞTİRME VE MİMARİ KURALI (CLARIFICATION & ARCHITECTURE POLICY) ===")
+	lines.append("1. KAPSAM ÇATALLANMASI (Scope Fork): Kullanıcı 'hexagon oluştur', 'harita yap', 'envanter kur', 'düşman sistemi yap' gibi hem tekil bir ilkel obje hem de oynanabilir bir oyun sistemi (Grid/Board/Model) anlamına gelebilecek soyut isteklerde bulunduğunda KÖR BİR VARSAYIMLA tek bir ilkel düğüm basıp geçmeyin. 'ask_user' aracını çağırarak 2-3 somut seçenekle kullanıcının niyetini netleştirin.")
+	lines.append("2. MOTOR / BOYUT ÇATALLANMASI (Dimension Fork): 2D mi 3D mi olduğu hem komuttan hem açık sahne ağacından anlaşılamıyorsa 'ask_user' ile netleştirin (Örn: options=['2D', '3D']).")
+	lines.append("3. GEREKSİZ SORULARDAN KAÇINMA: Hız, renk, boyut, can puanı gibi parametrik detaylar için ASLA soru sormayın, makul varsayılanlarla ilerleyin.")
+	lines.append("4. BAĞLAM ÖNCELİĞİ: Kullanıcı açıkça tekil bir parça istemişse (Örn: 'şu düğüme hexagon mesh ekle') veya aktif sahnede zaten bir ızgara/sistem yapısı varsa bağlamı takip edin.")
+	lines.append("===========================================================================")
 	return "\n".join(lines)
