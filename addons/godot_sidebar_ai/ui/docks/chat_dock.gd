@@ -36,6 +36,7 @@ const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
+const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/components/welcome_card.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -100,6 +101,9 @@ var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
 var _current_assistant_bubble: AISidebarMessageBubble = null
 var _auto_scroll_enabled: bool = true
+var _welcome_card: AISidebarWelcomeCard = null
+var _thinking_timer: Timer = null
+var _thinking_elapsed_sec: int = 0
 
 var _active_mention_suggestions: Array[Dictionary] = []
 var _active_mention_query_info: Dictionary = {}
@@ -108,6 +112,10 @@ var _active_slash_query_info: Dictionary = {}
 var _session_base_messages: Array = []
 
 func _exit_tree() -> void:
+	_stop_thinking_timer()
+	if _thinking_timer and is_instance_valid(_thinking_timer):
+		_thinking_timer.queue_free()
+		_thinking_timer = null
 	if provider and provider.has_method("stop_process"):
 		provider.stop_process()
 
@@ -879,6 +887,7 @@ func _start_new_chat_session() -> void:
 		
 	_clear_all_queue()
 	_clear_ui_stream()
+	_show_welcome_card_if_empty()
 	_update_header_title()
 	if history_panel:
 		history_panel.set_active_session(current_session.id)
@@ -916,6 +925,7 @@ func _load_session_by_id(session_id: String) -> void:
 	_clear_all_queue()
 	_clear_ui_stream()
 	_rebuild_ui_stream_from_session(loaded)
+	_show_welcome_card_if_empty()
 	_update_header_title()
 	if history_panel:
 		history_panel.set_active_session(loaded.id)
@@ -1015,6 +1025,51 @@ func _clear_ui_stream() -> void:
 	_current_runtime_card = null
 	_current_approval_card = null
 	_current_assistant_bubble = null
+	_welcome_card = null
+
+func _show_welcome_card_if_empty() -> void:
+	if current_session == null or current_session.messages.is_empty():
+		if _welcome_card == null or not is_instance_valid(_welcome_card):
+			_welcome_card = AISidebarWelcomeCard.new()
+			_welcome_card.prompt_selected.connect(_on_welcome_prompt_selected)
+			_add_stream_component(_welcome_card)
+
+func _hide_welcome_card() -> void:
+	if _welcome_card and is_instance_valid(_welcome_card):
+		_welcome_card.queue_free()
+		_welcome_card = null
+
+func _on_welcome_prompt_selected(prompt_text: String) -> void:
+	if input_field:
+		input_field.text = prompt_text
+		input_field.grab_focus()
+		input_field.set_caret_column(prompt_text.length())
+
+func _setup_thinking_timer() -> void:
+	if _thinking_timer != null:
+		return
+	_thinking_timer = Timer.new()
+	_thinking_timer.wait_time = 1.0
+	_thinking_timer.one_shot = false
+	_thinking_timer.timeout.connect(_on_thinking_tick)
+	add_child(_thinking_timer)
+
+func _start_thinking_timer() -> void:
+	_setup_thinking_timer()
+	_thinking_elapsed_sec = 0
+	_thinking_timer.start()
+
+func _stop_thinking_timer() -> void:
+	if _thinking_timer and is_instance_valid(_thinking_timer):
+		_thinking_timer.stop()
+	_thinking_elapsed_sec = 0
+
+func _on_thinking_tick() -> void:
+	_thinking_elapsed_sec += 1
+	if _current_assistant_bubble and is_instance_valid(_current_assistant_bubble):
+		if _current_assistant_bubble.text_content.begins_with("Düşünülüyor"):
+			_current_assistant_bubble.set_message("assistant", "Düşünülüyor (%ds)..." % _thinking_elapsed_sec)
+	set_status_badge("Thinking (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
 
 func _update_header_title() -> void:
 	if title_label:
@@ -1144,6 +1199,7 @@ func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -
 		_start_task_prompt(prompt, display_prompt)
 
 func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision_inputs: Array = []) -> void:
+	_hide_welcome_card()
 	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
 	last_user_prompt = final_display
 	_current_activity_group = null
@@ -1291,21 +1347,27 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 	update_ui_language()
 	match new_state:
 		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
+			_stop_thinking_timer()
 			var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
 			set_status_badge(state_desc + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
 		AISidebarAgentRunner.AgentState.PLANNING:
+			_start_thinking_timer()
 			set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
 			if _current_assistant_bubble == null or not is_instance_valid(_current_assistant_bubble):
 				_current_assistant_bubble = AISidebarMessageBubble.new("assistant", "Düşünülüyor...")
 				_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
 				_add_stream_component(_current_assistant_bubble)
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
+			_stop_thinking_timer()
 			set_status_badge("Waiting Approval", AISidebarTheme.COLOR_WARNING)
 		AISidebarAgentRunner.AgentState.RUNNING_GAME:
+			_stop_thinking_timer()
 			set_status_badge("Running Game", AISidebarTheme.COLOR_ACCENT)
 		AISidebarAgentRunner.AgentState.DEBUGGING:
+			_stop_thinking_timer()
 			set_status_badge("Debugging", AISidebarTheme.COLOR_ERROR)
 		AISidebarAgentRunner.AgentState.ERROR:
+			_stop_thinking_timer()
 			set_status_badge(state_desc, AISidebarTheme.COLOR_ERROR)
 		_:
 			set_status_badge(state_desc, AISidebarTheme.COLOR_WARNING)
@@ -1314,13 +1376,14 @@ func _on_agent_thinking_received(thinking: String) -> void:
 	pass
 
 func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> void:
+	_stop_thinking_timer()
 	if not text_delta.is_empty():
 		if _current_activity_group:
 			_current_activity_group.complete_group()
 			_current_activity_group = null
 			
 		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
-			if _current_assistant_bubble.text_content == "Düşünülüyor...":
+			if _current_assistant_bubble.text_content.begins_with("Düşünülüyor"):
 				_current_assistant_bubble.set_message("assistant", text_delta)
 			else:
 				_current_assistant_bubble.append_text(text_delta)
