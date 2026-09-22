@@ -349,6 +349,11 @@ static func export_single_task_chronological(task: Dictionary) -> String:
 	lines.append("- **Export Date:** " + Time.get_datetime_string_from_system())
 	lines.append("- **Status:** `" + str(task.get("status", "unknown")) + "`")
 	lines.append("")
+	_append_task_timeline(lines, task)
+	return "\n".join(lines)
+
+## Kronolojik timeline + checklist + completion (tek task ve full-chat ortak).
+static func _append_task_timeline(lines: PackedStringArray, task: Dictionary) -> void:
 	lines.append("## Timeline")
 	lines.append("")
 	var evs = task.get("events", [])
@@ -358,6 +363,28 @@ static func export_single_task_chronological(task: Dictionary) -> String:
 				_append_timeline_event(e, lines)
 	_append_checklist_section(lines, latest_checklist_snapshot(task))
 	_append_completion_section(lines, task, str(task.get("status", "unknown")))
+
+## Full-chat kronolojik export (Copy Chat kaynağı): Task 1 → Task 2 → ...
+## Everything Export gruplu formatına dokunmaz.
+static func export_full_chat_chronological(tasks: Array) -> String:
+	var lines: PackedStringArray = []
+	lines.append("# 💬 Chat Transcript")
+	lines.append("")
+	lines.append("- **Export Date:** " + Time.get_datetime_string_from_system())
+	lines.append("- **Total Tasks:** " + str(tasks.size() if tasks != null else 0))
+	lines.append("")
+	if tasks == null or tasks.is_empty():
+		return "\n".join(lines)
+	var idx = 0
+	for task in tasks:
+		if not (task is Dictionary):
+			continue
+		idx += 1
+		lines.append("## Task %d — %s `%s`" % [idx, _rx(str((task as Dictionary).get("display_prompt", (task as Dictionary).get("prompt", "(untitled)"))).strip_edges().left(80)), str((task as Dictionary).get("status", "unknown"))])
+		lines.append("")
+		_append_task_timeline(lines, task)
+		lines.append("---")
+		lines.append("")
 	return "\n".join(lines)
 
 ## Tek event'i timeline satır(lar)ı olarak yazar (redaction/truncation korunur).

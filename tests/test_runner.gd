@@ -64,6 +64,7 @@ const TestCopyTaskChecklist = preload("res://tests/test_copy_task_checklist.gd")
 const TestPerformanceTelemetry = preload("res://tests/test_performance_telemetry.gd")
 const TestBenchmarkReadiness = preload("res://tests/test_benchmark_readiness.gd")
 const TestTaskCopyOrder = preload("res://tests/test_task_copy_order.gd")
+const TestCopyChat = preload("res://tests/test_copy_chat.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -133,7 +134,8 @@ func _init() -> void:
 		TestCopyTaskChecklist,
 		TestPerformanceTelemetry,
 		TestBenchmarkReadiness,
-		TestTaskCopyOrder
+		TestTaskCopyOrder,
+		TestCopyChat
 	]
 	
 	var total_passed = 0

@@ -223,7 +223,7 @@ func _ready() -> void:
 	if export_btn:
 		export_btn.pressed.connect(_on_export_pressed)
 	if copy_task_btn:
-		copy_task_btn.pressed.connect(_on_copy_task_pressed)
+		copy_task_btn.pressed.connect(_on_copy_chat_pressed)
 	if input_field:
 		input_field.gui_input.connect(_on_input_gui_input)
 		input_field.text_changed.connect(_on_input_text_changed)
@@ -516,7 +516,7 @@ func update_ui_language() -> void:
 		export_btn.tooltip_text = "Sohbeti Dışa Aktar / Kopyala (Export Chat)"
 	if copy_task_btn:
 		AISidebarIconHelper.apply_icon(copy_task_btn, "copy")
-		copy_task_btn.tooltip_text = "Aktif/Son Task transcriptini kopyala (Copy Current Task)"
+		copy_task_btn.tooltip_text = "Tüm sohbet transcriptini kopyala (Copy Chat)"
 	if history_btn:
 		AISidebarIconHelper.apply_icon(history_btn, "history")
 		history_btn.text = "" if history_btn.icon else "Hist"
@@ -634,15 +634,17 @@ func _on_export_pressed() -> void:
 					status_badge.text = prev
 			)
 
-## Copy Current Task: yalnızca aktif (yoksa son biten) task transcriptini panoya kopyalar.
-func _on_copy_task_pressed() -> void:
+## Copy Chat: tüm taskların kronolojik transcriptini panoya kopyalar.
+func _on_copy_chat_pressed() -> void:
 	if not agent_context:
 		return
-	var task = agent_context.get_transcript().get_current_task()
-	if task.is_empty():
-		_flash_status_text("No task yet")
+	var tasks = agent_context.get_transcript().to_data()
+	if tasks.is_empty() and current_session and not current_session.transcript_tasks.is_empty():
+		tasks = current_session.transcript_tasks.duplicate(true)
+	if tasks.is_empty():
+		_flash_status_text("No chat yet")
 		return
-	var md = AISidebarChatExporter.export_single_task_chronological(task)
+	var md = AISidebarChatExporter.export_full_chat_chronological(tasks)
 	DisplayServer.clipboard_set(md)
 	if copy_task_btn:
 		copy_task_btn.text = "Copied"
@@ -653,7 +655,7 @@ func _on_copy_task_pressed() -> void:
 				if is_instance_valid(copy_task_btn):
 					copy_task_btn.text = ""
 			)
-	_flash_status_text("Task copied")
+	_flash_status_text("Chat copied")
 
 func _flash_status_text(txt: String) -> void:
 	if not status_badge:
