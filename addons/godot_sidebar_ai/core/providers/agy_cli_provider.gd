@@ -8,6 +8,19 @@ class_name AISidebarAGYProvider
 
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 
+## AGY alt sureci hazirlik durumu (readiness state machine).
+##
+## NEDEN GEREKLI:
+##   OS.execute_with_pipe() ~8 ms'de doner, ancak AGY stream-json 'init'
+##   handshake'ini ~4-23 s'de tamamlar ve bu sure boyunca stdin'i OKUMAZ.
+##   Windows pipe tamponu sinirlidir (~4 KB); handshake bitmeden buyuk bir
+##   istek yazilirsa store_string() ANA THREAD'i bloklar (olculdu: 23.7 s
+##   -> editor donar, caret blink etmez). Bu yuzden READY olmadan yazma YAPILMAZ.
+enum AgyState { STARTING, INITIALIZING, READY }
+
+## Hazirlik durumu degistiginde yayilir (UI durum rozetine baglanir).
+signal readiness_changed(state: int, message: String)
+
 const OFFICIAL_MODELS: Array = [
 	"gemini-3.8-flash-low",
 	"gemini-3.8-flash-medium",
@@ -32,6 +45,13 @@ var _reader_thread: Thread = null
 var _is_reading: bool = false
 var _current_turn_text: String = ""
 var _sandbox_dir: String = ""
+var _state: int = AgyState.STARTING
+var _pending_payload: String = ""
+var _has_pending: bool = false
+## Proses jenerasyonu: her stop_process()'te artar. Reader thread bu degeri
+## yakalayarak call_deferred eder; eski prosesin gecikmis 'init' bildirimi
+## yeni prosesi YANLISLIKLA READY isaretleyemez (model degisimi / restart).
+var _generation: int = 0
 
 func _init() -> void:
 	_ensure_sandbox_dir()
@@ -91,6 +111,11 @@ func stop_process() -> void:
 		
 	_pipe_dict.clear()
 	_active_model = ""
+	_state = AgyState.STARTING
+	_pending_payload = ""
+	_has_pending = false
+	# Bu ana kadar yayilmis tum reader-thread bildirimlerini gecersiz kil.
+	_generation += 1
 
 func pre_warm() -> void:
 	var cfg = AISidebarConfig.load_config()
@@ -125,11 +150,19 @@ func _ensure_process(target_model: String) -> bool:
 	_active_model = target_model
 	_is_reading = true
 
+	# ONEMLI: 'init' handshake TAMAMLANMADAN READY SAYILMAZ.
+	# AGY stdout'a {"event":"init",...} yayinlayana kadar stdin okunmaz,
+	# bu yuzden bu asamada yazma yapilirsa ana thread bloklanir.
+	# NOT: _set_state kullanilir ki UI 'AGY hazirlaniyor...' rozetini
+	# pre_warm() sirasinda da gostersin.
+	_set_state(AgyState.INITIALIZING, "")
+
 	_reader_thread = Thread.new()
-	_reader_thread.start(_read_worker)
+	# Generation'i thread'e bagla: restart sonrasi eski 'init' yok sayilir.
+	_reader_thread.start(_read_worker.bind(_generation))
 	return true
 
-func _read_worker() -> void:
+func _read_worker(gen: int) -> void:
 	while _is_reading and _stdio != null and _pid > 0 and OS.is_process_running(_pid):
 		var line = _stdio.get_line()
 		if line.is_empty() and not OS.is_process_running(_pid):
@@ -148,7 +181,11 @@ func _read_worker() -> void:
 			continue
 
 		var evt = json_obj.get("event", "")
-		if evt == "step_update":
+		if evt == "init":
+			# AGY stream-json handshake'i TAMAMLANDI: gercek hazirlik sinyali.
+			# Bu andan itibaren AGY stdin'i okur ve yazma bloklamaz.
+			call_deferred("_on_agy_ready", gen)
+		elif evt == "step_update":
 			var step_update = json_obj.get("step_update", {})
 			var text_delta = step_update.get("text_delta", "")
 			if text_delta != null and not str(text_delta).is_empty():
@@ -167,6 +204,11 @@ func _read_worker() -> void:
 				call_deferred("_safe_emit_response", clean_text, "", parsed_tools)
 			_current_turn_text = ""
 
+	# Bekleyen istek varken okuma dongusu beklenmedik sekilde bittiyse
+	# (or. AGY 'init' gonderemeden oldu) istegi sessizce kaybetme.
+	if _has_pending and _is_reading:
+		call_deferred("_on_agy_start_failed", gen)
+
 func _safe_emit_chunk(delta_text: String, delta_thinking: String) -> void:
 	chunk_received.emit(delta_text, delta_thinking)
 
@@ -175,6 +217,63 @@ func _safe_emit_response(text_content: String, thinking_content: String, tool_ca
 
 func _safe_emit_error(msg: String) -> void:
 	error_occurred.emit(msg)
+
+func _set_state(new_state: int, message: String) -> void:
+	if _state == new_state:
+		return
+	_state = new_state
+	readiness_changed.emit(new_state, message)
+
+## AGY stdin'i yazmaya hazir mi (yani 'init' handshake'i tamamlandi mi)?
+func is_ready() -> bool:
+	return _state == AgyState.READY
+
+## AGY 'init' handshake'ini tamamlayamadan sonlandi; bekleyen istek iptal edilir.
+func _on_agy_start_failed(gen: int) -> void:
+	# Eski bir prosesin bildirimi ise yok say (restart yarisi).
+	if gen != _generation:
+		return
+	_has_pending = false
+	_pending_payload = ""
+	_set_state(AgyState.STARTING, "")
+	error_occurred.emit("Antigravity CLI ('agy') başlatılamadı (init tamamlanmadı).")
+
+## Reader thread -> ana thread kopru: AGY 'init' handshake'i tamamlandi.
+## call_deferred ile cagrilir (reader thread'den sinyal yaymak guvenli degil).
+func _on_agy_ready(gen: int) -> void:
+	# Eski bir prosesin gecikmis 'init' bildirimi ise yok say.
+	# Aksi halde model degisimi/restart sonrasi yeni proses READY sanilir
+	# ve handshake bitmeden yazilarak ana thread bloklanirdi.
+	if gen != _generation:
+		return
+	_set_state(AgyState.READY, "")
+	# Bekleyen istek varsa (kullanici READY olmadan gonderdiyse) simdi gonder.
+	if _has_pending:
+		var payload = _pending_payload
+		_pending_payload = ""
+		_has_pending = false
+		_write_payload(payload)
+
+## READY ise dogrudan yazar; degilse istegi TEK bir pending olarak kuyruga alir.
+## Boylece pipe tamponu dolmaz ve ana thread bloklanmaz.
+func _write_or_queue(payload: String) -> void:
+	if _state == AgyState.READY:
+		_write_payload(payload)
+	else:
+		# Yalnizca en son istek tutulur (tek pending request).
+		_pending_payload = payload
+		_has_pending = true
+		# Ayni durumda olsak bile UI'ya bildir: kullaniciya "hazirlaniyor"
+		# geri bildirimi verilmesi bekleyen istege baglidir, duruma degil.
+		readiness_changed.emit(AgyState.INITIALIZING, "")
+
+## Gercek yazma. Yalnizca READY durumunda cagrilir.
+func _write_payload(payload: String) -> void:
+	if _stdio:
+		_stdio.store_string(payload)
+		_stdio.flush()
+	else:
+		error_occurred.emit("Antigravity CLI stdio pipe bağlantısı kurulamadı.")
 
 func send_chat(messages: Array, tools_schema: Array) -> void:
 	send_multimodal_chat(messages, tools_schema, [])
@@ -202,11 +301,11 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 	}
 	var payload_str = JSON.stringify(payload_dict) + "\n"
 
-	if _stdio:
-		_stdio.store_string(payload_str)
-		_stdio.flush()
-	else:
-		error_occurred.emit("Antigravity CLI stdio pipe bağlantısı kurulamadı.")
+	# KRITIK: AGY READY DEGILSE store_string() CAGRILMAZ.
+	# Handshake surerken yazmak pipe tamponunu doldurur ve ana thread'i
+	# bloklar (olculdu: 23.7 s editor donmasi). Bunun yerine kuyruga alinir
+	# ve _on_agy_ready() geldiginde otomatik gonderilir.
+	_write_or_queue(payload_str)
 
 func _format_prompt(messages: Array, tools_schema: Array, images: Array, cfg: Dictionary) -> String:
 	var buffer: PackedStringArray = []

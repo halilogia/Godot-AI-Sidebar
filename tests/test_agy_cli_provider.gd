@@ -101,6 +101,56 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("AGY Provider multimodal rejection guard failed: " + str(captured_errors))
 
+	# Test 9: Readiness baslangic durumu STARTING olmali (READY varsayilmamali)
+	if not prov.is_ready() and prov._state == AISidebarAGYProvider.AgyState.STARTING:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("AGY baslangic durumu STARTING degil: state=" + str(prov._state))
+
+	# Test 10: READY olmadan yazma KUYRUGA alinir; store_string CAGRILMAZ
+	# (_stdio null oldugu icin yazma denenseydi hata yayilirdi -> hata beklenmiyor)
+	var readiness_errors: Array = []
+	var on_readiness_err = func(err: String):
+		readiness_errors.append(err)
+	prov.error_occurred.connect(on_readiness_err)
+	prov._write_or_queue("payload-A")
+	prov.error_occurred.disconnect(on_readiness_err)
+	if not prov.is_ready() and prov._has_pending and prov._pending_payload == "payload-A" and readiness_errors.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("READY olmadan istek kuyruga alinmadi: %s" % str({"ready": prov.is_ready(), "pending": prov._has_pending, "payload": prov._pending_payload, "errors": readiness_errors}))
+
+	# Test 11: Ayni anda YALNIZCA TEK pending request tutulur (en son istek kazanir)
+	prov._write_or_queue("payload-B")
+	if prov._has_pending and prov._pending_payload == "payload-B":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Tek pending request kuralı bozuldu: " + str(prov._pending_payload))
+
+	# Test 12: Eski prosesin (stale generation) 'init' bildirimi YOK SAYILMALI
+	prov._on_agy_ready(prov._generation + 99)
+	if not prov.is_ready() and prov._has_pending:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Stale 'init' bildirimi yanlislikla READY yapti (restart yarisi).")
+
+	# Test 13: Guncel generation 'init' bildirimi READY yapar ve pending istegi bosaltir
+	var readiness_states: Array = []
+	var on_readiness = func(st: int, _msg: String):
+		readiness_states.append(st)
+	prov.readiness_changed.connect(on_readiness)
+	prov._on_agy_ready(prov._generation)
+	prov.readiness_changed.disconnect(on_readiness)
+	if prov.is_ready() and not prov._has_pending and prov._pending_payload.is_empty() and readiness_states.has(AISidebarAGYProvider.AgyState.READY):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Guncel 'init' bildirimi READY yapmadi veya pending temizlenmedi: " + str(readiness_states))
+
 	# Temizlik
 	prov.stop_process()
 

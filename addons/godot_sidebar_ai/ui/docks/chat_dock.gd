@@ -104,6 +104,9 @@ var _auto_scroll_enabled: bool = true
 var _welcome_card: AISidebarWelcomeCard = null
 var _thinking_timer: Timer = null
 var _thinking_elapsed_sec: int = 0
+## AGY alt sureci 'init' handshake'ini tamamlayana kadar true kalir.
+## Yalnizca status rozeti metnini bilgilendirici yapar; thinking timer'i BOZMAZ.
+var _agy_preparing: bool = false
 
 var _active_mention_suggestions: Array[Dictionary] = []
 var _active_mention_query_info: Dictionary = {}
@@ -128,6 +131,10 @@ func _setup_provider() -> void:
 			provider.stop_process()
 		if provider.models_fetched.is_connected(_on_models_fetched):
 			provider.models_fetched.disconnect(_on_models_fetched)
+		if provider.has_signal("readiness_changed") and provider.readiness_changed.is_connected(_on_provider_readiness_changed):
+			provider.readiness_changed.disconnect(_on_provider_readiness_changed)
+		
+	_agy_preparing = false
 			
 	if prov_type == "openai_compatible":
 		if not network_manager:
@@ -138,6 +145,8 @@ func _setup_provider() -> void:
 		provider = AISidebarAGYProvider.new()
 		
 	provider.models_fetched.connect(_on_models_fetched)
+	if provider.has_signal("readiness_changed"):
+		provider.readiness_changed.connect(_on_provider_readiness_changed)
 	if provider.has_method("pre_warm"):
 		provider.pre_warm()
 	if agent_runner:
@@ -1069,7 +1078,28 @@ func _on_thinking_tick() -> void:
 	if _current_assistant_bubble and is_instance_valid(_current_assistant_bubble):
 		if _current_assistant_bubble.text_content.begins_with("Düşünülüyor"):
 			_current_assistant_bubble.set_message("assistant", "Düşünülüyor (%ds)..." % _thinking_elapsed_sec)
-	set_status_badge("Thinking (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
+	# AGY 'init' handshake'i surerken durum rozetinde hazirlik bilgisi gosterilir.
+	# Thinking timer DURDURULMAZ; yalnizca rozet metni degisir.
+	if _agy_preparing:
+		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
+	else:
+		set_status_badge("Thinking (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
+
+## AGY provider hazirlik durumu degisti (STARTING / INITIALIZING / READY).
+## Yalnizca bilgilendirici rozet metni guncellenir; ajan durumu DEGISTIRILMEZ.
+func _on_provider_readiness_changed(state: int, _message: String) -> void:
+	if not provider or not provider.has_method("is_ready"):
+		return
+	_agy_preparing = not provider.is_ready()
+	if _agy_preparing:
+		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
+	elif agent_runner and agent_runner.is_running():
+		# Ajan calisiyor: thinking rozetine geri don (timer zaten isliyor).
+		set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
+	else:
+		# Ajan beklemede: hazirlik bitti, bos durum rozetini geri yukle.
+		var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
+		set_status_badge(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
 
 func _update_header_title() -> void:
 	if title_label:
