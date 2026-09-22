@@ -36,10 +36,14 @@ static func run() -> Dictionary:
 	var act_row = grp._items_container.get_child(0) if grp._items_container.get_child_count() > 0 else null
 	var act_lbl: RichTextLabel = null
 	if act_row:
-		for c in act_row.get_children():
-			if c is RichTextLabel:
-				act_lbl = c
+		var search_nodes: Array = [act_row]
+		while not search_nodes.is_empty():
+			var n = search_nodes.pop_back()
+			if n is RichTextLabel and (n as RichTextLabel).selection_enabled and (n as CanvasItem).visible:
+				act_lbl = n
 				break
+			for c in (n as Node).get_children():
+				search_nodes.append(c)
 	var is_act_selectable = act_lbl and act_lbl.selection_enabled and act_lbl.context_menu_enabled and act_lbl.shortcut_keys_enabled
 	if grp._items.size() == 1 and grp.is_expanded and is_act_selectable:
 		passed += 1

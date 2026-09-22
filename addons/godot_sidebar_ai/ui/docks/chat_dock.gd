@@ -98,6 +98,10 @@ var _attachment_label: Label = null
 var _attachment_remove_btn: Button = null
 
 var _current_activity_group: AISidebarActivityGroup = null
+## Running satırının indeksi (tool_completed geldiğinde yerinde güncellenir, satır çoğalmaz).
+var _activity_running_idx: int = -1
+var _activity_running_tool: String = ""
+var _activity_tool_start_msec: int = 0
 var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
 var _current_plan_card: AISidebarPlanCard = null
@@ -1040,6 +1044,9 @@ func _clear_ui_stream() -> void:
 		for child in message_stream.get_children():
 			child.queue_free()
 	_current_activity_group = null
+	_activity_running_idx = -1
+	_activity_running_tool = ""
+	_activity_tool_start_msec = 0
 	_current_runtime_card = null
 	_current_approval_card = null
 	_current_plan_card = null
@@ -1493,27 +1500,71 @@ func _on_agent_text_received(role: String, text: String) -> void:
 		_add_stream_component(bubble)
 
 func _ensure_activity_group() -> AISidebarActivityGroup:
-	if not _current_activity_group:
+	if not _current_activity_group or not is_instance_valid(_current_activity_group) or not _current_activity_group.is_active:
 		_current_activity_group = AISidebarActivityGroup.new(true)
 		_current_activity_group.meta_clicked.connect(_on_meta_clicked)
 		_add_stream_component(_current_activity_group)
+		_activity_running_idx = -1
+		_activity_running_tool = ""
 	return _current_activity_group
+
+func _build_tech_details(tool_name: String, args: Dictionary, result: Dictionary) -> String:
+	var args_txt = AISidebarActivityGroup.redact_secrets(JSON.stringify(args))
+	var res_txt = AISidebarActivityGroup.redact_secrets(JSON.stringify(result))
+	if args_txt.length() > 1200:
+		args_txt = args_txt.left(1200) + "..."
+	if res_txt.length() > 1200:
+		res_txt = res_txt.left(1200) + "..."
+	return "tool: " + tool_name + "\nargs: " + args_txt + "\nresult: " + res_txt
+
+func _extract_tool_error(result: Dictionary) -> String:
+	var err = result.get("error", {})
+	var raw = ""
+	if err is Dictionary:
+		raw = str(err.get("message", err.get("code", "")))
+	elif err is String:
+		raw = err
+	if raw.strip_edges().is_empty():
+		raw = str(result.get("message", ""))
+	return AISidebarActivityGroup.summarize_error(AISidebarActivityGroup.redact_secrets(raw))
 
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_current_assistant_bubble = null
+	# ask_user / propose_plan kart olarak gösterilir; activity satırı şişirmesin.
+	if tool_name == "ask_user" or tool_name == "propose_plan":
+		return
 	var grp = _ensure_activity_group()
+	grp.set_expanded(true)
 	var human_title = _get_human_tool_title(tool_name, args)
-	grp.add_activity("▶", human_title, -1, JSON.stringify(args))
+	var details = "tool: " + tool_name + "\nargs: " + AISidebarActivityGroup.redact_secrets(JSON.stringify(args))
+	if details.length() > 1500:
+		details = details.left(1500) + "..."
+	_activity_running_tool = tool_name
+	_activity_tool_start_msec = Time.get_ticks_msec()
+	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
 
 func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
+	if tool_name == "ask_user" or tool_name == "propose_plan":
+		return
 	var grp = _ensure_activity_group()
-	var is_ok = result.get("success", false)
-	var icon = "✓" if is_ok else "❌"
+	var is_ok = bool(result.get("success", false))
+	var icon = "✓" if is_ok else "✕"
 	var human_title = _get_human_tool_title(tool_name, {})
-	var msg = result.get("message", "")
-	if not msg.is_empty():
+	var msg = str(result.get("message", "")).strip_edges()
+	if not msg.is_empty() and msg.length() < 200 and not msg.contains("\"tool_calls\""):
 		human_title = msg
-	grp.add_activity(icon, human_title, 100, JSON.stringify(result))
+	var elapsed = 100
+	if _activity_tool_start_msec > 0:
+		elapsed = Time.get_ticks_msec() - _activity_tool_start_msec
+	_activity_tool_start_msec = 0
+	var err_summary = "" if is_ok else _extract_tool_error(result)
+	var details = _build_tech_details(tool_name, {}, result)
+	if _activity_running_idx >= 0 and _activity_running_tool == tool_name and _activity_running_idx < grp.get_item_count():
+		grp.update_activity(_activity_running_idx, icon, human_title, elapsed, details, err_summary)
+	else:
+		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
+	_activity_running_idx = -1
+	_activity_running_tool = ""
 
 func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
 	match tool_name:
@@ -1543,18 +1594,36 @@ func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
 		"get_runtime_errors":
 			return "Checked runtime logs"
 		"delete_node":
-			return "Deleted node: " + args.get("node_path", "")
+			return "Deleted node: " + str(args.get("node_path", ""))
+		"replace_file_content":
+			var rp = str(args.get("file_path", ""))
+			return "Updated " + rp.get_file() if not rp.is_empty() else "Updated script"
+		"read_file":
+			return "Read file: " + str(args.get("file_path", "")).get_file()
+		"list_files":
+			return "Listed files: " + str(args.get("directory", ""))
+		"search_tools":
+			return "Searched available tools"
+		"ask_user":
+			return "Asked clarification"
+		"propose_plan":
+			return "Proposed implementation plan"
 		_:
-			return tool_name
+			return str(tool_name).replace("_", " ")
 
 func _on_agent_clarification_requested(question: String, options: Array, clarification_id: String) -> void:
 	_current_assistant_bubble = null
+	_activity_running_idx = -1
+	_activity_running_tool = ""
 	if _current_activity_group:
+		_current_activity_group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
 		_current_activity_group.complete_group()
 		_current_activity_group = null
-		
+
 	var card = AISidebarClarificationCard.new(question, options)
 	card.response_submitted.connect(func(ans: String):
+		var grp = _ensure_activity_group()
+		grp.add_activity("✓", "User selected: " + AISidebarActivityGroup.summarize_error(ans, 120), 50, "answer: " + str(ans).left(500))
 		if agent_runner:
 			agent_runner.submit_clarification_response(ans)
 	)
@@ -1681,10 +1750,17 @@ func _on_agent_debugging_started(summary: String) -> void:
 
 func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
 	set_status_badge("Step " + str(current_step) + " / " + str(max_steps), AISidebarTheme.COLOR_ACCENT)
+	if _current_activity_group and is_instance_valid(_current_activity_group):
+		_current_activity_group.set_step_progress(current_step, max_steps)
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_current_assistant_bubble = null
+	_activity_running_idx = -1
+	_activity_running_tool = ""
 	if _current_activity_group:
+		var stop_reason = str(metrics.get("stop_reason", ""))
+		if not stop_reason.is_empty():
+			_current_activity_group.set_stop_reason(stop_reason)
 		_current_activity_group.complete_group()
 		_current_activity_group = null
 		
@@ -1701,11 +1777,40 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_check_and_dispatch_next_queue()
 	_last_sent_vision_input = null
 
+## Limit / durma nedenini activity'de görünür satır + başlık olarak işler.
+func report_task_stop(stop_reason: String, keep_open: bool = true) -> void:
+	var grp = _ensure_activity_group()
+	grp.add_activity("✕", "Task stopped\nError: " + AISidebarActivityGroup.summarize_error(stop_reason), 0, "stop_reason: " + stop_reason.left(500))
+	grp.set_stop_reason(stop_reason)
+	grp.complete_group_keep_open(keep_open)
+	if keep_open:
+		_current_activity_group = grp
+	else:
+		_current_activity_group = null
+
+func is_task_limit_error(err_msg: String) -> bool:
+	var s = err_msg.to_lower()
+	return s.contains("limit") or s.contains("maksimum ajan ad")
+
+func format_limit_stop_reason(current_step: int, max_steps: int) -> String:
+	return "Tool-call limit reached: " + str(current_step) + "/" + str(max_steps)
+
 func _on_agent_error(err_msg: String) -> void:
 	_current_assistant_bubble = null
+	_activity_running_idx = -1
+	_activity_running_tool = ""
 	if _current_activity_group:
-		_current_activity_group.complete_group()
-		_current_activity_group = null
+		if is_task_limit_error(err_msg):
+			var grp = _current_activity_group
+			grp.add_activity("✕", "Task stopped\nError: " + AISidebarActivityGroup.summarize_error(err_msg), 0, "stop_reason: " + err_msg.left(500))
+			grp.set_stop_reason(err_msg)
+			grp.complete_group_keep_open(true)
+			# keep_open: limit satırı görünür kalsın diye grup referansı korunur,
+			# sıradaki task yeni grup açar (ensure içinde is_active kontrolü yok;
+			# task_completed / yeni executing yeni grup kurar).
+		else:
+			_current_activity_group.complete_group()
+			_current_activity_group = null
 		
 	# Hata durumunda veya model reddettiğinde görsel ekinin kaybolmasını önle (P2 UX Fix)
 	if _last_sent_vision_input != null and _attached_vision_input == null:

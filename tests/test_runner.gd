@@ -58,6 +58,7 @@ const TestUITelemetry = preload("res://tests/test_ui_telemetry.gd")
 const TestRuntimeInspection = preload("res://tests/test_runtime_inspection.gd")
 const TestImplementationPlanning = preload("res://tests/test_implementation_planning.gd")
 const TestStreamEnvelopeGuard = preload("res://tests/test_stream_envelope_guard.gd")
+const TestActivityProgressUX = preload("res://tests/test_activity_progress_ux.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -121,7 +122,8 @@ func _init() -> void:
 		TestUITelemetry,
 		TestRuntimeInspection,
 		TestImplementationPlanning,
-		TestStreamEnvelopeGuard
+		TestStreamEnvelopeGuard,
+		TestActivityProgressUX
 	]
 	
 	var total_passed = 0
