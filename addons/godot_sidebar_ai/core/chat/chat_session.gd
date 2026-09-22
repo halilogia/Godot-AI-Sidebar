@@ -12,6 +12,8 @@ var updated_at: String = ""
 var messages: Array = []
 var telemetry: Dictionary = {}
 var metadata: Dictionary = {}
+## Compaction-proof task transcript (Everything Export kaynağı, geriye uyumlu).
+var transcript_tasks: Array = []
 
 func _init(p_id: String = "", p_title: String = "New Chat") -> void:
 	var now = Time.get_datetime_string_from_system()
@@ -55,7 +57,8 @@ func to_dict() -> Dictionary:
 		"updated_at": updated_at,
 		"messages": messages,
 		"telemetry": telemetry,
-		"metadata": metadata
+		"metadata": metadata,
+		"transcript_tasks": transcript_tasks
 	}
 
 static func from_dict(d: Dictionary):
@@ -66,4 +69,6 @@ static func from_dict(d: Dictionary):
 	session.messages = d.get("messages", []).duplicate(true)
 	session.telemetry = d.get("telemetry", {}).duplicate(true)
 	session.metadata = d.get("metadata", {}).duplicate(true)
+	var tt = d.get("transcript_tasks", [])
+	session.transcript_tasks = tt.duplicate(true) if tt is Array else []
 	return session

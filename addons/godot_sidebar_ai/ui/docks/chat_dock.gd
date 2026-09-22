@@ -571,12 +571,16 @@ func _on_approve_mode_pressed() -> void:
 
 func _on_export_pressed() -> void:
 	var msgs: Array = []
+	var transcript_tasks: Array = []
 	if agent_context:
 		msgs = agent_context.messages
-		
-	if msgs.is_empty():
+		transcript_tasks = agent_context.get_transcript().to_data()
+	if current_session and not current_session.transcript_tasks.is_empty() and transcript_tasks.is_empty():
+		transcript_tasks = current_session.transcript_tasks.duplicate(true)
+
+	if msgs.is_empty() and transcript_tasks.is_empty():
 		return
-		
+
 	var cfg = AISidebarConfig.load_config()
 	var session_meta = {
 		"model": cfg.get("selected_model", "all"),
@@ -584,9 +588,11 @@ func _on_export_pressed() -> void:
 	}
 	if current_session and not current_session.telemetry.is_empty():
 		session_meta.merge(current_session.telemetry)
-	var md = AISidebarChatExporter.export_to_markdown(msgs, session_meta)
+	var md = AISidebarChatExporter.export_transcript_to_markdown(transcript_tasks, msgs, session_meta)
 	DisplayServer.clipboard_set(md)
 	var save_res = AISidebarChatExporter.save_to_file(md, "md")
+	var js = AISidebarChatExporter.export_transcript_to_json(transcript_tasks, msgs, session_meta)
+	AISidebarChatExporter.save_to_file(js, "json")
 	
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "check")
@@ -920,6 +926,7 @@ func _save_current_session() -> void:
 		var combined = _session_base_messages.duplicate(true)
 		combined.append_array(agent_context.messages)
 		current_session.messages = combined
+		current_session.transcript_tasks = agent_context.get_transcript().to_data()
 	AISidebarChatManager.save_session(current_session)
 	_update_header_title()
 
@@ -941,6 +948,7 @@ func _load_session_by_id(session_id: String) -> void:
 	if agent_context:
 		agent_context.clear()
 		agent_context.messages = loaded.messages.duplicate(true)
+		agent_context.get_transcript().load_data(loaded.transcript_tasks)
 		
 	_clear_all_queue()
 	_clear_ui_stream()
@@ -1261,6 +1269,8 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	_save_current_session()
 	
 	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
+	if agent_context:
+		agent_context.begin_task(prompt_text, final_display)
 	agent_runner.start_task(resolved_ctx["augmented_prompt"], final_display, vision_inputs)
 
 func _update_queue_ui() -> void:
@@ -1355,6 +1365,7 @@ func _on_clear_pressed() -> void:
 	if current_session:
 		current_session.messages.clear()
 		current_session.telemetry.clear()
+		current_session.transcript_tasks.clear()
 		_save_current_session()
 	_clear_all_queue()
 	_clear_ui_stream()
@@ -1542,6 +1553,9 @@ func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_activity_running_tool = tool_name
 	_activity_tool_start_msec = Time.get_ticks_msec()
 	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
+	if agent_context:
+		agent_context.get_transcript().record("tool_executing", {"tool": tool_name, "title": human_title.left(200), "args": AISidebarActivityGroup.redact_secrets(JSON.stringify(args)).left(800)})
+		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Running " + human_title.left(200)})
 
 func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if tool_name == "ask_user" or tool_name == "propose_plan":
@@ -1565,6 +1579,9 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
 	_activity_running_idx = -1
 	_activity_running_tool = ""
+	if agent_context:
+		agent_context.get_transcript().record("tool_completed", {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500)})
+		agent_context.get_transcript().record("activity", {"icon": icon, "title": (human_title + ("" if is_ok else (" — Error: " + err_summary))).left(300)})
 
 func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
 	match tool_name:
@@ -1619,11 +1636,16 @@ func _on_agent_clarification_requested(question: String, options: Array, clarifi
 		_current_activity_group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
 		_current_activity_group.complete_group()
 		_current_activity_group = null
+	if agent_context:
+		agent_context.get_transcript().record("clarification_requested", {"question": question.left(500), "options": options.duplicate(), "id": clarification_id})
 
 	var card = AISidebarClarificationCard.new(question, options)
 	card.response_submitted.connect(func(ans: String):
 		var grp = _ensure_activity_group()
 		grp.add_activity("✓", "User selected: " + AISidebarActivityGroup.summarize_error(ans, 120), 50, "answer: " + str(ans).left(500))
+		if agent_context:
+			agent_context.get_transcript().record("clarification_answered", {"answer": str(ans).left(500)})
+			agent_context.get_transcript().record("activity", {"icon": "✓", "title": ("User selected: " + ans).left(200)})
 		if agent_runner:
 			agent_runner.submit_clarification_response(ans)
 	)
@@ -1647,6 +1669,8 @@ func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISid
 	_current_approval_card.action_rejected.connect(_on_reject_pressed)
 	_current_approval_card.view_diff_requested.connect(_on_view_diff_pressed)
 	_add_stream_component(_current_approval_card)
+	if agent_context:
+		agent_context.get_transcript().record("approval_requested", {"tool": tool_name})
 	# NOT: change_set_dialog otomatik AÇILMAZ; yalnızca kullanıcı karttaki [View Diff] butonuna basarsa açılır.
 
 func _on_approve_pressed() -> void:
@@ -1654,12 +1678,16 @@ func _on_approve_pressed() -> void:
 		_current_approval_card.mark_approved()
 	if pending_change_set:
 		last_applied_change_set = pending_change_set
+	if agent_context:
+		agent_context.get_transcript().record("approval_granted", {"tool": pending_tool_name})
 	if agent_runner:
 		agent_runner.approve_pending_action()
 
 func _on_reject_pressed() -> void:
 	if _current_approval_card and is_instance_valid(_current_approval_card):
 		_current_approval_card.mark_rejected()
+	if agent_context:
+		agent_context.get_transcript().record("approval_rejected", {"tool": pending_tool_name})
 	if agent_runner:
 		agent_runner.reject_pending_action()
 
@@ -1674,6 +1702,19 @@ func _on_agent_plan_proposed(plan) -> void:
 	if not guard_plan_card_integrity(plan):
 		return
 
+	if agent_context:
+		var p_steps = 0
+		var p_files = 0
+		var p_goal = ""
+		if plan.get("steps") is Array:
+			p_steps = (plan.get("steps") as Array).size()
+		if plan.get("affected_files") is Array:
+			p_files = (plan.get("affected_files") as Array).size()
+		if plan.get("goal") != null:
+			p_goal = str(plan.get("goal"))
+		elif plan.get("title") != null:
+			p_goal = str(plan.get("title"))
+		agent_context.get_transcript().record("plan_proposed", {"steps": p_steps, "files": p_files, "goal": p_goal.left(300)})
 	_current_plan_card = AISidebarPlanCard.new(plan)
 	_current_plan_card.plan_applied.connect(_on_plan_applied)
 	_current_plan_card.plan_cancelled.connect(_on_plan_cancelled)
@@ -1691,12 +1732,18 @@ func guard_plan_card_integrity(plan) -> bool:
 func _on_plan_applied() -> void:
 	if _current_plan_card and is_instance_valid(_current_plan_card):
 		_current_plan_card.mark_applied()
+	if agent_context:
+		agent_context.get_transcript().record("plan_approved", {})
+		agent_context.get_transcript().record("activity", {"icon": "✓", "title": "Plan approved by user"})
 	if agent_runner:
 		agent_runner.approve_plan()
 
 func _on_plan_cancelled() -> void:
 	if _current_plan_card and is_instance_valid(_current_plan_card):
 		_current_plan_card.mark_cancelled()
+	if agent_context:
+		agent_context.get_transcript().record("plan_rejected", {"reason": "User cancelled the plan."})
+		agent_context.get_transcript().record("activity", {"icon": "✕", "title": "Plan rejected by user"})
 	if agent_runner:
 		agent_runner.reject_plan()
 
@@ -1727,11 +1774,17 @@ func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
 func _on_agent_verification_started(tool_name: String) -> void:
 	var grp = _ensure_activity_group()
 	grp.add_activity("•", "Verifying " + tool_name + "...", -1)
+	if agent_context:
+		agent_context.get_transcript().record("verification_started", {"tool": tool_name})
+		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Verifying " + tool_name})
 
 func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: String) -> void:
 	var grp = _ensure_activity_group()
 	var icon = "✓" if is_valid else "!"
 	grp.add_activity(icon, "Verification: " + msg, 50)
+	if agent_context:
+		agent_context.get_transcript().record("verification_completed", {"tool": tool_name, "valid": is_valid, "message": msg.left(500)})
+		agent_context.get_transcript().record("activity", {"icon": icon, "title": ("Verification: " + msg).left(300)})
 
 func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 	if not _current_runtime_card:
@@ -1743,10 +1796,14 @@ func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 		_current_runtime_card.add_status("✕", "Runtime Error: " + obs.format_diagnostic_prompt(), "#bf616a")
 	else:
 		_current_runtime_card.add_status("✓", "No runtime errors detected", "#a3be8c")
+	if agent_context:
+		agent_context.get_transcript().record("runtime_observation", {"summary": obs.format_diagnostic_prompt().left(1000), "has_errors": obs.has_errors()})
 
 func _on_agent_debugging_started(summary: String) -> void:
 	var grp = _ensure_activity_group()
 	grp.add_activity("•", "Auto-diagnosing runtime error: " + summary, -1)
+	if agent_context:
+		agent_context.get_transcript().record("debugging_started", {"summary": summary.left(500)})
 
 func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
 	set_status_badge("Step " + str(current_step) + " / " + str(max_steps), AISidebarTheme.COLOR_ACCENT)
@@ -1757,6 +1814,9 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_current_assistant_bubble = null
 	_activity_running_idx = -1
 	_activity_running_tool = ""
+	if agent_context and agent_context.get_transcript().has_running_task():
+		var t_status = "completed" if bool(metrics.get("success", false)) else "failed"
+		agent_context.end_task(t_status, str(metrics.get("stop_reason", "")), metrics)
 	if _current_activity_group:
 		var stop_reason = str(metrics.get("stop_reason", ""))
 		if not stop_reason.is_empty():
@@ -1799,6 +1859,9 @@ func _on_agent_error(err_msg: String) -> void:
 	_current_assistant_bubble = null
 	_activity_running_idx = -1
 	_activity_running_tool = ""
+	if agent_context and agent_context.get_transcript().has_running_task():
+		var e_status = "cancelled" if _is_user_stopped else "failed"
+		agent_context.end_task(e_status, err_msg)
 	if _current_activity_group:
 		if is_task_limit_error(err_msg):
 			var grp = _current_activity_group

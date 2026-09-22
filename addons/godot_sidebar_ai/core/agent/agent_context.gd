@@ -10,13 +10,31 @@ const AISidebarSourceMapper = preload("res://addons/godot_sidebar_ai/core/runtim
 const AISidebarContextCompactor = preload("res://addons/godot_sidebar_ai/core/agent/context_compactor.gd")
 
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
+const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 
 var messages: Array = []
 var recent_actions: Array = []
+## Compaction'a uğramayan tam transcript (Everything Export / Copy Task kaynağı).
+var transcript: AISidebarTaskTranscript = null
+
+func _init() -> void:
+	transcript = AISidebarTaskTranscript.new()
+
+func get_transcript() -> AISidebarTaskTranscript:
+	if transcript == null:
+		transcript = AISidebarTaskTranscript.new()
+	return transcript
+
+func begin_task(prompt: String, display_prompt: String = "") -> String:
+	return get_transcript().begin_task(prompt, display_prompt)
+
+func end_task(status: String, stop_reason: String = "", metrics: Dictionary = {}) -> void:
+	get_transcript().end_task(status, stop_reason, metrics)
 
 func clear() -> void:
 	messages.clear()
 	recent_actions.clear()
+	get_transcript().clear()
 
 func size() -> int:
 	return messages.size()
@@ -37,6 +55,7 @@ func add_user_message(text: String, _grounding: bool = false, display_text: Stri
 				v_parts.append(vi)
 		msg["vision_inputs"] = v_parts
 	messages.append(msg)
+	get_transcript().record("user", {"text": AISidebarTaskTranscript.truncate_text(text, 2000), "display_text": AISidebarTaskTranscript.truncate_text(display_text, 500), "has_images": vision_inputs.size() > 0})
 	_auto_compact_if_needed()
 
 func add_assistant_message(text: String) -> void:
@@ -44,6 +63,7 @@ func add_assistant_message(text: String) -> void:
 		"role": "assistant",
 		"content": text
 	})
+	get_transcript().record("assistant", {"text": AISidebarTaskTranscript.truncate_text(text, 2000)})
 
 ## OpenAI Uyumlu Assistant Tool Call mesajı ekler
 func add_assistant_tool_call_message(text: String, tool_calls: Array) -> void:
@@ -79,8 +99,18 @@ func add_assistant_tool_call_message(text: String, tool_calls: Array) -> void:
 		msg["content"] = text
 	else:
 		msg["content"] = null
-		
+
 	messages.append(msg)
+	var tc_summary: Array = []
+	for tc in tool_calls:
+		var tc_entry = {"name": str(tc.get("name", "")), "id": str(tc.get("id", ""))}
+		# Plan ve clarification içerikleri export için gerekli; diğer araçların
+		# büyük argümanları (dosya içerikleri) transcript'i şişirmesin.
+		var tc_nm = str(tc.get("name", ""))
+		if tc_nm == "propose_plan" or tc_nm == "ask_user":
+			tc_entry["args"] = AISidebarTaskTranscript.truncate_text(JSON.stringify(tc.get("arguments", {})), 4000)
+		tc_summary.append(tc_entry)
+	get_transcript().record("tool_call", {"text": AISidebarTaskTranscript.truncate_text(text, 1000), "calls": tc_summary})
 
 ## OpenAI Uyumlu Tool Sonucu mesajı ekler
 func add_tool_result_message(tool_call_id: String, tool_name: String, result: Dictionary) -> void:
@@ -95,6 +125,16 @@ func add_tool_result_message(tool_call_id: String, tool_name: String, result: Di
 		"name": tool_name,
 		"content": JSON.stringify(result)
 	})
+	var res_data = {
+		"tool": tool_name,
+		"success": bool(result.get("success", false)),
+		"message": AISidebarTaskTranscript.truncate_text(str(result.get("message", "")), 500),
+	}
+	if tool_name == "ask_user" and result.get("data") is Dictionary:
+		var d: Dictionary = result["data"]
+		res_data["question"] = AISidebarTaskTranscript.truncate_text(str(d.get("question", "")), 500)
+		res_data["user_answer"] = AISidebarTaskTranscript.truncate_text(str(d.get("user_answer", "")), 500)
+	get_transcript().record("tool_result", res_data)
 	_auto_compact_if_needed()
 
 func add_runtime_error_context(obs: AISidebarRuntimeObservation) -> void:
@@ -111,6 +151,7 @@ func add_runtime_error_context(obs: AISidebarRuntimeObservation) -> void:
 		"role": "user",
 		"content": "⚠️ ÇALIŞMA ZAMANI HATASI TESPİT EDİLDİ:\n" + error_prompt + snippet_prompt + "\n\nLütfen hatayı inceleyip düzeltecek ChangeSet'i önerin."
 	})
+	get_transcript().record("runtime_observation", {"summary": AISidebarTaskTranscript.truncate_text(error_prompt, 1000), "has_errors": true})
 	_auto_compact_if_needed()
 
 ## Model API'sine gönderilmeden önce dinamik editör zeminlemesini (Grounding) ekler
