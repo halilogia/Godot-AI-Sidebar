@@ -55,10 +55,10 @@
 Yeni bir özellik veya düzeltme yapıldığında sırasıyla şu komutlar koşulmalıdır:
 
 ```bash
-# 1. Headless Statik Tip ve Sözdizimi Derleme Kontrolü (113 GDScript, 4 Sahne)
+# 1. Headless Statik Tip ve Sözdizimi Derleme Kontrolü (129 GDScript, 4 Sahne)
 powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
 
-# 2. Tüm Birim ve Mantık Testleri (54 Test Paketi / 291 Assertion)
+# 2. Tüm Birim ve Mantık Testleri (55 Test Paketi / 331 Assertion)
 godot --headless --path . -s "res://tests/test_runner.gd"
 
 # 3. Canlı 9Router & Model Entegrasyon Testi (127.0.0.1:20128)

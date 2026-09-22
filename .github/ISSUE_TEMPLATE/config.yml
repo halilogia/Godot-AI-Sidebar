@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question, idea, or "how do I...?"
+    url: https://github.com/halilogia/Godot-AI-Sidebar/discussions
+    about: For open-ended questions, setup help, and general discussion, please use Discussions instead of an issue.
+  - name: Setup and provider configuration help
+    url: https://github.com/halilogia/Godot-AI-Sidebar#quick-start
+    about: Quick Start, provider selection (9Router / OpenAI-compatible / AGY CLI) and troubleshooting.

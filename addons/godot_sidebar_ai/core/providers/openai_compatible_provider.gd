@@ -25,14 +25,52 @@ func _init(p_network_manager: AISidebarNetworkManager = null) -> void:
 		network_manager.response_chunk_received.connect(_on_network_chunk)
 		network_manager.request_failed.connect(_on_network_failed)
 
-func supports_vision() -> bool:
-	var cfg = AISidebarConfig.load_config()
-	var model = cfg.get("selected_model", "all").to_lower()
-	var vision_keywords = ["vision", "4o", "flash", "sonnet", "opus", "llava", "vl", "claude-3", "gemini", "qwen-vl", "all"]
-	for kw in vision_keywords:
+## Vision yeteneği bilinen modeller (pozitif eşleşme).
+const VISION_MODEL_KEYWORDS: Array = [
+	"vision", "4o", "flash", "sonnet", "opus", "llava", "vl",
+	"claude-3", "gemini", "qwen-vl", "gpt-4.1", "o3", "o4"
+]
+
+## Vision yeteneği BİLİNEN şekilde olmayan modeller (negatif eşleşme).
+## Pozitif listeden ÖNCE kontrol edilir; çünkü "deepseek-reasoner" gibi
+## durumlarda yanlış pozitif üretmemek gerekir.
+const NON_VISION_MODEL_KEYWORDS: Array = [
+	"whisper", "tts", "embedding", "embed", "rerank",
+	"parakeet", "asr", "dall-e", "stable-diffusion"
+]
+
+## Model kimliğine göre Vision yeteneğini SAF (yan etkisiz) olarak belirler.
+## Bu metot diske erişmez, bu yüzden testlerde ortamdan bağımsız çalışır.
+static func model_supports_vision(model_id: String) -> bool:
+	var model := model_id.strip_edges().to_lower()
+	if model.is_empty():
+		return false
+
+	for kw in NON_VISION_MODEL_KEYWORDS:
+		if kw in model:
+			return false
+
+	for kw in VISION_MODEL_KEYWORDS:
 		if kw in model:
 			return true
-	return false
+
+	# Bilinmeyen model kimliği (9Router "a", "code", "fast" gibi yönlendirme
+	# takma adları dahil): kararı sunucuya bırak. Burada false dönmek,
+	# yetenekli bir modelin görsel desteğini sessizce ve kalıcı olarak
+	# kapatıyordu; aşırı kısıtlayıcı varsayım, izin verici olandan daha
+	# kötüdür çünkü kullanıcı hatayı görmez, sadece özellik çalışmaz.
+	return true
+
+func supports_vision() -> bool:
+	var cfg = AISidebarConfig.load_config()
+
+	# 1. Açık kullanıcı geçersiz kılması (override) en yüksek önceliğe sahiptir.
+	var override = cfg.get("vision_capable", null)
+	if override is bool:
+		return override
+
+	# 2. Aksi halde model kimliğinden çıkar.
+	return model_supports_vision(str(cfg.get("selected_model", "")))
 
 func cancel() -> void:
 	_stream_buffer = ""

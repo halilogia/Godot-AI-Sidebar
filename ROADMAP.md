@@ -84,6 +84,6 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 ## 📍 Faz 8: AI-Native UI Telemetri, Statik Derleyici & Merkezi Tasarım Sistemi (Tamamlandı ✅)
 
 - [x] **AI-Native UI Layout Telemetri Motoru (`inspect_ui_layout`):** `@edited_scene` ve `@sidebar` semantik hedefleri, efektif görünürlük filtreleri, kümülatif konteyner taşma kontrolü (`UI_CONTAINER_OVERFLOW`) ve tema özellik analizi.
-- [x] **Headless Statik Tip & Sözdizimi Derleyicisi (`typecheck.ps1` & `tools/typecheck.gd`):** Godot'yu açmadan 1.5 saniyede 113 script ve 4 sahneyi denetleme; VS Code `Ctrl+Shift+B` derleme entegrasyonu.
+- [x] **Headless Statik Tip & Sözdizimi Derleyicisi (`typecheck.ps1` & `tools/typecheck.gd`):** Godot'yu açmadan 1.5 saniyede 129 script ve 4 sahneyi denetleme; VS Code `Ctrl+Shift+B` derleme entegrasyonu.
 - [x] **Merkezi `AISidebarTheme` Tasarım Sistemi:** Modern Dark Slate & Midnight Dark token mimarisi, dinamik aksan butonları, ghost butonlar, odak bordürleri ve minimalist durum göstergeleri.
-- [x] **54 Test Paketi / 296 Assertion:** Headless test runner ile %100 yeşil birim ve entegrasyon test güvencesi.
+- [x] **55 Test Paketi / 331 Assertion:** Headless test runner ile %100 yeşil birim ve entegrasyon test güvencesi.

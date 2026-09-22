@@ -1,0 +1,66 @@
+# Git attributes for Godot AI Sidebar
+#
+# The `export-ignore` entries below control what ends up inside the ZIP archives
+# GitHub generates for tags and releases. A Godot user who downloads
+# "Source code (zip)" should get a clean addon folder, not the whole development
+# repo. This also keeps the archive acceptable for the Godot Asset Library, which
+# rejects archives carrying OS junk and repository metadata.
+#
+# NOTE: this only affects GitHub-generated archives. Release assets that are
+# built and uploaded explicitly are not filtered by this file.
+
+# --- Development-only, never shipped to users -----------------------------
+
+# CI, issue/PR templates, release tooling
+.github/            export-ignore
+
+# Test suite and diagnostics - large, and meaningless outside the dev repo
+tests/              export-ignore
+brain/              export-ignore
+archives/           export-ignore
+examples/           export-ignore
+
+# Editor and agent working files
+.vscode/            export-ignore
+.kilo/              export-ignore
+.gravityguard/      export-ignore
+
+# Repository meta files
+.gitignore          export-ignore
+.gitattributes      export-ignore
+AGENTS.md           export-ignore
+CHANGELOG.md        export-ignore
+ROADMAP.md          export-ignore
+ARCHITECTURE.md     export-ignore
+
+# --- Keep in the archive --------------------------------------------------
+# addons/            (the plugin itself)
+# README.md, LICENSE (required by the Asset Library)
+# icon.svg           (used as the project icon)
+# project.godot      (lets the folder open standalone as a Godot project)
+
+# --- Line ending normalisation --------------------------------------------
+# Godot resource files are text and should stay LF so diffs and uid/import
+# files remain stable across platforms.
+*.gd        text eol=lf
+*.tscn      text eol=lf
+*.tres      text eol=lf
+*.cfg       text eol=lf
+*.godot     text eol=lf
+*.gdshader  text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+
+# Binary assets must never be line-ending converted
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.webp      binary
+*.ogg       binary
+*.wav       binary
+*.ttf       binary
+*.otf       binary
+
+# Generated/cached Godot files: keep them out of language stats and diffs
+*.import    linguist-generated=true
+*.uid       linguist-generated=true
