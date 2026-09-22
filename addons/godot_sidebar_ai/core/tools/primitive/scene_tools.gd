@@ -271,24 +271,53 @@ static func _build_node_dict(node: Node) -> Dictionary:
 		"children": children
 	}
 
+## Gerçek TSCN parse doğrulaması: Godot resource sistemiyle yükleme denemesi.
+## Metinsel heuristiklere (validate_source) güvenilmez; örn. `mesh = BoxMesh.new()`
+## metin olarak geçer ama PackedScene olarak parse edilemez.
+static func validate_scene_parse(scene_path: String) -> Dictionary:
+	if not FileAccess.file_exists(scene_path):
+		return AISidebarToolResult.err("SCENE_FILE_MISSING", "Parse edilecek sahne dosyası bulunamadı: " + scene_path, false)
+	var loaded = ResourceLoader.load(scene_path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
+	if loaded == null or not (loaded is PackedScene):
+		return AISidebarToolResult.err("SCENE_PARSE_ERROR", "Godot resource sistemi sahneyi parse edemedi (PackedScene yüklenemedi): " + scene_path, false, {"scene_path": scene_path})
+	var state = (loaded as PackedScene).get_state()
+	return AISidebarToolResult.ok({"scene_path": scene_path, "parse_validated": true, "node_count": state.get_node_count()})
+
+## Editörde açık sahne doğrulaması: istenen path gerçekten aktif mi?
+static func confirm_active_scene(scene_path: String) -> Dictionary:
+	if not (Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root")):
+		return AISidebarToolResult.err("EDITOR_REQUIRED", "Aktif sahne doğrulaması editör gerektirir.", true)
+	var wanted = AISidebarPathPolicy.normalize_path(scene_path)
+	for _attempt in range(2):
+		var edited = EditorInterface.get_edited_scene_root()
+		var active_path = ""
+		if edited:
+			active_path = AISidebarPathPolicy.normalize_path(str(edited.scene_file_path))
+		if not active_path.is_empty() and active_path == wanted:
+			return AISidebarToolResult.ok({"scene_path": wanted, "active_scene_path": active_path, "active_scene_confirmed": true})
+	var edited_now = EditorInterface.get_edited_scene_root()
+	var actual = AISidebarPathPolicy.normalize_path(str(edited_now.scene_file_path)) if edited_now else ""
+	return AISidebarToolResult.err("ACTIVE_SCENE_NOT_CONFIRMED", "İstenen sahne aktif değil: beklenen=" + wanted + " aktif=" + actual, true, {"scene_path": wanted, "active_scene_path": actual})
+
 static func _create_scene(args: Dictionary) -> Dictionary:
 	var raw_path = args.get("scene_path", "")
 	var scene_path = AISidebarPathPolicy.normalize_path(raw_path)
 	var root_type = args.get("root_type", "Node2D")
 	var root_name = args.get("root_name", "Root")
 	var tscn_content = args.get("tscn_content", "")
-	
+
 	var check = AISidebarPathPolicy.is_safe_to_write(scene_path)
 	if not check["safe"]:
 		return AISidebarToolResult.err("PERMISSION_DENIED", check["reason"])
-		
+
 	if not scene_path.ends_with(".tscn"):
 		scene_path += ".tscn"
-		
+
 	var dir_path = scene_path.get_base_dir()
 	if not DirAccess.dir_exists_absolute(dir_path):
 		DirAccess.make_dir_recursive_absolute(dir_path)
-		
+
+	var parse_validated = false
 	# File-First: Eğer doğrudan .tscn içeriği verilmişse metin olarak kaydet
 	if not tscn_content.strip_edges().is_empty():
 		var val_res = AISidebarVerificationPipeline.validate_source(tscn_content, scene_path)
@@ -297,12 +326,22 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 			var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
 			var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
 			return AISidebarToolResult.err(err_code, "Sahne doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
-			
+
+		var existed_before = FileAccess.file_exists(scene_path)
 		var f = FileAccess.open(scene_path, FileAccess.WRITE)
 		if not f:
 			return AISidebarToolResult.err("WRITE_ERROR", "Sahne dosyası yazılamadı: " + scene_path)
 		f.store_string(tscn_content)
 		f.close()
+		# Gerçek parse: yazılan dosya Godot tarafından yüklenebilmeli.
+		var parse_res = validate_scene_parse(scene_path)
+		if not parse_res.get("success", false):
+			if not existed_before and FileAccess.file_exists(scene_path):
+				DirAccess.remove_absolute(scene_path)
+			var perr = parse_res.get("error", {})
+			var pmsg = perr.get("message", "Parse hatası") if perr is Dictionary else str(perr)
+			return AISidebarToolResult.err("SCENE_PARSE_ERROR", "Sahne parse edilemedi, oluşturuldu olarak raporlanmıyor: " + pmsg, false, {"scene_path": scene_path})
+		parse_validated = true
 	else:
 		if not ClassDB.class_exists(root_type):
 			return AISidebarToolResult.err("INVALID_CLASS", "Geçersiz kök düğüm tipi: " + root_type)
@@ -318,18 +357,37 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 		var save_err = ResourceSaver.save(packed_scene, scene_path)
 		if save_err != OK:
 			return AISidebarToolResult.err("SAVE_FAILED", "Sahne kaydedilemedi: " + str(save_err))
+		# Canlı düğümlerden paketlendi + diske yazıldı: parse geçerliliği yapısal olarak kanıtlı.
+		parse_validated = true
 		
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface"):
+	var editor_available = Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface")
+	var active_confirmed = false
+	var active_path = ""
+	if editor_available:
 		if EditorInterface.has_method("get_resource_filesystem"):
 			EditorInterface.get_resource_filesystem().scan()
 		if EditorInterface.has_method("open_scene_from_path"):
+			# void döner; başarı confirm_active_scene ile doğrulanır.
 			EditorInterface.open_scene_from_path(scene_path)
-			
+		var confirm_res = confirm_active_scene(scene_path)
+		if not confirm_res.get("success", false):
+			var cerr = confirm_res.get("error", {})
+			var cmsg = cerr.get("message", "Doğrulama hatası") if cerr is Dictionary else str(cerr)
+			var cdata = confirm_res.get("data", {"scene_path": scene_path, "active_scene_path": ""})
+			return AISidebarToolResult.err("ACTIVE_SCENE_NOT_CONFIRMED", cmsg, true, cdata)
+		var cdata_ok = confirm_res.get("data", {})
+		active_path = str(cdata_ok.get("active_scene_path", "")) if cdata_ok is Dictionary else ""
+		active_confirmed = true
+
 	return AISidebarToolResult.ok({
 		"scene_path": scene_path,
 		"root_name": root_name,
 		"root_type": root_type,
-		"root_path": root_name
+		"root_path": root_name,
+		"parse_validated": parse_validated,
+		"editor_available": editor_available,
+		"active_scene_confirmed": active_confirmed,
+		"active_scene_path": active_path
 	}, "Sahne başarıyla oluşturuldu ve editörde açıldı. Kök düğüm: " + root_name + " (" + root_type + ")")
 
 static func _add_node(args: Dictionary) -> Dictionary:
@@ -529,6 +587,12 @@ static func _save_scene(args: Dictionary) -> Dictionary:
 	var root = _get_root()
 	if not root:
 		return AISidebarToolResult.err("NO_ACTIVE_SCENE", "Kaydedilecek aktif sahne yok.")
+	var saved_path = AISidebarPathPolicy.normalize_path(str(root.scene_file_path))
 	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("save_scene"):
 		EditorInterface.save_scene()
-	return AISidebarToolResult.ok({"scene_file": root.scene_file_path}, "Aktif sahne kaydedildi.")
+	# Tutarlılık: kayıt sonrası hâlâ AYNI scene aktif olmalı (sessiz scene değişimi yok).
+	var root_after = _get_root()
+	var after_path = AISidebarPathPolicy.normalize_path(str(root_after.scene_file_path)) if root_after else ""
+	if root_after == null or after_path != saved_path:
+		return AISidebarToolResult.err("SAVE_CONSISTENCY_FAILED", "Kayıt sonrası aktif sahne değişti: kaydedilen=" + saved_path + " aktif=" + after_path, true, {"scene_file": saved_path, "active_scene_path": after_path})
+	return AISidebarToolResult.ok({"scene_file": saved_path, "save_verified": true}, "Aktif sahne kaydedildi.")
