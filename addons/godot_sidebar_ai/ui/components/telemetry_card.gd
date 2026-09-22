@@ -87,8 +87,16 @@ func render_metrics(m: Dictionary) -> void:
 	var tool_s = str(m.get("tool_time_s", 0.0)) + "s"
 	var file_s = str(m.get("file_time_s", 0.0)) + "s"
 	var wait_s = str(m.get("waiting_time_s", 0.0)) + "s"
-	
-	_details_lbl.text = "[color=#717c91]• Steps: " + str(used_steps) + " used / " + str(max_steps) + " safety limit | Active Tools: " + tools_sent + " sent / " + total_tools + " total | LLM: " + llm_s + " | Tools: " + tool_s + " (File: " + file_s + ") | Waiting: " + wait_s + "[/color]"
+	var research_s = str(m.get("research_time_s", 0.0)) + "s"
+	var overhead = m.get("research_overhead_ratio", null)
+	var overhead_txt = ("%.0f%%" % (float(overhead) * 100.0)) if overhead != null else "n/a"
+	var rsw = "R:%s/S:%s/W:%s" % [str(m.get("read_ops", 0)), str(m.get("search_ops", 0)), str(m.get("write_ops", 0))]
+	var failed_txt = str(m.get("failed_tools", 0))
+	var retry_txt = str(m.get("retry_count", 0))
+	var files_txt = "%s read / %s written" % [str(m.get("files_read_count", 0)), str(m.get("files_written_count", 0))]
+	var limit_txt = " · ⚠️ LIMIT" if bool(m.get("limit_hit", false)) else ""
+
+	_details_lbl.text = "[color=#717c91]• Steps: " + str(used_steps) + " used / " + str(max_steps) + " safety limit" + limit_txt + " | Active Tools: " + tools_sent + " sent / " + total_tools + " total | LLM: " + llm_s + " | Tools: " + tool_s + " (File: " + file_s + ") | Waiting: " + wait_s + "[/color]\n[color=#717c91]• Research: " + research_s + " (overhead " + overhead_txt + ") | Ops " + rsw + " | Failed: " + failed_txt + " | Retries: " + retry_txt + " | Files: " + files_txt + "[/color]"
 
 func _on_header_pressed() -> void:
 	is_expanded = not is_expanded

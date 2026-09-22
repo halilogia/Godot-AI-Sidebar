@@ -410,7 +410,7 @@ static func _append_task_section(task: Dictionary, idx: int, lines: PackedString
 		lines.append("")
 		var succ = bool(metrics.get("success", status == "completed"))
 		lines.append("- **Result:** " + ("✅ Success" if succ else "❌ Failed"))
-		for k in ["steps_summary", "tool_calls", "file_ops", "elapsed_seconds", "llm_time_s", "tool_time_s"]:
+		for k in ["steps_summary", "tool_calls", "file_ops", "elapsed_seconds", "llm_time_s", "tool_time_s", "research_time_s", "research_overhead_ratio", "read_ops", "search_ops", "write_ops", "failed_tools", "retry_count", "limit_hit", "files_read_count", "files_written_count"]:
 			if metrics.has(k):
 				lines.append("- **%s:** %s" % [str(k).replace("_", " ").capitalize(), _rx(str(metrics[k]))])
 		lines.append("")

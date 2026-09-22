@@ -17,6 +17,7 @@ const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/run
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
+const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 
 enum AgentState {
 	IDLE,
@@ -87,6 +88,16 @@ var file_ops_count: int = 0
 var editor_ops_count: int = 0
 var runtime_ops_count: int = 0
 var verification_checkpoints_count: int = 0
+## Performance Telemetry: read/search/write ayrımı, fail/retry/limit, dosya kümeleri.
+var read_ops_count: int = 0
+var search_ops_count: int = 0
+var write_ops_count: int = 0
+var failed_tool_count: int = 0
+var retry_count: int = 0
+var limit_hit: bool = false
+var files_read: Dictionary = {}
+var files_written: Dictionary = {}
+var tool_time_by_name: Dictionary = {}
 
 var llm_time_msec: int = 0
 var tool_time_msec: int = 0
@@ -95,6 +106,8 @@ var editor_time_msec: int = 0
 var runtime_time_msec: int = 0
 var verification_time_msec: int = 0
 var waiting_time_msec: int = 0
+## Research overhead paydası: read + search araçlarında harcanan süre.
+var research_time_msec: int = 0
 
 # Bekleyen Onay & Clarification Verisi
 var _pending_tool_name: String = ""
@@ -188,7 +201,16 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	editor_ops_count = 0
 	runtime_ops_count = 0
 	verification_checkpoints_count = 0
-	
+	read_ops_count = 0
+	search_ops_count = 0
+	write_ops_count = 0
+	failed_tool_count = 0
+	retry_count = 0
+	limit_hit = false
+	files_read.clear()
+	files_written.clear()
+	tool_time_by_name.clear()
+
 	llm_time_msec = 0
 	tool_time_msec = 0
 	file_time_msec = 0
@@ -196,6 +218,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	runtime_time_msec = 0
 	verification_time_msec = 0
 	waiting_time_msec = 0
+	research_time_msec = 0
 	
 	var shown_prompt = display_prompt if not display_prompt.is_empty() else user_prompt
 	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), shown_prompt.left(60)])
@@ -252,6 +275,18 @@ func _finish_task(success: bool) -> void:
 		"editor_ops": editor_ops_count,
 		"runtime_ops": runtime_ops_count,
 		"verification_checkpoints": verification_checkpoints_count,
+		# Performance Telemetry: read/search/write ayrımı, fail/retry/limit, dosyalar.
+		"read_ops": read_ops_count,
+		"search_ops": search_ops_count,
+		"write_ops": write_ops_count,
+		"failed_tools": failed_tool_count,
+		"retry_count": retry_count,
+		"limit_hit": limit_hit,
+		"files_read_count": files_read.size(),
+		"files_written_count": files_written.size(),
+		"files_read": files_read.keys(),
+		"files_written": files_written.keys(),
+		"tool_time_by_tool_s": _tool_time_by_tool_seconds(),
 		# Detaylı Süre Dağılımı (Saniye)
 		"llm_time_s": snappedf(llm_time_msec / 1000.0, 0.1),
 		"tool_time_s": snappedf(tool_time_msec / 1000.0, 0.1),
@@ -259,9 +294,11 @@ func _finish_task(success: bool) -> void:
 		"editor_time_s": snappedf(editor_time_msec / 1000.0, 0.1),
 		"runtime_time_s": snappedf(runtime_time_msec / 1000.0, 0.1),
 		"verification_time_s": snappedf(verification_time_msec / 1000.0, 0.1),
-		"waiting_time_s": snappedf(waiting_time_msec / 1000.0, 0.1)
+		"waiting_time_s": snappedf(waiting_time_msec / 1000.0, 0.1),
+		"research_time_s": snappedf(research_time_msec / 1000.0, 0.1),
+		"research_overhead_ratio": _research_overhead_ratio(total_elapsed_sec)
 	}
-	print("[TIMING] %s | TASK_COMPLETE | success=%s elapsed=%.3fs llm=%.3fs tool=%.3fs" % [get_ts(), str(success), total_elapsed_sec, llm_time_msec / 1000.0, tool_time_msec / 1000.0])
+	print("[TIMING] %s | TASK_COMPLETE | success=%s elapsed=%.3fs llm=%.3fs tool=%.3fs research=%.3fs overhead=%.2f" % [get_ts(), str(success), total_elapsed_sec, llm_time_msec / 1000.0, tool_time_msec / 1000.0, research_time_msec / 1000.0, _research_overhead_ratio(total_elapsed_sec)])
 	task_completed.emit(metrics)
 	loop_finished.emit()
 	_pending_vision_inputs.clear()
@@ -269,6 +306,19 @@ func _finish_task(success: bool) -> void:
 	_pending_clarification_question = ""
 	_pending_clarification_options.clear()
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
+
+## Test edilebilir metrik yardımcıları (pure hesap, sinyal yok).
+func _tool_time_by_tool_seconds() -> Dictionary:
+	var out: Dictionary = {}
+	for k in tool_time_by_name.keys():
+		out[k] = snappedf(int(tool_time_by_name[k]) / 1000.0, 0.1)
+	return out
+
+## Research overhead = keşif (read+search) süresi / toplam task süresi.
+func _research_overhead_ratio(total_elapsed_sec: float) -> float:
+	if total_elapsed_sec <= 0.0:
+		return 0.0
+	return snappedf((research_time_msec / 1000.0) / total_elapsed_sec, 0.01)
 
 ## Kullanıcı bekleyen işlemi onayladı (Approve)
 func approve_pending_action() -> void:
@@ -298,6 +348,7 @@ func approve_pending_action() -> void:
 	var t_delta = Time.get_ticks_msec() - t_start
 	tool_time_msec += t_delta
 	_record_category_time(fn_name, t_delta)
+	_record_tool_telemetry(fn_name, args, t_delta, result)
 	
 	print("[TIMING] %s | TOOL_DONE (APPROVED) | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
 	if not fn_name in _unlocked_tools:
@@ -439,6 +490,7 @@ func _run_next_step() -> void:
 		
 	current_step += 1
 	if current_step > max_steps:
+		limit_hit = true
 		_set_state(AgentState.ERROR, "Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
 		error_occurred.emit("Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
 		_finish_task(false)
@@ -489,6 +541,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 	if text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty():
 		if _empty_response_retry_count < max_empty_response_retries:
 			_empty_response_retry_count += 1
+			_note_retry()
 			print("[TIMING] %s | PROVIDER_EMPTY_RESPONSE_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
 			_set_state(AgentState.RECOVERING, "Geçici boş yanıt alındı, tekrar deneniyor...")
 			_run_next_step()
@@ -605,6 +658,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			var t_delta = Time.get_ticks_msec() - t_start
 			tool_time_msec += t_delta
 			_record_category_time(fn_name, t_delta)
+			_record_tool_telemetry(fn_name, args, t_delta, result)
 			
 			# search_tools ile keşfedilen araçları dynamic context'e ekle
 			if fn_name == "search_tools" and result.get("success", false):
@@ -715,6 +769,72 @@ func _record_category_time(fn_name: String, duration_msec: int) -> void:
 		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
 			runtime_time_msec += duration_msec
 
+## Tool türü sınıflandırması (pure/static; Research Budget da bunu kullanacak).
+## "read" | "search" | "write" | "verify" | "runtime" | "editor" | "other"
+static func classify_tool_kind(tool_name: String) -> String:
+	match tool_name:
+		"read_script", "read_file", "get_project_files", "list_files", "analyze_project":
+			return "read"
+		"search_tools":
+			return "search"
+		"create_or_update_script", "replace_file_content", "write_files", "create_scene", "save_scene", "delete_file":
+			return "write"
+		"validate_script":
+			return "verify"
+		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
+			return "runtime"
+		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
+			return "editor"
+		_:
+			if tool_name.begins_with("search"):
+				return "search"
+			if tool_name.begins_with("read") or tool_name.begins_with("get_"):
+				return "read"
+			return "other"
+
+func _note_retry() -> void:
+	retry_count += 1
+
+## Her GERÇEK tool icrası için tek kayıt noktası (normal + onaylı yol).
+## Başarı hükmü transcript helper ile (outer ok + payload fail yakalanır).
+func _record_tool_telemetry(fn_name: String, args: Dictionary, duration_msec: int, result: Dictionary) -> void:
+	var kind = classify_tool_kind(fn_name)
+	match kind:
+		"read":
+			read_ops_count += 1
+			research_time_msec += duration_msec
+		"search":
+			search_ops_count += 1
+			research_time_msec += duration_msec
+		"write":
+			write_ops_count += 1
+	tool_time_by_name[fn_name] = int(tool_time_by_name.get(fn_name, 0)) + duration_msec
+	for f in _telemetry_file_targets(args):
+		if kind == "write":
+			files_written[f] = true
+		else:
+			files_read[f] = true
+	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
+	if not bool(outcome.get("success", false)):
+		failed_tool_count += 1
+
+static func _telemetry_file_targets(args: Dictionary) -> Array:
+	var out: Array = []
+	if args == null:
+		return out
+	for k in ["file_path", "scene_path"]:
+		var v = str(args.get(k, "")).strip_edges()
+		if not v.is_empty():
+			out.append(v)
+	var files = args.get("files", [])
+	if files is Array:
+		for f in files:
+			if f is Dictionary:
+				var fp = str((f as Dictionary).get("file_path", (f as Dictionary).get("path", ""))).strip_edges()
+				if not fp.is_empty():
+					out.append(fp)
+	return out
+
 func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args: Dictionary, result: Variant) -> void:
 	var res_dict = result if result is Dictionary else {}
 	var is_valid = res_dict.get("success", false)
@@ -773,6 +893,7 @@ func _on_provider_error(error_message: String) -> void:
 		
 	if ("PROVIDER_EMPTY_RESPONSE" in error_message or "boş yanıt" in error_message) and _empty_response_retry_count < max_empty_response_retries:
 		_empty_response_retry_count += 1
+		_note_retry()
 		print("[TIMING] %s | PROVIDER_EMPTY_ERROR_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
 		_set_state(AgentState.RECOVERING, "Geçici ağ/boş yanıt hatası, tekrar deneniyor...")
 		_run_next_step()
