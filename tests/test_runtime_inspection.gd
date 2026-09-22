@@ -134,4 +134,60 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("ToolManager içinde inspect_runtime_tree veya inspect_runtime_node bulunamadı.")
 
+	# Test 9: Path Resolution Normalizasyonu (resolve_node_path)
+	var test_root = Node.new()
+	test_root.name = "root"
+	var child_main = Node.new()
+	child_main.name = "Main"
+	test_root.add_child(child_main)
+	var child_player = Node.new()
+	child_player.name = "Player"
+	child_main.add_child(child_player)
+
+	var p1 = AISidebarRuntimeBridge.resolve_node_path(test_root, "")
+	var p2 = AISidebarRuntimeBridge.resolve_node_path(test_root, "/root")
+	var p3 = AISidebarRuntimeBridge.resolve_node_path(test_root, "Main/Player")
+	var p4 = AISidebarRuntimeBridge.resolve_node_path(test_root, "/root/Main/Player")
+	var p5 = AISidebarRuntimeBridge.resolve_node_path(test_root, "root/Main/Player")
+	var p6 = AISidebarRuntimeBridge.resolve_node_path(test_root, "NonExistent")
+
+	if p1 == test_root and p2 == test_root and p3 == child_player and p4 == child_player and p5 == child_player and p6 == null:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("resolve_node_path normalizasyonu başarısız.")
+	test_root.free()
+
+	# Test 10: PermissionPolicy READ_ONLY Sınıflandırması
+	var const_policy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
+	var tree_risk = const_policy.get_tool_risk("inspect_runtime_tree")
+	var node_risk = const_policy.get_tool_risk("inspect_runtime_node")
+	if tree_risk == const_policy.RiskLevel.READ_ONLY and node_risk == const_policy.RiskLevel.READ_ONLY:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("inspect_runtime araçları READ_ONLY olarak kaydedilmemiş: tree=" + str(tree_risk) + " node=" + str(node_risk))
+
+	# Test 11: Intent Routing ve Anahtar Kelime Keşfi
+	var routed_schemas = AISidebarToolManager.get_relevant_schemas("Oyundaki canlı düğümlere ve sahne ağacına bak")
+	var routed_has_tree = false
+	var routed_has_node = false
+	for s in routed_schemas:
+		var fn = s.get("function", {}).get("name", "")
+		if fn == "inspect_runtime_tree": routed_has_tree = true
+		if fn == "inspect_runtime_node": routed_has_node = true
+
+	if routed_has_tree and routed_has_node:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Canlı düğüm intent routing inspect_runtime araçlarını dahil etmedi: tree=" + str(routed_has_tree) + " node=" + str(routed_has_node))
+
+	# Test 12: Asenkron Araç Ayrımı (is_async_tool)
+	if AISidebarToolManager.is_async_tool("inspect_runtime_tree") and AISidebarToolManager.is_async_tool("inspect_runtime_node") and not AISidebarToolManager.is_async_tool("search_tools"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("is_async_tool ayrımı beklenen araçları tespit edemedi.")
+
 	return {"name": "RuntimeInspectionTests", "passed": passed, "failed": failed, "errors": errors}

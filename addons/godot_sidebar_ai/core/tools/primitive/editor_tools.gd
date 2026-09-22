@@ -214,7 +214,7 @@ static func get_schemas() -> Array:
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Sorgulanacak düğüm yolu (örn: 'root/Main/Player')." }
+						"node_path": { "type": "string", "description": "Sorgulanacak düğüm yolu (örn: 'Main/Player' veya mutlak '/root/Main/Player')." }
 					},
 					"required": ["node_path"]
 				}
@@ -251,11 +251,23 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 		"take_viewport_screenshot":
 			return _take_viewport_screenshot(args)
 		"inspect_runtime_tree":
-			return _inspect_runtime_tree(args)
+			return _inspect_runtime_tree_sync(args)
 		"inspect_runtime_node":
-			return _inspect_runtime_node(args)
+			return _inspect_runtime_node_sync(args)
 		_:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen editör aracı: " + tool_name)
+
+static func is_async_tool(tool_name: String) -> bool:
+	return tool_name in ["inspect_runtime_tree", "inspect_runtime_node"]
+
+static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
+	match tool_name:
+		"inspect_runtime_tree":
+			return await _inspect_runtime_tree(args)
+		"inspect_runtime_node":
+			return await _inspect_runtime_node(args)
+		_:
+			return execute(tool_name, args)
 
 static func _get_project_files(args: Dictionary) -> Dictionary:
 	var sub_path = AISidebarPathPolicy.normalize_path(args.get("sub_path", "res://"))
@@ -501,6 +513,42 @@ static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 		"has_vision_data": true
 	}, "✓ " + vp_type_str.to_upper() + " Viewport ekran görüntüsü alındı (" + str(img.get_width()) + "x" + str(img.get_height()) + ")")
 
+static func _inspect_runtime_tree_sync(args: Dictionary) -> Dictionary:
+	var is_playing = false
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("is_playing_scene"):
+		is_playing = EditorInterface.is_playing_scene()
+		
+	if not is_playing:
+		return AISidebarToolResult.err(
+			"GAME_NOT_RUNNING",
+			"Oyun şu anda çalışmıyor. Canlı sahne ağacını incelemek için önce oyunu başlatın (play_game veya F5)."
+		)
+		
+	return AISidebarToolResult.err(
+		"ASYNC_REQUIRED",
+		"inspect_runtime_tree aracı asenkron çalışır. Lütfen execute_async kullanın."
+	)
+
+static func _inspect_runtime_node_sync(args: Dictionary) -> Dictionary:
+	var node_path = args.get("node_path", "")
+	if node_path.is_empty():
+		return AISidebarToolResult.err("MISSING_ARGUMENT", "'node_path' parametresi zorunludur.")
+		
+	var is_playing = false
+	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("is_playing_scene"):
+		is_playing = EditorInterface.is_playing_scene()
+		
+	if not is_playing:
+		return AISidebarToolResult.err(
+			"GAME_NOT_RUNNING",
+			"Oyun şu anda çalışmıyor. Düğüm özelliklerini incelemek için önce oyunu başlatın (play_game veya F5)."
+		)
+		
+	return AISidebarToolResult.err(
+		"ASYNC_REQUIRED",
+		"inspect_runtime_node aracı asenkron çalışır. Lütfen execute_async kullanın."
+	)
+
 static func _inspect_runtime_tree(args: Dictionary) -> Dictionary:
 	var path = args.get("path", "")
 	var max_depth = int(args.get("max_depth", 3))
@@ -522,7 +570,7 @@ static func _inspect_runtime_tree(args: Dictionary) -> Dictionary:
 			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı. Lütfen bir saniye sonra tekrar deneyin."
 		)
 		
-	var resp = dbg.query_sync("inspect_tree", [path, max_depth])
+	var resp = await dbg.query_async("inspect_tree", [path, max_depth])
 	if not resp.get("success", false):
 		return AISidebarToolResult.err(
 			resp.get("error", "INSPECT_FAILED"),
@@ -553,7 +601,7 @@ static func _inspect_runtime_node(args: Dictionary) -> Dictionary:
 			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı."
 		)
 		
-	var resp = dbg.query_sync("inspect_node", [node_path])
+	var resp = await dbg.query_async("inspect_node", [node_path])
 	if not resp.get("success", false):
 		return AISidebarToolResult.err(
 			resp.get("error", "INSPECT_FAILED"),

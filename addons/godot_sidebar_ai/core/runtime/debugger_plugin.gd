@@ -60,8 +60,8 @@ func get_active_session() -> EditorDebuggerSession:
 			return s
 	return null
 
-## Çalışan oyuna zaman aşımlı sorgu gönderir
-func query_sync(command: String, args: Array = [], timeout_msec: int = 2000) -> Dictionary:
+## Çalışan oyuna event-loop uyumlu, ana akışı kilitlemeyen zaman aşımlı asenkron sorgu gönderir
+func query_async(command: String, args: Array = [], timeout_sec: float = 3.0) -> Dictionary:
 	var session = get_active_session()
 	if not session:
 		return {"success": false, "error": "NO_ACTIVE_SESSION", "message": "Aktif bir oyun oturumu bulunamadı."}
@@ -78,12 +78,21 @@ func query_sync(command: String, args: Array = [], timeout_msec: int = 2000) -> 
 	data_to_send.append_array(args)
 	session.send_message("godot_ai:" + command, data_to_send)
 	
-	var start_time = Time.get_ticks_msec()
+	var tree = Engine.get_main_loop() as SceneTree
+	var timer = tree.create_timer(timeout_sec) if tree else null
+	
+	# Ana iş parçacığını dondurmadan, event-loop'un soket paketlerini işlemesine izin vererek bekle
 	while not req_entry["completed"]:
-		if Time.get_ticks_msec() - start_time > timeout_msec:
-			_pending_requests.erase(req_id)
-			return {"success": false, "error": "TIMEOUT", "message": "Çalışma zamanı sorgusu zaman aşımına uğradı (%d ms)." % timeout_msec}
-		OS.delay_msec(10)
+		if timer and timer.time_left <= 0.0:
+			break
+		if tree:
+			await tree.process_frame
+		else:
+			break
+			
+	if not req_entry["completed"]:
+		_pending_requests.erase(req_id)
+		return {"success": false, "error": "TIMEOUT", "message": "Çalışma zamanı sorgusu zaman aşımına uğradı (%.1f sn)." % timeout_sec}
 		
 	var res = req_entry["payload"]
 	_pending_requests.erase(req_id)

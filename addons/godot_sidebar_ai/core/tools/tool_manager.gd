@@ -94,7 +94,8 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	var runtime_keywords = [
 		"runtime", "error", "hata", "bug", "crash", "play", "oyna", "çalıştır",
 		"run", "test", "debug", "düzelt", "fix", "heal", "screenshot", "ekran",
-		"stop", "durdur", "restart", "sıfırla", "log", "diagnostic", "check"
+		"stop", "durdur", "restart", "sıfırla", "log", "diagnostic", "check",
+		"canlı", "canli", "remote", "canlı düğüm", "canlı sahne", "inspect_runtime"
 	]
 	var has_runtime_intent = false
 	for kw in runtime_keywords:
@@ -137,9 +138,10 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names[vt] = true
 
 	if has_runtime_intent:
-		# Runtime / Debug odaklı dar araç seti (~10 araç)
+		# Runtime / Debug odaklı dar araç seti (~12 araç)
 		var runtime_tools = [
 			"play_game", "stop_game", "restart_game", "get_runtime_errors",
+			"inspect_runtime_tree", "inspect_runtime_node",
 			"take_runtime_screenshot", "take_viewport_screenshot", "create_or_update_script", "replace_file_content", "validate_script", "read_script"
 		]
 		for rt in runtime_tools:
@@ -249,6 +251,24 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 			return AISidebarGameIntentTools.execute(tool_name, args)
 			
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
+
+static func is_async_tool(tool_name: String) -> bool:
+	return AISidebarEditorTools.is_async_tool(tool_name)
+
+static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
+	if not is_async_tool(tool_name):
+		return execute_tool(tool_name, args, is_user_approved)
+		
+	# 1. Yetki Denetimi & Onay Politikası
+	if not is_user_approved and AISidebarPermissionPolicy.requires_user_approval(tool_name, args):
+		return AISidebarToolResult.err(
+			"APPROVAL_REQUIRED",
+			"Bu işlem (" + tool_name + ") kullanıcı onayı gerektirir.",
+			true,
+			{"requires_approval": true, "tool_name": tool_name, "args": args}
+		)
+		
+	return await AISidebarEditorTools.execute_async(tool_name, args)
 
 static func _search_tools(args: Dictionary) -> Dictionary:
 	var query = str(args.get("query", "")).to_lower()

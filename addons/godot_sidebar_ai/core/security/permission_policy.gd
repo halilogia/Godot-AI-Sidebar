@@ -139,7 +139,8 @@ static func _init_default_risks() -> void:
 		"get_selected_nodes", "get_node_properties", "get_editor_errors", "get_runtime_errors",
 		"search_tools", "ask_user", "validate_script", "take_editor_screenshot",
 		"take_runtime_screenshot", "take_viewport_screenshot", "analyze_project",
-		"list_dir", "get_open_scripts", "open_script", "inspect_ui_layout"
+		"list_dir", "get_open_scripts", "open_script", "inspect_ui_layout",
+		"inspect_runtime_tree", "inspect_runtime_node"
 	]
 	for t in read_only_tools:
 		_tool_risk_registry[t] = RiskLevel.READ_ONLY

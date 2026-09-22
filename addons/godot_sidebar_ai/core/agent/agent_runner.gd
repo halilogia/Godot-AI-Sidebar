@@ -268,7 +268,7 @@ func approve_pending_action() -> void:
 	tool_executing.emit(fn_name, args)
 	
 	var t_start = Time.get_ticks_msec()
-	var result: Dictionary = AISidebarToolManager.execute_tool(fn_name, args, true)
+	var result: Dictionary = await AISidebarToolManager.execute_tool_async(fn_name, args, true)
 	var t_delta = Time.get_ticks_msec() - t_start
 	tool_time_msec += t_delta
 	_record_category_time(fn_name, t_delta)
@@ -505,7 +505,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			tool_executing.emit(fn_name, args)
 			
 			var t_start = Time.get_ticks_msec()
-			var result: Dictionary = AISidebarToolManager.execute_tool(fn_name, args, false)
+			var result: Dictionary = await AISidebarToolManager.execute_tool_async(fn_name, args, false)
 			var t_delta = Time.get_ticks_msec() - t_start
 			tool_time_msec += t_delta
 			_record_category_time(fn_name, t_delta)

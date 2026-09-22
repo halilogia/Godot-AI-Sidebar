@@ -26,9 +26,7 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		var max_depth = int(data[2]) if data.size() > 2 else 3
 		
 		var root = get_tree().root
-		var target: Node = root
-		if not target_path.is_empty():
-			target = root.get_node_or_null(target_path)
+		var target: Node = resolve_node_path(root, target_path)
 			
 		if target == null:
 			var err_res = {"success": false, "error": "NODE_NOT_FOUND", "message": "Düğüm bulunamadı: " + target_path}
@@ -45,7 +43,7 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		var target_path = str(data[1]) if data.size() > 1 else ""
 		
 		var root = get_tree().root
-		var target: Node = root.get_node_or_null(target_path) if not target_path.is_empty() else root
+		var target: Node = resolve_node_path(root, target_path)
 		
 		if target == null:
 			var err_res = {"success": false, "error": "NODE_NOT_FOUND", "message": "Düğüm bulunamadı: " + target_path}
@@ -58,6 +56,22 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		return true
 		
 	return false
+
+## Node path'i hem relative ('Main/Player') hem mutlak ('/root/Main/Player') formatları normalize ederek çözer
+static func resolve_node_path(root: Node, path_str: String) -> Node:
+	if not root:
+		return null
+	var clean = path_str.strip_edges()
+	if clean.is_empty() or clean == "/" or clean == "/root" or clean == "root":
+		return root
+	if clean.begins_with("/root/"):
+		clean = clean.trim_prefix("/root/")
+	elif clean.begins_with("root/"):
+		clean = clean.trim_prefix("root/")
+	elif clean.begins_with("/"):
+		clean = clean.trim_prefix("/")
+		
+	return root.get_node_or_null(clean)
 
 ## Ağaç yapısını hiyerarşik ve derinlik limitli olarak serileştirir
 static func serialize_tree(node: Node, max_depth: int = 3, current_depth: int = 0) -> Dictionary:
