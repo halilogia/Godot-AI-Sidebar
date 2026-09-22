@@ -45,6 +45,30 @@ func finalize_stream(final_text: String) -> void:
 	text_content = final_text
 	_render_content()
 
+## Metin YALNIZCA yapılandırılmış bir tool-call zarfı mı? ({"tool_calls": [...]})
+## Gerçek asistan açıklaması içeren metinlerde her zaman false döner; bu sayede
+## "açıklama + tool_call" birlikte geldiğinde açıklama gizlenmez.
+static func is_tool_call_envelope(raw_text: String) -> bool:
+	if raw_text == null:
+		return false
+	var txt := raw_text.strip_edges()
+	if txt.is_empty():
+		return false
+	# Markdown kod bloğu sarmalayıcısını soy (```json ... ```)
+	if txt.begins_with("```"):
+		var first_nl := txt.find("\n")
+		if first_nl == -1:
+			return false
+		txt = txt.substr(first_nl + 1).strip_edges()
+		if txt.ends_with("```"):
+			txt = txt.substr(0, txt.length() - 3).strip_edges()
+	if not txt.begins_with("{"):
+		return false
+	var parsed = JSON.parse_string(txt)
+	if parsed is Dictionary and parsed.has("tool_calls") and parsed["tool_calls"] is Array:
+		return true
+	return false
+
 func _setup_ui() -> void:
 	var style: StyleBoxFlat
 	if role == "user":

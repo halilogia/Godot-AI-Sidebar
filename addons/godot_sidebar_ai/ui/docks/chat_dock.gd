@@ -987,7 +987,8 @@ func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 			
 		elif role == "assistant":
 			var txt = str(content) if content != null else ""
-			if not txt.is_empty():
+			# Saf tool-call zarfı geçmişten yüklenirken de balon olarak gösterilmez.
+			if not txt.is_empty() and not AISidebarMessageBubble.is_tool_call_envelope(txt):
 				var bubble = AISidebarMessageBubble.new("assistant", txt)
 				bubble.meta_clicked.connect(_on_meta_clicked)
 				_add_stream_component(bubble)
@@ -1439,6 +1440,13 @@ func _on_agent_text_received(role: String, text: String) -> void:
 		_current_activity_group = null
 		
 	if role == "assistant":
+		# Saf yapılandırılmış tool-call zarfı ({"tool_calls": [...]}) kullanıcıya
+		# metin olarak gösterilmez; tool çağrısı ActivityGroup üzerinden sunulur.
+		if AISidebarMessageBubble.is_tool_call_envelope(text):
+			if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
+				_current_assistant_bubble.queue_free()
+			_current_assistant_bubble = null
+			return
 		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
 			_current_assistant_bubble.finalize_stream(text)
 			_current_assistant_bubble = null

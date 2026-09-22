@@ -183,4 +183,51 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 10 (ChatDock scene load) failed.")
 	
+	# Test 11: Saf tool-call zarfı tespiti (ham JSON kullanıcıya gösterilmemeli)
+	var envelope_plain = "{\n  \"tool_calls\": [\n    {\"name\": \"ask_user\", \"arguments\": {\"question\": \"GDScript mi?\"}}\n  ]\n}"
+	var envelope_fenced = "```json\n{\"tool_calls\": [{\"name\": \"read_script\", \"arguments\": {}}]}\n```"
+	if AISidebarMessageBubble.is_tool_call_envelope(envelope_plain) and AISidebarMessageBubble.is_tool_call_envelope(envelope_fenced):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 11 (tool-call envelope detection) failed.")
+
+	# Test 12: Gerçek asistan metni zarf sayılmamalı (yanlış pozitif koruması)
+	var real_text = "Hex grid sistemini oluşturdum.\n\n{\n  \"tool_calls\": [\n    {\"name\": \"create_or_update_script\", \"arguments\": {}}\n  ]\n}"
+	var plain_prose = "res://player.gd dosyasını güncelledim ve dogrulama gecti."
+	if not AISidebarMessageBubble.is_tool_call_envelope(real_text) and not AISidebarMessageBubble.is_tool_call_envelope(plain_prose):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 12 (assistant prose must stay visible) failed.")
+
+	# Test 13: ActivityGroup aktifken açık kalabilir
+	var live_grp = AISidebarActivityGroup.new(true)
+	live_grp._ready()
+	live_grp.add_activity("▶", "Reading project files", -1, "{\"path\":\"res://\"}")
+	var stays_open = live_grp.is_expanded and live_grp._items_container.visible and live_grp.is_active
+	if stays_open:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 13 (ActivityGroup stays expanded while active) failed.")
+
+	# Test 14: complete_group() sonrası otomatik collapse
+	live_grp.complete_group()
+	var collapsed_ok = (not live_grp.is_expanded) and (not live_grp._items_container.visible) and (not live_grp.is_active)
+	if collapsed_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 14 (ActivityGroup auto-collapse on complete) failed.")
+
+	# Test 15: Kullanıcı tamamlanmış grubu manuel tekrar açabilmeli
+	live_grp._on_header_pressed()
+	if live_grp.is_expanded and live_grp._items_container.visible:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 15 (ActivityGroup manual re-expand after collapse) failed.")
+	live_grp.queue_free()
+
 	return {"name": "UIComponentsTests", "passed": passed, "failed": failed, "errors": errors}

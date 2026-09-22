@@ -66,6 +66,15 @@ func add_activity(icon: String, human_title: String, duration_ms: int = -1, tech
 
 func complete_group() -> void:
 	is_active = false
+	# Antigravity tarzı: görev biterken aktivite listesi varsayılan olarak kapanır.
+	# Kullanıcı başlığa tıklayarak ayrıntıları tekrar açabilir.
+	set_expanded(false)
+
+## Grubu tek noktadan aç/kapat (otomatik collapse ve kullanıcı tıklaması).
+func set_expanded(p_expanded: bool) -> void:
+	is_expanded = p_expanded
+	if _items_container:
+		_items_container.visible = is_expanded
 	_update_header()
 
 func _update_header() -> void:
@@ -82,10 +91,7 @@ func _update_header() -> void:
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 
 func _on_header_pressed() -> void:
-	is_expanded = not is_expanded
-	if _items_container:
-		_items_container.visible = is_expanded
-	_update_header()
+	set_expanded(not is_expanded)
 
 func _render_item(item: Dictionary) -> void:
 	if not _items_container:
