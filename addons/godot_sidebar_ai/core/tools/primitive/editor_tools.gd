@@ -462,7 +462,7 @@ static func _take_runtime_screenshot_async(args: Dictionary) -> Dictionary:
 			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı. Lütfen bir saniye sonra tekrar deneyin."
 		)
 
-	var resp = await dbg.query_async("capture_viewport", [max_dim])
+	var resp = await dbg.query_with_ready_check("capture_viewport", [max_dim])
 	if not resp.get("success", false):
 		return AISidebarToolResult.err(
 			resp.get("error", "CAPTURE_FAILED"),
@@ -612,7 +612,7 @@ static func _inspect_runtime_tree(args: Dictionary) -> Dictionary:
 			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı. Lütfen bir saniye sonra tekrar deneyin."
 		)
 		
-	var resp = await dbg.query_async("inspect_tree", [path, max_depth])
+	var resp = await dbg.query_with_ready_check("inspect_tree", [path, max_depth])
 	if not resp.get("success", false):
 		return AISidebarToolResult.err(
 			resp.get("error", "INSPECT_FAILED"),
@@ -643,7 +643,7 @@ static func _inspect_runtime_node(args: Dictionary) -> Dictionary:
 			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı."
 		)
 		
-	var resp = await dbg.query_async("inspect_node", [node_path])
+	var resp = await dbg.query_with_ready_check("inspect_node", [node_path])
 	if not resp.get("success", false):
 		return AISidebarToolResult.err(
 			resp.get("error", "INSPECT_FAILED"),

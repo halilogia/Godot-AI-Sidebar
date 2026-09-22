@@ -30,17 +30,29 @@ func _setup_session(session_id: int) -> void:
 			_sessions.erase(session_id)
 		)
 
+## Capture eşleşmesi (prefix-toleranslı): editör tam mesaj da geçse önek de geçse yakalar.
+static func matches_capture(capture: String) -> bool:
+	var c = str(capture).strip_edges()
+	return c == "godot_ai" or c.begins_with("godot_ai:")
+
 func _has_capture(capture: String) -> bool:
-	return capture == "godot_ai"
+	return matches_capture(capture)
+
+## Response yönlendirme (pure; bekleyen istek sözlüğü üzerinde çalışır).
+static func route_response(pending: Dictionary, message: String, data: Array) -> Dictionary:
+	if str(message).strip_edges() != "godot_ai:response":
+		return {"handled": false, "req_id": "", "payload": {}}
+	var req_id = str(data[0]) if data.size() > 0 else ""
+	var payload = data[1] if data.size() > 1 and data[1] is Dictionary else {}
+	if pending.has(req_id):
+		(pending[req_id] as Dictionary)["completed"] = true
+		(pending[req_id] as Dictionary)["payload"] = payload
+	return {"handled": true, "req_id": req_id, "payload": payload}
 
 func _capture(message: String, data: Array, _session_id: int) -> bool:
-	if message == "godot_ai:response":
-		var req_id = str(data[0]) if data.size() > 0 else ""
-		var payload = data[1] if data.size() > 1 and data[1] is Dictionary else {}
-		if _pending_requests.has(req_id):
-			_pending_requests[req_id]["completed"] = true
-			_pending_requests[req_id]["payload"] = payload
-		response_received.emit(req_id, payload)
+	var routed = route_response(_pending_requests, message, data)
+	if bool(routed.get("handled", false)):
+		response_received.emit(str(routed.get("req_id", "")), routed.get("payload", {}))
 		return true
 	return false
 
@@ -76,11 +88,12 @@ func query_async(command: String, args: Array = [], timeout_sec: float = 3.0) ->
 	
 	var data_to_send = [req_id]
 	data_to_send.append_array(args)
+	print("[TIMING] %d | DBG_QUERY_SEND | cmd=%s req=%s" % [Time.get_ticks_msec(), command, req_id])
 	session.send_message("godot_ai:" + command, data_to_send)
-	
+
 	var tree = Engine.get_main_loop() as SceneTree
 	var timer = tree.create_timer(timeout_sec) if tree else null
-	
+
 	# Ana iş parçacığını dondurmadan, event-loop'un soket paketlerini işlemesine izin vererek bekle
 	while not req_entry["completed"]:
 		if timer and timer.time_left <= 0.0:
@@ -89,11 +102,34 @@ func query_async(command: String, args: Array = [], timeout_sec: float = 3.0) ->
 			await tree.process_frame
 		else:
 			break
-			
+
 	if not req_entry["completed"]:
 		_pending_requests.erase(req_id)
-		return {"success": false, "error": "TIMEOUT", "message": "Çalışma zamanı sorgusu zaman aşımına uğradı (%.1f sn)." % timeout_sec}
-		
+		print("[TIMING] %d | DBG_QUERY_TIMEOUT | cmd=%s req=%s" % [Time.get_ticks_msec(), command, req_id])
+		return timeout_result(timeout_sec)
+
 	var res = req_entry["payload"]
 	_pending_requests.erase(req_id)
+	print("[TIMING] %d | DBG_QUERY_RESPONSE | cmd=%s req=%s" % [Time.get_ticks_msec(), command, req_id])
 	return res
+
+static func timeout_result(timeout_sec: float) -> Dictionary:
+	return {"success": false, "error": "RUNTIME_QUERY_TIMEOUT", "message": "Çalışma zamanı sorgusu zaman aşımına uğradı (%.1f sn)." % timeout_sec}
+
+## Ping-öncelikli sorgu: bridge canlılığını önce kanıtlar, sonra gerçek sorguyu gönderir.
+## Session yok -> DEBUGGER_NOT_CONNECTED; ping yanıtsız -> BRIDGE_NOT_READY.
+func query_with_ready_check(command: String, args: Array = [], ping_timeout_sec: float = 1.0, query_timeout_sec: float = 3.0) -> Dictionary:
+	var session = get_active_session()
+	if not session:
+		return {"success": false, "error": "DEBUGGER_NOT_CONNECTED", "message": "Aktif bir oyun oturumu bulunamadı."}
+	var ping = await query_async("ping", [], ping_timeout_sec)
+	var branch = ready_check_result(ping)
+	if not bool(branch.get("proceed", false)):
+		return branch["result"]
+	return await query_async(command, args, query_timeout_sec)
+
+## Ping -> devam kararı (pure; session gerektirmez).
+static func ready_check_result(ping: Dictionary) -> Dictionary:
+	if ping is Dictionary and bool(ping.get("success", false)):
+		return {"proceed": true, "result": {}}
+	return {"proceed": false, "result": {"success": false, "error": "BRIDGE_NOT_READY", "message": "Runtime bridge hazır değil (ping yanıtsız). Oyun yeni başladıysa bir saniye sonra tekrar deneyin."}}

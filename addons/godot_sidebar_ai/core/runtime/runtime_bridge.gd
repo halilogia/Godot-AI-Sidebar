@@ -32,8 +32,23 @@ func _exit_tree() -> void:
 	if EngineDebugger.is_active() and EngineDebugger.has_capture(CAPTURE_NAME):
 		EngineDebugger.unregister_message_capture(CAPTURE_NAME)
 
+## Komut normalizasyonu (önek-toleranslı): tam veya çıplak komut adı da çalışır.
+static func normalize_command(message: String) -> String:
+	var m = str(message).strip_edges()
+	if m.begins_with("godot_ai:"):
+		m = m.substr("godot_ai:".length())
+	return m
+
+static func build_ping_response(req_id: String) -> Dictionary:
+	return {"success": true, "pong": true, "req_id": str(req_id)}
+
 func _on_debugger_message(message: String, data: Array) -> bool:
-	if message == "godot_ai:inspect_tree":
+	var cmd = normalize_command(message)
+	if cmd == "ping":
+		var req_id = str(data[0]) if data.size() > 0 else ""
+		EngineDebugger.send_message("godot_ai:response", [req_id, build_ping_response(req_id)])
+		return true
+	if cmd == "inspect_tree":
 		var req_id = data[0] if data.size() > 0 else ""
 		var target_path = str(data[1]) if data.size() > 1 else ""
 		var max_depth = int(data[2]) if data.size() > 2 else 3
@@ -52,7 +67,7 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		EngineDebugger.send_message("godot_ai:response", [req_id, ok_res])
 		return true
 		
-	elif message == "godot_ai:inspect_node":
+	elif cmd == "inspect_node":
 		var req_id = data[0] if data.size() > 0 else ""
 		var target_path = str(data[1]) if data.size() > 1 else ""
 		
@@ -69,7 +84,7 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		EngineDebugger.send_message("godot_ai:response", [req_id, ok_res])
 		return true
 
-	elif message == "godot_ai:capture_viewport":
+	elif cmd == "capture_viewport":
 		var req_id = data[0] if data.size() > 0 else ""
 		var max_dim = int(data[1]) if data.size() > 1 else 960
 		max_dim = clampi(max_dim, 64, 2048)
