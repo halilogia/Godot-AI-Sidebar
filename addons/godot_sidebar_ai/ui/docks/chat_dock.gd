@@ -102,6 +102,10 @@ var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
 var _current_plan_card: AISidebarPlanCard = null
 var _current_assistant_bubble: AISidebarMessageBubble = null
+## Streaming sırasında biriken ham metin (tool-call zarfı tespiti için tampon).
+var _stream_buffer: String = ""
+## Bu akış turunun saf tool-call zarfı olduğu kesinleşti mi? (balon hiç oluşturulmaz)
+var _stream_is_envelope: bool = false
 var _auto_scroll_enabled: bool = true
 var _welcome_card: AISidebarWelcomeCard = null
 var _thinking_timer: Timer = null
@@ -987,8 +991,9 @@ func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 			
 		elif role == "assistant":
 			var txt = str(content) if content != null else ""
-			# Saf tool-call zarfı geçmişten yüklenirken de balon olarak gösterilmez.
-			if not txt.is_empty() and not AISidebarMessageBubble.is_tool_call_envelope(txt):
+			# Gecmis oturumlarda kayitli ham tool-call zarflari da gosterilmez.
+			txt = AISidebarMessageBubble.strip_tool_call_envelopes(txt, false).strip_edges()
+			if not txt.is_empty():
 				var bubble = AISidebarMessageBubble.new("assistant", txt)
 				bubble.meta_clicked.connect(_on_meta_clicked)
 				_add_stream_component(bubble)
@@ -1040,6 +1045,7 @@ func _clear_ui_stream() -> void:
 	_current_plan_card = null
 	_current_assistant_bubble = null
 	_welcome_card = null
+	_reset_stream_buffer()
 
 func _show_welcome_card_if_empty() -> void:
 	if current_session == null or current_session.messages.is_empty():
@@ -1415,24 +1421,40 @@ func _on_agent_thinking_received(thinking: String) -> void:
 
 func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> void:
 	_stop_thinking_timer()
-	if not text_delta.is_empty():
-		if _current_activity_group:
-			_current_activity_group.complete_group()
-			_current_activity_group = null
-			
+	if text_delta.is_empty():
+		return
+		
+	if _current_activity_group:
+		_current_activity_group.complete_group()
+		_current_activity_group = null
+		
+	_stream_buffer += text_delta
+	_render_stream_buffer()
+
+## Tampondaki metinden tool-call zarflarini cikarip gorunur kismi balona yazar.
+## Gorunur metin yoksa (saf zarf veya henuz yarim JSON) balon hic gosterilmez.
+func _render_stream_buffer() -> void:
+	var visible := AISidebarMessageBubble.strip_tool_call_envelopes(_stream_buffer, true).strip_edges()
+	if visible.is_empty():
+		# Saf zarf / yarim JSON: kullaniciya hicbir sey gosterme.
 		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
-			if _current_assistant_bubble.text_content.begins_with("Düşünülüyor"):
-				_current_assistant_bubble.set_message("assistant", text_delta)
-			else:
-				_current_assistant_bubble.append_text(text_delta)
-		else:
-			_current_assistant_bubble = AISidebarMessageBubble.new("assistant", text_delta)
-			_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
-			_add_stream_component(_current_assistant_bubble)
-			
-		set_status_badge("AI Typing...", AISidebarTheme.COLOR_WARNING)
-		if _auto_scroll_enabled:
-			_scroll_to_bottom()
+			_current_assistant_bubble.queue_free()
+			_current_assistant_bubble = null
+		return
+	if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
+		_current_assistant_bubble.set_message("assistant", visible)
+	else:
+		_current_assistant_bubble = AISidebarMessageBubble.new("assistant", visible)
+		_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(_current_assistant_bubble)
+	set_status_badge("AI Typing...", AISidebarTheme.COLOR_WARNING)
+	if _auto_scroll_enabled:
+		_scroll_to_bottom()
+
+## Akış tamponunu sıfırla (yeni metin turu / temizleme).
+func _reset_stream_buffer() -> void:
+	_stream_buffer = ""
+	_stream_is_envelope = false
 
 func _on_agent_text_received(role: String, text: String) -> void:
 	if _current_activity_group:
@@ -1440,22 +1462,27 @@ func _on_agent_text_received(role: String, text: String) -> void:
 		_current_activity_group = null
 		
 	if role == "assistant":
-		# Saf yapılandırılmış tool-call zarfı ({"tool_calls": [...]}) kullanıcıya
-		# metin olarak gösterilmez; tool çağrısı ActivityGroup üzerinden sunulur.
-		if AISidebarMessageBubble.is_tool_call_envelope(text):
+		# Ham tool-call zarflari metinden cikarilir; kullanici yalnizca gercek
+		# asistan metnini gorur. Zarf hic yoksa metin aynen korunur.
+		var clean_text := AISidebarMessageBubble.strip_tool_call_envelopes(text, false).strip_edges()
+		if clean_text.is_empty():
+			# Metnin tamami zarf (veya yarim JSON): hicbir sey gosterme.
 			if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
 				_current_assistant_bubble.queue_free()
 			_current_assistant_bubble = null
+			_reset_stream_buffer()
 			return
 		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
-			_current_assistant_bubble.finalize_stream(text)
+			_current_assistant_bubble.finalize_stream(clean_text)
 			_current_assistant_bubble = null
 		else:
-			var bubble = AISidebarMessageBubble.new(role, text)
+			var bubble = AISidebarMessageBubble.new(role, clean_text)
 			bubble.meta_clicked.connect(_on_meta_clicked)
 			_add_stream_component(bubble)
+		_reset_stream_buffer()
 	else:
 		_current_assistant_bubble = null
+		_reset_stream_buffer()
 		var bubble_role = role
 		if bubble_role == "user" and text.begins_with("/"):
 			bubble_role = "command"

@@ -57,6 +57,7 @@ const TestAGYCLIProvider = preload("res://tests/test_agy_cli_provider.gd")
 const TestUITelemetry = preload("res://tests/test_ui_telemetry.gd")
 const TestRuntimeInspection = preload("res://tests/test_runtime_inspection.gd")
 const TestImplementationPlanning = preload("res://tests/test_implementation_planning.gd")
+const TestStreamEnvelopeGuard = preload("res://tests/test_stream_envelope_guard.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -119,7 +120,8 @@ func _init() -> void:
 		TestAGYCLIProvider,
 		TestUITelemetry,
 		TestRuntimeInspection,
-		TestImplementationPlanning
+		TestImplementationPlanning,
+		TestStreamEnvelopeGuard
 	]
 	
 	var total_passed = 0

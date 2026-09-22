@@ -69,6 +69,142 @@ static func is_tool_call_envelope(raw_text: String) -> bool:
 		return true
 	return false
 
+## Metinden tool-call zarflarini cikarir; gercek asistan metnini korur.
+## drop_incomplete_tail: henuz kapanmamis (streaming sirasinda bolunmus) zarf
+## kuyrugunu da keser; bu sayede ham JSON hicbir asamada gorunmez.
+static func strip_tool_call_envelopes(raw_text: String, drop_incomplete_tail: bool = true) -> String:
+	if raw_text == null:
+		return ""
+	var txt := raw_text
+	# 1. Tamamlanmis ```json ... ``` kod bloklari
+	var fence_re := RegEx.new()
+	fence_re.compile("(?s)```[ \t]*[a-zA-Z]*[ \t]*\r?\n(.*?)```")
+	var kept := ""
+	var pos := 0
+	for m in fence_re.search_all(txt):
+		if _is_tool_calls_json(str(m.get_string(1)).strip_edges()):
+			kept += txt.substr(pos, m.get_start(0) - pos)
+			pos = m.get_end(0)
+	kept += txt.substr(pos)
+	txt = kept
+	# 2. Ciplak {"tool_calls": [...]} nesneleri
+	txt = _strip_bare_envelopes(txt, drop_incomplete_tail)
+	# 3. Yarim kalmis zarf baslangici (or. '{"tool_')
+	if drop_incomplete_tail:
+		txt = _drop_incomplete_envelope_tail(txt)
+		# 4. Yarim kalmis ```json fence basligi (or. '```json')
+		txt = _drop_incomplete_fence_tail(txt)
+	return txt
+
+static func _is_tool_calls_json(s: String) -> bool:
+	if s.is_empty():
+		return false
+	var parsed = JSON.parse_string(s)
+	return parsed is Dictionary and parsed.has("tool_calls") and parsed["tool_calls"] is Array
+
+static func _strip_bare_envelopes(txt: String, drop_incomplete: bool) -> String:
+	var start_re := RegEx.new()
+	start_re.compile("\\{[ \t\r\n]*\"tool_calls\"")
+	var out := ""
+	var cursor := 0
+	while cursor < txt.length():
+		var m := start_re.search(txt, cursor)
+		if m == null:
+			out += txt.substr(cursor)
+			break
+		var start_idx := m.get_start(0)
+		out += txt.substr(cursor, start_idx - cursor)
+		var end_idx := _find_balanced_object_end(txt, start_idx)
+		if end_idx == -1:
+			if drop_incomplete:
+				break
+			out += txt.substr(start_idx)
+			break
+		var candidate := txt.substr(start_idx, end_idx - start_idx + 1)
+		if _is_tool_calls_json(candidate):
+			cursor = end_idx + 1
+		else:
+			out += txt.substr(start_idx, 1)
+			cursor = start_idx + 1
+	return out
+
+## start_idx'teki '{' ile baslayan dengeli JSON nesnesinin kapanis indeksi (-1: kapanmadi).
+static func _find_balanced_object_end(txt: String, start_idx: int) -> int:
+	var depth := 0
+	var in_str := false
+	var esc := false
+	for i in range(start_idx, txt.length()):
+		var ch := txt[i]
+		if in_str:
+			if esc:
+				esc = false
+			elif ch == "\\":
+				esc = true
+			elif ch == "\"":
+				in_str = false
+			continue
+		if ch == "\"":
+			in_str = true
+		elif ch == "{":
+			depth += 1
+		elif ch == "}":
+			depth -= 1
+			if depth == 0:
+				return i
+	return -1
+
+## Yarim gelmis bir zarf baslangici ("{" veya `{"tool_`) metnin sonundaysa keser.
+static func _drop_incomplete_envelope_tail(txt: String) -> String:
+	if not txt.contains("{"):
+		return txt
+	var idx := 0
+	while idx < txt.length():
+		var p := txt.find("{", idx)
+		if p == -1:
+			return txt
+		if _could_be_envelope_prefix(txt.substr(p)):
+			return txt.substr(0, p)
+		idx = p + 1
+	return txt
+
+## Bu parca, henuz tamamlanmamis bir tool-call zarf baslangici olabilir mi?
+## false ise guvenle gosterilebilir. On-ek eslesmesi yapar: {'{"foo"' -> false}
+static func _could_be_envelope_prefix(t: String) -> bool:
+	if not t.begins_with("{"):
+		return false
+	var rest := t.substr(1).lstrip(" \t\r\n")
+	if rest.is_empty():
+		return true
+	if not rest.begins_with("\""):
+		return false
+	var key := "\"tool_calls\""
+	if key.begins_with(rest):
+		return true
+	if not rest.begins_with(key):
+		return false
+	var after := rest.substr(key.length()).lstrip(" \t\r\n")
+	return after.is_empty() or after.begins_with(":")
+
+## Yarim kalmis ``` fence blogu (akis sirasinda henuz kapanmamis) zarf tasiyorsa keser.
+## Kapanmis fence'ler (cift sayida ```) korunur; gercek kod bloklari gizlenmez.
+static func _drop_incomplete_fence_tail(txt: String) -> String:
+	var marker := "```"
+	var total := txt.count(marker)
+	if total == 0 or total % 2 == 0:
+		return txt
+	var open_idx := txt.rfind(marker)
+	var body := txt.substr(open_idx + marker.length())
+	# Dil etiketini (or. 'json') ve ilk satir sonunu soy
+	var lang_re := RegEx.new()
+	lang_re.compile("^[ \\t]*[a-zA-Z0-9_+-]*[ \\t]*\\r?\\n?")
+	var lm := lang_re.search(body)
+	if lm != null:
+		body = body.substr(lm.get_end(0))
+	var trimmed := body.strip_edges()
+	if trimmed.is_empty() or _could_be_envelope_prefix(trimmed):
+		return txt.substr(0, open_idx)
+	return txt
+
 func _setup_ui() -> void:
 	var style: StyleBoxFlat
 	if role == "user":
