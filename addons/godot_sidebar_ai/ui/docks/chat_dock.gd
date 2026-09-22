@@ -30,6 +30,7 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
+const AISidebarScreenshotCard = preload("res://addons/godot_sidebar_ai/ui/components/screenshot_card.gd")
 const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
@@ -502,6 +503,11 @@ func _attach_image_from_clipboard(img: Image) -> void:
 	if not img or img.is_empty():
 		return
 	var vi = AISidebarVisionInput.from_image(img)
+	if vi == null:
+		return
+	# Aynı görsel zaten ekliyse tekrar ekleme (yanlışlıkla çift yapıştırma).
+	if _attached_vision_input and AISidebarVisionInput.is_same_image(vi, _attached_vision_input):
+		return
 	_attach_vision_input(vi)
 
 func _clear_attached_image() -> void:
@@ -1812,8 +1818,47 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if not is_deferred:
 		_checklist_on_tool_done(tool_name, is_ok, err_summary)
 	if agent_context:
-		agent_context.get_transcript().record("tool_completed", {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500), "duration_ms": elapsed})
+		var completed_data = {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500), "duration_ms": elapsed}
+		var shot_path = _screenshot_image_path(tool_name, result)
+		if not shot_path.is_empty():
+			completed_data["has_image"] = true
+			completed_data["image_path"] = shot_path.left(300)
+		agent_context.get_transcript().record("tool_completed", completed_data)
 		agent_context.get_transcript().record("activity", {"icon": icon, "title": (human_title + ("" if is_ok else (" — Error: " + err_summary))).left(300)})
+	_show_screenshot_preview(tool_name, result)
+
+## Başarılı screenshot sonucu varsa image path'ini döndürür (transcript + preview).
+func _screenshot_image_path(tool_name: String, result: Dictionary) -> String:
+	if tool_name != "take_runtime_screenshot" and tool_name != "take_viewport_screenshot":
+		return ""
+	if not bool(result.get("success", false)):
+		return ""
+	var data = result.get("data", {})
+	if not (data is Dictionary) or not bool(data.get("has_vision_data", false)):
+		return ""
+	return str(data.get("path", ""))
+
+## AI screenshot'u chatte thumbnail kart olarak gösterir.
+func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
+	var shot_path = _screenshot_image_path(tool_name, result)
+	if shot_path.is_empty():
+		return
+	var data = result.get("data", {}) as Dictionary
+	var vi = AISidebarVisionInput.new(
+		shot_path,
+		str(data.get("base64", "")),
+		int(data.get("width", 0)),
+		int(data.get("height", 0))
+	)
+	if vi.image_data_base64.is_empty():
+		return
+	var kind = str(data.get("capture_target", ""))
+	if kind.is_empty():
+		kind = "editor_viewport" if tool_name == "take_viewport_screenshot" else "runtime_viewport"
+	var capable = provider != null and provider.has_method("supports_vision") and provider.supports_vision()
+	var card = AISidebarScreenshotCard.new(vi, kind, capable)
+	card.meta_clicked.connect(_on_meta_clicked)
+	_add_stream_component(card)
 
 func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
 	match tool_name:

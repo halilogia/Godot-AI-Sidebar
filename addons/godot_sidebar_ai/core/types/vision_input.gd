@@ -39,6 +39,16 @@ static func from_file(file_path: String) -> RefCounted:
 	var vi = new(file_path, base64, w, h)
 	return vi
 
+## Aynı görsel mi? (yanlışlıkla çift eklemeyi önlemek için)
+static func is_same_image(a, b) -> bool:
+	if a == null or b == null:
+		return false
+	var ab = a.image_data_base64 if a is AISidebarVisionInput else str((a as Dictionary).get("image_data_base64", ""))
+	var bb = b.image_data_base64 if b is AISidebarVisionInput else str((b as Dictionary).get("image_data_base64", ""))
+	if ab.is_empty() or bb.is_empty():
+		return false
+	return ab == bb
+
 ## Image nesnesinden doğrudan VisionInput üretir
 static func from_image(img: Image, p_path: String = "", p_mime: String = "image/png") -> RefCounted:
 	if not img or img.is_empty():

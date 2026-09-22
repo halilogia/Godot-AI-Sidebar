@@ -15,6 +15,15 @@ const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat
 static func _rx(s: String) -> String:
 	return AISidebarTaskTranscript.redact_secrets(s)
 
+## Base64 image blob'larını Markdown'dan çıkarır (JSON export aynen kalır).
+static func _squelch_base64_json(s: String) -> String:
+	if s == null or s.is_empty():
+		return s if s != null else ""
+	var re = RegEx.new()
+	if re.compile("\"base64\"\\s*:\\s*\"[^\"]{64,}\"") != OK:
+		return s
+	return re.sub(s, "\"base64\": \"[image data omitted in Markdown]\"", true)
+
 static func export_to_markdown(history: Array, session_meta: Dictionary = {}) -> String:
 	var lines: PackedStringArray = []
 	lines.append("# 🤖 Godot AI Chat Export")
@@ -192,9 +201,14 @@ static func _format_tool_message(entry: Dictionary, content_raw: Variant, lines:
 						lines.append("- `%s:%s`: %s" % [str(err.get("file", "")), str(err.get("line", 0)), str(err.get("message", ""))])
 				lines.append("")
 				
+		if parsed_data.has("data") and parsed_data["data"] is Dictionary and bool(parsed_data["data"].get("has_vision_data", false)):
+			var vw = int(parsed_data["data"].get("width", 0))
+			var vh = int(parsed_data["data"].get("height", 0))
+			lines.append("#### 📷 Screenshot: `%s` (%dx%d, image data in JSON export)" % [str(parsed_data["data"].get("path", "")), vw, vh])
+			lines.append("")
 		lines.append("**Raw Result Data:**")
 		lines.append("```json")
-		lines.append(_rx(JSON.stringify(parsed_data, "  ")))
+		lines.append(_squelch_base64_json(_rx(JSON.stringify(parsed_data, "  "))))
 		lines.append("```")
 	else:
 		lines.append("```text")
@@ -560,7 +574,7 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 					var pnote = ""
 					if payload.length() > 2000 or bool(d.get("payload_truncated", false)):
 						pnote = "\n_[payload truncated in view — full value in JSON export]_"
-					(buckets["tool_result"] as Array).append("<details><summary>Payload: `" + tool + "`</summary>\n\n```json\n" + _rx(pview) + "\n```" + pnote + "\n</details>")
+					(buckets["tool_result"] as Array).append("<details><summary>Payload: `" + tool + "`</summary>\n\n```json\n" + _squelch_base64_json(_rx(pview)) + "\n```" + pnote + "\n</details>")
 		"clarification_requested":
 			(buckets["clarification"] as Array).append("**Q:** " + _rx(str(d.get("question", ""))) + _format_options_line(d.get("options", [])))
 		"clarification_answered":
@@ -578,6 +592,8 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 			var line2 = _step_tag(e) + ("✅ " if ok2 else "❌ ") + "`" + str(d.get("tool", "?")) + "` — " + _rx(str(d.get("title", "")))
 			if d.has("duration_ms"):
 				line2 += " (%dms)" % int(d.get("duration_ms", 0))
+			if bool(d.get("has_image", false)):
+				line2 += "\n📷 Screenshot: `" + str(d.get("image_path", "")) + "` (image data in JSON export)"
 			var em = _rx(str(d.get("error", "")))
 			if not em.is_empty():
 				line2 += "\n\nError: " + em
