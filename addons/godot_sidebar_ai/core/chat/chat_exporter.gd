@@ -326,7 +326,7 @@ static func export_transcript_to_markdown(tasks: Array, history: Array = [], ses
 
 	return "\n".join(lines)
 
-## Tek task Markdown exportu (Copy Current Task kaynağı).
+## Tek task Markdown exportu (gruplu format; Everything Export ile aynı).
 static func export_single_task_to_markdown(task: Dictionary) -> String:
 	if task == null or task.is_empty():
 		return ""
@@ -337,6 +337,44 @@ static func export_single_task_to_markdown(task: Dictionary) -> String:
 	lines.append("")
 	_append_task_section(task, maxi(1, int(task.get("seq", 1))), lines)
 	return "\n".join(lines)
+
+## Kronolojik tek task exportu (Copy Current Task kaynağı).
+## Event timeline sırası korunur; kategori bucket'laması YOKTUR.
+static func export_single_task_chronological(task: Dictionary) -> String:
+	if task == null or task.is_empty():
+		return ""
+	var lines: PackedStringArray = []
+	lines.append("# 📋 Task Transcript — " + _rx(str(task.get("display_prompt", task.get("prompt", "(untitled)"))).strip_edges().left(100)))
+	lines.append("")
+	lines.append("- **Export Date:** " + Time.get_datetime_string_from_system())
+	lines.append("- **Status:** `" + str(task.get("status", "unknown")) + "`")
+	lines.append("")
+	lines.append("## Timeline")
+	lines.append("")
+	var evs = task.get("events", [])
+	if evs is Array:
+		for e in evs:
+			if e is Dictionary:
+				_append_timeline_event(e, lines)
+	_append_checklist_section(lines, latest_checklist_snapshot(task))
+	_append_completion_section(lines, task, str(task.get("status", "unknown")))
+	return "\n".join(lines)
+
+## Tek event'i timeline satır(lar)ı olarak yazar (redaction/truncation korunur).
+static func _append_timeline_event(e: Dictionary, lines: PackedStringArray) -> void:
+	var buckets = {
+		"user": [], "assistant": [], "clarification": [], "plan": [],
+		"tool_call": [], "tool_result": [], "verification": [],
+		"runtime": [], "activity": [], "system": []
+	}
+	_append_transcript_event(e, buckets)
+	var tag = _step_tag(e)
+	var order = ["user", "assistant", "clarification", "plan", "tool_call", "tool_result", "activity", "verification", "runtime", "system"]
+	for k in order:
+		for it in (buckets[k] as Array):
+			var s = str(it)
+			lines.append(s if s.begins_with("[S") else (tag + s))
+			lines.append("")
 
 ## Task içindeki son checklist snapshot'ını bulur (yoksa boş sözlük).
 static func latest_checklist_snapshot(task: Dictionary) -> Dictionary:
@@ -404,6 +442,12 @@ static func _append_task_section(task: Dictionary, idx: int, lines: PackedString
 	_append_checklist_section(lines, latest_checklist_snapshot(task))
 	_append_event_bucket(lines, "### System Notes", buckets["system"])
 
+	_append_completion_section(lines, task, status)
+
+	lines.append("---")
+	lines.append("")
+
+static func _append_completion_section(lines: PackedStringArray, task: Dictionary, status: String) -> void:
 	var metrics = task.get("metrics", {})
 	if metrics is Dictionary and not metrics.is_empty():
 		lines.append("### Completion")
@@ -419,9 +463,6 @@ static func _append_task_section(task: Dictionary, idx: int, lines: PackedString
 		lines.append("")
 		lines.append("- **Result:** " + ("✅ Success" if status == "completed" else "❌ " + status.capitalize()))
 		lines.append("")
-
-	lines.append("---")
-	lines.append("")
 
 static func _step_tag(e: Dictionary) -> String:
 	var n = int(e.get("step", 0))
@@ -532,7 +573,7 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 			(buckets["system"] as Array).append("❌ Rejected `" + str(d.get("tool", "")) + "` by user.")
 		"activity":
 			(buckets["activity"] as Array).append(_step_tag(e) + str(d.get("icon", "•")) + " " + _rx(str(d.get("title", ""))))
-		"task_started", "task_ended":
+		"task_started", "task_ended", "checklist_snapshot":
 			pass
 		_:
 			(buckets["system"] as Array).append("[" + ts + "] " + t)

@@ -642,7 +642,7 @@ func _on_copy_task_pressed() -> void:
 	if task.is_empty():
 		_flash_status_text("No task yet")
 		return
-	var md = AISidebarChatExporter.export_single_task_to_markdown(task)
+	var md = AISidebarChatExporter.export_single_task_chronological(task)
 	DisplayServer.clipboard_set(md)
 	if copy_task_btn:
 		copy_task_btn.text = "Copied"
@@ -1454,8 +1454,23 @@ func _add_stream_component(comp: Control) -> void:
 	if not message_stream:
 		return
 	message_stream.add_child(comp)
+	# Task Checklist her zaman stream'in en altında kalır (aynı instance taşınır).
+	if comp != _current_checklist:
+		_move_checklist_to_bottom()
 	if _auto_scroll_enabled:
 		_scroll_to_bottom()
+
+## Checklist'i message stream'in en sonuna taşır; yoksa/boşsa no-op.
+func _move_checklist_to_bottom() -> void:
+	if _current_checklist == null or not is_instance_valid(_current_checklist):
+		return
+	if message_stream == null:
+		return
+	if _current_checklist.get_parent() != message_stream:
+		return
+	if _current_checklist.step_count() <= 0:
+		return
+	message_stream.move_child(_current_checklist, -1)
 
 # --- Ajan Sinyal Dinleyicileri (Presentation) ---
 

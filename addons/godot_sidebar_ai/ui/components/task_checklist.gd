@@ -20,6 +20,8 @@ var goal: String = ""
 var is_expanded: bool = true
 var is_finished: bool = false
 var stop_reason: String = ""
+## Kullanıcı başlığa dokunduysa bitince zorla açma/kapama (state korunur).
+var _user_toggled: bool = false
 
 var _steps: Array[Dictionary] = []
 
@@ -43,6 +45,7 @@ static func state_icon(state: String) -> String:
 
 func setup(step_titles: Array, p_goal: String = "") -> void:
 	goal = p_goal.strip_edges()
+	_user_toggled = false
 	_steps.clear()
 	for s in step_titles:
 		var t = str(s).strip_edges()
@@ -89,6 +92,7 @@ func mark_all_completed() -> void:
 			_steps[i]["error"] = ""
 		_refresh_row(i)
 	is_finished = true
+	_collapse_unless_toggled()
 	_update_header()
 
 ## Kalan PENDING adımlar atlandı; RUNNING adım failed_reason ile FAILED olur.
@@ -103,7 +107,13 @@ func finish_with_stop(failed_idx: int, reason: String) -> void:
 			_steps[i]["error"] = ""
 		_refresh_row(i)
 	is_finished = true
+	_collapse_unless_toggled()
 	_update_header()
+
+## Task bitince varsayılan collapsed; kullanıcı dokunduysa state korunur.
+func _collapse_unless_toggled() -> void:
+	if not _user_toggled:
+		set_expanded(false)
 
 func set_finished_success() -> void:
 	stop_reason = ""
@@ -147,7 +157,10 @@ func _setup_ui() -> void:
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
 	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
-	_header_btn.pressed.connect(func(): set_expanded(not is_expanded))
+	_header_btn.pressed.connect(func():
+		_user_toggled = true
+		set_expanded(not is_expanded)
+	)
 	_vbox.add_child(_header_btn)
 
 	_items_container = VBoxContainer.new()
