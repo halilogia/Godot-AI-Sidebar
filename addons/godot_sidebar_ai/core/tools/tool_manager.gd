@@ -92,8 +92,8 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			break
 
 	var runtime_keywords = [
-		"runtime", "error", "hata", "bug", "crash", "play", "oyna", "çalıştır",
-		"run", "test", "debug", "düzelt", "fix", "heal", "screenshot", "ekran",
+		"runtime", "error", "hata", "bug", "crash", "play", "oyna", "çalıştır", "calistir",
+		"başlat", "baslat", "start", "run", "test", "debug", "düzelt", "fix", "heal", "screenshot", "ekran",
 		"stop", "durdur", "restart", "sıfırla", "log", "diagnostic", "check",
 		"canlı", "canli", "remote", "canlı düğüm", "canlı sahne", "inspect_runtime"
 	]
