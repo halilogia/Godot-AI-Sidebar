@@ -130,6 +130,8 @@ func _setup_provider() -> void:
 		provider = AISidebarAGYProvider.new()
 		
 	provider.models_fetched.connect(_on_models_fetched)
+	if provider.has_method("pre_warm"):
+		provider.pre_warm()
 	if agent_runner:
 		agent_runner.set_provider(provider)
 

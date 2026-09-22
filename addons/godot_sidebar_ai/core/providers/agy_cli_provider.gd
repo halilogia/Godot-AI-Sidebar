@@ -92,6 +92,13 @@ func stop_process() -> void:
 	_pipe_dict.clear()
 	_active_model = ""
 
+func pre_warm() -> void:
+	var cfg = AISidebarConfig.load_config()
+	var model = cfg.get("selected_model", "gemini-3.8-flash-low")
+	if not model in OFFICIAL_MODELS:
+		model = "gemini-3.8-flash-low"
+	_ensure_process(model)
+
 func _ensure_process(target_model: String) -> bool:
 	if _pid > 0 and OS.is_process_running(_pid) and _stdio != null and _active_model == target_model:
 		return true
@@ -132,7 +139,11 @@ func _read_worker() -> void:
 		if trimmed.is_empty():
 			continue
 
-		var json_obj = JSON.parse_string(trimmed)
+		var json = JSON.new()
+		var parse_err = json.parse(trimmed)
+		if parse_err != OK:
+			continue
+		var json_obj = json.data
 		if not (json_obj is Dictionary):
 			continue
 
