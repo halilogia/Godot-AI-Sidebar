@@ -336,6 +336,9 @@ func _update_send_button_style() -> void:
 		send_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_accent_button_style(true, false))
 		send_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_accent_button_style(false, true))
 	send_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_WHITE)
+	send_btn.add_theme_color_override("icon_normal_color", Color.WHITE)
+	send_btn.add_theme_color_override("icon_hover_color", Color.WHITE)
+	send_btn.add_theme_color_override("icon_pressed_color", Color.WHITE)
 	send_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
 
 func _setup_history_panel() -> void:
@@ -1288,6 +1291,12 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
 			var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
 			set_status_badge(state_desc + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
+		AISidebarAgentRunner.AgentState.PLANNING:
+			set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
+			if _current_assistant_bubble == null or not is_instance_valid(_current_assistant_bubble):
+				_current_assistant_bubble = AISidebarMessageBubble.new("assistant", "Düşünülüyor...")
+				_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
+				_add_stream_component(_current_assistant_bubble)
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
 			set_status_badge("Waiting Approval", AISidebarTheme.COLOR_WARNING)
 		AISidebarAgentRunner.AgentState.RUNNING_GAME:
@@ -1308,12 +1317,16 @@ func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> voi
 			_current_activity_group.complete_group()
 			_current_activity_group = null
 			
-		if _current_assistant_bubble == null or not is_instance_valid(_current_assistant_bubble):
-			_current_assistant_bubble = AISidebarMessageBubble.new("assistant", "")
+		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
+			if _current_assistant_bubble.text_content == "Düşünülüyor...":
+				_current_assistant_bubble.set_message("assistant", text_delta)
+			else:
+				_current_assistant_bubble.append_text(text_delta)
+		else:
+			_current_assistant_bubble = AISidebarMessageBubble.new("assistant", text_delta)
 			_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
 			_add_stream_component(_current_assistant_bubble)
 			
-		_current_assistant_bubble.append_text(text_delta)
 		set_status_badge("AI Typing...", AISidebarTheme.COLOR_WARNING)
 		if _auto_scroll_enabled:
 			_scroll_to_bottom()
