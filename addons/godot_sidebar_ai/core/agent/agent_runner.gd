@@ -525,12 +525,28 @@ func _run_next_step() -> void:
 		print("[TIMING] %s | LLM_REQUEST_START | step=1/%d tools=%d/%d" % [get_ts(), max_steps, last_tools_sent_count, AISidebarToolManager.get_all_schemas().size()])
 		
 	var messages = context.get_messages_for_api()
-	if _pending_vision_inputs.size() > 0 and provider.has_method("send_multimodal_chat"):
-		var imgs = _pending_vision_inputs.duplicate()
+	_dispatch_llm_turn(messages, tools_schema)
+
+## LLM turu gönderimi: vision varsa ve provider destekliyorsa multimodal,
+## desteklemiyorsa görüntüler "saved but not sent" kaydıyla düşürülür
+## (sessiz birikme yok; modelin gördüğü izlenimi yok).
+func _dispatch_llm_turn(messages: Array, tools_schema: Array) -> void:
+	if provider == null:
+		return
+	if _pending_vision_inputs.size() > 0:
+		if provider.has_method("supports_vision") and provider.supports_vision() and provider.has_method("send_multimodal_chat"):
+			var imgs = _pending_vision_inputs.duplicate()
+			_pending_vision_inputs.clear()
+			provider.send_multimodal_chat(messages, tools_schema, imgs)
+			return
+		var dropped_paths: Array = []
+		for vi in _pending_vision_inputs:
+			if vi is AISidebarVisionInput:
+				dropped_paths.append((vi as AISidebarVisionInput).image_path)
 		_pending_vision_inputs.clear()
-		provider.send_multimodal_chat(messages, tools_schema, imgs)
-	else:
-		provider.send_chat(messages, tools_schema)
+		if context != null:
+			context.get_transcript().record("vision_dropped", {"reason": "provider_no_vision", "paths": dropped_paths})
+	provider.send_chat(messages, tools_schema)
 
 func _on_provider_response(text_content: String, thinking_content: String, tool_calls: Array) -> void:
 	if not is_running():

@@ -154,11 +154,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "take_runtime_screenshot",
-				"description": "Çalışmakta olan oyun penceresinin anlık ekran görüntüsünü alır.",
+				"description": "Çalışan OYUNUN kendi viewport görüntüsünü alır (RuntimeBridge) ve modelin görsel analizi için hazırlar. Oyun çalışmıyorsa hata döner.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"save_path": { "type": "string", "description": "Kaydedilecek yol (varsayılan: user://ai_runtime_snapshot.png)." }
+						"save_path": { "type": "string", "description": "Kaydedilecek yol (varsayılan: user://ai_runtime_snapshot.png)." },
+						"max_dimension": { "type": "integer", "description": "En uzun kenar üst sınırı, piksel (varsayılan: 960)." }
 					}
 				}
 			}
@@ -258,7 +259,7 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen editör aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in ["inspect_runtime_tree", "inspect_runtime_node"]
+	return tool_name in ["inspect_runtime_tree", "inspect_runtime_node", "take_runtime_screenshot"]
 
 static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
 	match tool_name:
@@ -266,6 +267,8 @@ static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
 			return await _inspect_runtime_tree(args)
 		"inspect_runtime_node":
 			return await _inspect_runtime_node(args)
+		"take_runtime_screenshot":
+			return await _take_runtime_screenshot_async(args)
 		_:
 			return execute(tool_name, args)
 
@@ -430,8 +433,47 @@ static func _take_editor_screenshot(args: Dictionary) -> Dictionary:
 	return AISidebarRuntimeDebugger.take_editor_screenshot(path)
 
 static func _take_runtime_screenshot(args: Dictionary) -> Dictionary:
-	var path = args.get("save_path", "user://ai_runtime_snapshot.png")
-	return AISidebarRuntimeDebugger.take_runtime_screenshot(path)
+	return AISidebarToolResult.err(
+		"ASYNC_REQUIRED",
+		"take_runtime_screenshot aracı asenkron çalışır. Lütfen execute_async kullanın."
+	)
+
+## Çalışan OYUNUN viewport görüntüsü (RuntimeBridge -> base64 -> vision payload).
+static func _take_runtime_screenshot_async(args: Dictionary) -> Dictionary:
+	var path = AISidebarPathPolicy.normalize_path(args.get("save_path", "user://ai_runtime_snapshot.png"))
+	var max_dim = clampi(int(args.get("max_dimension", 960)), 64, 2048)
+
+	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
+		return AISidebarToolResult.err("EDITOR_REQUIRED", "Çalışan oyun ekran görüntüsü için GUI gereklidir.")
+
+	var is_playing = false
+	if EditorInterface.has_method("is_playing_scene"):
+		is_playing = EditorInterface.is_playing_scene()
+	if not is_playing:
+		return AISidebarToolResult.err(
+			"GAME_NOT_RUNNING",
+			"Oyun şu anda çalışmıyor. Çalışan oyunun görüntüsünü almak için önce oyunu başlatın (play_game veya F5)."
+		)
+
+	var dbg = AISidebarDebuggerPlugin.instance
+	if not dbg or not dbg.has_active_session():
+		return AISidebarToolResult.err(
+			"DEBUGGER_NOT_CONNECTED",
+			"Oyun çalışıyor ancak aktif bir hata ayıklayıcı (debugger) oturumu henüz bağlanmadı. Lütfen bir saniye sonra tekrar deneyin."
+		)
+
+	var resp = await dbg.query_async("capture_viewport", [max_dim])
+	if not resp.get("success", false):
+		return AISidebarToolResult.err(
+			resp.get("error", "CAPTURE_FAILED"),
+			resp.get("message", "Çalışan oyun viewport görüntüsü alınamadı.")
+		)
+
+	var img = Image.new()
+	var raw = Marshalls.base64_to_raw(str(resp.get("base64", "")))
+	if img.load_png_from_buffer(raw) != OK:
+		return AISidebarToolResult.err("DECODE_FAILED", "Oyun görüntüsü çözümlenemedi.")
+	return AISidebarRuntimeDebugger.build_runtime_payload(path, img)
 
 static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 	var save_path = args.get("save_path", "user://ai_viewport_snapshot.png")

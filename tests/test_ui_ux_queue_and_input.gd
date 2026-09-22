@@ -12,10 +12,13 @@ class MockQueueProvider extends AISidebarAIProvider:
 	var responses: Array = []
 	var last_sent_messages: Array = []
 	var last_sent_images: Array = []
-	
+
+	func supports_vision() -> bool:
+		return true
+
 	func send_chat(messages: Array, _tools: Array) -> void:
 		last_sent_messages = messages
-		
+
 	func send_multimodal_chat(messages: Array, _tools: Array, images: Array) -> void:
 		last_sent_messages = messages
 		last_sent_images = images

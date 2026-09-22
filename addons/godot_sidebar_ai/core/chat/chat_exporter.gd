@@ -598,6 +598,12 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 			(buckets["system"] as Array).append("✅ Approved `" + str(d.get("tool", "")) + "` by user.")
 		"approval_rejected":
 			(buckets["system"] as Array).append("❌ Rejected `" + str(d.get("tool", "")) + "` by user.")
+		"vision_dropped":
+			var vpaths: PackedStringArray = []
+			if d.get("paths", []) is Array:
+				for p in (d.get("paths", []) as Array):
+					vpaths.append(str(p))
+			(buckets["system"] as Array).append("⚠️ Image saved (" + ", ".join(vpaths).left(300) + ") but NOT sent to model (provider has no vision support).")
 		"activity":
 			(buckets["activity"] as Array).append(_step_tag(e) + str(d.get("icon", "•")) + " " + _rx(str(d.get("title", ""))))
 		"task_started", "task_ended", "checklist_snapshot":

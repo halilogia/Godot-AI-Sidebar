@@ -184,7 +184,23 @@ static func take_editor_screenshot(save_path: String = "user://ai_editor_snapsho
 	img.save_png(save_path)
 	return AISidebarToolResult.ok({"path": save_path}, "✓ Editör ekran görüntüsü alındı: " + save_path)
 
-## Çalışan oyunun ekran görüntüsü alma
+## Image -> vision payload (pure; diske kaydet + base64 + boyut).
+static func build_runtime_payload(save_path: String, img: Image, capture_target: String = "runtime_viewport") -> Dictionary:
+	if img == null or img.is_empty():
+		return AISidebarToolResult.err("IMAGE_EMPTY", "Görüntü verisi boş.")
+	if img.save_png(save_path) != OK:
+		return AISidebarToolResult.err("SAVE_FAILED", "Ekran görüntüsü diske kaydedilemedi: " + save_path)
+	var b64 = Marshalls.raw_to_base64(img.save_png_to_buffer())
+	return AISidebarToolResult.ok({
+		"path": save_path,
+		"base64": b64,
+		"has_vision_data": true,
+		"width": img.get_width(),
+		"height": img.get_height(),
+		"capture_target": capture_target
+	}, "✓ Çalışan oyun viewport görüntüsü alındı (" + str(img.get_width()) + "x" + str(img.get_height()) + ") ve diske kaydedildi.")
+
+## Çalışan oyunun ekran görüntüsü alma (ESKİ editör-ekran yolu; async sürümü kullanın)
 static func take_runtime_screenshot(save_path: String = "user://ai_runtime_snapshot.png") -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
 		return AISidebarToolResult.err("EDITOR_REQUIRED", "Çalışan oyun ekran görüntüsü için GUI gereklidir.")

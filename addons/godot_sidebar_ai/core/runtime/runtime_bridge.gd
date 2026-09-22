@@ -68,8 +68,44 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		var ok_res = {"success": true, "node": node_dict}
 		EngineDebugger.send_message("godot_ai:response", [req_id, ok_res])
 		return true
-		
+
+	elif message == "godot_ai:capture_viewport":
+		var req_id = data[0] if data.size() > 0 else ""
+		var max_dim = int(data[1]) if data.size() > 1 else 960
+		max_dim = clampi(max_dim, 64, 2048)
+		var cap = capture_game_viewport(max_dim)
+		EngineDebugger.send_message("godot_ai:response", [req_id, cap])
+		return true
+
 	return false
+
+## Çalışan OYUNUN kendi viewport görüntüsünü yakalar (editör ekranı değil,
+## OS penceresi değil; oyun sürecinin ViewportTexture readback'i).
+static func capture_game_viewport(max_dim: int = 960) -> Dictionary:
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return {"success": false, "error": "NO_VIEWPORT", "message": "Oyun viewport'u bulunamadı."}
+	var tex = tree.root.get_texture()
+	if tex == null:
+		return {"success": false, "error": "TEXTURE_EMPTY", "message": "Viewport dokusu alınamadı."}
+	var img = tex.get_image()
+	if img == null or img.is_empty():
+		return {"success": false, "error": "IMAGE_EMPTY", "message": "Viewport görüntüsü boş."}
+	if max_dim > 0 and (img.get_width() > max_dim or img.get_height() > max_dim):
+		var ratio = float(img.get_width()) / float(maxi(1, img.get_height()))
+		var new_w = max_dim
+		var new_h = max_dim
+		if ratio >= 1.0:
+			new_h = maxi(1, int(float(max_dim) / ratio))
+		else:
+			new_w = maxi(1, int(float(max_dim) * ratio))
+		img.resize(new_w, new_h, Image.INTERPOLATE_BILINEAR)
+	return {
+		"success": true,
+		"width": img.get_width(),
+		"height": img.get_height(),
+		"base64": Marshalls.raw_to_base64(img.save_png_to_buffer())
+	}
 
 ## Node path'i hem relative ('Main/Player') hem mutlak ('/root/Main/Player') formatları normalize ederek çözer
 static func resolve_node_path(root: Node, path_str: String) -> Node:

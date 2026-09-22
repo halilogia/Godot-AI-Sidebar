@@ -67,6 +67,7 @@ const TestTaskCopyOrder = preload("res://tests/test_task_copy_order.gd")
 const TestCopyChat = preload("res://tests/test_copy_chat.gd")
 const TestMultiToolAndSceneGuard = preload("res://tests/test_multi_tool_and_scene_guard.gd")
 const TestSceneReliability = preload("res://tests/test_scene_reliability.gd")
+const TestRuntimeVisionChain = preload("res://tests/test_runtime_vision_chain.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -139,7 +140,8 @@ func _init() -> void:
 		TestTaskCopyOrder,
 		TestCopyChat,
 		TestMultiToolAndSceneGuard,
-		TestSceneReliability
+		TestSceneReliability,
+		TestRuntimeVisionChain
 	]
 	
 	var total_passed = 0
