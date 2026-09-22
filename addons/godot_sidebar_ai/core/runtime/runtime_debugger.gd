@@ -40,11 +40,23 @@ static func _reset_log_pointer() -> void:
 	_active_start_time_msec = Time.get_ticks_msec()
 	_is_monitoring = true
 
+## Ana sahne yapılandırması mevcut mu? (modal seçim penceresini önlemek için)
+static func check_main_scene_available() -> Dictionary:
+	var main_scene = str(ProjectSettings.get_setting("application/run/main_scene", "")).strip_edges()
+	if main_scene.is_empty():
+		return {"available": false, "main_scene": ""}
+	return {"available": true, "main_scene": main_scene}
+
 ## Oyunu başlatır (F5 veya F6)
 func play(current_scene_only: bool = false) -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
 		return AISidebarToolResult.err("EDITOR_REQUIRED", "Oyun başlatma editör gerektirir.")
-		
+
+	if not current_scene_only:
+		var chk = check_main_scene_available()
+		if not bool(chk.get("available", false)):
+			return AISidebarToolResult.err("NO_MAIN_SCENE", "Ana sahne tanımlı değil (Project Settings → application/run/main_scene boş); Godot modal sahne seçim penceresi açılmadı. Açık sahneyi oynatmak için 'current_scene_only=true' kullanın veya önce bir ana sahne belirleyin.")
+
 	_reset_log_pointer()
 	_last_observation = AISidebarRuntimeObservation.new()
 	_last_observation.status = AISidebarRuntimeObservation.RuntimeStatus.STARTING

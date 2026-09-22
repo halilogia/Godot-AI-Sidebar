@@ -1720,9 +1720,13 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if tool_name == "ask_user" or tool_name == "propose_plan":
 		return
 	var grp = _ensure_activity_group()
+	var err_code = ""
+	if result.get("error") is Dictionary:
+		err_code = str((result.get("error") as Dictionary).get("code", ""))
+	var is_deferred = err_code.begins_with("DEFERRED")
 	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
 	var is_ok = bool(outcome["success"])
-	var icon = "✓" if is_ok else "✕"
+	var icon = "•" if is_deferred else ("✓" if is_ok else "✕")
 	var human_title = _get_human_tool_title(tool_name, {})
 	var msg = str(result.get("message", "")).strip_edges()
 	if not msg.is_empty() and msg.length() < 200 and not msg.contains("\"tool_calls\""):
@@ -1739,7 +1743,9 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
 	_activity_running_idx = -1
 	_activity_running_tool = ""
-	_checklist_on_tool_done(tool_name, is_ok, err_summary)
+	# Ertelenen çağrı hiç çalışmadı: checklist'i kirletme, sadece activity'de göster.
+	if not is_deferred:
+		_checklist_on_tool_done(tool_name, is_ok, err_summary)
 	if agent_context:
 		agent_context.get_transcript().record("tool_completed", {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500), "duration_ms": elapsed})
 		agent_context.get_transcript().record("activity", {"icon": icon, "title": (human_title + ("" if is_ok else (" — Error: " + err_summary))).left(300)})

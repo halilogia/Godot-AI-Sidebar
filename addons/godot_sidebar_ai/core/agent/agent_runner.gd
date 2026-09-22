@@ -356,8 +356,10 @@ func approve_pending_action() -> void:
 	tool_completed.emit(fn_name, result)
 	if cs and result.get("success", false):
 		changes_applied.emit(cs)
-		
-	_run_verification_and_proceed(fn_name, tc_id, args, result)
+
+	var verified = _verify_tool_result(fn_name, args, result)
+	_complete_tool_turn(fn_name, tc_id, args, result, bool(verified.get("is_valid", false)), str(verified.get("message", "")))
+	_run_next_step()
 
 ## Kullanıcı bekleyen işlemi reddetti (Reject)
 func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") -> void:
@@ -569,7 +571,8 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		if context:
 			context.add_assistant_tool_call_message(text_content, tool_calls, thinking_content)
 			
-		for tc in tool_calls:
+		for _tc_idx in range(tool_calls.size()):
+			var tc = tool_calls[_tc_idx]
 			var fn_name: String = tc.get("name", "")
 			var tc_id: String = tc.get("id", "call_default")
 			var args: Dictionary = tc.get("arguments", {})
@@ -590,6 +593,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				else:
 					if context:
 						context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
+					_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_AFTER_STAGNATION_WARNING", "Tekrarlanan çağrı nedeniyle yeni tura geçildi; bu çağrı ertelendi.")
 					_run_next_step()
 					return
 			else:
@@ -612,6 +616,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				
 				_set_state(AgentState.WAITING_FOR_CLARIFICATION, "Kullanıcıdan yanıt bekleniyor...")
 				print("[TIMING] %s | CLARIFICATION_REQUESTED | question=%s options=%s" % [get_ts(), question, str(options)])
+				_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_FOR_CLARIFICATION", "Kullanıcı yanıtı bekleniyor; bu çağrı ertelendi. Gerekirse yanıt sonrası tekrar isteyin.")
 				clarification_requested.emit(question, options, tc_id)
 				return
 
@@ -624,6 +629,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 
 				_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")
 				print("[TIMING] %s | PLAN_PROPOSED | steps=%d files=%d" % [get_ts(), plan.steps.size(), plan.affected_files.size()])
+				_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_FOR_PLAN", "Plan onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
 				plan_proposed.emit(plan)
 				return
 
@@ -640,8 +646,9 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				)
 				if context:
 					context.add_tool_result_message(tc_id, fn_name, blocked)
-				_run_next_step()
-				return
+				# Engellenen çağrı kuyruğu durdurmaz; sonraki (izinli) çağrılar
+				# aynı turda işlenmeye devam eder, tur sonu tek _run_next_step.
+				continue
 
 			# Telemetri sınıflandırması guard'dan SONRA yapılır; böylece engellenen
 			# (hiç çalışmayan) bir işlem 'file_ops' / 'editor_ops' olarak SAYILMAZ.
@@ -657,6 +664,8 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			
 			var t_start = Time.get_ticks_msec()
 			var result: Dictionary = await AISidebarToolManager.execute_tool_async(fn_name, args, false)
+			if not is_running():
+				return
 			var t_delta = Time.get_ticks_msec() - t_start
 			tool_time_msec += t_delta
 			_record_category_time(fn_name, t_delta)
@@ -682,6 +691,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_waiting_start_time = Time.get_ticks_msec()
 				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
 				print("[TIMING] %s | APPROVAL_REQUESTED | tool=%s" % [get_ts(), fn_name])
+				_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_FOR_APPROVAL", "Kullanıcı onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
 				approval_requested.emit(fn_name, args, cs)
 				return
 				
@@ -692,8 +702,10 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			if fn_name == "play_game" or fn_name == "restart_game":
 				_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor...")
 				
-			_run_verification_and_proceed(fn_name, tc_id, args, result)
-			return
+			var verified = _verify_tool_result(fn_name, args, result)
+			_complete_tool_turn(fn_name, tc_id, args, result, bool(verified.get("is_valid", false)), str(verified.get("message", "")))
+		# Tüm kuyruk aynı turda işlendi; tek LLM turu harcandı.
+		_run_next_step()
 	else:
 		if not text_content.is_empty() and context:
 			context.add_assistant_message(text_content)
@@ -837,29 +849,45 @@ static func _telemetry_file_targets(args: Dictionary) -> Array:
 					out.append(fp)
 	return out
 
-func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args: Dictionary, result: Variant) -> void:
+## Kalan kuyruk çağrılarını erteler: her birine açık DEFERRED sonucu yazılır
+## (sessiz kayıp yok) ve tool_completed yayılır; körlemesine icra yapılmaz.
+func _defer_remaining_calls(remaining: Array, code: String, message: String) -> void:
+	if remaining.is_empty() or context == null:
+		return
+	for tc in remaining:
+		var deferred = AISidebarToolResult.err(code, message + " (Araç: " + str(tc.get("name", "")) + ")", true)
+		context.add_tool_result_message(str(tc.get("id", "call_default")), str(tc.get("name", "")), deferred)
+		tool_completed.emit(str(tc.get("name", "")), deferred)
+
+## Doğrulama kararı (yan etkisiz hüküm; tur ilerletmez).
+func _verify_tool_result(tool_name: String, args: Dictionary, result: Variant) -> Dictionary:
 	var res_dict = result if result is Dictionary else {}
 	var is_valid = res_dict.get("success", false)
-	var ui_msg = res_dict.get("message", "")
-	
+	var ui_msg = str(res_dict.get("message", ""))
+
 	var needs_explicit_verify = (tool_name == "validate_script" or tool_name == "play_game" or tool_name == "get_runtime_errors")
-	
+
 	if needs_explicit_verify:
 		_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
 		print("[TIMING] %s | VERIFICATION_START | tool=%s" % [get_ts(), tool_name])
 		verification_started.emit(tool_name)
 		verification_checkpoints_count += 1
-		
+
 		var v_start = Time.get_ticks_msec()
 		var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, res_dict)
 		var v_delta = Time.get_ticks_msec() - v_start
 		verification_time_msec += v_delta
-		
+
 		is_valid = verified_result.get("success", false)
 		ui_msg = verified_result.get("message", ui_msg)
 		print("[TIMING] %s | VERIFICATION_DONE | tool=%s duration=%dms valid=%s" % [get_ts(), tool_name, v_delta, str(is_valid)])
 		verification_completed.emit(tool_name, is_valid, ui_msg)
-		
+
+	return {"is_valid": is_valid, "message": ui_msg}
+
+## Tek tool turunun kapanışı: sonuç context'e, vision kuyruğa (tur ilerletmez).
+func _complete_tool_turn(tool_name: String, tool_call_id: String, args: Dictionary, result: Variant, is_valid: bool, ui_msg: String) -> void:
+	var res_dict = result if result is Dictionary else {}
 	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
 	if context:
 		var final_payload: Dictionary = {}
@@ -871,9 +899,9 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 			}
 		else:
 			final_payload = res_dict
-			
+
 		context.add_tool_result_message(tool_call_id, tool_name, final_payload)
-		
+
 	# Görsel Gözlem (Vision Data) Varsa Multimodal Kuyruğuna Ekle
 	if is_valid and res_dict.has("data") and res_dict["data"] is Dictionary:
 		var v_data = res_dict["data"]
@@ -885,9 +913,8 @@ func _run_verification_and_proceed(tool_name: String, tool_call_id: String, args
 				int(v_data.get("height", 0))
 			)
 			_pending_vision_inputs.append(vi)
-		
+
 	print("[TIMING] %s | AGENT_CONTINUE | next_step=%d" % [get_ts(), current_step + 1])
-	_run_next_step()
 
 func _on_provider_error(error_message: String) -> void:
 	if not is_running():
