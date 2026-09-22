@@ -138,10 +138,13 @@ func add_tool_result_message(tool_call_id: String, tool_name: String, result: Di
 		AISidebarTaskTranscript.redact_secrets(JSON.stringify(result)),
 		AISidebarTaskTranscript.MAX_PAYLOAD_CHARS
 	)
+	# Outer wrapper success=true olsa bile payload'daki gerçek hüküm esas alınır.
+	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
 	var res_data = {
 		"tool": tool_name,
-		"success": bool(result.get("success", false)),
+		"success": bool(outcome["success"]),
 		"message": AISidebarTaskTranscript.truncate_text(str(result.get("message", "")), 500),
+		"effective_error": str(outcome["error"]),
 		"payload": payload_flagged["text"],
 		"payload_truncated": payload_flagged["truncated"],
 	}

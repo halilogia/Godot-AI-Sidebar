@@ -28,6 +28,8 @@ const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/com
 const AISidebarPlanCard = preload("res://addons/godot_sidebar_ai/ui/components/plan_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
+const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
+const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
@@ -44,6 +46,7 @@ const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/component
 @onready var new_chat_btn: Button = $MainLayout/HeaderBar/NewChatBtn
 @onready var history_btn: Button = $MainLayout/HeaderBar/HistoryBtn
 @onready var export_btn: Button = $MainLayout/HeaderBar/ExportBtn
+@onready var copy_task_btn: Button = $MainLayout/HeaderBar/CopyTaskBtn
 @onready var model_bar: HBoxContainer = get_node_or_null("MainLayout/ModelBar")
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
 @onready var approve_mode_btn: Button = $MainLayout/ModelBar/ApproveModeBtn
@@ -98,6 +101,9 @@ var _attachment_label: Label = null
 var _attachment_remove_btn: Button = null
 
 var _current_activity_group: AISidebarActivityGroup = null
+var _current_checklist: AISidebarTaskChecklist = null
+## Son görülen tool argümanları (checklist dosya-eşleşmesi için).
+var _last_tool_args: Dictionary = {}
 ## Running satırının indeksi (tool_completed geldiğinde yerinde güncellenir, satır çoğalmaz).
 var _activity_running_idx: int = -1
 var _activity_running_tool: String = ""
@@ -216,6 +222,8 @@ func _ready() -> void:
 		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
 	if export_btn:
 		export_btn.pressed.connect(_on_export_pressed)
+	if copy_task_btn:
+		copy_task_btn.pressed.connect(_on_copy_task_pressed)
 	if input_field:
 		input_field.gui_input.connect(_on_input_gui_input)
 		input_field.text_changed.connect(_on_input_text_changed)
@@ -292,6 +300,13 @@ func _apply_theme() -> void:
 		export_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 		export_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 		export_btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	if copy_task_btn:
+		copy_task_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
+		copy_task_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+		copy_task_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_ghost_button_style(true))
+		copy_task_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		copy_task_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+		copy_task_btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 
 	# 4. ModelBar
 	if model_selector:
@@ -499,6 +514,9 @@ func update_ui_language() -> void:
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
 		export_btn.tooltip_text = "Sohbeti Dışa Aktar / Kopyala (Export Chat)"
+	if copy_task_btn:
+		AISidebarIconHelper.apply_icon(copy_task_btn, "copy")
+		copy_task_btn.tooltip_text = "Aktif/Son Task transcriptini kopyala (Copy Current Task)"
 	if history_btn:
 		AISidebarIconHelper.apply_icon(history_btn, "history")
 		history_btn.text = "" if history_btn.icon else "Hist"
@@ -593,7 +611,7 @@ func _on_export_pressed() -> void:
 	var save_res = AISidebarChatExporter.save_to_file(md, "md")
 	var js = AISidebarChatExporter.export_transcript_to_json(transcript_tasks, msgs, session_meta)
 	AISidebarChatExporter.save_to_file(js, "json")
-	
+
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "check")
 		var t = get_tree()
@@ -615,6 +633,41 @@ func _on_export_pressed() -> void:
 				if is_instance_valid(status_badge):
 					status_badge.text = prev
 			)
+
+## Copy Current Task: yalnızca aktif (yoksa son biten) task transcriptini panoya kopyalar.
+func _on_copy_task_pressed() -> void:
+	if not agent_context:
+		return
+	var task = agent_context.get_transcript().get_current_task()
+	if task.is_empty():
+		_flash_status_text("No task yet")
+		return
+	var md = AISidebarChatExporter.export_single_task_to_markdown(task)
+	DisplayServer.clipboard_set(md)
+	if copy_task_btn:
+		copy_task_btn.text = "Copied"
+		var t = get_tree()
+		if t:
+			var timer = t.create_timer(1.5)
+			timer.timeout.connect(func():
+				if is_instance_valid(copy_task_btn):
+					copy_task_btn.text = ""
+			)
+	_flash_status_text("Task copied")
+
+func _flash_status_text(txt: String) -> void:
+	if not status_badge:
+		return
+	var prev = status_badge.text
+	status_badge.text = txt
+	status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
+	var t = get_tree()
+	if t:
+		var timer = t.create_timer(2.0)
+		timer.timeout.connect(func():
+			if is_instance_valid(status_badge):
+				status_badge.text = prev
+		)
 
 func _load_cached_models() -> void:
 	var cfg = AISidebarConfig.load_config()
@@ -1052,6 +1105,8 @@ func _clear_ui_stream() -> void:
 		for child in message_stream.get_children():
 			child.queue_free()
 	_current_activity_group = null
+	_current_checklist = null
+	_last_tool_args.clear()
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	_activity_tool_start_msec = 0
@@ -1259,6 +1314,8 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
 	last_user_prompt = final_display
 	_current_activity_group = null
+	_current_checklist = null
+	_last_tool_args.clear()
 	_current_runtime_card = null
 	_current_approval_card = null
 	_is_user_stopped = false
@@ -1519,6 +1576,95 @@ func _ensure_activity_group() -> AISidebarActivityGroup:
 		_activity_running_tool = ""
 	return _current_activity_group
 
+const CHECKLIST_MUTATING_TOOLS = ["create_or_update_script", "replace_file_content", "write_files", "create_scene", "save_scene", "delete_file", "delete_node", "add_node"]
+const CHECKLIST_VERIFYING_TOOLS = ["validate_script", "play_game", "get_runtime_errors"]
+
+## Plan step'i <-> tool execution deterministik eşleşmesi (dosya adı üzerinden).
+func _checklist_file_targets(args: Dictionary) -> Array:
+	var out: Array = []
+	for k in ["file_path", "scene_path"]:
+		var v = str(args.get(k, "")).strip_edges()
+		if not v.is_empty():
+			out.append(v.get_file().to_lower())
+	var files = args.get("files", [])
+	if files is Array:
+		for f in files:
+			if f is Dictionary:
+				var fp = str((f as Dictionary).get("file_path", (f as Dictionary).get("path", ""))).strip_edges()
+				if not fp.is_empty():
+					out.append(fp.get_file().to_lower())
+	return out
+
+func _checklist_match_index(tool_name: String, args: Dictionary, only_states: Array) -> int:
+	if _current_checklist == null or not is_instance_valid(_current_checklist) or _current_checklist.is_finished:
+		return -1
+	var targets = _checklist_file_targets(args)
+	var verify_keywords = ["valid", "test", "verif", "doğrul", "kontrol", "check"]
+	for pass_idx in range(2):
+		for i in range(_current_checklist.step_count()):
+			var st = _current_checklist.get_step(i)
+			if not str(st.get("state", "")) in only_states:
+				continue
+			var title_l = str(st.get("title", "")).to_lower()
+			if tool_name == "validate_script" and pass_idx == 0:
+				for kw in verify_keywords:
+					if kw in title_l:
+						return i
+				continue
+			if pass_idx == 1:
+				for t in targets:
+					if not (t as String).is_empty() and (t as String) in title_l:
+						return i
+	return -1
+
+func _checklist_on_tool_start(tool_name: String, args: Dictionary) -> void:
+	if tool_name == "ask_user" or tool_name == "propose_plan":
+		return
+	var idx = _checklist_match_index(tool_name, args, ["pending"])
+	if idx < 0:
+		return
+	_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_RUNNING)
+	_record_checklist_snapshot()
+
+func _checklist_on_tool_done(tool_name: String, success: bool, error_summary: String) -> void:
+	if tool_name == "ask_user" or tool_name == "propose_plan":
+		return
+	if not (tool_name in CHECKLIST_MUTATING_TOOLS or tool_name in CHECKLIST_VERIFYING_TOOLS):
+		return
+	var args = _last_tool_args.get(tool_name, {})
+	if not (args is Dictionary):
+		args = {}
+	var idx = _checklist_match_index(tool_name, args, ["running", "pending"])
+	if idx < 0:
+		return
+	if success:
+		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_COMPLETED)
+	else:
+		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_FAILED, error_summary)
+	_record_checklist_snapshot()
+
+func _finish_checklist(success: bool, stop_reason: String) -> void:
+	if _current_checklist == null or not is_instance_valid(_current_checklist):
+		return
+	if _current_checklist.is_finished:
+		return
+	if success:
+		_current_checklist.set_finished_success()
+	else:
+		var ridx = _current_checklist.get_states().find("running")
+		_current_checklist.finish_with_stop(ridx, stop_reason)
+	_record_checklist_snapshot()
+
+func _record_checklist_snapshot() -> void:
+	if agent_context == null or _current_checklist == null or not is_instance_valid(_current_checklist):
+		return
+	agent_context.get_transcript().record("checklist_snapshot", {
+		"goal": _current_checklist.goal.left(200),
+		"steps": _current_checklist.to_snapshot(),
+		"finished": _current_checklist.is_finished,
+		"stop_reason": _current_checklist.stop_reason.left(200),
+	})
+
 func _build_tech_details(tool_name: String, args: Dictionary, result: Dictionary) -> String:
 	var args_txt = AISidebarActivityGroup.redact_secrets(JSON.stringify(args))
 	var res_txt = AISidebarActivityGroup.redact_secrets(JSON.stringify(result))
@@ -1529,15 +1675,9 @@ func _build_tech_details(tool_name: String, args: Dictionary, result: Dictionary
 	return "tool: " + tool_name + "\nargs: " + args_txt + "\nresult: " + res_txt
 
 func _extract_tool_error(result: Dictionary) -> String:
-	var err = result.get("error", {})
-	var raw = ""
-	if err is Dictionary:
-		raw = str(err.get("message", err.get("code", "")))
-	elif err is String:
-		raw = err
-	if raw.strip_edges().is_empty():
-		raw = str(result.get("message", ""))
-	return AISidebarActivityGroup.summarize_error(AISidebarActivityGroup.redact_secrets(raw))
+	# Gerçek hüküm helper'dan (outer ok + payload fail durumunu yakalar).
+	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
+	return str(outcome["error"])
 
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_current_assistant_bubble = null
@@ -1553,6 +1693,8 @@ func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_activity_running_tool = tool_name
 	_activity_tool_start_msec = Time.get_ticks_msec()
 	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
+	_last_tool_args[tool_name] = args.duplicate(true)
+	_checklist_on_tool_start(tool_name, args)
 	if agent_context:
 		agent_context.get_transcript().record("tool_executing", {"tool": tool_name, "title": human_title.left(200), "args": AISidebarActivityGroup.redact_secrets(JSON.stringify(args)).left(800)})
 		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Running " + human_title.left(200)})
@@ -1561,7 +1703,8 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if tool_name == "ask_user" or tool_name == "propose_plan":
 		return
 	var grp = _ensure_activity_group()
-	var is_ok = bool(result.get("success", false))
+	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
+	var is_ok = bool(outcome["success"])
 	var icon = "✓" if is_ok else "✕"
 	var human_title = _get_human_tool_title(tool_name, {})
 	var msg = str(result.get("message", "")).strip_edges()
@@ -1579,6 +1722,7 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
 	_activity_running_idx = -1
 	_activity_running_tool = ""
+	_checklist_on_tool_done(tool_name, is_ok, err_summary)
 	if agent_context:
 		agent_context.get_transcript().record("tool_completed", {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500)})
 		agent_context.get_transcript().record("activity", {"icon": icon, "title": (human_title + ("" if is_ok else (" — Error: " + err_summary))).left(300)})
@@ -1735,6 +1879,12 @@ func _on_plan_applied() -> void:
 	if agent_context:
 		agent_context.get_transcript().record("plan_approved", {})
 		agent_context.get_transcript().record("activity", {"icon": "✓", "title": "Plan approved by user"})
+	if _current_plan_card and is_instance_valid(_current_plan_card) and _current_plan_card.plan:
+		_current_checklist = AISidebarTaskChecklist.new()
+		_current_checklist.setup(_current_plan_card.plan.steps, _current_plan_card.plan.goal)
+		_current_checklist.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(_current_checklist)
+		_record_checklist_snapshot()
 	if agent_runner:
 		agent_runner.approve_plan()
 
@@ -1814,8 +1964,11 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_current_assistant_bubble = null
 	_activity_running_idx = -1
 	_activity_running_tool = ""
+	var t_ok = bool(metrics.get("success", false))
+	_finish_checklist(t_ok, str(metrics.get("stop_reason", "")))
+	_last_tool_args.clear()
 	if agent_context and agent_context.get_transcript().has_running_task():
-		var t_status = "completed" if bool(metrics.get("success", false)) else "failed"
+		var t_status = "completed" if t_ok else "failed"
 		agent_context.end_task(t_status, str(metrics.get("stop_reason", "")), metrics)
 	if _current_activity_group:
 		var stop_reason = str(metrics.get("stop_reason", ""))
@@ -1859,6 +2012,8 @@ func _on_agent_error(err_msg: String) -> void:
 	_current_assistant_bubble = null
 	_activity_running_idx = -1
 	_activity_running_tool = ""
+	_finish_checklist(false, err_msg)
+	_last_tool_args.clear()
 	if agent_context and agent_context.get_transcript().has_running_task():
 		var e_status = "cancelled" if _is_user_stopped else "failed"
 		agent_context.end_task(e_status, err_msg)

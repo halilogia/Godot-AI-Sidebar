@@ -59,6 +59,12 @@ focus_mode = 0
 tooltip_text = "Sohbeti Dışa Aktar (Export Chat)"
 flat = true
 
+[node name="CopyTaskBtn" type="Button" parent="MainLayout/HeaderBar"]
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Aktif/Son Task transcriptini kopyala (Copy Current Task)"
+flat = true
+
 [node name="ModelBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
 size_flags_horizontal = 3

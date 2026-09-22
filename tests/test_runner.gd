@@ -60,6 +60,7 @@ const TestImplementationPlanning = preload("res://tests/test_implementation_plan
 const TestStreamEnvelopeGuard = preload("res://tests/test_stream_envelope_guard.gd")
 const TestActivityProgressUX = preload("res://tests/test_activity_progress_ux.gd")
 const TestEverythingExport = preload("res://tests/test_everything_export.gd")
+const TestCopyTaskChecklist = preload("res://tests/test_copy_task_checklist.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -125,7 +126,8 @@ func _init() -> void:
 		TestImplementationPlanning,
 		TestStreamEnvelopeGuard,
 		TestActivityProgressUX,
-		TestEverythingExport
+		TestEverythingExport,
+		TestCopyTaskChecklist
 	]
 	
 	var total_passed = 0

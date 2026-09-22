@@ -53,6 +53,16 @@ static func truncate_text(s: String, max_len: int = MAX_STORED_CHARS) -> String:
 		return s.left(max_len) + "... [truncated]"
 	return s
 
+static func summarize_error(raw: String, max_len: int = 180) -> String:
+	if raw == null:
+		return ""
+	var s = str(raw).strip_edges().replace("\n", " ").replace("\r", " ")
+	while s.contains("  "):
+		s = s.replace("  ", " ")
+	if s.length() > max_len:
+		s = s.left(max_len).strip_edges() + "..."
+	return s
+
 ## Kısaltma durumunu açıkça bildiren varyant: {"text": ..., "truncated": bool}.
 ## Export kaydında veri kaybı gizlenmez; JSON transcript bayrağı taşır.
 static func truncate_flagged(s: String, max_len: int = MAX_STORED_CHARS) -> Dictionary:
@@ -76,6 +86,68 @@ func task_count() -> int:
 
 func get_tasks() -> Array:
 	return tasks.duplicate(true)
+
+## Aktif task yoksa son biten task (Copy Current Task kaynağı).
+func get_current_task() -> Dictionary:
+	if has_running_task():
+		return (tasks[_running_idx] as Dictionary).duplicate(true)
+	if tasks.size() > 0:
+		return (tasks[tasks.size() - 1] as Dictionary).duplicate(true)
+	return {}
+
+## Gerçek tool başarı hükmü: outer wrapper `success=true` olsa bile data/status/error
+## içindeki açık başarısızlığı yakalar (or. validate_script: outer ok + data.success=false).
+## Dönüş: {"success": bool, "error": String}
+static func effective_tool_outcome(result: Dictionary) -> Dictionary:
+	if result == null or result.is_empty():
+		return {"success": false, "error": "Empty result."}
+	if not bool(result.get("success", false)):
+		var e0 = _extract_error_text(result)
+		if e0.is_empty():
+			e0 = str(result.get("message", "Tool failed.")).strip_edges()
+		return {"success": false, "error": summarize_error(e0)}
+	var scopes: Array = [result]
+	if result.get("data") is Dictionary:
+		scopes.append(result["data"])
+	for scope in scopes:
+		if not (scope is Dictionary):
+			continue
+		var sd: Dictionary = scope
+		if sd.has("success") and not bool(sd.get("success", true)):
+			var ed = _extract_error_text(sd)
+			if ed.is_empty():
+				ed = str(result.get("message", "Tool failed.")).strip_edges()
+			return {"success": false, "error": summarize_error(ed)}
+		if _is_failed_status(sd.get("status", 0)):
+			var es = _extract_error_text(sd)
+			if es.is_empty():
+				es = str(result.get("message", "Verification failed.")).strip_edges()
+			return {"success": false, "error": summarize_error(es)}
+		if sd.has("error"):
+			var ee = _extract_error_text(sd)
+			if not ee.is_empty():
+				return {"success": false, "error": summarize_error(ee)}
+	return {"success": true, "error": ""}
+
+static func _is_failed_status(st: Variant) -> bool:
+	if st is int:
+		return st == 1
+	if st is String:
+		return (st as String).strip_edges().to_lower() in ["failed", "error"]
+	return false
+
+static func _extract_error_text(scope: Dictionary) -> String:
+	if not scope.has("error"):
+		return ""
+	var e = scope.get("error")
+	if e is Dictionary:
+		var m = str((e as Dictionary).get("message", "")).strip_edges()
+		if not m.is_empty():
+			return m
+		return str((e as Dictionary).get("code", "")).strip_edges()
+	if e is String:
+		return (e as String).strip_edges()
+	return ""
 
 ## Yeni task başlatır; yarım kalmış önceki task varsa "cancelled" kapatır.
 func begin_task(prompt: String, display_prompt: String = "") -> String:

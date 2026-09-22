@@ -326,6 +326,31 @@ static func export_transcript_to_markdown(tasks: Array, history: Array = [], ses
 
 	return "\n".join(lines)
 
+## Tek task Markdown exportu (Copy Current Task kaynağı).
+static func export_single_task_to_markdown(task: Dictionary) -> String:
+	if task == null or task.is_empty():
+		return ""
+	var lines: PackedStringArray = []
+	lines.append("# 📋 Task Export — " + _rx(str(task.get("display_prompt", task.get("prompt", "(untitled)"))).strip_edges().left(100)))
+	lines.append("")
+	lines.append("- **Export Date:** " + Time.get_datetime_string_from_system())
+	lines.append("")
+	_append_task_section(task, maxi(1, int(task.get("seq", 1))), lines)
+	return "\n".join(lines)
+
+## Task içindeki son checklist snapshot'ını bulur (yoksa boş sözlük).
+static func latest_checklist_snapshot(task: Dictionary) -> Dictionary:
+	var evs = task.get("events", [])
+	if evs == null or not (evs is Array):
+		return {}
+	var latest = {}
+	for e in evs:
+		if e is Dictionary and str((e as Dictionary).get("t", "")) == "checklist_snapshot":
+			var d = (e as Dictionary).get("data", {})
+			if d is Dictionary:
+				latest = d
+	return latest
+
 ## Everything Export (JSON): Markdown ile aynı complete transcript.
 ## Hassas değerler recursive redaction ile temizlenir (ham history/metadata dahil).
 static func export_transcript_to_json(tasks: Array, history: Array = [], session_meta: Dictionary = {}) -> String:
@@ -376,6 +401,7 @@ static func _append_task_section(task: Dictionary, idx: int, lines: PackedString
 	_append_event_bucket(lines, "### Activity", buckets["activity"])
 	_append_event_bucket(lines, "### Verification", buckets["verification"])
 	_append_event_bucket(lines, "### Runtime", buckets["runtime"])
+	_append_checklist_section(lines, latest_checklist_snapshot(task))
 	_append_event_bucket(lines, "### System Notes", buckets["system"])
 
 	var metrics = task.get("metrics", {})
@@ -537,6 +563,28 @@ static func _format_args_line(args_text: Variant) -> String:
 	if s.is_empty() or s == "{}":
 		return ""
 	return "\n\n```json\n" + _rx(s.left(800)) + "\n```"
+
+static func _append_checklist_section(lines: PackedStringArray, snap: Dictionary) -> void:
+	if snap.is_empty():
+		return
+	var steps = snap.get("steps", [])
+	if not (steps is Array) or (steps as Array).is_empty():
+		return
+	lines.append("### Task Checklist")
+	lines.append("")
+	var icons = {"pending": "☐", "running": "▶", "completed": "✓", "failed": "✕", "skipped": "–"}
+	for s in (steps as Array):
+		if s is Dictionary:
+			var st = str((s as Dictionary).get("state", "pending"))
+			var mark = str(icons.get(st, "☐"))
+			lines.append("- " + mark + " " + _rx(str((s as Dictionary).get("title", ""))).left(200))
+	if bool(snap.get("finished", false)):
+		var sr = _rx(str(snap.get("stop_reason", "")))
+		if sr.is_empty():
+			lines.append("- ✓ All tasks completed.")
+		else:
+			lines.append("- ✕ Stopped: " + sr)
+	lines.append("")
 
 static func _append_event_bucket(lines: PackedStringArray, header: String, items: Array) -> void:
 	if items.is_empty():
