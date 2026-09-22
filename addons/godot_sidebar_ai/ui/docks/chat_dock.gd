@@ -84,6 +84,8 @@ var last_user_prompt: String = ""
 # Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
 var current_session: AISidebarChatSession = null
 var history_panel: AISidebarHistoryPanel = null
+var _export_file_dialog: FileDialog = null
+var _pending_history_export: Dictionary = {}
 
 # Kuyruktaki Mesajlar (FIFO Message Queue)
 var _message_queue: Array[Dictionary] = []
@@ -401,6 +403,7 @@ func _setup_history_panel() -> void:
 	history_panel.new_chat_requested.connect(_on_new_chat_pressed)
 	history_panel.session_deleted.connect(_on_history_session_deleted)
 	history_panel.session_renamed.connect(_on_history_session_renamed)
+	history_panel.session_export_requested.connect(_on_history_export_requested)
 	history_panel.close_requested.connect(_on_history_close_requested)
 
 func _setup_queue_ui() -> void:
@@ -959,6 +962,52 @@ func _on_history_session_renamed(session_id: String, new_title: String) -> void:
 
 func _on_history_close_requested() -> void:
 	set_history_view_visible(false)
+
+## History panelinden eski session exportu: yükle -> içerik kur -> FileDialog.
+func _on_history_export_requested(session_id: String, format: String) -> void:
+	_pending_history_export.clear()
+	var sess = AISidebarChatManager.load_session(session_id)
+	if sess == null:
+		_flash_status_text("Export failed: session not found")
+		return
+	var built = AISidebarChatExporter.build_history_export(sess, format)
+	if not bool(built.get("ok", false)):
+		_flash_status_text("Export failed: " + str(built.get("error", "unknown")))
+		return
+	_pending_history_export = built
+	_ensure_export_file_dialog()
+	_export_file_dialog.current_file = str(built.get("filename", "chat_export.md"))
+	var flt = "*.json" if str(built.get("format", "md")) == "json" else "*.md"
+	_export_file_dialog.filters = PackedStringArray([flt])
+	_export_file_dialog.popup_centered()
+
+func _ensure_export_file_dialog() -> void:
+	if _export_file_dialog and is_instance_valid(_export_file_dialog):
+		return
+	_export_file_dialog = FileDialog.new()
+	_export_file_dialog.title = "Export Chat"
+	_export_file_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	_export_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_export_file_dialog.file_selected.connect(_on_export_file_chosen)
+	_export_file_dialog.canceled.connect(_on_export_file_canceled)
+	add_child(_export_file_dialog)
+
+func _on_export_file_chosen(path: String) -> void:
+	var content = str(_pending_history_export.get("content", ""))
+	_pending_history_export.clear()
+	if content.is_empty():
+		_flash_status_text("Export failed: empty content")
+		return
+	var f = FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		_flash_status_text("Export failed: cannot write file")
+		return
+	f.store_string(content)
+	f.close()
+	_flash_status_text("Chat exported: " + path.get_file())
+
+func _on_export_file_canceled() -> void:
+	_pending_history_export.clear()
 
 func _start_new_chat_session() -> void:
 	if agent_runner and agent_runner.is_running():

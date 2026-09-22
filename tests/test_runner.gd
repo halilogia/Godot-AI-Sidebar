@@ -70,6 +70,7 @@ const TestSceneReliability = preload("res://tests/test_scene_reliability.gd")
 const TestRuntimeVisionChain = preload("res://tests/test_runtime_vision_chain.gd")
 const TestPauseResume = preload("res://tests/test_pause_resume.gd")
 const TestChatImageUX = preload("res://tests/test_chat_image_ux.gd")
+const TestHistoryExport = preload("res://tests/test_history_export.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -145,7 +146,8 @@ func _init() -> void:
 		TestSceneReliability,
 		TestRuntimeVisionChain,
 		TestPauseResume,
-		TestChatImageUX
+		TestChatImageUX,
+		TestHistoryExport
 	]
 	
 	var total_passed = 0

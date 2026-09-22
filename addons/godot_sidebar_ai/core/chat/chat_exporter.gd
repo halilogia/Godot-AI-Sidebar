@@ -11,6 +11,7 @@ class_name AISidebarChatExporter
 ## Hassas veriler (api key / bearer / secret / password / token) redact edilir.
 
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
+const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
 
 static func _rx(s: String) -> String:
 	return AISidebarTaskTranscript.redact_secrets(s)
@@ -699,6 +700,81 @@ static func _append_event_bucket(lines: PackedStringArray, header: String, items
 		lines.append(str(it))
 		lines.append("")
 
+
+## Dosya adına geçersiz filesystem karakterlerini güvenli şekilde temizler.
+static func sanitize_export_filename(title: String, extension: String = "md") -> String:
+	var ext = extension.trim_prefix(".").to_lower()
+	if ext != "md" and ext != "json":
+		ext = "md"
+	var base = str(title).strip_edges()
+	if base.is_empty():
+		base = "chat_export"
+	var bad = ["<", ">", ":", "\"", "/", "\\", "|", "?", "*", "\n", "\r", "\t"]
+	for ch in bad:
+		base = base.replace(ch, "_")
+	while base.contains("  "):
+		base = base.replace("  ", " ")
+	base = base.strip_edges().trim_suffix(".")
+	if base.is_empty():
+		base = "chat_export"
+	if base.length() > 80:
+		base = base.left(80).strip_edges()
+	return base + "." + ext
+
+static func _sess_title(sess) -> String:
+	if sess is AISidebarChatSession:
+		return str((sess as AISidebarChatSession).title)
+	if sess is Dictionary:
+		return str((sess as Dictionary).get("title", "Untitled"))
+	return "Untitled"
+
+static func _sess_array(sess, field: String) -> Array:
+	if sess is AISidebarChatSession:
+		var v = (sess as AISidebarChatSession).get(field)
+		return v.duplicate(true) if v is Array else []
+	if sess is Dictionary:
+		var d = (sess as Dictionary).get(field, [])
+		return (d as Array).duplicate(true) if d is Array else []
+	return []
+
+## Session meta (başlık + telemetri) export üstbilgisi için.
+static func session_metadata(sess) -> Dictionary:
+	var meta: Dictionary = {"exported_at": Time.get_datetime_string_from_system()}
+	if sess == null:
+		return meta
+	meta["title"] = _sess_title(sess)
+	var tel: Dictionary = {}
+	if sess is AISidebarChatSession:
+		tel = (sess as AISidebarChatSession).telemetry
+	elif sess is Dictionary and (sess as Dictionary).get("telemetry") is Dictionary:
+		tel = (sess as Dictionary)["telemetry"]
+	if not tel.is_empty():
+		meta["telemetry"] = tel.duplicate(true)
+	return meta
+
+## Eski/yüklü session -> Markdown (transcript timeline + squelch korunur).
+static func export_session_markdown(sess) -> String:
+	if sess == null:
+		return ""
+	return export_transcript_to_markdown(_sess_array(sess, "transcript_tasks"), _sess_array(sess, "messages"), session_metadata(sess))
+
+## Eski/yüklü session -> JSON (redaction korunur).
+static func export_session_json(sess) -> String:
+	if sess == null:
+		return ""
+	return export_transcript_to_json(_sess_array(sess, "transcript_tasks"), _sess_array(sess, "messages"), session_metadata(sess))
+
+## Session export içeriği + önerilen dosya adı (dosya yazmaz; iptal güvenli).
+static func build_history_export(sess, format: String) -> Dictionary:
+	if sess == null:
+		return {"ok": false, "error": "Session bulunamadı."}
+	var fmt = str(format).strip_edges().to_lower()
+	if fmt != "json":
+		fmt = "md"
+	var title = _sess_title(sess)
+	if fmt == "json":
+		return {"ok": true, "content": export_session_json(sess), "filename": sanitize_export_filename(title, "json"), "format": "json"}
+	return {"ok": true, "content": export_session_markdown(sess), "filename": sanitize_export_filename(title, "md"), "format": "md"}
 
 static func save_to_file(content_text: String, extension: String = "md") -> Dictionary:
 	var timestamp = Time.get_datetime_string_from_system().replace(":", "-")

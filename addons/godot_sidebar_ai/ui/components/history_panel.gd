@@ -9,6 +9,7 @@ signal session_selected(session_id: String)
 signal new_chat_requested()
 signal session_deleted(session_id: String)
 signal session_renamed(session_id: String, new_title: String)
+signal session_export_requested(session_id: String, format: String)
 signal close_requested()
 
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
@@ -29,6 +30,10 @@ var _session_to_delete: String = ""
 var _rename_dialog: ConfirmationDialog
 var _rename_input: LineEdit
 var _session_to_rename: String = ""
+
+var _export_dialog: ConfirmationDialog
+var _export_format: OptionButton
+var _session_to_export: String = ""
 
 func _init() -> void:
 	custom_minimum_size = Vector2(0, 0)
@@ -140,6 +145,18 @@ func _setup_dialogs() -> void:
 	_rename_dialog.add_child(dlg_vbox)
 	_rename_dialog.confirmed.connect(_on_rename_confirmed)
 	add_child(_rename_dialog)
+
+	# Dışa Aktarma Format Dialogu
+	_export_dialog = ConfirmationDialog.new()
+	_export_dialog.title = "Export Chat"
+	_export_dialog.dialog_text = "Dışa aktarma formatını seçin:"
+	_export_format = OptionButton.new()
+	_export_format.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_export_format.add_item("Markdown (.md)", 0)
+	_export_format.add_item("JSON (.json)", 1)
+	_export_dialog.add_child(_export_format)
+	_export_dialog.confirmed.connect(_on_export_confirmed)
+	add_child(_export_dialog)
 
 func set_active_session(p_id: String) -> void:
 	active_session_id = p_id
@@ -267,6 +284,19 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 		del_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SUBHEADER)
 	del_btn.pressed.connect(func(): _prompt_delete(sid))
 	actions_hbox.add_child(del_btn)
+
+	# Dışa Aktarma Butonu
+	var exp_btn = Button.new()
+	exp_btn.flat = true
+	exp_btn.tooltip_text = "Export chat (Markdown/JSON)"
+	exp_btn.focus_mode = FOCUS_NONE
+	exp_btn.custom_minimum_size = Vector2(24, 24)
+	AISidebarIconHelper.apply_icon(exp_btn, "download")
+	if not exp_btn.icon:
+		exp_btn.text = "⤓"
+		exp_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	exp_btn.pressed.connect(func(): _prompt_export(sid))
+	actions_hbox.add_child(exp_btn)
 	
 	hbox.add_child(actions_hbox)
 	
@@ -306,6 +336,21 @@ func _prompt_rename(sid: String, current_title: String) -> void:
 		_rename_input.text = current_title
 	if _rename_dialog:
 		_rename_dialog.popup_centered()
+
+func _prompt_export(sid: String) -> void:
+	_session_to_export = sid
+	if _export_format:
+		_export_format.selected = 0
+	if _export_dialog:
+		_export_dialog.popup_centered()
+
+func _on_export_confirmed() -> void:
+	if _session_to_export.is_empty():
+		return
+	var sid = _session_to_export
+	_session_to_export = ""
+	var fmt = "json" if (_export_format and _export_format.selected == 1) else "md"
+	session_export_requested.emit(sid, fmt)
 
 func _on_rename_confirmed() -> void:
 	if not _session_to_rename.is_empty() and _rename_input:
