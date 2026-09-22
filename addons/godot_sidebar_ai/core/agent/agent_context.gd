@@ -9,6 +9,8 @@ const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/
 const AISidebarSourceMapper = preload("res://addons/godot_sidebar_ai/core/runtime/source_mapper.gd")
 const AISidebarContextCompactor = preload("res://addons/godot_sidebar_ai/core/agent/context_compactor.gd")
 
+const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
+
 var messages: Array = []
 var recent_actions: Array = []
 
@@ -19,13 +21,21 @@ func clear() -> void:
 func size() -> int:
 	return messages.size()
 
-func add_user_message(text: String, _grounding: bool = false, display_text: String = "") -> void:
+func add_user_message(text: String, _grounding: bool = false, display_text: String = "", vision_inputs: Array = []) -> void:
 	var msg = {
 		"role": "user",
 		"content": text
 	}
 	if not display_text.is_empty():
 		msg["display_text"] = display_text
+	if vision_inputs.size() > 0:
+		var v_parts: Array = []
+		for vi in vision_inputs:
+			if vi is AISidebarVisionInput:
+				v_parts.append(vi.to_openai_content_part())
+			elif vi is Dictionary:
+				v_parts.append(vi)
+		msg["vision_inputs"] = v_parts
 	messages.append(msg)
 	_auto_compact_if_needed()
 
@@ -118,7 +128,10 @@ func get_messages_for_api(keep_recent_tools: int = 2) -> Array:
 	# Eski tool çıktılarını yapılandırılmış özetlere dönüştür
 	var compacted_msgs = AISidebarContextCompactor.compact_messages(messages, keep_recent_tools)
 	for m in compacted_msgs:
-		api_messages.append(m)
+		var m_copy = m.duplicate(true)
+		if m_copy.has("vision_inputs"):
+			m_copy.erase("vision_inputs")
+		api_messages.append(m_copy)
 		
 	return api_messages
 

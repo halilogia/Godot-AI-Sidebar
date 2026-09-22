@@ -61,3 +61,20 @@ func to_openai_content_part() -> Dictionary:
 			"url": "data:" + mime_type + ";base64," + image_data_base64
 		}
 	}
+
+## UI önizlemesi için ImageTexture üretir
+func get_texture() -> ImageTexture:
+	if not image_data_base64.is_empty():
+		var raw = Marshalls.base64_to_raw(image_data_base64)
+		var img = Image.new()
+		var err = img.load_png_from_buffer(raw)
+		if err != OK:
+			err = img.load_jpg_from_buffer(raw)
+		if err == OK:
+			return ImageTexture.create_from_image(img)
+	elif not image_path.is_empty() and FileAccess.file_exists(image_path):
+		var img = Image.new()
+		if img.load(image_path) == OK:
+			return ImageTexture.create_from_image(img)
+	return null
+

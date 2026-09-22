@@ -10,6 +10,7 @@ signal copy_code_requested(code_text: String)
 
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 
 var role: String = "assistant"
 var text_content: String = ""
@@ -111,6 +112,30 @@ func _setup_ui() -> void:
 	_content_label.add_theme_color_override("default_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_content_label.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_label)
+	
+	# Görsel Ekleri (Attached Images)
+	if vision_inputs.size() > 0:
+		for vi in vision_inputs:
+			var tex: ImageTexture = null
+			if vi is AISidebarVisionInput:
+				tex = vi.get_texture()
+			elif vi is Dictionary and vi.get("type") == "image_url":
+				var url: String = vi.get("image_url", {}).get("url", "")
+				if url.contains("base64,"):
+					var b64 = url.split("base64,")[1]
+					var raw = Marshalls.base64_to_raw(b64)
+					var img = Image.new()
+					if img.load_png_from_buffer(raw) == OK or img.load_jpg_from_buffer(raw) == OK:
+						tex = ImageTexture.create_from_image(img)
+			if tex:
+				var img_rect = TextureRect.new()
+				img_rect.texture = tex
+				img_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+				img_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				img_rect.custom_minimum_size = Vector2(0, mini(220, int(tex.get_height())))
+				img_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				img_rect.mouse_filter = Control.MOUSE_FILTER_PASS
+				_vbox.add_child(img_rect)
 
 func _on_copy_pressed() -> void:
 	DisplayServer.clipboard_set(text_content)

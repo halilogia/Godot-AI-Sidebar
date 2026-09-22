@@ -35,6 +35,7 @@ const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/se
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -85,6 +86,14 @@ var _queue_title_label: Label = null
 var _queue_items_vbox: VBoxContainer = null
 var _queue_clear_btn: Button = null
 
+# Pano Görseli Eki (Clipboard Image Attachment)
+var _attached_vision_input: AISidebarVisionInput = null
+var _current_user_vision_inputs: Array = []
+var _attachment_container: PanelContainer = null
+var _attachment_preview: TextureRect = null
+var _attachment_label: Label = null
+var _attachment_remove_btn: Button = null
+
 var _current_activity_group: AISidebarActivityGroup = null
 var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
@@ -126,6 +135,7 @@ func _setup_provider() -> void:
 func _ready() -> void:
 	_setup_history_panel()
 	_setup_queue_ui()
+	_setup_attachment_ui()
 	_apply_theme()
 	if not Engine.is_editor_hint():
 		return
@@ -386,6 +396,65 @@ func _setup_queue_ui() -> void:
 	input_area.add_child(_queue_container)
 	input_area.move_child(_queue_container, 0)
 
+func _setup_attachment_ui() -> void:
+	if not input_area or not input_field:
+		return
+		
+	_attachment_container = PanelContainer.new()
+	_attachment_container.name = "AttachmentContainer"
+	_attachment_container.visible = false
+	_attachment_container.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XXS))
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	
+	_attachment_preview = TextureRect.new()
+	_attachment_preview.custom_minimum_size = Vector2(32, 32)
+	_attachment_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_attachment_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hbox.add_child(_attachment_preview)
+	
+	_attachment_label = Label.new()
+	_attachment_label.text = "📷 Pano Görseli"
+	_attachment_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_attachment_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_attachment_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_attachment_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_attachment_label.clip_text = true
+	hbox.add_child(_attachment_label)
+	
+	_attachment_remove_btn = Button.new()
+	_attachment_remove_btn.text = "✕"
+	_attachment_remove_btn.flat = true
+	_attachment_remove_btn.focus_mode = Control.FOCUS_NONE
+	_attachment_remove_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_attachment_remove_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
+	_attachment_remove_btn.tooltip_text = "Görseli kaldır"
+	_attachment_remove_btn.pressed.connect(_clear_attached_image)
+	hbox.add_child(_attachment_remove_btn)
+	
+	_attachment_container.add_child(hbox)
+	input_area.add_child(_attachment_container)
+	input_area.move_child(_attachment_container, input_field.get_index())
+
+func _attach_image_from_clipboard(img: Image) -> void:
+	if not img or img.is_empty():
+		return
+	_attached_vision_input = AISidebarVisionInput.from_image(img)
+	if _attachment_preview:
+		_attachment_preview.texture = ImageTexture.create_from_image(img)
+	if _attachment_label:
+		_attachment_label.text = "📷 Pano Görseli (%dx%d)" % [img.get_width(), img.get_height()]
+	if _attachment_container:
+		_attachment_container.visible = true
+
+func _clear_attached_image() -> void:
+	_attached_vision_input = null
+	if _attachment_container:
+		_attachment_container.visible = false
+	if _attachment_preview:
+		_attachment_preview.texture = null
+
 func update_ui_language() -> void:
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
@@ -558,6 +627,15 @@ func _on_model_selected(index: int) -> void:
 
 func _on_input_gui_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
+		# Pano Görseli Yapıştırma (Clipboard Image Paste - Ctrl+V / Cmd+V)
+		if (event.ctrl_pressed or event.meta_pressed) and not event.alt_pressed and not event.shift_pressed and event.keycode == KEY_V:
+			if DisplayServer.has_method("clipboard_has_image") and DisplayServer.clipboard_has_image():
+				var img = DisplayServer.clipboard_get_image()
+				if img and not img.is_empty():
+					_attach_image_from_clipboard(img)
+					accept_event()
+					return
+
 		var is_enter = (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER)
 		
 		# Mention Açıkken Klavye Navigasyonu
@@ -859,6 +937,10 @@ func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 							txt = str(part.get("text", ""))
 						elif part.get("type") == "image_url":
 							vision_inputs.append(part)
+			if m.has("vision_inputs") and m["vision_inputs"] is Array:
+				for vi in m["vision_inputs"]:
+					if not vision_inputs.has(vi):
+						vision_inputs.append(vi)
 			if txt.contains("\n\n==="):
 				var parts_prompt = txt.split("\n\n===")
 				txt = parts_prompt[0]
@@ -939,6 +1021,11 @@ func _on_send_pressed() -> void:
 		mention_container.visible = false
 		
 	var user_text = input_field.text.strip_edges()
+	var attached_img = _attached_vision_input
+	
+	# Eğer metin boşsa ama ekli görsel varsa varsayılan soru metni ata
+	if user_text.is_empty() and attached_img != null:
+		user_text = "Bu görseli incele ve yardımcı ol."
 	
 	# Eğer metin boşsa ve kullanıcı 'Stop' butonuna bastıysa:
 	if user_text.is_empty():
@@ -949,7 +1036,12 @@ func _on_send_pressed() -> void:
 		return
 		
 	input_field.text = ""
+	_clear_attached_image()
 	_is_user_stopped = false
+	
+	var vision_inputs: Array = []
+	if attached_img != null:
+		vision_inputs.append(attached_img)
 	
 	# 1. Slash Command Kontrolü (/)
 	if user_text.begins_with("/"):
@@ -964,14 +1056,15 @@ func _on_send_pressed() -> void:
 			"id": "q_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
 			"prompt": user_text,
 			"display_prompt": user_text,
-			"created_at": Time.get_unix_time_from_system()
+			"created_at": Time.get_unix_time_from_system(),
+			"vision_inputs": vision_inputs
 		}
 		_message_queue.append(queue_item)
 		_update_queue_ui()
 		return
 		
 	# Ajan boşta ise görevi hemen başlat
-	_start_task_prompt(user_text)
+	_start_task_prompt(user_text, "", vision_inputs)
 
 func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -> void:
 	if parsed_cmd.has("error"):
@@ -1037,20 +1130,21 @@ func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -
 			
 		_start_task_prompt(prompt, display_prompt)
 
-func _start_task_prompt(prompt_text: String, display_prompt: String = "") -> void:
+func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision_inputs: Array = []) -> void:
 	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
 	last_user_prompt = final_display
 	_current_activity_group = null
 	_current_runtime_card = null
 	_current_approval_card = null
 	_is_user_stopped = false
+	_current_user_vision_inputs = vision_inputs.duplicate()
 	
 	if current_session == null:
 		current_session = AISidebarChatSession.new()
 	_save_current_session()
 	
 	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
-	agent_runner.start_task(resolved_ctx["augmented_prompt"], final_display)
+	agent_runner.start_task(resolved_ctx["augmented_prompt"], final_display, vision_inputs)
 
 func _update_queue_ui() -> void:
 	if not _queue_container or not _queue_items_vbox:
@@ -1121,15 +1215,18 @@ func _check_and_dispatch_next_queue() -> void:
 		if next_item is Dictionary and next_item.has("prompt"):
 			var next_prompt = str(next_item["prompt"])
 			var next_disp = str(next_item.get("display_prompt", next_prompt))
+			var q_vision = next_item.get("vision_inputs", [])
 			var t = get_tree()
 			if t:
 				t.create_timer(0.05).timeout.connect(func():
-					_start_task_prompt(next_prompt, next_disp)
+					_start_task_prompt(next_prompt, next_disp, q_vision)
 				)
 			else:
-				_start_task_prompt(next_prompt, next_disp)
+				_start_task_prompt(next_prompt, next_disp, q_vision)
 
 func _on_clear_pressed() -> void:
+	_clear_attached_image()
+	_current_user_vision_inputs.clear()
 	if mention_container:
 		mention_container.visible = false
 	if agent_runner and agent_runner.is_running():
@@ -1231,7 +1328,9 @@ func _on_agent_text_received(role: String, text: String) -> void:
 		var bubble_role = role
 		if bubble_role == "user" and text.begins_with("/"):
 			bubble_role = "command"
-		var bubble = AISidebarMessageBubble.new(bubble_role, text)
+		var vi_for_bubble = _current_user_vision_inputs.duplicate() if bubble_role == "user" else []
+		_current_user_vision_inputs.clear()
+		var bubble = AISidebarMessageBubble.new(bubble_role, text, vi_for_bubble)
 		bubble.meta_clicked.connect(_on_meta_clicked)
 		_add_stream_component(bubble)
 
