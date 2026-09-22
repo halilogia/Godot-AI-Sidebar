@@ -7,13 +7,26 @@ class_name AISidebarRuntimeBridge
 ## güvenli ve semantik sahne ağacı (Remote Scene Tree) ve düğüm denetimini sağlar.
 
 const CAPTURE_NAME: String = "godot_ai"
+var _is_registered: bool = false
 
 func _ready() -> void:
-	# Yalnızca editör ortamında ve debugger aktifken dinleme yap
-	if not OS.has_feature("editor"):
+	_try_register_capture()
+
+func _process(_delta: float) -> void:
+	if not _is_registered:
+		_try_register_capture()
+	else:
+		set_process(false)
+
+func _try_register_capture() -> void:
+	if not OS.has_feature("editor") and not OS.has_feature("debug"):
+		set_process(false)
 		return
 	if EngineDebugger.is_active():
-		EngineDebugger.register_message_capture(CAPTURE_NAME, _on_debugger_message)
+		if not EngineDebugger.has_capture(CAPTURE_NAME):
+			EngineDebugger.register_message_capture(CAPTURE_NAME, _on_debugger_message)
+		_is_registered = true
+		set_process(false)
 
 func _exit_tree() -> void:
 	if EngineDebugger.is_active() and EngineDebugger.has_capture(CAPTURE_NAME):
@@ -24,6 +37,7 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		var req_id = data[0] if data.size() > 0 else ""
 		var target_path = str(data[1]) if data.size() > 1 else ""
 		var max_depth = int(data[2]) if data.size() > 2 else 3
+		max_depth = clampi(max_depth, 0, 8)
 		
 		var root = get_tree().root
 		var target: Node = resolve_node_path(root, target_path)

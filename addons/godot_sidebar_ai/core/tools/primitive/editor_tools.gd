@@ -551,7 +551,7 @@ static func _inspect_runtime_node_sync(args: Dictionary) -> Dictionary:
 
 static func _inspect_runtime_tree(args: Dictionary) -> Dictionary:
 	var path = args.get("path", "")
-	var max_depth = int(args.get("max_depth", 3))
+	var max_depth = clampi(int(args.get("max_depth", 3)), 0, 8)
 	
 	var is_playing = false
 	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("is_playing_scene"):
