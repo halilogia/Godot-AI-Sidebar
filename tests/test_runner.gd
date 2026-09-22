@@ -62,6 +62,7 @@ const TestActivityProgressUX = preload("res://tests/test_activity_progress_ux.gd
 const TestEverythingExport = preload("res://tests/test_everything_export.gd")
 const TestCopyTaskChecklist = preload("res://tests/test_copy_task_checklist.gd")
 const TestPerformanceTelemetry = preload("res://tests/test_performance_telemetry.gd")
+const TestBenchmarkReadiness = preload("res://tests/test_benchmark_readiness.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -129,7 +130,8 @@ func _init() -> void:
 		TestActivityProgressUX,
 		TestEverythingExport,
 		TestCopyTaskChecklist,
-		TestPerformanceTelemetry
+		TestPerformanceTelemetry,
+		TestBenchmarkReadiness
 	]
 	
 	var total_passed = 0

@@ -489,6 +489,8 @@ func _run_next_step() -> void:
 		return
 		
 	current_step += 1
+	if context:
+		context.get_transcript().mark_step(current_step)
 	if current_step > max_steps:
 		limit_hit = true
 		_set_state(AgentState.ERROR, "Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
@@ -565,7 +567,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 	# 3. Araç İcrası
 	if tool_calls.size() > 0:
 		if context:
-			context.add_assistant_tool_call_message(text_content, tool_calls)
+			context.add_assistant_tool_call_message(text_content, tool_calls, thinking_content)
 			
 		for tc in tool_calls:
 			var fn_name: String = tc.get("name", "")

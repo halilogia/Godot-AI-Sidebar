@@ -423,6 +423,10 @@ static func _append_task_section(task: Dictionary, idx: int, lines: PackedString
 	lines.append("---")
 	lines.append("")
 
+static func _step_tag(e: Dictionary) -> String:
+	var n = int(e.get("step", 0))
+	return ("[S%d] " % n) if n > 0 else ""
+
 static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void:
 	var t = str(e.get("t", ""))
 	var d = e.get("data", {})
@@ -461,21 +465,27 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 							if c_args.length() > 1500 or bool(c.get("args_truncated", false)):
 								anote = "\n_[args truncated in view — full value in JSON export]_"
 							arg_blocks.append("`" + str(c.get("name", "?")) + "` args:\n\n```json\n" + _rx(aview) + "\n```" + anote)
-			var line = "Tool requested: " + (", ".join(parts) if parts.size() > 0 else "(unknown)")
+			var line = _step_tag(e) + "Tool requested: " + (", ".join(parts) if parts.size() > 0 else "(unknown)")
 			var extra = _rx(str(d.get("text", "")))
 			if not extra.strip_edges().is_empty():
 				line += " — " + extra.left(300)
 			(buckets["tool_call"] as Array).append(line)
 			for ab in arg_blocks:
 				(buckets["tool_call"] as Array).append(ab)
+			var thought = _rx(str(d.get("thinking", "")))
+			if not thought.strip_edges().is_empty():
+				var tnote = ""
+				if bool(d.get("thinking_truncated", false)):
+					tnote = "\n_[reasoning truncated]_"
+				(buckets["tool_call"] as Array).append("<details><summary>Model reasoning</summary>\n\n> " + thought.left(1500).replace("\n", "\n> ") + tnote + "\n</details>")
 		"tool_result":
 			var tool = str(d.get("tool", "tool"))
 			if tool == "ask_user":
-				(buckets["clarification"] as Array).append("**Q:** " + _rx(str(d.get("question", ""))) + "\n\n**A:** " + _rx(str(d.get("user_answer", ""))))
+				(buckets["clarification"] as Array).append(_step_tag(e) + "**Q:** " + _rx(str(d.get("question", ""))) + "\n\n**A:** " + _rx(str(d.get("user_answer", ""))))
 			else:
 				var ok = bool(d.get("success", false))
 				var m = _rx(str(d.get("message", "")))
-				(buckets["tool_result"] as Array).append(("✅ " if ok else "❌ ") + "`" + tool + "`" + ((" — " + m) if not m.is_empty() else ""))
+				(buckets["tool_result"] as Array).append(_step_tag(e) + ("✅ " if ok else "❌ ") + "`" + tool + "`" + ((" — " + m) if not m.is_empty() else ""))
 				var payload = str(d.get("payload", "")).strip_edges()
 				if not payload.is_empty():
 					var pview = payload.left(2000)
@@ -494,19 +504,21 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 		"plan_rejected":
 			(buckets["plan"] as Array).append("❌ Plan rejected: " + _rx(str(d.get("reason", ""))))
 		"tool_executing":
-			(buckets["tool_call"] as Array).append("▶ `" + str(d.get("tool", "?")) + "` — " + _rx(str(d.get("title", ""))) + _format_args_line(d.get("args", "")))
+			(buckets["tool_call"] as Array).append(_step_tag(e) + "▶ `" + str(d.get("tool", "?")) + "` — " + _rx(str(d.get("title", ""))) + _format_args_line(d.get("args", "")))
 		"tool_completed":
 			var ok2 = bool(d.get("success", false))
-			var line2 = ("✅ " if ok2 else "❌ ") + "`" + str(d.get("tool", "?")) + "` — " + _rx(str(d.get("title", "")))
+			var line2 = _step_tag(e) + ("✅ " if ok2 else "❌ ") + "`" + str(d.get("tool", "?")) + "` — " + _rx(str(d.get("title", "")))
+			if d.has("duration_ms"):
+				line2 += " (%dms)" % int(d.get("duration_ms", 0))
 			var em = _rx(str(d.get("error", "")))
 			if not em.is_empty():
 				line2 += "\n\nError: " + em
 			(buckets["tool_result"] as Array).append(line2)
 		"verification_started":
-			(buckets["verification"] as Array).append("Verifying `" + str(d.get("tool", "")) + "`...")
+			(buckets["verification"] as Array).append(_step_tag(e) + "Verifying `" + str(d.get("tool", "")) + "`...")
 		"verification_completed":
 			var ok3 = bool(d.get("valid", false))
-			(buckets["verification"] as Array).append(("✅ " if ok3 else "❌ ") + _rx(str(d.get("message", ""))))
+			(buckets["verification"] as Array).append(_step_tag(e) + ("✅ " if ok3 else "❌ ") + _rx(str(d.get("message", ""))))
 		"runtime_observation":
 			var has_err = bool(d.get("has_errors", false))
 			(buckets["runtime"] as Array).append(("❌ " if has_err else "✅ ") + _rx(str(d.get("summary", ""))))
@@ -519,7 +531,7 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 		"approval_rejected":
 			(buckets["system"] as Array).append("❌ Rejected `" + str(d.get("tool", "")) + "` by user.")
 		"activity":
-			(buckets["activity"] as Array).append(str(d.get("icon", "•")) + " " + _rx(str(d.get("title", ""))))
+			(buckets["activity"] as Array).append(_step_tag(e) + str(d.get("icon", "•")) + " " + _rx(str(d.get("title", ""))))
 		"task_started", "task_ended":
 			pass
 		_:
@@ -577,7 +589,9 @@ static func _append_checklist_section(lines: PackedStringArray, snap: Dictionary
 		if s is Dictionary:
 			var st = str((s as Dictionary).get("state", "pending"))
 			var mark = str(icons.get(st, "☐"))
-			lines.append("- " + mark + " " + _rx(str((s as Dictionary).get("title", ""))).left(200))
+			var by = str((s as Dictionary).get("by", "")).strip_edges()
+			var via = (" (via `" + by + "`)") if not by.is_empty() else ""
+			lines.append("- " + mark + " " + _rx(str((s as Dictionary).get("title", ""))).left(200) + via)
 	if bool(snap.get("finished", false)):
 		var sr = _rx(str(snap.get("stop_reason", "")))
 		if sr.is_empty():

@@ -21,6 +21,12 @@ var tasks: Array = []
 var orphan_events: Array = []
 var _running_idx: int = -1
 var _task_seq: int = 0
+## Son başlayan agent step'i (runner her step'te mark_step çağırır).
+## Tüm event'ler mutlak step numarası taşır (benchmark/post-mortem için).
+var _step_mark: int = 0
+
+func mark_step(n: int) -> void:
+	_step_mark = maxi(0, n)
 
 static func now_ts() -> String:
 	return Time.get_datetime_string_from_system()
@@ -77,6 +83,7 @@ func clear() -> void:
 	orphan_events.clear()
 	_running_idx = -1
 	_task_seq = 0
+	_step_mark = 0
 
 func has_running_task() -> bool:
 	return _running_idx >= 0 and _running_idx < tasks.size() and str(tasks[_running_idx].get("status", "")) == "running"
@@ -189,7 +196,7 @@ func end_task(status: String, stop_reason: String = "", metrics: Dictionary = {}
 
 ## Aktif taska olay ekler; aktif task yoksa session-düzeyi orphan listesine düşer.
 func record(event_type: String, data: Dictionary = {}) -> void:
-	var entry = {"t": event_type, "ts": now_ts(), "data": data}
+	var entry = {"t": event_type, "ts": now_ts(), "step": _step_mark, "data": data}
 	if has_running_task():
 		var evs: Array = tasks[_running_idx]["events"]
 		if evs.size() >= MAX_EVENTS_PER_TASK + 2:

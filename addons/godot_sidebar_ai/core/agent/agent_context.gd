@@ -67,8 +67,9 @@ func add_assistant_message(text: String) -> void:
 	var a_t = AISidebarTaskTranscript.truncate_flagged(text, AISidebarTaskTranscript.MAX_TEXT_CHARS)
 	get_transcript().record("assistant", {"text": a_t["text"], "text_truncated": a_t["truncated"]})
 
-## OpenAI Uyumlu Assistant Tool Call mesajı ekler
-func add_assistant_tool_call_message(text: String, tool_calls: Array) -> void:
+## OpenAI Uyumlu Assistant Tool Call mesajı ekler.
+## thinking: modelin çağrı anındaki gerekçesi (benchmark Q1 kanıtı; kırpılmış + flag'li).
+func add_assistant_tool_call_message(text: String, tool_calls: Array, thinking: String = "") -> void:
 	var tc_payload: Array = []
 	for tc in tool_calls:
 		var tc_id = tc.get("id", "")
@@ -119,7 +120,12 @@ func add_assistant_tool_call_message(text: String, tool_calls: Array) -> void:
 		tc_entry["args"] = flagged_args["text"]
 		tc_entry["args_truncated"] = flagged_args["truncated"]
 		tc_summary.append(tc_entry)
-	get_transcript().record("tool_call", {"text": AISidebarTaskTranscript.truncate_text(text, 1000), "calls": tc_summary})
+	var thought = AISidebarTaskTranscript.truncate_flagged(thinking, 1000)
+	var tc_data = {"text": AISidebarTaskTranscript.truncate_text(text, 1000), "calls": tc_summary}
+	if not str(thought["text"]).strip_edges().is_empty():
+		tc_data["thinking"] = thought["text"]
+		tc_data["thinking_truncated"] = thought["truncated"]
+	get_transcript().record("tool_call", tc_data)
 
 ## OpenAI Uyumlu Tool Sonucu mesajı ekler
 func add_tool_result_message(tool_call_id: String, tool_name: String, result: Dictionary) -> void:

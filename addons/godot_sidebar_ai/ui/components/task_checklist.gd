@@ -72,11 +72,13 @@ func get_step(idx: int) -> Dictionary:
 		return {}
 	return (_steps[idx] as Dictionary).duplicate(true)
 
-func set_step_state(idx: int, state: String, error: String = "") -> void:
+func set_step_state(idx: int, state: String, error: String = "", by_tool: String = "") -> void:
 	if idx < 0 or idx >= _steps.size():
 		return
 	_steps[idx]["state"] = state
 	_steps[idx]["error"] = error.strip_edges().left(300)
+	if not by_tool.strip_edges().is_empty():
+		_steps[idx]["by"] = by_tool.strip_edges().left(64)
 	_refresh_row(idx)
 	_update_header()
 
@@ -107,11 +109,14 @@ func set_finished_success() -> void:
 	stop_reason = ""
 	mark_all_completed()
 
-## Transcript snapshot (export + Copy Task kaynağı).
+## Transcript snapshot (export + Copy Task kaynağı; "by" varsa hangi tool bitirdi).
 func to_snapshot() -> Array:
 	var out: Array = []
 	for s in _steps:
-		out.append({"title": str(s.get("title", "")), "state": str(s.get("state", STATE_PENDING))})
+		var snap = {"title": str(s.get("title", "")), "state": str(s.get("state", STATE_PENDING))}
+		if not str(s.get("by", "")).is_empty():
+			snap["by"] = str(s.get("by", ""))
+		out.append(snap)
 	return out
 
 func get_header_text() -> String:

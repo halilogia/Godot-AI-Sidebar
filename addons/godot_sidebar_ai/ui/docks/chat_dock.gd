@@ -1638,9 +1638,9 @@ func _checklist_on_tool_done(tool_name: String, success: bool, error_summary: St
 	if idx < 0:
 		return
 	if success:
-		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_COMPLETED)
+		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_COMPLETED, "", tool_name)
 	else:
-		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_FAILED, error_summary)
+		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_FAILED, error_summary, tool_name)
 	_record_checklist_snapshot()
 
 func _finish_checklist(success: bool, stop_reason: String) -> void:
@@ -1724,7 +1724,7 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	_activity_running_tool = ""
 	_checklist_on_tool_done(tool_name, is_ok, err_summary)
 	if agent_context:
-		agent_context.get_transcript().record("tool_completed", {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500)})
+		agent_context.get_transcript().record("tool_completed", {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500), "duration_ms": elapsed})
 		agent_context.get_transcript().record("activity", {"icon": icon, "title": (human_title + ("" if is_ok else (" — Error: " + err_summary))).left(300)})
 
 func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
