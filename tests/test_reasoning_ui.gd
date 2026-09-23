@@ -5,6 +5,7 @@ extends RefCounted
 ## collapse/cap, cevap ayrımı, AGY boş akışı.
 
 const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
+const AISidebarThinkingCard = preload("res://addons/godot_sidebar_ai/ui/components/thinking_card.gd")
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 
 const SECRET_MARKER = "GIZLI_DUSUNCE_XYZ_123"
@@ -25,6 +26,13 @@ static func _reasoning_cards(dock) -> Array:
 	var out: Array = []
 	for child in dock.message_stream.get_children():
 		if child is AISidebarReasoningCard:
+			out.append(child)
+	return out
+
+static func _thinking_cards(dock) -> Array:
+	var out: Array = []
+	for child in dock.message_stream.get_children():
+		if child is AISidebarThinkingCard:
 			out.append(child)
 	return out
 
@@ -128,11 +136,52 @@ static func run() -> Dictionary:
 	for i in range(3):
 		dock7._on_agent_chunk_received("parça ", "")
 	dock7._on_agent_thinking_received("")
-	if _reasoning_cards(dock7).is_empty():
+	if _reasoning_cards(dock7).is_empty() and _thinking_cards(dock7).is_empty():
 		passed += 1
 	else:
 		failed += 1
 		errors.append("T7 (AGY no card) failed.")
 	dock7.queue_free()
+
+	# 8. Thinking kartı: chunk ile oluşur, collapsed başlar, action kartından ayrı
+	var dock8 = _dock()
+	dock8._on_agent_chunk_received("", "Düşünce parçası.")
+	var tcards8 = _thinking_cards(dock8)
+	for c in tcards8:
+		c._ready()
+	if tcards8.size() == 1 and "Düşünce parçası." in tcards8[0].get_text() and not tcards8[0].is_expanded and tcards8[0].get_header_text().begins_with("▸") and _reasoning_cards(dock8).is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T8 (thinking card) failed.")
+	dock8.queue_free()
+
+	# 9. Thinking birikimi + final duplicate yok
+	var dock9 = _dock()
+	dock9._on_agent_chunk_received("", "A. ")
+	dock9._on_agent_chunk_received("", "B.")
+	dock9._on_agent_thinking_received("A. B.")
+	var tcards9 = _thinking_cards(dock9)
+	if tcards9.size() == 1 and tcards9[0].get_text() == "A. B.":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T9 (thinking aggregation) failed.")
+	dock9.queue_free()
+
+	# 10. Thinking cap + boş thinking kart açmaz
+	var dock10 = _dock()
+	dock10._on_agent_chunk_received("", "")
+	dock10._on_agent_thinking_received("   ")
+	var card10 = AISidebarThinkingCard.new()
+	card10._ready()
+	card10.append_thinking("y".repeat(5000))
+	if _thinking_cards(dock10).is_empty() and card10.is_truncated() and card10.get_text().length() <= AISidebarThinkingCard.MAX_DISPLAY_CHARS + 20:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T10 (thinking cap+empty) failed.")
+	card10.queue_free()
+	dock10.queue_free()
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}
