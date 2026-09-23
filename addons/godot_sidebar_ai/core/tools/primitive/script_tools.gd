@@ -7,6 +7,7 @@ class_name AISidebarScriptTools
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
+const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/scene_tools.gd")
 
 static func get_schemas() -> Array:
 	return [
@@ -203,6 +204,10 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 		"message": "Script başarıyla yazıldı (" + ("Yeni" if is_new else "Güncellendi") + "): " + path
 	})
 	res["change_set"] = cs
+	# Açık .tscn üzerine yazıldıysa editör state'ini diskten yenile (stale save önlenir).
+	var sync_res = AISidebarSceneTools.refresh_open_scenes([path])
+	if res.get("data") is Dictionary:
+		(res["data"] as Dictionary)["editor_scene_refreshed"] = (sync_res as Dictionary).get("refreshed", [])
 	return res
 
 static func _replace_file_content(args: Dictionary) -> Dictionary:
@@ -285,6 +290,9 @@ static func _replace_file_content(args: Dictionary) -> Dictionary:
 		"message": "Kod bloğu cerrahi olarak başarıyla güncellendi: " + path
 	})
 	res["change_set"] = cs
+	var sync_rep = AISidebarSceneTools.refresh_open_scenes([path])
+	if res.get("data") is Dictionary:
+		(res["data"] as Dictionary)["editor_scene_refreshed"] = (sync_rep as Dictionary).get("refreshed", [])
 	return res
 
 static func _delete_file(args: Dictionary) -> Dictionary:
@@ -373,12 +381,17 @@ static func _write_files(args: Dictionary) -> Dictionary:
 	if not apply_res["success"]:
 		return AISidebarToolResult.err("BATCH_WRITE_FAILED", apply_res["error"])
 		
+	var written_paths: Array = files_to_write.map(func(x): return x["path"])
 	var res = AISidebarToolResult.ok({
 		"count": files_to_write.size(),
-		"written_files": files_to_write.map(func(x): return x["path"]),
+		"written_files": written_paths,
 		"message": str(files_to_write.size()) + " dosya atomik olarak başarıyla yazıldı."
 	})
 	res["change_set"] = main_cs
+	# Açık .tscn'ler diskten yenilenir; sonraki save_scene stale yazmaz.
+	var sync_w = AISidebarSceneTools.refresh_open_scenes(written_paths)
+	if res.get("data") is Dictionary:
+		(res["data"] as Dictionary)["editor_scene_refreshed"] = (sync_w as Dictionary).get("refreshed", [])
 	return res
 
 static func _open_script(args: Dictionary) -> Dictionary:

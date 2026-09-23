@@ -67,6 +67,7 @@ const TestTaskCopyOrder = preload("res://tests/test_task_copy_order.gd")
 const TestCopyChat = preload("res://tests/test_copy_chat.gd")
 const TestMultiToolAndSceneGuard = preload("res://tests/test_multi_tool_and_scene_guard.gd")
 const TestSceneReliability = preload("res://tests/test_scene_reliability.gd")
+const TestSceneStateSync = preload("res://tests/test_scene_state_sync.gd")
 const TestRuntimeVisionChain = preload("res://tests/test_runtime_vision_chain.gd")
 const TestPauseResume = preload("res://tests/test_pause_resume.gd")
 const TestChatImageUX = preload("res://tests/test_chat_image_ux.gd")
@@ -148,6 +149,7 @@ func _init() -> void:
 		TestCopyChat,
 		TestMultiToolAndSceneGuard,
 		TestSceneReliability,
+		TestSceneStateSync,
 		TestRuntimeVisionChain,
 		TestPauseResume,
 		TestChatImageUX,
