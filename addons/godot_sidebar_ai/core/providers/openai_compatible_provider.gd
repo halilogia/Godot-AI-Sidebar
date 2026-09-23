@@ -206,6 +206,8 @@ func _on_network_chunk(endpoint_type: String, chunk_str: String) -> void:
 				var delta = c.get("delta", {})
 				var text_delta = delta.get("content", "")
 				var thinking_delta = delta.get("reasoning_content", delta.get("reasoning", ""))
+				if (thinking_delta == null or str(thinking_delta).is_empty()) and delta.has("reasoning_details"):
+					thinking_delta = AISidebarSSEParser.extract_reasoning_details(delta["reasoning_details"])
 				if text_delta != null and not str(text_delta).is_empty():
 					chunk_received.emit(str(text_delta), "")
 				if thinking_delta != null and not str(thinking_delta).is_empty():
@@ -243,7 +245,8 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 		else:
 			var txt = parsed.get("content", "")
 			var tools = parsed.get("tool_calls", [])
-			print("[TIMING] %s | PROVIDER_RESPONSE_RECEIVED | total_dur=%dms parse_dur=%dms text_len=%d tools=%d" % [get_ts(), total_prov_dur, parse_dur, txt.length(), tools.size()])
+			var think_len = str(parsed.get("thinking", "")).length()
+			print("[TIMING] %s | PROVIDER_RESPONSE_RECEIVED | total_dur=%dms parse_dur=%dms text_len=%d thinking_len=%d tools=%d" % [get_ts(), total_prov_dur, parse_dur, txt.length(), think_len, tools.size()])
 			response_received.emit(
 				txt,
 				parsed.get("thinking", ""),

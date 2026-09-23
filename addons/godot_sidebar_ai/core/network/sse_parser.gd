@@ -4,6 +4,25 @@ class_name AISidebarSSEParser
 
 ## Server-Sent Events (SSE) ve Standart JSON yanıtlarını ayrıştıran bağımsız ayrıştırıcı (SRP).
 
+## OpenRouter tarzı reasoning_details dizisinden metin çıkarır
+## ([{type, text/summary}, ...] veya düz string dizisi; bilinmeyen şekil yok sayılır).
+static func extract_reasoning_details(value: Variant) -> String:
+	if value == null:
+		return ""
+	if value is String:
+		return value
+	if not (value is Array):
+		return ""
+	var parts: PackedStringArray = []
+	for item in (value as Array):
+		if item is Dictionary:
+			var t = str((item as Dictionary).get("text", (item as Dictionary).get("summary", "")))
+			if not t.strip_edges().is_empty():
+				parts.append(t)
+		elif item is String and not (item as String).strip_edges().is_empty():
+			parts.append(item)
+	return "".join(parts)
+
 static func parse_response(raw_text: String) -> Dictionary:
 	var total_content: String = ""
 	var total_thinking: String = ""
@@ -42,6 +61,8 @@ static func parse_response(raw_text: String) -> Dictionary:
 						total_thinking += str(delta["reasoning_content"])
 					if delta.has("reasoning") and delta["reasoning"] != null:
 						total_thinking += str(delta["reasoning"])
+					if delta.has("reasoning_details"):
+						total_thinking += extract_reasoning_details(delta["reasoning_details"])
 					if delta.has("content") and delta["content"] != null:
 						total_content += str(delta["content"])
 						
@@ -76,6 +97,8 @@ static func parse_response(raw_text: String) -> Dictionary:
 					total_thinking = str(msg["reasoning_content"])
 				elif msg.has("reasoning") and msg["reasoning"] != null:
 					total_thinking = str(msg["reasoning"])
+				elif msg.has("reasoning_details"):
+					total_thinking = extract_reasoning_details(msg["reasoning_details"])
 				total_content = msg.get("content", "")
 				if total_content == null:
 					total_content = ""

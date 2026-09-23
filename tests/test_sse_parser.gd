@@ -32,5 +32,29 @@ data: [DONE]
 	else:
 		failed += 1
 		errors.append("JSON think tag parse failed: " + str(parsed_json))
-		
+
+	# Test 3: OpenRouter-style reasoning_details array (SSE delta)
+	var sse_rd = """data: {"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.text","text":"Plan A."},{"type":"reasoning.text","text":"Plan B."}]}}]}
+
+data: {"choices":[{"delta":{"content":"Done."}}]}
+
+data: [DONE]
+"""
+	var parsed_rd = AISidebarSSEParser.parse_response(sse_rd)
+	if parsed_rd.get("thinking", "") == "Plan A.Plan B." and parsed_rd.get("content", "") == "Done.":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("SSE reasoning_details parse failed: " + str(parsed_rd))
+
+	# Test 4: reasoning_details in final message + extractor edge cases
+	var json_rd = '{"choices":[{"message":{"content":"Hi.","reasoning_details":[{"type":"reasoning.summary","summary":"Short."},{"foo":1}, "tail"]}}]}'
+	var parsed_jrd = AISidebarSSEParser.parse_response(json_rd)
+	var ext_empty = AISidebarSSEParser.extract_reasoning_details(null) == "" and AISidebarSSEParser.extract_reasoning_details("plain") == "plain" and AISidebarSSEParser.extract_reasoning_details([{}, ""]) == ""
+	if parsed_jrd.get("thinking", "") == "Short.tail" and ext_empty:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("JSON reasoning_details parse failed: " + str(parsed_jrd))
+
 	return {"name": "SSEParserTests", "passed": passed, "failed": failed, "errors": errors}
