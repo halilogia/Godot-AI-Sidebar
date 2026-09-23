@@ -499,12 +499,33 @@ static func _append_completion_section(lines: PackedStringArray, task: Dictionar
 		for k in ["steps_summary", "tool_calls", "file_ops", "elapsed_seconds", "llm_time_s", "tool_time_s", "research_time_s", "research_overhead_ratio", "read_ops", "search_ops", "write_ops", "failed_tools", "retry_count", "limit_hit", "files_read_count", "files_written_count"]:
 			if metrics.has(k):
 				lines.append("- **%s:** %s" % [str(k).replace("_", " ").capitalize(), _rx(str(metrics[k]))])
+		_append_metric_map(lines, metrics, "tool_time_by_tool_s", "Tool time")
+		_append_metric_list(lines, metrics, "files_read", "Files read")
+		_append_metric_list(lines, metrics, "files_written", "Files written")
 		lines.append("")
 	elif status != "running":
 		lines.append("### Completion")
 		lines.append("")
 		lines.append("- **Result:** " + ("✅ Success" if status == "completed" else "❌ " + status.capitalize()))
 		lines.append("")
+
+static func _append_metric_map(lines: PackedStringArray, metrics: Dictionary, key: String, label: String) -> void:
+	var m = metrics.get(key, {})
+	if not (m is Dictionary) or (m as Dictionary).is_empty():
+		return
+	var parts: PackedStringArray = []
+	for k in (m as Dictionary).keys():
+		parts.append("`" + str(k) + "`: " + _rx(str((m as Dictionary)[k])) + "s")
+	lines.append("- **%s:** %s" % [label, ", ".join(parts).left(400)])
+
+static func _append_metric_list(lines: PackedStringArray, metrics: Dictionary, key: String, label: String) -> void:
+	var arr = metrics.get(key, [])
+	if not (arr is Array) or (arr as Array).is_empty():
+		return
+	var names: PackedStringArray = []
+	for v in (arr as Array):
+		names.append(str(v))
+	lines.append("- **%s:** %s" % [label, _rx(", ".join(names)).left(400)])
 
 static func _step_tag(e: Dictionary) -> String:
 	var n = int(e.get("step", 0))
@@ -526,6 +547,8 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 			elif txt.begins_with("⚠️"):
 				(buckets["runtime"] as Array).append(txt)
 			else:
+				if bool(d.get("has_images", false)):
+					txt += "\n\n📷 Image(s) attached (image data in JSON export)"
 				(buckets["user"] as Array).append(txt)
 		"assistant":
 			var a_txt = _rx(str(d.get("text", "")))
@@ -625,6 +648,8 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 			(buckets["activity"] as Array).append(_step_tag(e) + str(d.get("icon", "•")) + " " + _rx(str(d.get("title", ""))))
 		"task_started", "task_ended", "checklist_snapshot":
 			pass
+		"task_resumed":
+			(buckets["system"] as Array).append(_step_tag(e) + "▶ Task resumed (same task, continuation — no new task_id)")
 		_:
 			(buckets["system"] as Array).append("[" + ts + "] " + t)
 

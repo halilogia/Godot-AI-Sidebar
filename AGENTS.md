@@ -73,3 +73,13 @@ godot --headless --path . -s "res://tests/integration/test_real_9router_live.gd"
 * API anahtarları asla kodun içine, commit mesajlarına veya git geçmişine yazılmaz.
 * Anahtarlar `$env:GODOT_AI_TEST_API_KEY` veya git-ignored `.env` dosyasından okunur.
 * `res://project.godot`, `.git/**` ve `addons/godot_sidebar_ai/**` dosyaları `PathPolicy` kalkanıyla korunur.
+
+---
+
+## 📦 7. Chat Export Invariantı (Mimari Kural)
+
+* Yeni kullanıcı-görünür özellik veya yeni transcript/task event'i eklendiğinde, verinin Chat Export / Task Export / Copy Chat çıktılarında temsil edilip edilmediği **bilinçli olarak değerlendirilir**.
+* Tek kaynak `TaskTranscript` / `ChatSession` verisidir; aynı bilgi ikinci kez modellenmez, exporter gereksiz büyütülmez.
+* Export'a alınmayan veri (örn. Action Summary: UI-only, tool event'lerden türetilebilir) raporda gerekçesiyle belirtilir.
+* Bilinmeyen gelecek event tipleri `_` fallback ile ham görünür kalır (sessiz kayıp yok).
+* Kapsam testleri: `tests/test_export_coverage.gd`.
