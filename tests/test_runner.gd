@@ -71,6 +71,7 @@ const TestRuntimeVisionChain = preload("res://tests/test_runtime_vision_chain.gd
 const TestPauseResume = preload("res://tests/test_pause_resume.gd")
 const TestChatImageUX = preload("res://tests/test_chat_image_ux.gd")
 const TestHistoryExport = preload("res://tests/test_history_export.gd")
+const TestReasoningUI = preload("res://tests/test_reasoning_ui.gd")
 const TestDebuggerLink = preload("res://tests/test_debugger_link.gd")
 
 func _init() -> void:
@@ -149,7 +150,8 @@ func _init() -> void:
 		TestPauseResume,
 		TestChatImageUX,
 		TestHistoryExport,
-		TestDebuggerLink
+		TestDebuggerLink,
+		TestReasoningUI
 	]
 	
 	var total_passed = 0

@@ -31,6 +31,7 @@ const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/c
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
 const AISidebarScreenshotCard = preload("res://addons/godot_sidebar_ai/ui/components/screenshot_card.gd")
+const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
 const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
@@ -105,6 +106,7 @@ var _attachment_label: Label = null
 var _attachment_remove_btn: Button = null
 
 var _current_activity_group: AISidebarActivityGroup = null
+var _current_reasoning_card: AISidebarReasoningCard = null
 var _current_checklist: AISidebarTaskChecklist = null
 ## Son görülen tool argümanları (checklist dosya-eşleşmesi için).
 var _last_tool_args: Dictionary = {}
@@ -1165,6 +1167,7 @@ func _clear_ui_stream() -> void:
 		for child in message_stream.get_children():
 			child.queue_free()
 	_current_activity_group = null
+	_current_reasoning_card = null
 	_current_checklist = null
 	_last_tool_args.clear()
 	_activity_running_idx = -1
@@ -1433,6 +1436,7 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
 	last_user_prompt = final_display
 	_current_activity_group = null
+	_current_reasoning_card = null
 	_current_checklist = null
 	_last_tool_args.clear()
 	_current_runtime_card = null
@@ -1628,11 +1632,24 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 		_:
 			set_status_badge(state_desc, AISidebarTheme.COLOR_WARNING)
 
+## Canlı reasoning kartı (task başına tek; thinking yoksa oluşmaz).
+func _ensure_reasoning_card() -> AISidebarReasoningCard:
+	if _current_reasoning_card == null or not is_instance_valid(_current_reasoning_card):
+		_current_reasoning_card = AISidebarReasoningCard.new()
+		_current_reasoning_card.meta_clicked.connect(_on_meta_clicked)
+		_add_stream_component(_current_reasoning_card)
+	return _current_reasoning_card
+
 func _on_agent_thinking_received(thinking: String) -> void:
-	pass
+	if thinking == null or thinking.strip_edges().is_empty():
+		return
+	# Stream dışı final reasoning: kart boşsa doldur (delta'larla duplicate olmaz).
+	_ensure_reasoning_card().set_reasoning_final(thinking)
 
 func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> void:
 	_stop_thinking_timer()
+	if thinking_delta != null and not thinking_delta.strip_edges().is_empty():
+		_ensure_reasoning_card().append_reasoning(thinking_delta)
 	if text_delta.is_empty():
 		return
 		
@@ -2144,6 +2161,7 @@ func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_current_assistant_bubble = null
+	_current_reasoning_card = null
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	var t_ok = bool(metrics.get("success", false))
@@ -2197,6 +2215,7 @@ func format_limit_stop_reason(current_step: int, max_steps: int) -> String:
 
 func _on_agent_error(err_msg: String) -> void:
 	_current_assistant_bubble = null
+	_current_reasoning_card = null
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	_finish_checklist(false, err_msg)
