@@ -94,6 +94,15 @@ func task_count() -> int:
 func get_tasks() -> Array:
 	return tasks.duplicate(true)
 
+## ID ile canlı task kopyası (per-task Copy çözümlemesi; bulunamazsa boş).
+func get_task_by_id(task_id: String) -> Dictionary:
+	if task_id.strip_edges().is_empty():
+		return {}
+	for t in tasks:
+		if t is Dictionary and str((t as Dictionary).get("id", "")) == task_id:
+			return (t as Dictionary).duplicate(true)
+	return {}
+
 ## Aktif task yoksa son biten task (Copy Current Task kaynağı).
 func get_current_task() -> Dictionary:
 	if has_running_task():

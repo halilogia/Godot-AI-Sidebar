@@ -5,6 +5,7 @@ extends RefCounted
 
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
+const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 
 static func _three_tasks() -> Array:
 	var tr = AISidebarTaskTranscript.new()
@@ -90,5 +91,89 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T6 (single-task intact) failed.")
+
+	# 7. Per-task copy: ikinci task birincinin içeriğini taşımaz
+	var tr7 = AISidebarTaskTranscript.new()
+	tr7.begin_task("Alfa özel içerik", "")
+	tr7.record("assistant", {"text": "Alfa cevabı"})
+	tr7.end_task("completed", "", {"success": true})
+	tr7.begin_task("Beta özel içerik", "")
+	tr7.record("assistant", {"text": "Beta cevabı"})
+	tr7.end_task("completed", "", {"success": true})
+	var all7 = tr7.to_data()
+	var beta_task = AISidebarTaskTranscript.new()
+	beta_task.load_data(all7)
+	var second_id = str(all7[1].get("id", ""))
+	var copy7 = AISidebarChatExporter.export_single_task_chronological(beta_task.get_task_by_id(second_id))
+	if "Beta özel içerik" in copy7 and "Beta cevabı" in copy7 and not "Alfa özel içerik" in copy7 and not "Alfa cevabı" in copy7:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T7 (second-task isolation) failed.")
+
+	# 8. Eski (birinci) task kopyalanabiliyor
+	var first_id = str(all7[0].get("id", ""))
+	var copy8 = AISidebarChatExporter.export_single_task_chronological(beta_task.get_task_by_id(first_id))
+	if "Alfa özel içerik" in copy8 and "Alfa cevabı" in copy8 and not "Beta özel içerik" in copy8:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T8 (old task copy) failed.")
+
+	# 9. Kopyalanan task içi sıra kronolojik
+	var tr9 = AISidebarTaskTranscript.new()
+	tr9.begin_task("Sıralı görev", "")
+	tr9.mark_step(1)
+	tr9.record("assistant", {"text": "Önce bu"})
+	tr9.mark_step(2)
+	tr9.record("tool_completed", {"tool": "read_script", "title": "Sonra bu", "success": true, "error": ""})
+	tr9.end_task("completed", "", {"success": true})
+	var tid9 = str(tr9.to_data()[0].get("id", ""))
+	var copy9 = AISidebarChatExporter.export_single_task_chronological(tr9.get_task_by_id(tid9))
+	if copy9.find("Önce bu") < copy9.find("Sonra bu") and "[S1]" in copy9 and "[S2]" in copy9:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T9 (copied order) failed.")
+
+	# 10. task_resumed içeren task kopyalanıyor (pause/resume geçmişi korunur)
+	var tr10 = AISidebarTaskTranscript.new()
+	tr10.begin_task("Devamlı görev", "")
+	tr10.end_task("cancelled", "Durduruldu.")
+	tr10.reopen_task(str(tr10.to_data()[0].get("id", "")))
+	tr10.record("assistant", {"text": "Devam cevabı"})
+	tr10.end_task("completed", "", {"success": true})
+	var tid10 = str(tr10.to_data()[0].get("id", ""))
+	var copy10 = AISidebarChatExporter.export_single_task_chronological(tr10.get_task_by_id(tid10))
+	if "Task resumed" in copy10 and "Devam cevabı" in copy10:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T10 (resumed copy) failed.")
+
+	# 11. Global Copy Chat tüm taskları hâlâ içeriyor
+	var chat11 = AISidebarChatExporter.export_full_chat_chronological(all7)
+	if "Alfa özel içerik" in chat11 and "Beta özel içerik" in chat11 and chat11.find("Alfa özel içerik") < chat11.find("Beta özel içerik"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T11 (copy chat intact) failed.")
+
+	# 12. Telemetry kartı Copy butonu task_id yayar; boşken gizli
+	var card12 = AISidebarTelemetryCard.new({"success": true, "elapsed_seconds": 1.0})
+	card12.task_id = "task_abc"
+	card12._ready()
+	var got12: Array = []
+	card12.copy_task_requested.connect(func(tid): got12.append(tid))
+	card12._copy_btn.pressed.emit()
+	var card12b = AISidebarTelemetryCard.new({})
+	card12b._ready()
+	if got12 == ["task_abc"] and not card12b._copy_btn.visible:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T12 (card copy button) failed.")
+	card12.queue_free()
+	card12b.queue_free()
 
 	return {"name": "CopyChatTests", "passed": passed, "failed": failed, "errors": errors}

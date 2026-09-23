@@ -983,6 +983,19 @@ func _on_history_export_requested(session_id: String, format: String) -> void:
 	_export_file_dialog.filters = PackedStringArray([flt])
 	_export_file_dialog.popup_centered()
 
+## Per-task Copy: telemetry kartındaki task_id canlı transcriptten çözülür.
+## Running task'ta kart yoktur (canlı mutasyon); bitmiş/durmuş tasklar kopyalanır.
+func _on_copy_single_task(task_id: String) -> void:
+	if not agent_context:
+		return
+	var task = agent_context.get_transcript().get_task_by_id(task_id)
+	if task.is_empty():
+		_flash_status_text("Task not found")
+		return
+	var md = AISidebarChatExporter.export_single_task_chronological(task)
+	DisplayServer.clipboard_set(md)
+	_flash_status_text("Task copied")
+
 func _ensure_export_file_dialog() -> void:
 	if _export_file_dialog and is_instance_valid(_export_file_dialog):
 		return
@@ -2190,6 +2203,9 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 		_current_activity_group = null
 		
 	var telemetry_comp = AISidebarTelemetryCard.new(metrics)
+	if agent_context:
+		telemetry_comp.task_id = str(agent_context.get_transcript().get_current_task().get("id", ""))
+	telemetry_comp.copy_task_requested.connect(_on_copy_single_task)
 	_add_stream_component(telemetry_comp)
 	update_ui_language()
 	

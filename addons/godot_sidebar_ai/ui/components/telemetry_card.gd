@@ -5,11 +5,17 @@ class_name AISidebarTelemetryCard
 ## Minimal Görev Tamamlama ve Telemetri Kartı (Telemetry Footer Card) (SRP).
 ## Ana görünümde temiz tek satır özet (Adım / Max Adım dahil), tıklandığında detaylı süre dökümü sunar.
 
+signal copy_task_requested(task_id: String)
+
 var metrics: Dictionary = {}
 var is_expanded: bool = false
+## İlgili transcript task'ı (boşsa Copy gizlenir; örn. restore edilen kartlar).
+var task_id: String = ""
 
 var _vbox: VBoxContainer
+var _header_bar: HBoxContainer
 var _header_btn: Button
+var _copy_btn: Button
 var _details_lbl: RichTextLabel
 
 func _init(p_metrics: Dictionary = {}) -> void:
@@ -40,6 +46,12 @@ func _setup_ui() -> void:
 	_vbox.add_theme_constant_override("separation", 2)
 	add_child(_vbox)
 	
+	_header_bar = HBoxContainer.new()
+	_header_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_header_bar.mouse_filter = Control.MOUSE_FILTER_PASS
+	_header_bar.add_theme_constant_override("separation", 2)
+	_vbox.add_child(_header_bar)
+
 	_header_btn = Button.new()
 	_header_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header_btn.flat = true
@@ -47,7 +59,17 @@ func _setup_ui() -> void:
 	_header_btn.focus_mode = Control.FOCUS_NONE
 	_header_btn.add_theme_font_size_override("font_size", 10)
 	_header_btn.pressed.connect(_on_header_pressed)
-	_vbox.add_child(_header_btn)
+	_header_bar.add_child(_header_btn)
+
+	_copy_btn = Button.new()
+	_copy_btn.flat = true
+	_copy_btn.focus_mode = Control.FOCUS_NONE
+	_copy_btn.tooltip_text = "Copy this task transcript"
+	_copy_btn.add_theme_font_size_override("font_size", 10)
+	_copy_btn.text = "Copy"
+	_copy_btn.visible = not task_id.strip_edges().is_empty()
+	_copy_btn.pressed.connect(func(): copy_task_requested.emit(task_id))
+	_header_bar.add_child(_copy_btn)
 	
 	_details_lbl = RichTextLabel.new()
 	_details_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -66,6 +88,8 @@ func _setup_ui() -> void:
 
 func render_metrics(m: Dictionary) -> void:
 	metrics = m
+	if _copy_btn:
+		_copy_btn.visible = not task_id.strip_edges().is_empty()
 	if not _header_btn or not _details_lbl:
 		return
 		
