@@ -22,14 +22,18 @@ func _init() -> void:
 	var failed_gd = 0
 	var errors: Array[String] = []
 	
-	# 1. GDScript derleme denetimi
+	# 1. GDScript derleme denetimi.
+	# NOT: load() parse-hatalı script'te bile non-null GDScript döner; gerçek
+	# hüküm reload() dönüşüdür (OK=0). İkisi de geçmeli (fail-closed).
 	for f in gd_files:
 		var script = load(f)
-		if script is GDScript:
+		var ok_load = script is GDScript
+		var ok_reload = ok_load and (script as GDScript).reload() == OK
+		if ok_load and ok_reload:
 			passed_gd += 1
 		else:
 			failed_gd += 1
-			errors.append("GDScript Derleme Hatası: " + f)
+			errors.append("GDScript Derleme Hatası: " + f + " (load=" + str(ok_load) + " reload_ok=" + str(ok_reload) + ")")
 			
 	# 2. TSCN sahne yükleme ve instantiate denetimi
 	var passed_tscn = 0
@@ -62,6 +66,14 @@ func _init() -> void:
 		for e in errors:
 			printerr("   * " + e)
 		quit(1)
+
+## Bağımsız parse probu: load + reload hükmü (load() bozuk dosyada da
+## non-null döner; reload() gerçek parse sonucunu verir).
+static func probe_parse(path: String) -> bool:
+	var script = load(path)
+	if not (script is GDScript):
+		return false
+	return (script as GDScript).reload() == OK
 
 func _collect_files(dir_path: String, gd_files: Array[String], tscn_files: Array[String]) -> void:
 	var dir = DirAccess.open(dir_path)

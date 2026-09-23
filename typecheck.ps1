@@ -39,5 +39,20 @@ if (-not $GodotBin -or -not (Test-Path $GodotBin)) {
 
 Write-Host "Using Godot: $GodotBin" -ForegroundColor DarkGray
 Write-Host "Checking all GDScripts and Scenes statically using Godot headless..." -ForegroundColor Cyan
-& $GodotBin --headless --path $ProjectPath -s "res://tools/typecheck.gd"
-exit $LASTEXITCODE
+
+# Fail-closed: Godot çıktısındaki fatal script hataları özet sayaçlardan
+# bağımsız olarak process sonucunu FAILURE yapar (kaskat yanlış pozitif yok).
+# Çıktı konsola aynen akar; tarama kopyası dosya üzerinden yapılır.
+$scanFile = Join-Path ([System.IO.Path]::GetTempPath()) "godot_typecheck_scan.txt"
+if (Test-Path $scanFile) { Remove-Item -LiteralPath $scanFile -Force }
+& $GodotBin --headless --path $ProjectPath -s "res://tools/typecheck.gd" 2>&1 | Tee-Object -FilePath $scanFile | ForEach-Object { "$_" }
+$godotExit = $LASTEXITCODE
+$joined = ""
+if (Test-Path $scanFile) { $joined = Get-Content -Raw -LiteralPath $scanFile }
+$fatalPattern = "SCRIPT ERROR|Parse Error|Parser Error|Compilation failed|Failed to load script|ERROR: Failed"
+if ($joined -match $fatalPattern) {
+    Write-Host ""
+    Write-Host "[TYPECHECK FAIL-CLOSED] Godot fatal script hatasi tespit edildi; sonuc FAILURE." -ForegroundColor Red
+    exit 1
+}
+exit $godotExit
