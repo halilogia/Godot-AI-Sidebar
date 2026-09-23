@@ -16,6 +16,7 @@ const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/
 const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
+const AISidebarCompletionPolicy = preload("res://addons/godot_sidebar_ai/core/agent/completion_policy.gd")
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 
@@ -93,6 +94,12 @@ var read_ops_count: int = 0
 var search_ops_count: int = 0
 var write_ops_count: int = 0
 var failed_tool_count: int = 0
+var plan_was_approved: bool = false
+## Kurtarılmamış başarısızlıklar (anahtar -> {"tool": String, "deferred": bool}).
+## Aynı tool+hedef sonradan başarıyla çalışırsa silinir (recovery kanıtı).
+var unrecovered_failures: Dictionary = {}
+## Son completion hükmü (metrics'e yazılır; success/incomplete/failed/cancelled).
+var last_completion: Dictionary = {"verdict": "success", "reason": "Task completed."}
 var retry_count: int = 0
 var limit_hit: bool = false
 var files_read: Dictionary = {}
@@ -205,6 +212,9 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	search_ops_count = 0
 	write_ops_count = 0
 	failed_tool_count = 0
+	plan_was_approved = false
+	unrecovered_failures.clear()
+	last_completion = {"verdict": "success", "reason": "Task completed."}
 	retry_count = 0
 	limit_hit = false
 	files_read.clear()
@@ -289,6 +299,7 @@ func stop() -> void:
 		
 	_set_state(AgentState.CANCELLED, AISidebarI18n.get_text("agent_stopped"))
 	error_occurred.emit(AISidebarI18n.get_text("agent_stopped"))
+	last_completion = {"verdict": "cancelled", "reason": "Stopped by user."}
 	_finish_task(false)
 
 func _finish_task(success: bool) -> void:
@@ -296,6 +307,8 @@ func _finish_task(success: bool) -> void:
 	var total_schemas_count = AISidebarToolManager.get_all_schemas().size()
 	var metrics = {
 		"success": success,
+		"completion": str(last_completion.get("verdict", "success")),
+		"completion_reason": str(last_completion.get("reason", "")),
 		"elapsed_seconds": snappedf(total_elapsed_sec, 0.1),
 		"used_steps": current_step,
 		"max_steps": max_steps,
@@ -463,6 +476,7 @@ func approve_plan() -> void:
 	var plan = _pending_plan
 	_pending_plan = null
 	_plan_phase_active = false
+	plan_was_approved = true
 
 	print("[TIMING] %s | PLAN_APPROVED" % get_ts())
 	plan_approved.emit(plan)
@@ -486,6 +500,7 @@ func reject_plan(reason: String = "Kullanıcı planı reddetti.") -> void:
 	print("[TIMING] %s | PLAN_REJECTED | reason=%s" % [get_ts(), reason])
 	plan_rejected.emit(plan)
 	_set_state(AgentState.CANCELLED, reason)
+	last_completion = {"verdict": "cancelled", "reason": reason}
 	_finish_task(false)
 
 ## Çalışma zamanı hatası alındığında otomatik iyileştirme döngüsünü tetikler
@@ -505,6 +520,7 @@ func handle_runtime_error(obs: AISidebarRuntimeObservation) -> void:
 		if _recovery_attempt_count > max_recovery_attempts:
 			_set_state(AgentState.ERROR, "Aynı çalışma zamanı hatası çözülemedi.")
 			error_occurred.emit("Otomatik iyileştirme limiti aşıldı: " + err_sig)
+			last_completion = {"verdict": "failed", "reason": "Otomatik iyileştirme limiti aşıldı: " + err_sig}
 			_finish_task(false)
 			return
 	else:
@@ -531,6 +547,7 @@ func _run_next_step() -> void:
 		limit_hit = true
 		_set_state(AgentState.ERROR, "Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
 		error_occurred.emit("Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
+		last_completion = {"verdict": "failed", "reason": "Step limit reached (" + str(current_step) + " / " + str(max_steps) + ")."}
 		_finish_task(false)
 		return
 		
@@ -603,6 +620,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		else:
 			_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
 			error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE).")
+			last_completion = {"verdict": "failed", "reason": "Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE)."}
 			_finish_task(false)
 			return
 			
@@ -638,6 +656,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				if _stagnation_count >= 2:
 					_set_state(AgentState.ERROR, "Aynı araç (" + fn_name + ") tekrar tekrar çağrıldı.")
 					error_occurred.emit("Ajan aynı aracı (" + fn_name + ") tekrarladı. Görev sonlandırıldı.")
+					last_completion = {"verdict": "failed", "reason": "Ajan aynı aracı (" + fn_name + ") tekrarladı."}
 					_finish_task(false)
 					return
 				else:
@@ -757,11 +776,27 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		# Tüm kuyruk aynı turda işlendi; tek LLM turu harcandı.
 		_run_next_step()
 	else:
+		# Completion Integrity Gate: toolsuz final metin tek başına SUCCESS değildir.
+		var gate_state = {
+			"tool_calls": tool_calls_count,
+			"unrecovered": unrecovered_failures,
+			"plan_approved": plan_was_approved,
+			"mutations_done": (file_ops_count + editor_ops_count + write_ops_count) > 0,
+			"limit_hit": limit_hit,
+			"steps_summary": str(current_step) + " / " + str(max_steps),
+		}
+		var gate = AISidebarCompletionPolicy.evaluate(gate_state)
+		last_completion = gate
 		if not text_content.is_empty() and context:
 			context.add_assistant_message(text_content)
-			
-		_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
-		_finish_task(true)
+		if str(gate.get("verdict", "success")) == "success":
+			_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
+			_finish_task(true)
+		else:
+			print("[TIMING] %s | COMPLETION_GATE | verdict=%s reason=%s" % [get_ts(), str(gate.get("verdict", "")), str(gate.get("reason", ""))])
+			_set_state(AgentState.ERROR, str(gate.get("reason", "")))
+			error_occurred.emit(str(gate.get("reason", "")))
+			_finish_task(false)
 
 func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarChangeSet:
 	if fn_name == "create_or_update_script":
@@ -905,9 +940,12 @@ func _defer_remaining_calls(remaining: Array, code: String, message: String) -> 
 	if remaining.is_empty() or context == null:
 		return
 	for tc in remaining:
-		var deferred = AISidebarToolResult.err(code, message + " (Araç: " + str(tc.get("name", "")) + ")", true)
-		context.add_tool_result_message(str(tc.get("id", "call_default")), str(tc.get("name", "")), deferred)
-		tool_completed.emit(str(tc.get("name", "")), deferred)
+		var dname = str(tc.get("name", ""))
+		var dargs = tc.get("arguments", {})
+		var deferred = AISidebarToolResult.err(code, message + " (Araç: " + dname + ")", true)
+		context.add_tool_result_message(str(tc.get("id", "call_default")), dname, deferred)
+		unrecovered_failures[failure_key(dname, dargs if dargs is Dictionary else {})] = {"tool": dname, "deferred": true}
+		tool_completed.emit(dname, deferred)
 
 ## Doğrulama kararı (yan etkisiz hüküm; tur ilerletmez).
 func _verify_tool_result(tool_name: String, args: Dictionary, result: Variant) -> Dictionary:
@@ -936,8 +974,24 @@ func _verify_tool_result(tool_name: String, args: Dictionary, result: Variant) -
 	return {"is_valid": is_valid, "message": ui_msg}
 
 ## Tek tool turunun kapanışı: sonuç context'e, vision kuyruğa (tur ilerletmez).
+## Başarısızlık anahtarı: tool + hedef dosyalar (aynı işin retry'si eşleşir).
+static func failure_key(tool_name: String, args: Dictionary) -> String:
+	var targets: Array = []
+	if args is Dictionary:
+		for k in ["file_path", "scene_path"]:
+			var v = str(args.get(k, "")).strip_edges()
+			if not v.is_empty():
+				targets.append(v)
+	return str(tool_name) + "|" + ",".join(targets)
+
 func _complete_tool_turn(tool_name: String, tool_call_id: String, args: Dictionary, result: Variant, is_valid: bool, ui_msg: String) -> void:
 	var res_dict = result if result is Dictionary else {}
+	# Recovery takibi: geçerli tur aynı anahtarı temizler.
+	var fkey = failure_key(tool_name, args)
+	if is_valid:
+		unrecovered_failures.erase(fkey)
+	else:
+		unrecovered_failures[fkey] = {"tool": tool_name, "deferred": false}
 	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
 	if context:
 		var final_payload: Dictionary = {}
@@ -981,4 +1035,5 @@ func _on_provider_error(error_message: String) -> void:
 	_set_state(AgentState.ERROR, error_message)
 	print("[TIMING] %s | PROVIDER_ERROR | err=%s" % [get_ts(), error_message])
 	error_occurred.emit(error_message)
+	last_completion = {"verdict": "failed", "reason": error_message}
 	_finish_task(false)

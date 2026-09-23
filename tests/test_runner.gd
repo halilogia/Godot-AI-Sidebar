@@ -75,6 +75,7 @@ const TestHistoryExport = preload("res://tests/test_history_export.gd")
 const TestReasoningUI = preload("res://tests/test_reasoning_ui.gd")
 const TestExportCoverage = preload("res://tests/test_export_coverage.gd")
 const TestTypecheckGuard = preload("res://tests/test_typecheck_guard.gd")
+const TestCompletionIntegrity = preload("res://tests/test_completion_integrity.gd")
 const TestDebuggerLink = preload("res://tests/test_debugger_link.gd")
 
 func _init() -> void:
@@ -157,7 +158,8 @@ func _init() -> void:
 		TestDebuggerLink,
 		TestReasoningUI,
 		TestExportCoverage,
-		TestTypecheckGuard
+		TestTypecheckGuard,
+		TestCompletionIntegrity
 	]
 	
 	var total_passed = 0

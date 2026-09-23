@@ -2221,11 +2221,14 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	var t_ok = bool(metrics.get("success", false))
-	_finish_checklist(t_ok, str(metrics.get("stop_reason", "")))
+	var completion = str(metrics.get("completion", "success" if t_ok else "failed"))
+	var show_ok = t_ok and completion == "success"
+	var done_reason = str(metrics.get("completion_reason", metrics.get("stop_reason", "")))
+	_finish_checklist(show_ok, done_reason)
 	_last_tool_args.clear()
 	if agent_context and agent_context.get_transcript().has_running_task():
-		var t_status = "completed" if t_ok else "failed"
-		agent_context.end_task(t_status, str(metrics.get("stop_reason", "")), metrics)
+		var t_status = "completed" if show_ok else ("incomplete" if completion == "incomplete" else "failed")
+		agent_context.end_task(t_status, done_reason, metrics)
 	if _current_activity_group:
 		var stop_reason = str(metrics.get("stop_reason", ""))
 		if not stop_reason.is_empty():

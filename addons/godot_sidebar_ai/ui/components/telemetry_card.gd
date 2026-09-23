@@ -102,9 +102,14 @@ func render_metrics(m: Dictionary) -> void:
 	var total_tools = str(m.get("total_tools", 34))
 	var files = str(m.get("file_ops", 0))
 	
-	var icon = "✓" if is_ok else "✕"
-	
-	_header_btn.text = icon + " Completed in " + elapsed + " · Steps: " + str(used_steps) + "/" + str(max_steps) + " · Tools: " + tools_sent + "/" + total_tools + " active (" + tools_executed + " used) · " + files + " files"
+	var completion = str(m.get("completion", "success" if is_ok else "failed"))
+	var summary = "Steps: " + str(used_steps) + "/" + str(max_steps) + " · Tools: " + tools_sent + "/" + total_tools + " active (" + tools_executed + " used) · " + files + " files"
+	if is_ok and completion == "success":
+		_header_btn.text = "✓ Completed in " + elapsed + " · " + summary
+	elif completion == "incomplete":
+		_header_btn.text = "⚠ Needs review (" + elapsed + ") · " + summary
+	else:
+		_header_btn.text = "✕ Failed in " + elapsed + " · " + summary
 	_header_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
 	
 	var llm_s = str(m.get("llm_time_s", 0.0)) + "s"
