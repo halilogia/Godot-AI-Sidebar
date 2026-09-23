@@ -1,10 +1,13 @@
 @tool
 extends RefCounted
 
-## Reasoning / Thinking UI: propagation, aggregation, cap, separation.
+## Action / Summary UI: özet gösterimi, ham reasoning sızıntısı yok,
+## collapse/cap, cevap ayrımı, AGY boş akışı.
 
 const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
+
+const SECRET_MARKER = "GIZLI_DUSUNCE_XYZ_123"
 
 static func _dock():
 	var dock = ChatDockScene.instantiate()
@@ -25,107 +28,111 @@ static func _reasoning_cards(dock) -> Array:
 			out.append(child)
 	return out
 
+static func _stream_text(dock) -> String:
+	var out = ""
+	for child in dock.message_stream.get_children():
+		if child is AISidebarReasoningCard:
+			out += child.get_text()
+		elif child.has_method("get") and "text_content" in child:
+			out += str(child.get("text_content"))
+	return out
+
 static func run() -> Dictionary:
 	var passed = 0
 	var failed = 0
 	var errors: Array = []
 
-	# 1. reasoning event -> kart oluşur, collapsed başlar
+	# 1. summary gösteriliyor (tool event -> action kartı)
 	var dock1 = _dock()
-	dock1._on_agent_chunk_received("", "Önce dosyayı okuyacağım.")
+	dock1._on_agent_tool_executing("validate_script", {})
 	var cards1 = _reasoning_cards(dock1)
 	for c in cards1:
 		c._ready()
-	if cards1.size() == 1 and "Önce dosyayı" in cards1[0].get_text() and not cards1[0].is_expanded and cards1[0].get_header_text().begins_with("▸"):
+	if cards1.size() == 1 and "Validat" in cards1[0].get_text() and not cards1[0].is_expanded:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T1 (reasoning creates collapsed card) failed.")
+		errors.append("T1 (summary shown) failed.")
 	dock1.queue_free()
 
-	# 2. reasoning yoksa kart yok, normal akış bozulmaz
+	# 2. ham reasoning UI'a sızmıyor (chunk + final + bubble + export metni)
 	var dock2 = _dock()
-	dock2._on_agent_chunk_received("", "")
-	dock2._on_agent_thinking_received("")
-	dock2._on_agent_chunk_received("Merhaba dünya", "")
-	if _reasoning_cards(dock2).is_empty() and dock2._current_assistant_bubble != null:
+	dock2._on_agent_chunk_received("", SECRET_MARKER + " bir plan düşünüyorum")
+	dock2._on_agent_thinking_received(SECRET_MARKER + " tam gerekçe")
+	dock2._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock2._on_agent_chunk_received("Görünen cevap.", "")
+	if not SECRET_MARKER in _stream_text(dock2):
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T2 (no-reasoning provider) failed.")
+		errors.append("T2 (no raw reasoning leak) failed.")
 	dock2.queue_free()
 
-	# 3. streaming aggregation (sıralı birikim)
+	# 3. no-reasoning provider normal çalışıyor (tool özeti + cevap akışı)
 	var dock3 = _dock()
-	dock3._on_agent_chunk_received("", "Adım 1. ")
-	dock3._on_agent_chunk_received("", "Adım 2. ")
-	dock3._on_agent_chunk_received("", "Adım 3.")
+	dock3._on_agent_tool_executing("analyze_project", {})
+	dock3._on_agent_tool_completed("analyze_project", {"success": true, "data": {}, "message": "ok"})
+	dock3._on_agent_chunk_received("Analiz bitti.", "")
 	var cards3 = _reasoning_cards(dock3)
-	if cards3.size() == 1 and cards3[0].get_text() == "Adım 1. Adım 2. Adım 3.":
+	var bubble3 = dock3._current_assistant_bubble.text_content if dock3._current_assistant_bubble else ""
+	if cards3.size() == 1 and bubble3 == "Analiz bitti.":
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T3 (streaming aggregation) failed.")
+		errors.append("T3 (no-reasoning flow) failed.")
 	dock3.queue_free()
 
-	# 4. final thinking duplicate üretmez (delta toplamı korunur)
+	# 4. streaming sırasında UI bozulmuyor (tek kart, son action)
 	var dock4 = _dock()
-	dock4._on_agent_chunk_received("", "Parça A. ")
-	dock4._on_agent_chunk_received("", "Parça B.")
-	dock4._on_agent_thinking_received("Parça A. Parça B.")
+	dock4._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock4._on_agent_tool_executing("validate_script", {})
+	dock4._on_agent_tool_completed("validate_script", {"success": true, "data": {}, "message": "ok"})
 	var cards4 = _reasoning_cards(dock4)
-	if cards4.size() == 1 and cards4[0].get_text() == "Parça A. Parça B.":
+	if cards4.size() == 1 and "Validat" in cards4[0].get_text():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T4 (no duplication) failed: '" + (cards4[0].get_text() if cards4.size() > 0 else "?") + "'")
+		errors.append("T4 (streaming stable) failed.")
 	dock4.queue_free()
 
-	# 5. stream-dışı final reasoning kartı doldurur
+	# 5. final response ayrı kalır
 	var dock5 = _dock()
-	dock5._on_agent_thinking_received("Tam metin gerekçe.")
-	var cards5 = _reasoning_cards(dock5)
-	if cards5.size() == 1 and cards5[0].get_text() == "Tam metin gerekçe.":
+	dock5._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock5._on_agent_text_received("assistant", "Dosya okundu ve hazır.")
+	var bubble5 = ""
+	for child in dock5.message_stream.get_children():
+		if "text_content" in child and not (child is AISidebarReasoningCard):
+			bubble5 += str(child.get("text_content"))
+	if bubble5 == "Dosya okundu ve hazır.":
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T5 (final-only reasoning) failed.")
+		errors.append("T5 (answer separation) failed: '" + bubble5 + "'")
 	dock5.queue_free()
 
-	# 6. display cap (3000) + truncation işareti
+	# 6. collapse + cap korunuyor
 	var card6 = AISidebarReasoningCard.new()
 	card6._ready()
-	card6.append_reasoning("x".repeat(5000))
-	if card6.get_text().length() <= AISidebarReasoningCard.MAX_DISPLAY_CHARS + 20 and card6.is_truncated() and "[truncated]" in card6._content_lbl.text:
+	card6.set_action("▶ " + "x".repeat(5000))
+	var collapsed_ok = card6.get_header_text().begins_with("▸")
+	card6.set_expanded(true)
+	if collapsed_ok and card6.get_text().length() <= AISidebarReasoningCard.MAX_DISPLAY_CHARS + 20 and card6.is_truncated():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T6 (display cap) failed: len=%d" % card6.get_text().length())
+		errors.append("T6 (collapse+cap) failed.")
 	card6.queue_free()
 
-	# 7. final cevap ayrı kalır (reasoning bubble'a karışmaz)
+	# 7. AGY tarzı akış: thinking yok, tool yoksa kart yok
 	var dock7 = _dock()
-	dock7._on_agent_chunk_received("", "Gizli gerekçe.")
-	dock7._on_agent_chunk_received("Görünen cevap.", "")
-	var bubble_txt = dock7._current_assistant_bubble.text_content if dock7._current_assistant_bubble else ""
-	if bubble_txt == "Görünen cevap." and not "Gizli" in bubble_txt:
+	for i in range(3):
+		dock7._on_agent_chunk_received("parça ", "")
+	dock7._on_agent_thinking_received("")
+	if _reasoning_cards(dock7).is_empty():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T7 (answer separation) failed: '" + bubble_txt + "'")
+		errors.append("T7 (AGY no card) failed.")
 	dock7.queue_free()
-
-	# 8. AGY tarzı boş thinking akışı: kart yok, crash yok
-	var dock8 = _dock()
-	for i in range(5):
-		dock8._on_agent_chunk_received("parça ", "")
-	dock8._on_agent_thinking_received("")
-	dock8._on_agent_text_received("assistant", "Son cevap.")
-	if _reasoning_cards(dock8).is_empty():
-		passed += 1
-	else:
-		failed += 1
-		errors.append("T8 (AGY empty thinking) failed.")
-	dock8.queue_free()
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}

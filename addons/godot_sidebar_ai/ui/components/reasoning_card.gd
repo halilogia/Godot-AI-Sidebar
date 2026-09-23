@@ -2,9 +2,10 @@
 extends PanelContainer
 class_name AISidebarReasoningCard
 
-## Model Reasoning Paneli (SRP).
-## YALNIZCA provider'ın gerçekten gönderdiği reasoning text'i gösterir
-## (tahmin/üretim yok). Varsayılan collapsed; display cap'li; final cevaptan ayrı.
+## Model Action / Summary Paneli (SRP).
+## Ham internal reasoning ASLA gösterilmez; yalnızca tool/task durumundan
+## türetilen kısa eylem özetleri ("▶ Validated GDScript source" gibi).
+## Yeni LLM çağrısı yok, tahmin yok. Varsayılan collapsed; cap'li; cevap ayrı.
 
 signal meta_clicked(meta: Variant)
 
@@ -37,29 +38,11 @@ func reset() -> void:
 	set_expanded(false)
 	_render()
 
-## Streaming delta'ları biriktirir (cap'e kadar).
-func append_reasoning(delta: String) -> void:
-	if delta == null or delta.is_empty() or _truncated:
+## Güncel eylem özetini yazar (öncekinin yerine geçer; ham reasoning almaz).
+func set_action(line: String) -> void:
+	if line == null:
 		return
-	var room = MAX_DISPLAY_CHARS - _text.length()
-	if room <= 0:
-		_truncated = true
-		_render()
-		return
-	if delta.length() > room:
-		_text += delta.left(room)
-		_truncated = true
-	else:
-		_text += delta
-	_render()
-
-## Stream dışı final reasoning (kart boşsa doldurur; duplicate üretmez).
-func set_reasoning_final(full_text: String) -> void:
-	if has_content():
-		return
-	if full_text == null:
-		return
-	var t = full_text.strip_edges()
+	var t = line.strip_edges()
 	if t.is_empty():
 		return
 	if t.length() > MAX_DISPLAY_CHARS:

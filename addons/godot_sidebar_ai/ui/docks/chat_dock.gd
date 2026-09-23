@@ -1640,16 +1640,18 @@ func _ensure_reasoning_card() -> AISidebarReasoningCard:
 		_add_stream_component(_current_reasoning_card)
 	return _current_reasoning_card
 
-func _on_agent_thinking_received(thinking: String) -> void:
-	if thinking == null or thinking.strip_edges().is_empty():
+## Eylem özeti yaz (ham reasoning asla karta girmez).
+func _set_action_summary(line: String) -> void:
+	if line == null or line.strip_edges().is_empty():
 		return
-	# Stream dışı final reasoning: kart boşsa doldur (delta'larla duplicate olmaz).
-	_ensure_reasoning_card().set_reasoning_final(thinking)
+	_ensure_reasoning_card().set_action(line.strip_edges().left(300))
 
-func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> void:
+func _on_agent_thinking_received(_thinking: String) -> void:
+	# Ham internal reasoning bilinçli olarak gösterilmiyor; özet tool/task'tan türer.
+	pass
+
+func _on_agent_chunk_received(text_delta: String, _thinking_delta: String) -> void:
 	_stop_thinking_timer()
-	if thinking_delta != null and not thinking_delta.strip_edges().is_empty():
-		_ensure_reasoning_card().append_reasoning(thinking_delta)
 	if text_delta.is_empty():
 		return
 		
@@ -1849,6 +1851,7 @@ func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
 	_last_tool_args[tool_name] = args.duplicate(true)
 	_checklist_on_tool_start(tool_name, args)
+	_set_action_summary("▶ " + human_title)
 	if agent_context:
 		agent_context.get_transcript().record("tool_executing", {"tool": tool_name, "title": human_title.left(200), "args": AISidebarActivityGroup.redact_secrets(JSON.stringify(args)).left(800)})
 		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Running " + human_title.left(200)})
@@ -1880,6 +1883,11 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
 	_activity_running_idx = -1
 	_activity_running_tool = ""
+	var action_base = _get_human_tool_title(tool_name, {})
+	var action_line = icon + " " + action_base
+	if not msg.is_empty() and msg != action_base:
+		action_line += " — " + str(msg.split("\n")[0]).left(120)
+	_set_action_summary(action_line)
 	# Ertelenen çağrı hiç çalışmadı: checklist'i kirletme, sadece activity'de göster.
 	if not is_deferred:
 		_checklist_on_tool_done(tool_name, is_ok, err_summary)
@@ -1979,6 +1987,7 @@ func _on_agent_clarification_requested(question: String, options: Array, clarifi
 		_current_activity_group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
 		_current_activity_group.complete_group()
 		_current_activity_group = null
+	_set_action_summary("❓ " + question.left(120))
 	if agent_context:
 		agent_context.get_transcript().record("clarification_requested", {"question": question.left(500), "options": options.duplicate(), "id": clarification_id})
 
@@ -2058,6 +2067,7 @@ func _on_agent_plan_proposed(plan) -> void:
 		elif plan.get("title") != null:
 			p_goal = str(plan.get("title"))
 		agent_context.get_transcript().record("plan_proposed", {"steps": p_steps, "files": p_files, "goal": p_goal.left(300)})
+	_set_action_summary("📋 Plan proposed — onay bekleniyor")
 	_current_plan_card = AISidebarPlanCard.new(plan)
 	_current_plan_card.plan_applied.connect(_on_plan_applied)
 	_current_plan_card.plan_cancelled.connect(_on_plan_cancelled)
@@ -2123,6 +2133,7 @@ func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
 func _on_agent_verification_started(tool_name: String) -> void:
 	var grp = _ensure_activity_group()
 	grp.add_activity("•", "Verifying " + tool_name + "...", -1)
+	_set_action_summary("▶ Verifying " + tool_name)
 	if agent_context:
 		agent_context.get_transcript().record("verification_started", {"tool": tool_name})
 		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Verifying " + tool_name})
@@ -2131,6 +2142,7 @@ func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: St
 	var grp = _ensure_activity_group()
 	var icon = "✓" if is_valid else "!"
 	grp.add_activity(icon, "Verification: " + msg, 50)
+	_set_action_summary((icon + " Verification: " + msg).split("\n")[0])
 	if agent_context:
 		agent_context.get_transcript().record("verification_completed", {"tool": tool_name, "valid": is_valid, "message": msg.left(500)})
 		agent_context.get_transcript().record("activity", {"icon": icon, "title": ("Verification: " + msg).left(300)})
