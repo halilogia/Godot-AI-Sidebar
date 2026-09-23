@@ -131,6 +131,7 @@ var _pending_clarification_options: Array = []
 var enable_planning_gate: bool = true
 var _plan_phase_active: bool = false
 var _pending_plan: AISidebarImplementationPlan = null
+var _pending_plan_id: String = ""
 var runtime_debugger: AISidebarRuntimeDebugger = null
 
 static func get_ts() -> String:
@@ -196,6 +197,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	_pending_clarification_question = ""
 	_pending_clarification_options.clear()
 	_pending_plan = null
+	_pending_plan_id = ""
 	_pending_vision_inputs.clear()
 	if initial_vision_inputs.size() > 0:
 		_pending_vision_inputs.append_array(initial_vision_inputs)
@@ -291,6 +293,7 @@ func stop() -> void:
 	_pending_clarification_question = ""
 	_pending_clarification_options.clear()
 	_pending_plan = null
+	_pending_plan_id = ""
 	_plan_phase_active = false
 	_pending_tool_name = ""
 	_pending_tool_id = ""
@@ -474,9 +477,20 @@ func approve_plan() -> void:
 		_waiting_start_time = 0
 
 	var plan = _pending_plan
+	var plan_id = _pending_plan_id
 	_pending_plan = null
+	_pending_plan_id = ""
 	_plan_phase_active = false
 	plan_was_approved = true
+
+	# Katı gateway'ler her tool_call için eşleşen tool sonucu ister;
+	# onay da propose_plan çağrısının sonucu olarak kaydedilir.
+	if context and not plan_id.is_empty():
+		context.add_tool_result_message(plan_id, "propose_plan", {
+			"success": true,
+			"data": {"approved": true},
+			"message": "Plan kullanıcı tarafından onaylandı, uygulanıyor."
+		})
 
 	print("[TIMING] %s | PLAN_APPROVED" % get_ts())
 	plan_approved.emit(plan)
@@ -494,8 +508,13 @@ func reject_plan(reason: String = "Kullanıcı planı reddetti.") -> void:
 		_waiting_start_time = 0
 
 	var plan = _pending_plan
+	var plan_id = _pending_plan_id
 	_pending_plan = null
+	_pending_plan_id = ""
 	_plan_phase_active = false
+
+	if context and not plan_id.is_empty():
+		context.add_tool_result_message(plan_id, "propose_plan", AISidebarToolResult.err("PLAN_REJECTED", reason))
 
 	print("[TIMING] %s | PLAN_REJECTED | reason=%s" % [get_ts(), reason])
 	plan_rejected.emit(plan)
@@ -662,6 +681,8 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				else:
 					if context:
 						context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
+						# Katı gateway'ler her tool_call için sonuç ister; tekrar da kayıtsız kalmaz.
+						context.add_tool_result_message(tc_id, fn_name, AISidebarToolResult.err("DUPLICATE_CALL", "'" + fn_name + "' zaten çalıştırıldı; yukarıdaki sonuç geçerlidir.", true))
 					_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_AFTER_STAGNATION_WARNING", "Tekrarlanan çağrı nedeniyle yeni tura geçildi; bu çağrı ertelendi.")
 					_run_next_step()
 					return
@@ -694,6 +715,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			if fn_name == "propose_plan":
 				var plan = AISidebarImplementationPlan.new(args)
 				_pending_plan = plan
+				_pending_plan_id = tc_id
 				_waiting_start_time = Time.get_ticks_msec()
 
 				_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")

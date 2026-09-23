@@ -94,5 +94,18 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Stagnation guard döngüyü durduramadı.")
-		
+
+	# Test 3: Tekrarlanan çağrı da eşleşen tool sonucu alır (katı gateway uyumu)
+	var dup_ok = false
+	for m in ctx2.messages:
+		if m is Dictionary and str(m.get("role", "")) == "tool" and str(m.get("tool_call_id", "")) == "call_2":
+			var parsed = JSON.parse_string(str(m.get("content", "{}")))
+			if parsed is Dictionary and str(parsed.get("error", {}).get("code", "")) == "DUPLICATE_CALL":
+				dup_ok = true
+	if dup_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Tekrarlanan çağrı için DUPLICATE_CALL sonucu yazılmadı.")
+
 	return {"name": "ToolTerminationTests", "passed": passed, "failed": failed, "errors": errors}

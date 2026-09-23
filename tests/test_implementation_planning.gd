@@ -60,6 +60,15 @@ static func _valid_plan_args() -> Dictionary:
 		"risks": ["Tile sayısı arttıkça performans düşebilir"]
 	}
 
+## Belirli tool_call id'ye ait tool sonuç mesajını context'ten bulur.
+static func _find_tool_result(ctx, call_id: String) -> Dictionary:
+	for m in ctx.messages:
+		if m is Dictionary and str(m.get("role", "")) == "tool" and str(m.get("tool_call_id", "")) == call_id:
+			var parsed = JSON.parse_string(str(m.get("content", "{}")))
+			if parsed is Dictionary:
+				return parsed
+	return {}
+
 static func _cleanup_probe_file() -> void:
 	if FileAccess.file_exists(GUARD_PROBE_PATH):
 		DirAccess.remove_absolute(GUARD_PROBE_PATH)
@@ -164,6 +173,15 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 5 (scenario_6_execution_after_approval) failed: state=" + str(runner1.current_state) + " plan_phase=" + str(runner1._plan_phase_active))
 
+	# --- SENARYO 6b: Approval, propose_plan çağrısına eşleşen tool sonucu yazar ---
+	# (Katı gateway'ler her tool_call id için sonuç ister; yoksa 503 reddeder.)
+	var approved_res = _find_tool_result(ctx1, "p1")
+	if not approved_res.is_empty() and bool(approved_res.get("success", false)):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 5b (approval_writes_tool_result) failed: " + str(approved_res).left(160))
+
 	# --- SENARYO 4: Plan asamasinda mutation GERCEKLESMEZ ---
 	var mock4 = MockPlanProvider.new()
 	var ctx4 = AISidebarAgentContext.new()
@@ -225,6 +243,14 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 8 (scenario_8_cancel_no_mutation) failed: waiting=" + str(was_waiting) + " rejected=" + str(rejected8[0]) + " state=" + str(runner8.current_state) + " file=" + str(not file_still_absent))
+
+	# --- SENARYO 8b: Reject de propose_plan çağrısına eşleşen sonuç yazar ---
+	var rejected_res = _find_tool_result(ctx8, "p8")
+	if not rejected_res.is_empty() and not bool(rejected_res.get("success", true)) and str(rejected_res.get("error", {}).get("code", "")) == "PLAN_REJECTED":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 8b (reject_writes_tool_result) failed: " + str(rejected_res).left(160))
 
 	# --- SENARYO 2: Kritik ambiguity -> mevcut ask_user calisir (plan fazinda da) ---
 	var mock2 = MockPlanProvider.new()
