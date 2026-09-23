@@ -109,6 +109,8 @@ var _attachment_remove_btn: Button = null
 var _current_activity_group: AISidebarActivityGroup = null
 var _current_reasoning_card: AISidebarReasoningCard = null
 var _current_thinking_card: AISidebarThinkingCard = null
+## Bu LLM turunda gerçek thinking verisi görüldü mü? (badge dürüstlüğü için)
+var _thinking_seen_this_turn: bool = false
 var _current_checklist: AISidebarTaskChecklist = null
 ## Son görülen tool argümanları (checklist dosya-eşleşmesi için).
 var _last_tool_args: Dictionary = {}
@@ -1184,6 +1186,7 @@ func _clear_ui_stream() -> void:
 	_current_activity_group = null
 	_current_reasoning_card = null
 	_current_thinking_card = null
+	_thinking_seen_this_turn = false
 	_current_checklist = null
 	_last_tool_args.clear()
 	_activity_running_idx = -1
@@ -1242,8 +1245,10 @@ func _on_thinking_tick() -> void:
 	# Thinking timer DURDURULMAZ; yalnizca rozet metni degisir.
 	if _agy_preparing:
 		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
-	else:
+	elif _thinking_seen_this_turn:
 		set_status_badge("Thinking (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
+	else:
+		set_status_badge("Waiting... (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
 
 ## AGY provider hazirlik durumu degisti (STARTING / INITIALIZING / READY).
 ## Yalnizca bilgilendirici rozet metni guncellenir; ajan durumu DEGISTIRILMEZ.
@@ -1625,8 +1630,12 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 			var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
 			set_status_badge(state_desc + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
 		AISidebarAgentRunner.AgentState.PLANNING:
+			# Yeni LLM turu: thinking kartı sıfırlanır (sonraki thinking yeni kart açar),
+			# rozet yanıt gelene kadar "Waiting" gösterir (thinking varsayılmaz).
+			_thinking_seen_this_turn = false
+			_current_thinking_card = null
 			_start_thinking_timer()
-			set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
+			set_status_badge("Waiting...", AISidebarTheme.COLOR_WARNING)
 			if _current_assistant_bubble == null or not is_instance_valid(_current_assistant_bubble):
 				_current_assistant_bubble = AISidebarMessageBubble.new("assistant", "Düşünülüyor...")
 				_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
@@ -1663,7 +1672,7 @@ func _set_action_summary(line: String) -> void:
 		return
 	_ensure_reasoning_card().set_action(line.strip_edges().left(300))
 
-## İsteğe bağlı thinking kartı (task başına tek; thinking yoksa oluşmaz).
+## İsteğe bağlı thinking kartı (LLM turu başına bir; thinking yoksa oluşmaz).
 func _ensure_thinking_card() -> AISidebarThinkingCard:
 	if _current_thinking_card == null or not is_instance_valid(_current_thinking_card):
 		_current_thinking_card = AISidebarThinkingCard.new()
@@ -1674,12 +1683,16 @@ func _ensure_thinking_card() -> AISidebarThinkingCard:
 func _on_agent_thinking_received(thinking: String) -> void:
 	if thinking == null or thinking.strip_edges().is_empty():
 		return
+	_thinking_seen_this_turn = true
+	set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
 	# Stream dışı final thinking: kart boşsa doldur (delta'larla duplicate olmaz).
 	_ensure_thinking_card().set_thinking_final(thinking)
 
 func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> void:
 	_stop_thinking_timer()
 	if thinking_delta != null and not thinking_delta.strip_edges().is_empty():
+		_thinking_seen_this_turn = true
+		set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
 		_ensure_thinking_card().append_thinking(thinking_delta)
 	if text_delta.is_empty():
 		return
