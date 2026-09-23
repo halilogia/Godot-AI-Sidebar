@@ -30,54 +30,70 @@ static func export_to_markdown(history: Array, session_meta: Dictionary = {}) ->
 	lines.append("# 🤖 Godot AI Chat Export")
 	lines.append("")
 	lines.append("- **Export Date:** " + Time.get_datetime_string_from_system())
-	if not session_meta.is_empty():
-		if session_meta.has("model"):
-			lines.append("- **Model:** `" + str(session_meta["model"]) + "`")
-		if session_meta.has("elapsed_s"):
-			lines.append("- **Total Duration:** " + str(session_meta["elapsed_s"]) + "s")
+	_append_model_meta_lines(session_meta, lines, false)
 	lines.append("- **Total Messages:** " + str(history.size()))
 	lines.append("")
 	lines.append("---")
 	lines.append("")
 	
 	for entry in history:
-		if entry == null or not (entry is Dictionary):
-			continue
-			
-		var role = str(entry.get("role", "assistant"))
-		var content_raw = entry.get("content")
-		
-		match role:
-			"user":
-				_format_user_message(entry, content_raw, lines)
-			"assistant":
-				_format_assistant_message(entry, content_raw, lines)
-			"tool":
-				_format_tool_message(entry, content_raw, lines)
-			"system":
-				_format_system_message(entry, content_raw, lines)
-			_:
-				lines.append("## 💬 " + role.capitalize())
-				lines.append("")
-				if content_raw != null:
-					lines.append(str(content_raw).strip_edges())
-				lines.append("")
-				lines.append("---")
-				lines.append("")
-				
-	# Telemetri / Özet Bölümü
-	if not session_meta.is_empty() and session_meta.has("telemetry"):
-		var tel = session_meta["telemetry"]
-		if tel is Dictionary and not tel.is_empty():
-			lines.append("## 📊 Session Telemetry")
+		_append_history_entry(entry, lines, false)
+
+	_append_session_telemetry(session_meta, lines, false)
+
+	return "\n".join(lines)
+
+## Model / süre meta satırları (redact=true: transcript yolu modeli redact'ler).
+static func _append_model_meta_lines(session_meta: Dictionary, lines: PackedStringArray, redact_model: bool) -> void:
+	if session_meta.is_empty():
+		return
+	if session_meta.has("model"):
+		var model_txt = str(session_meta["model"])
+		lines.append("- **Model:** `" + (_rx(model_txt) if redact_model else model_txt) + "`")
+	if session_meta.has("elapsed_s"):
+		lines.append("- **Total Duration:** " + str(session_meta["elapsed_s"]) + "s")
+
+## Tek working-memory mesajını role'e göre yazar (tüm history döngüleri ortak).
+## redact_unknown: transcript yolu bilinmeyen rolleri redact'ler, legacy yol aynen korur.
+static func _append_history_entry(entry: Variant, lines: PackedStringArray, redact_unknown: bool = false) -> void:
+	if entry == null or not (entry is Dictionary):
+		return
+	var role = str(entry.get("role", "assistant"))
+	var content_raw = entry.get("content")
+	match role:
+		"user":
+			_format_user_message(entry, content_raw, lines)
+		"assistant":
+			_format_assistant_message(entry, content_raw, lines)
+		"tool":
+			_format_tool_message(entry, content_raw, lines)
+		"system":
+			_format_system_message(entry, content_raw, lines)
+		_:
+			lines.append("## 💬 " + role.capitalize())
 			lines.append("")
-			for k in tel.keys():
-				lines.append("- **%s:** %s" % [str(k).replace("_", " ").capitalize(), str(tel[k])])
+			if content_raw != null:
+				var raw_txt = str(content_raw).strip_edges()
+				lines.append(_rx(raw_txt) if redact_unknown else raw_txt)
 			lines.append("")
 			lines.append("---")
 			lines.append("")
-			
-	return "\n".join(lines)
+
+## Telemetri / Özet bölümü (tüm Markdown exportları ortak).
+## redact_values=false: legacy yol ham değeri aynen korur.
+static func _append_session_telemetry(session_meta: Dictionary, lines: PackedStringArray, redact_values: bool = false) -> void:
+	if session_meta.is_empty() or not session_meta.has("telemetry"):
+		return
+	var tel = session_meta["telemetry"]
+	if tel is Dictionary and not tel.is_empty():
+		lines.append("## 📊 Session Telemetry")
+		lines.append("")
+		for k in tel.keys():
+			var val_txt = str(tel[k])
+			lines.append("- **%s:** %s" % [str(k).replace("_", " ").capitalize(), _rx(val_txt) if redact_values else val_txt])
+		lines.append("")
+		lines.append("---")
+		lines.append("")
 
 static func _format_user_message(entry: Dictionary, content_raw: Variant, lines: PackedStringArray) -> void:
 	lines.append("## 👤 User")
@@ -282,11 +298,7 @@ static func export_transcript_to_markdown(tasks: Array, history: Array = [], ses
 	lines.append("# 🤖 Godot AI Chat Export")
 	lines.append("")
 	lines.append("- **Export Date:** " + Time.get_datetime_string_from_system())
-	if not session_meta.is_empty():
-		if session_meta.has("model"):
-			lines.append("- **Model:** `" + _rx(str(session_meta["model"])) + "`")
-		if session_meta.has("elapsed_s"):
-			lines.append("- **Total Duration:** " + str(session_meta["elapsed_s"]) + "s")
+	_append_model_meta_lines(session_meta, lines, true)
 	lines.append("- **Total Tasks:** " + str(tasks.size() if tasks != null else 0))
 	lines.append("- **Working-Memory Messages:** " + str(history.size() if history != null else 0))
 	lines.append("")
@@ -306,38 +318,9 @@ static func export_transcript_to_markdown(tasks: Array, history: Array = [], ses
 		lines.append("_Compaction sonrası özet içerebilir; tam kayıt için yukarıdaki Task bölümlerine bakın._")
 		lines.append("")
 		for entry in history:
-			if entry == null or not (entry is Dictionary):
-				continue
-			var role = str(entry.get("role", "assistant"))
-			var content_raw = entry.get("content")
-			match role:
-				"user":
-					_format_user_message(entry, content_raw, lines)
-				"assistant":
-					_format_assistant_message(entry, content_raw, lines)
-				"tool":
-					_format_tool_message(entry, content_raw, lines)
-				"system":
-					_format_system_message(entry, content_raw, lines)
-				_:
-					lines.append("## 💬 " + role.capitalize())
-					lines.append("")
-					if content_raw != null:
-						lines.append(_rx(str(content_raw).strip_edges()))
-					lines.append("")
-					lines.append("---")
-					lines.append("")
+			_append_history_entry(entry, lines, true)
 
-	if not session_meta.is_empty() and session_meta.has("telemetry"):
-		var tel = session_meta["telemetry"]
-		if tel is Dictionary and not tel.is_empty():
-			lines.append("## 📊 Session Telemetry")
-			lines.append("")
-			for k in tel.keys():
-				lines.append("- **%s:** %s" % [str(k).replace("_", " ").capitalize(), _rx(str(tel[k]))])
-			lines.append("")
-			lines.append("---")
-			lines.append("")
+	_append_session_telemetry(session_meta, lines, true)
 
 	return "\n".join(lines)
 
@@ -777,17 +760,25 @@ static func session_metadata(sess) -> Dictionary:
 		meta["telemetry"] = tel.duplicate(true)
 	return meta
 
+## Session -> transcript triple (tasks, messages, meta); tüm session exportları ortak.
+static func _session_transcript_triple(sess) -> Array:
+	if sess == null:
+		return [[], [], session_metadata(sess)]
+	return [_sess_array(sess, "transcript_tasks"), _sess_array(sess, "messages"), session_metadata(sess)]
+
 ## Eski/yüklü session -> Markdown (transcript timeline + squelch korunur).
 static func export_session_markdown(sess) -> String:
 	if sess == null:
 		return ""
-	return export_transcript_to_markdown(_sess_array(sess, "transcript_tasks"), _sess_array(sess, "messages"), session_metadata(sess))
+	var t = _session_transcript_triple(sess)
+	return export_transcript_to_markdown(t[0], t[1], t[2])
 
 ## Eski/yüklü session -> JSON (redaction korunur).
 static func export_session_json(sess) -> String:
 	if sess == null:
 		return ""
-	return export_transcript_to_json(_sess_array(sess, "transcript_tasks"), _sess_array(sess, "messages"), session_metadata(sess))
+	var t = _session_transcript_triple(sess)
+	return export_transcript_to_json(t[0], t[1], t[2])
 
 ## Session export içeriği + önerilen dosya adı (dosya yazmaz; iptal güvenli).
 static func build_history_export(sess, format: String) -> Dictionary:
