@@ -76,27 +76,57 @@ static func run() -> Dictionary:
 	if dock == null:
 		failed += 1
 		errors.append("T5 dock instantiate failed.")
-		return {"name": "ChatImageUXTests", "passed": passed, "failed": failed, "errors": errors}
-	dock._ready()
-	dock._auto_scroll_enabled = false
-	for child in dock.message_stream.get_children():
-		child.free()
-	dock._on_agent_tool_completed("take_runtime_screenshot", _shot_result())
-	var found_card = null
-	for child in dock.message_stream.get_children():
-		if child is AISidebarScreenshotCard:
-			found_card = child
-	var n_before = dock.message_stream.get_child_count()
-	dock._on_agent_tool_completed("read_script", {"success": true, "data": {}, "message": "ok"})
-	dock._on_agent_tool_completed("take_runtime_screenshot", {"success": false, "error": {"code": "X", "message": "bad"}, "data": {}})
-	var n_after = dock.message_stream.get_child_count()
-	if found_card != null and "Runtime" in found_card.source_label(found_card.source_kind) and not found_card.sent_to_model and n_after == n_before:
-		passed += 1
 	else:
+		dock._ready()
+		dock._auto_scroll_enabled = false
+		for child in dock.message_stream.get_children():
+			child.free()
+		dock._on_agent_tool_completed("take_runtime_screenshot", _shot_result())
+		var found_card = null
+		for child in dock.message_stream.get_children():
+			if child is AISidebarScreenshotCard:
+				found_card = child
+		var n_before = dock.message_stream.get_child_count()
+		dock._on_agent_tool_completed("read_script", {"success": true, "data": {}, "message": "ok"})
+		dock._on_agent_tool_completed("take_runtime_screenshot", {"success": false, "error": {"code": "X", "message": "bad"}, "data": {}})
+		var n_after = dock.message_stream.get_child_count()
+		if found_card != null and "Runtime" in found_card.source_label(found_card.source_kind) and not found_card.sent_to_model and n_after == n_before:
+			passed += 1
+		else:
+			failed += 1
+			errors.append("T5 (dock preview hook) failed.")
+		for child in dock.message_stream.get_children():
+			child.free()
+		dock.queue_free()
+
+	# 6. take_editor_screenshot (yalnızca path) -> dosyadan preview kartı
+	var ed_path = "user://test_editor_shot.png"
+	var ed_img = Image.create(12, 6, false, Image.FORMAT_RGB8)
+	ed_img.fill(Color(0.1, 0.8, 0.1))
+	ed_img.save_png(ed_path)
+	var dock6 = ChatDockScene.instantiate()
+	if dock6 == null:
 		failed += 1
-		errors.append("T5 (dock preview hook) failed.")
-	for child in dock.message_stream.get_children():
-		child.free()
-	dock.queue_free()
+		errors.append("T6 dock instantiate failed.")
+	else:
+		dock6._ready()
+		dock6._auto_scroll_enabled = false
+		for child in dock6.message_stream.get_children():
+			child.free()
+		dock6._on_agent_tool_completed("take_editor_screenshot", {"success": true, "data": {"path": ed_path}, "message": "ok"})
+		var found6 = null
+		for child in dock6.message_stream.get_children():
+			if child is AISidebarScreenshotCard:
+				found6 = child
+		if found6 != null and found6.source_kind == "editor" and "Editor screen" in found6.source_label(found6.source_kind):
+			passed += 1
+		else:
+			failed += 1
+			errors.append("T6 (editor screenshot preview) failed.")
+		for child in dock6.message_stream.get_children():
+			child.free()
+		dock6.queue_free()
+	if FileAccess.file_exists(ed_path):
+		DirAccess.remove_absolute(ed_path)
 
 	return {"name": "ChatImageUXTests", "passed": passed, "failed": failed, "errors": errors}

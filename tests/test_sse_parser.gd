@@ -57,4 +57,16 @@ data: [DONE]
 		failed += 1
 		errors.append("JSON reasoning_details parse failed: " + str(parsed_jrd))
 
+	# Test 5: Aynı delta hem reasoning hem details taşırsa tek sayılır (duplicate yok)
+	var sse_dup = """data: {"choices":[{"delta":{"reasoning":"Aynı metin.","reasoning_details":[{"type":"reasoning.text","text":"Aynı metin."}]}}]}
+
+data: [DONE]
+"""
+	var parsed_dup = AISidebarSSEParser.parse_response(sse_dup)
+	if parsed_dup.get("thinking", "") == "Aynı metin.":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("SSE dedup parse failed: '" + str(parsed_dup.get("thinking", "")) + "'")
+
 	return {"name": "SSEParserTests", "passed": passed, "failed": failed, "errors": errors}

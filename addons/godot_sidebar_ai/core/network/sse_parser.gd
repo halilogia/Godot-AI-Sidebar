@@ -4,6 +4,22 @@ class_name AISidebarSSEParser
 
 ## Server-Sent Events (SSE) ve Standart JSON yanıtlarını ayrıştıran bağımsız ayrıştırıcı (SRP).
 
+## Tek delta/message için thinking çıkarımı (öncelik sırası; çift sayımı önler).
+static func extract_delta_thinking(delta: Dictionary) -> String:
+	if delta == null or not (delta is Dictionary):
+		return ""
+	if delta.has("reasoning_content") and delta["reasoning_content"] != null:
+		var rc = str(delta["reasoning_content"])
+		if not rc.is_empty():
+			return rc
+	if delta.has("reasoning") and delta["reasoning"] != null:
+		var r = delta["reasoning"]
+		if r is String and not r.is_empty():
+			return r
+	if delta.has("reasoning_details"):
+		return extract_reasoning_details(delta["reasoning_details"])
+	return ""
+
 ## OpenRouter tarzı reasoning_details dizisinden metin çıkarır
 ## ([{type, text/summary}, ...] veya düz string dizisi; bilinmeyen şekil yok sayılır).
 static func extract_reasoning_details(value: Variant) -> String:
@@ -57,12 +73,9 @@ static func parse_response(raw_text: String) -> Dictionary:
 						finish_reason = str(c["finish_reason"])
 						
 					var delta = c.get("delta", {})
-					if delta.has("reasoning_content") and delta["reasoning_content"] != null:
-						total_thinking += str(delta["reasoning_content"])
-					if delta.has("reasoning") and delta["reasoning"] != null:
-						total_thinking += str(delta["reasoning"])
-					if delta.has("reasoning_details"):
-						total_thinking += extract_reasoning_details(delta["reasoning_details"])
+					# Aynı delta birden çok alanda aynı metni taşıyabilir;
+					# ilk dolu olan kazanır (duplicate birikimi yok).
+					total_thinking += extract_delta_thinking(delta)
 					if delta.has("content") and delta["content"] != null:
 						total_content += str(delta["content"])
 						

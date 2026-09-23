@@ -24,6 +24,8 @@ func _init(p_vision: AISidebarVisionInput = null, p_source: String = "runtime_vi
 static func source_label(kind: String) -> String:
 	if kind == "editor_viewport":
 		return "🖥 Editor viewport"
+	if kind == "editor":
+		return "🖥 Editor screen"
 	return "🎮 Runtime viewport"
 
 func status_text() -> String:

@@ -1916,14 +1916,19 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 
 ## Başarılı screenshot sonucu varsa image path'ini döndürür (transcript + preview).
 func _screenshot_image_path(tool_name: String, result: Dictionary) -> String:
-	if tool_name != "take_runtime_screenshot" and tool_name != "take_viewport_screenshot":
+	if tool_name != "take_runtime_screenshot" and tool_name != "take_viewport_screenshot" and tool_name != "take_editor_screenshot":
 		return ""
 	if not bool(result.get("success", false)):
 		return ""
 	var data = result.get("data", {})
-	if not (data is Dictionary) or not bool(data.get("has_vision_data", false)):
+	if not (data is Dictionary):
 		return ""
-	return str(data.get("path", ""))
+	if bool(data.get("has_vision_data", false)):
+		return str(data.get("path", ""))
+	# Editor screenshot yalnızca path döner; dosya diskte varsa preview kurulabilir.
+	if tool_name == "take_editor_screenshot" and FileAccess.file_exists(str(data.get("path", ""))):
+		return str(data.get("path", ""))
+	return ""
 
 ## AI screenshot'u chatte thumbnail kart olarak gösterir.
 func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
@@ -1931,17 +1936,26 @@ func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
 	if shot_path.is_empty():
 		return
 	var data = result.get("data", {}) as Dictionary
-	var vi = AISidebarVisionInput.new(
-		shot_path,
-		str(data.get("base64", "")),
-		int(data.get("width", 0)),
-		int(data.get("height", 0))
-	)
-	if vi.image_data_base64.is_empty():
+	var vi = null
+	if not str(data.get("base64", "")).is_empty():
+		vi = AISidebarVisionInput.new(
+			shot_path,
+			str(data.get("base64", "")),
+			int(data.get("width", 0)),
+			int(data.get("height", 0))
+		)
+	else:
+		vi = AISidebarVisionInput.from_file(shot_path)
+	if vi == null or vi.image_data_base64.is_empty():
 		return
 	var kind = str(data.get("capture_target", ""))
 	if kind.is_empty():
-		kind = "editor_viewport" if tool_name == "take_viewport_screenshot" else "runtime_viewport"
+		if tool_name == "take_viewport_screenshot":
+			kind = "editor_viewport"
+		elif tool_name == "take_editor_screenshot":
+			kind = "editor"
+		else:
+			kind = "runtime_viewport"
 	var capable = provider != null and provider.has_method("supports_vision") and provider.supports_vision()
 	var card = AISidebarScreenshotCard.new(vi, kind, capable)
 	card.meta_clicked.connect(_on_meta_clicked)
