@@ -25,10 +25,10 @@ static func _hard_clear(dock) -> void:
 	if dock.message_stream:
 		for child in dock.message_stream.get_children():
 			child.free()
-	dock._current_assistant_bubble = null
-	dock._current_activity_group = null
+	dock._stream.assistant_bubble = null
+	dock._activity.group = null
 	dock._welcome_card = null
-	dock._reset_stream_buffer()
+	dock._stream.reset_stream_buffer()
 
 
 ## MessageStream icinde ham JSON tasiyan bir balon var mi?
@@ -61,12 +61,20 @@ static func _feed_chunks(dock, chunks: Array) -> Dictionary:
 	var leaked := false
 	var leaked_steps := 0
 	for ch in chunks:
-		dock._on_agent_chunk_received(str(ch), "")
+		dock._stream.on_chunk_received(str(ch), "")
 		if _has_raw_json_bubble(dock):
 			leaked = true
 			leaked_steps += 1
 	return {"leaked": leaked, "steps": leaked_steps}
 
+
+## Motorun hata çıktısını sayar (Godot 4.5+ Logger): "Output'a ERROR basılmadı" kanıtı.
+class ErrorCatcher extends Logger:
+	var errors: Array = []
+	func _log_error(_function: String, _file: String, _line: int, _code: String, rationale: String, _editor_notify: bool, _error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		errors.append(rationale)
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -150,11 +158,11 @@ static func run() -> Dictionary:
 
 	dock._ready()
 	dock._auto_scroll_enabled = false
-	dock.current_session = null
+	dock._sessions.current = null
 
 	# --- Test 1: Saf ask_user JSON -> chat bubble GORUNMEZ ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", ENVELOPE_ASK_USER)
+	dock._stream.on_text_received("assistant", ENVELOPE_ASK_USER)
 	var t1 = not _has_raw_json_bubble(dock) and _visible_text(dock).strip_edges().is_empty()
 	if t1:
 		passed += 1
@@ -164,7 +172,7 @@ static func run() -> Dictionary:
 
 	# --- Test 2: Saf baska tool-call JSON -> chat bubble GORUNMEZ ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", ENVELOPE_OTHER_TOOL)
+	dock._stream.on_text_received("assistant", ENVELOPE_OTHER_TOOL)
 	if not _has_raw_json_bubble(dock) and _visible_text(dock).strip_edges().is_empty():
 		passed += 1
 	else:
@@ -173,7 +181,7 @@ static func run() -> Dictionary:
 
 	# --- Test 3: Normal assistant text -> GORUNUR ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", PROSE_TEXT)
+	dock._stream.on_text_received("assistant", PROSE_TEXT)
 	if PROSE_TEXT in _visible_text(dock):
 		passed += 1
 	else:
@@ -182,7 +190,7 @@ static func run() -> Dictionary:
 
 	# --- Test 4: text + tool-call -> text GORUNUR, ham JSON gorunmez ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", PROSE_WITH_ENVELOPE)
+	dock._stream.on_text_received("assistant", PROSE_WITH_ENVELOPE)
 	var vis4 = _visible_text(dock)
 	if PROSE_TEXT in vis4 and not _has_raw_json_bubble(dock):
 		passed += 1
@@ -204,7 +212,7 @@ static func run() -> Dictionary:
 		chunks_ask.append(s_ask.substr(i, 8))
 		i += 8
 	var r_ask = _feed_chunks(dock, chunks_ask)
-	dock._on_agent_text_received("assistant", ENVELOPE_ASK_USER)
+	dock._stream.on_text_received("assistant", ENVELOPE_ASK_USER)
 	if r_ask["leaked"] or _has_raw_json_bubble(dock):
 		leaked_any = true
 		detail += "ask_user(8ch) "
@@ -223,7 +231,7 @@ static func run() -> Dictionary:
 		chunks_tool.append(s_tool.substr(j, 5))
 		j += 5
 	var r_tool = _feed_chunks(dock, chunks_tool)
-	dock._on_agent_text_received("assistant", ENVELOPE_OTHER_TOOL)
+	dock._stream.on_text_received("assistant", ENVELOPE_OTHER_TOOL)
 	if r_tool["leaked"] or _has_raw_json_bubble(dock):
 		failed += 1
 		errors.append("Test 5b (fragmented tool JSON never leaks) failed: leaked_steps=" + str(r_tool["steps"]))
@@ -266,8 +274,8 @@ static func run() -> Dictionary:
 	# --- Test 6: ask_user -> ClarificationCard hala olusur ---
 	_hard_clear(dock)
 	# Once zarf akisi (kullaniciya gorunmemeli), ardindan clarification sinyali.
-	dock._on_agent_text_received("assistant", ENVELOPE_ASK_USER)
-	dock._on_agent_clarification_requested("GDScript mi C# mi?", ["GDScript", "C#"], "cid_test")
+	dock._stream.on_text_received("assistant", ENVELOPE_ASK_USER)
+	dock._interaction.on_clarification_requested("GDScript mi C# mi?", ["GDScript", "C#"], "cid_test")
 
 	var clarif_count = 0
 	for child in dock.message_stream.get_children():
@@ -282,11 +290,11 @@ static func run() -> Dictionary:
 	# --- Test 7: Kullanici turu sonrasi tampon sizmamali (bayat metin tasinmaz) ---
 	_hard_clear(dock)
 	# Yarim bir zarf akisi (yeni turda iptal edilmis gibi)
-	dock._on_agent_chunk_received("{\"tool_calls\": [{\"name\": \"ask_", "")
+	dock._stream.on_chunk_received("{\"tool_calls\": [{\"name\": \"ask_", "")
 	# Kullanici mesaji gelir -> yeni tur, tampon temizlenir
-	dock._on_agent_text_received("user", "Yeni bir istek gonderiyorum")
+	dock._stream.on_text_received("user", "Yeni bir istek gonderiyorum")
 	# Asistan normal metinle cevap verir
-	dock._on_agent_text_received("assistant", PROSE_TEXT)
+	dock._stream.on_text_received("assistant", PROSE_TEXT)
 	var vis7 = _visible_text(dock)
 	if (not _has_raw_json_bubble(dock)) and (not "tool_calls" in vis7) and (PROSE_TEXT in vis7):
 		passed += 1
@@ -295,5 +303,21 @@ static func run() -> Dictionary:
 		errors.append("Test 7 (no stale buffer leak across turns) failed: visible='" + vis7 + "'")
 
 	dock.free()
+
+	# JSON olmayan kod blokları (dosya ağacı, GDScript) sessizce korunur: zarf kontrolü
+	# motor çıktısına "Parse JSON failed" ERROR'u basmaz (akış sırasında her parçada çalışır).
+	var tree_text = "Sahne hazır.\n```\nMain3D (Node3D)\n├── Ground (MeshInstance3D)\n```\n```gdscript\nfunc _ready():\n\tpass\n```\nBitti."
+	var catcher = ErrorCatcher.new()
+	OS.add_logger(catcher)
+	for cut in range(8, tree_text.length(), 8):
+		AISidebarMessageBubble.strip_tool_call_envelopes(tree_text.substr(0, cut), true)
+	var final_txt = AISidebarMessageBubble.strip_tool_call_envelopes(tree_text, false)
+	var is_env = AISidebarMessageBubble.is_tool_call_envelope("```\n{not json}\n```")
+	OS.remove_logger(catcher)
+	if catcher.errors.is_empty() and "Main3D (Node3D)" in final_txt and "func _ready()" in final_txt and not is_env:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T-silent (non-JSON code blocks log no errors) failed: %d engine errors %s" % [catcher.errors.size(), str(catcher.errors.slice(0, 2))])
 
 	return {"name": "StreamEnvelopeGuardTests", "passed": passed, "failed": failed, "errors": errors}

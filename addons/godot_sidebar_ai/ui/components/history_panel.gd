@@ -87,7 +87,7 @@ func _setup_ui() -> void:
 	header_hbox.add_child(new_btn)
 	
 	var close_btn = Button.new()
-	close_btn.text = "✕"
+	AISidebarIconHelper.apply_tinted_icon(close_btn, "x", AISidebarTheme.COLOR_TEXT_SECONDARY)
 	close_btn.tooltip_text = AISidebarI18n.get_text("history_btn_close_tooltip")
 	close_btn.flat = true
 	close_btn.focus_mode = FOCUS_NONE

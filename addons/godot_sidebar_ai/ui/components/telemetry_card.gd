@@ -7,6 +7,9 @@ class_name AISidebarTelemetryCard
 
 signal copy_task_requested(task_id: String)
 
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+
 var metrics: Dictionary = {}
 var is_expanded: bool = false
 ## İlgili transcript task'ı (boşsa Copy gizlenir; örn. restore edilen kartlar).
@@ -105,11 +108,14 @@ func render_metrics(m: Dictionary) -> void:
 	var completion = str(m.get("completion", "success" if is_ok else "failed"))
 	var summary = "Steps: " + str(used_steps) + "/" + str(max_steps) + " · Tools: " + tools_sent + "/" + total_tools + " active (" + tools_executed + " used) · " + files + " files"
 	if is_ok and completion == "success":
-		_header_btn.text = "✓ Completed in " + elapsed + " · " + summary
+		_header_btn.text = "Completed in " + elapsed + " · " + summary
+		AISidebarIconHelper.apply_tinted_icon(_header_btn, "check", AISidebarTheme.COLOR_SUCCESS, 12)
 	elif completion == "incomplete":
-		_header_btn.text = "⚠ Needs review (" + elapsed + ") · " + summary
+		_header_btn.text = "Needs review (" + elapsed + ") · " + summary
+		AISidebarIconHelper.apply_tinted_icon(_header_btn, "triangle-alert", AISidebarTheme.COLOR_WARNING, 12)
 	else:
-		_header_btn.text = "✕ Failed in " + elapsed + " · " + summary
+		_header_btn.text = "Failed in " + elapsed + " · " + summary
+		AISidebarIconHelper.apply_tinted_icon(_header_btn, "x", AISidebarTheme.COLOR_ERROR, 12)
 	_header_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
 	
 	var llm_s = str(m.get("llm_time_s", 0.0)) + "s"
@@ -123,7 +129,7 @@ func render_metrics(m: Dictionary) -> void:
 	var failed_txt = str(m.get("failed_tools", 0))
 	var retry_txt = str(m.get("retry_count", 0))
 	var files_txt = "%s read / %s written" % [str(m.get("files_read_count", 0)), str(m.get("files_written_count", 0))]
-	var limit_txt = " · ⚠️ LIMIT" if bool(m.get("limit_hit", false)) else ""
+	var limit_txt = " · LIMIT" if bool(m.get("limit_hit", false)) else ""
 
 	_details_lbl.text = "[color=#717c91]• Steps: " + str(used_steps) + " used / " + str(max_steps) + " safety limit" + limit_txt + " | Active Tools: " + tools_sent + " sent / " + total_tools + " total | LLM: " + llm_s + " | Tools: " + tool_s + " (File: " + file_s + ") | Waiting: " + wait_s + "[/color]\n[color=#717c91]• Research: " + research_s + " (overhead " + overhead_txt + ") | Ops " + rsw + " | Failed: " + failed_txt + " | Retries: " + retry_txt + " | Files: " + files_txt + "[/color]"
 

@@ -77,6 +77,15 @@ const TestExportCoverage = preload("res://tests/test_export_coverage.gd")
 const TestTypecheckGuard = preload("res://tests/test_typecheck_guard.gd")
 const TestCompletionIntegrity = preload("res://tests/test_completion_integrity.gd")
 const TestDebuggerLink = preload("res://tests/test_debugger_link.gd")
+const TestPlanChecklistTracker = preload("res://tests/test_plan_checklist_tracker.gd")
+const TestChatExportActions = preload("res://tests/test_chat_export_actions.gd")
+const TestChatSessionStore = preload("res://tests/test_chat_session_store.gd")
+const TestSessionReplay = preload("res://tests/test_session_replay.gd")
+const TestIconSystem = preload("res://tests/test_icon_system.gd")
+const TestDockAgentWiring = preload("res://tests/test_dock_agent_wiring.gd")
+const TestModelBarController = preload("res://tests/test_model_bar_controller.gd")
+const TestTaskDispatch = preload("res://tests/test_task_dispatch.gd")
+const TestMarkdownRenderer = preload("res://tests/test_markdown_renderer.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -156,6 +165,15 @@ func _init() -> void:
 		TestChatImageUX,
 		TestHistoryExport,
 		TestDebuggerLink,
+		TestPlanChecklistTracker,
+		TestChatExportActions,
+		TestChatSessionStore,
+		TestSessionReplay,
+		TestIconSystem,
+		TestDockAgentWiring,
+		TestModelBarController,
+		TestTaskDispatch,
+		TestMarkdownRenderer,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,
@@ -171,7 +189,13 @@ func _init() -> void:
 		var s_pass = res.get("passed", 0)
 		var s_fail = res.get("failed", 0)
 		var s_errs = res.get("errors", [])
-		
+		# Fail-closed: run() çalışma anında çökerse GDScript boş sonuç döndürür
+		# ("Unknown 0/0"). Sonuç yoksa veya hiç assertion koşmadıysa paket başarısızdır.
+		if not res.has("name") or s_pass + s_fail == 0:
+			s_name = str(res.get("name", suite.resource_path.get_file()))
+			s_fail = 1
+			s_errs = ["Suite crashed or ran no assertions (see SCRIPT ERROR above)."]
+
 		total_passed += s_pass
 		total_failed += s_fail
 		

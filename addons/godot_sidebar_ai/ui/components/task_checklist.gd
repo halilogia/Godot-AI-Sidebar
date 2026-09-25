@@ -9,6 +9,7 @@ class_name AISidebarTaskChecklist
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 
 const STATE_PENDING := "pending"
 const STATE_RUNNING := "running"
@@ -183,15 +184,15 @@ func _update_header() -> void:
 	var done = completed_count()
 	var total = _steps.size()
 	if not stop_reason.is_empty():
-		_header_btn.text = arrow + " ✕ stopped at %d/%d — %s" % [done, total, stop_reason]
+		_header_btn.text = arrow + " Tasks stopped at %d/%d — %s" % [done, total, stop_reason]
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
 	elif is_finished:
-		_header_btn.text = arrow + " 📋 Tasks ✓ %d/%d" % [done, total]
+		_header_btn.text = arrow + " Tasks completed · %d/%d" % [done, total]
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	else:
-		var title = "📋 Tasks"
+		var title = "Tasks"
 		if not goal.is_empty():
-			title = "📋 " + goal.left(60)
+			title = goal.left(60)
 		_header_btn.text = arrow + " " + title + " · %d/%d" % [done, total]
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 
@@ -207,11 +208,9 @@ func _render_row(idx: int) -> void:
 	row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
 	_items_container.add_child(row)
 
-	var icon_lbl = Label.new()
-	icon_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	icon_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
-	row.add_child(icon_lbl)
-	entry["icon"] = icon_lbl
+	var status_icon = AISidebarStatusIcon.new()
+	row.add_child(status_icon)
+	entry["icon"] = status_icon
 
 	var title_lbl = RichTextLabel.new()
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -239,16 +238,7 @@ func _refresh_row(idx: int) -> void:
 	if entry.is_empty() or not is_instance_valid(entry.get("outer", entry.get("icon"))):
 		return
 	var state = str(_steps[idx].get("state", STATE_PENDING))
-	var icon_str = state_icon(state)
-	(entry["icon"] as Label).text = icon_str
-	if state == STATE_COMPLETED:
-		(entry["icon"] as Label).add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
-	elif state == STATE_FAILED:
-		(entry["icon"] as Label).add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
-	elif state == STATE_RUNNING:
-		(entry["icon"] as Label).add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
-	else:
-		(entry["icon"] as Label).add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	entry["icon"].set_status(state_icon(state), AISidebarTheme.COLOR_TEXT_MUTED)
 	var safe_title = str(_steps[idx].get("title", "")).replace("[", "［").replace("]", "］")
 	var err = str(_steps[idx].get("error", ""))
 	if not err.is_empty():

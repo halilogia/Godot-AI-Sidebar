@@ -19,7 +19,9 @@ signal plan_applied()
 signal plan_cancelled()
 
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
+const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var plan: AISidebarImplementationPlan = null
@@ -32,6 +34,7 @@ var _buttons_bar: HBoxContainer
 var _apply_btn: Button
 var _cancel_btn: Button
 var _status_lbl: Label
+var _status_icon: AISidebarStatusIcon
 
 func _init(p_plan: AISidebarImplementationPlan = null) -> void:
 	plan = p_plan
@@ -62,10 +65,9 @@ func _setup_ui() -> void:
 	var header_hbox = HBoxContainer.new()
 	header_hbox.add_theme_constant_override("separation", 6)
 
-	var icon_lbl = Label.new()
-	icon_lbl.text = "📋"
-	icon_lbl.add_theme_font_size_override("font_size", 14)
-	header_hbox.add_child(icon_lbl)
+	var header_icon = AISidebarStatusIcon.new(16)
+	header_icon.set_icon("list-checks", Color(0.6, 0.85, 1.0))
+	header_hbox.add_child(header_icon)
 
 	_title_lbl = Label.new()
 	_title_lbl.text = "Implementation Plan"
@@ -85,9 +87,9 @@ func _setup_ui() -> void:
 	_plan_lbl.focus_mode = Control.FOCUS_CLICK
 	_plan_lbl.deselect_on_focus_loss_enabled = false
 	_plan_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	_plan_lbl.add_theme_font_size_override("normal_font_size", 11)
+	AISidebarMarkdownRenderer.apply_font_sizes(_plan_lbl, 11)
 	_plan_lbl.add_theme_color_override("default_color", Color(0.88, 0.92, 0.96))
-	_plan_lbl.text = _build_display_text()
+	_plan_lbl.text = AISidebarMarkdownRenderer.to_bbcode(_build_display_text())
 	_vbox.add_child(_plan_lbl)
 
 	_buttons_bar = HBoxContainer.new()
@@ -111,11 +113,17 @@ func _setup_ui() -> void:
 	_cancel_btn.pressed.connect(_on_cancel)
 	_buttons_bar.add_child(_cancel_btn)
 
+	var status_row = HBoxContainer.new()
+	status_row.visible = false
+	status_row.add_theme_constant_override("separation", 4)
+	_vbox.add_child(status_row)
+	_status_icon = AISidebarStatusIcon.new()
+	status_row.add_child(_status_icon)
 	_status_lbl = Label.new()
 	_status_lbl.visible = false
 	_status_lbl.add_theme_font_size_override("font_size", 11)
 	_status_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.5))
-	_vbox.add_child(_status_lbl)
+	status_row.add_child(_status_lbl)
 
 func _build_display_text() -> String:
 	if plan == null:
@@ -125,12 +133,12 @@ func _build_display_text() -> String:
 func mark_applied() -> void:
 	is_resolved = true
 	_set_buttons_visible(false)
-	_set_status("✓ Plan onaylandı, uygulanıyor", Color(0.4, 0.85, 0.5))
+	_set_status("Plan onaylandı, uygulanıyor", Color(0.4, 0.85, 0.5), "check")
 
 func mark_cancelled() -> void:
 	is_resolved = true
 	_set_buttons_visible(false)
-	_set_status("✕ Plan iptal edildi", Color(0.9, 0.5, 0.4))
+	_set_status("Plan iptal edildi", Color(0.9, 0.5, 0.4), "x")
 
 func _set_buttons_visible(vis: bool) -> void:
 	if _apply_btn:
@@ -140,11 +148,13 @@ func _set_buttons_visible(vis: bool) -> void:
 		_cancel_btn.disabled = not vis
 		_cancel_btn.visible = vis
 
-func _set_status(txt: String, col: Color) -> void:
+func _set_status(txt: String, col: Color, icon_name: String) -> void:
 	if _status_lbl:
 		_status_lbl.text = txt
 		_status_lbl.add_theme_color_override("font_color", col)
 		_status_lbl.visible = true
+		_status_icon.set_icon(icon_name, col)
+		_status_lbl.get_parent().visible = true
 
 func _on_apply() -> void:
 	if is_resolved:

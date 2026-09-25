@@ -10,6 +10,7 @@ class_name AISidebarReasoningCard
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 ## Chat alanını ele geçirmemesi için display sınırı.
 const MAX_DISPLAY_CHARS: int = 3000
@@ -109,7 +110,7 @@ func _update_header() -> void:
 	if not _header_btn:
 		return
 	var arrow = "▾" if is_expanded else "▸"
-	_header_btn.text = arrow + " Model ne yapıyor?"
+	_header_btn.text = arrow + " " + AISidebarI18n.get_text("reasoning_title")
 
 func _render() -> void:
 	_update_header()

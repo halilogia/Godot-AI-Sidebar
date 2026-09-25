@@ -9,6 +9,7 @@ signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
+const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 
 var is_expanded: bool = false
 var is_active: bool = true
@@ -155,7 +156,7 @@ func _normalize_icon(icon: String) -> String:
 	match icon:
 		"✓", "✔", "check", "success":
 			return "✓"
-		"❌", "✕", "✗", "x", "error", "failed":
+		"\u274C", "✕", "✗", "x", "error", "failed":
 			return "✕"
 		"▶", "running", "play", "•", "...":
 			return "▶"
@@ -203,11 +204,9 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
 	outer.add_child(row)
 
-	var icon_lbl = Label.new()
-	icon_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	icon_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
-	row.add_child(icon_lbl)
-	entry["icon"] = icon_lbl
+	var status_icon = AISidebarStatusIcon.new()
+	row.add_child(status_icon)
+	entry["icon"] = status_icon
 
 	var title_lbl = RichTextLabel.new()
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -264,14 +263,7 @@ func _refresh_item(idx: int) -> void:
 	var entry: Dictionary = _item_rows[idx]
 	if entry.is_empty() or not is_instance_valid(entry.get("outer")):
 		return
-	var icon_str = str(item.get("icon", "•"))
-	(entry["icon"] as Label).text = icon_str
-	if icon_str == "✓":
-		(entry["icon"] as Label).add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
-	elif icon_str == "✕":
-		(entry["icon"] as Label).add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
-	else:
-		(entry["icon"] as Label).add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
+	entry["icon"].set_status(str(item.get("icon", "•")))
 	var safe_title = str(item.get("title", "")).replace("[", "［").replace("]", "］").replace("\n", "\n")
 	(entry["title"] as RichTextLabel).text = "[color=#c0caf5]" + safe_title + "[/color]"
 	var dur = int(item.get("duration", -1))

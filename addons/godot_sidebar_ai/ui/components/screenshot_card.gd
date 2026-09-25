@@ -8,6 +8,7 @@ class_name AISidebarScreenshotCard
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 
 var source_kind: String = "runtime_viewport"
@@ -23,15 +24,19 @@ func _init(p_vision: AISidebarVisionInput = null, p_source: String = "runtime_vi
 
 static func source_label(kind: String) -> String:
 	if kind == "editor_viewport":
-		return "🖥 Editor viewport"
+		return "Editor viewport"
 	if kind == "editor":
-		return "🖥 Editor screen"
-	return "🎮 Runtime viewport"
+		return "Editor screen"
+	return "Runtime viewport"
+
+## Kaynak etiketinin yanındaki Lucide ikonu.
+static func source_icon(kind: String) -> String:
+	return "monitor" if kind.begins_with("editor") else "gamepad-2"
 
 func status_text() -> String:
 	if sent_to_model:
-		return "✓ Queued for next model turn"
-	return "⚠️ Saved only — no vision support"
+		return "Queued for next model turn"
+	return "Saved only — no vision support"
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -63,6 +68,13 @@ func _ready() -> void:
 	vbox.add_theme_constant_override("separation", 2)
 	hbox.add_child(vbox)
 
+	var src_row = HBoxContainer.new()
+	src_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	src_row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	vbox.add_child(src_row)
+	var src_icon = AISidebarStatusIcon.new()
+	src_icon.set_icon(source_icon(source_kind), AISidebarTheme.COLOR_TEXT_SECONDARY)
+	src_row.add_child(src_icon)
 	var src_lbl = Label.new()
 	var dims = ""
 	if vision:
@@ -71,14 +83,22 @@ func _ready() -> void:
 	src_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	src_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
 	src_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
-	vbox.add_child(src_lbl)
+	src_row.add_child(src_lbl)
 
+	var st_color = AISidebarTheme.COLOR_SUCCESS if sent_to_model else AISidebarTheme.COLOR_WARNING
+	var st_row = HBoxContainer.new()
+	st_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	st_row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	vbox.add_child(st_row)
+	var st_icon = AISidebarStatusIcon.new(12)
+	st_icon.set_icon("check" if sent_to_model else "triangle-alert", st_color)
+	st_row.add_child(st_icon)
 	var st_lbl = Label.new()
 	st_lbl.text = status_text()
 	st_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	st_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
-	st_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS if sent_to_model else AISidebarTheme.COLOR_WARNING)
-	vbox.add_child(st_lbl)
+	st_lbl.add_theme_color_override("font_color", st_color)
+	st_row.add_child(st_lbl)
 
 func _on_thumb_pressed() -> void:
 	if vision == null:

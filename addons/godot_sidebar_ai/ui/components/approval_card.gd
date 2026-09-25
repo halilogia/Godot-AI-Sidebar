@@ -12,6 +12,7 @@ signal view_diff_requested(change_set: AISidebarChangeSet)
 
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 
 var tool_name: String = ""
 var args: Dictionary = {}
@@ -20,6 +21,7 @@ var is_resolved: bool = false
 
 var _vbox: VBoxContainer
 var _title_lbl: Label
+var _title_icon: AISidebarStatusIcon
 var _desc_lbl: RichTextLabel
 var _buttons_bar: HBoxContainer
 var _approve_btn: Button
@@ -54,12 +56,19 @@ func _setup_ui() -> void:
 	_vbox.add_theme_constant_override("separation", 6)
 	add_child(_vbox)
 	
+	var title_row = HBoxContainer.new()
+	title_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	title_row.add_theme_constant_override("separation", 6)
+	_vbox.add_child(title_row)
+	_title_icon = AISidebarStatusIcon.new(16)
+	_title_icon.set_icon("shield-alert", Color(1.0, 0.75, 0.3))
+	title_row.add_child(_title_icon)
 	_title_lbl = Label.new()
 	_title_lbl.text = "Approval Required"
 	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.3))
 	_title_lbl.add_theme_font_size_override("font_size", 12)
-	_vbox.add_child(_title_lbl)
+	title_row.add_child(_title_lbl)
 	
 	_desc_lbl = RichTextLabel.new()
 	var action_desc = tool_name
@@ -118,8 +127,9 @@ func _setup_ui() -> void:
 func mark_approved() -> void:
 	is_resolved = true
 	if _title_lbl:
-		_title_lbl.text = "✓ Approved"
+		_title_lbl.text = "Approved"
 		_title_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.4))
+		_title_icon.set_icon("check", Color(0.4, 0.85, 0.4))
 	if _approve_btn:
 		_approve_btn.disabled = true
 		_approve_btn.visible = false
@@ -130,8 +140,9 @@ func mark_approved() -> void:
 func mark_rejected() -> void:
 	is_resolved = true
 	if _title_lbl:
-		_title_lbl.text = "✕ Rejected"
+		_title_lbl.text = "Rejected"
 		_title_lbl.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
+		_title_icon.set_icon("x", Color(0.9, 0.4, 0.4))
 	if _approve_btn:
 		_approve_btn.disabled = true
 		_approve_btn.visible = false

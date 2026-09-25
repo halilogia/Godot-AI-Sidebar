@@ -63,3 +63,13 @@ Bu dosya, Godot 4.7 motor özellikleri, GDScript 2.0 kuralları, 9Router/LLM pro
 * Godot editörü kapalıyken `godot --headless -s test_runner.gd` çalıştırıldığında, editörün global `class_name` dizini bellekte olmayabilir.
 * Bu sebeple bağımsız çalışan scriptler ve test sınıfları birbirini **`const MyClass = preload("res://path/to/script.gd")`** şeklinde bağlamalıdır.
 * Bu yaklaşım hem CLI ortamında hem de editör ortamında %100 deterministik ve hatasız çalışmayı garanti eder.
+
+---
+
+## İkon Sistemi (Lucide) ve Emoji Yasağı
+
+* UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.
+* `AISidebarIconHelper.get_tinted_icon(name, color, size)` SVG'yi okuyup stroke/fill renklerini (ve `currentColor`'ı) verilen renge boyar, `Image.load_svg_from_string` ile render eder ve önbelleğe alır. Import sistemine bağlı değildir (headless testlerde de çalışır).
+* Durum glifleri (`✓ ✕ ▶ ! ☐ – •`) veri modelinde (activity, checklist, transcript, export) aynen kalır. Görünümde `AISidebarStatusIcon` bunları ikona çevirir; tanınmayan glif metin olarak görünür.
+* `tests/test_icon_system.gd` T5, `ui/` ve `core/commands/` kaynaklarında emoji bulursa kırmızıya döner. Eski veri için girdi takma adları (❌, ✅, ⚠️) kaynakta `\u` kaçış dizisiyle yazılır.
+* Kapsam dışı (bilinçli): `ChatExporter` Markdown çıktısı ve LLM'e giden prompt/araç metinleri. Kullanıcı arayüzü değil, belge/model girdisidirler.

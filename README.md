@@ -10,9 +10,14 @@ running*.
 [![Version](https://img.shields.io/badge/version-2.7.0-478cbf)](#)
 [![Godot](https://img.shields.io/badge/Godot-4.7%2B-478cbf)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-55%20suites%20%2F%20331%20assertions-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-headless%20typecheck%20%2B%20unit-brightgreen)](#testing)
 
 **English** · [Türkçe](README.tr.md)
+
+<p align="center">
+  <img src="docs/media/hero_en.png" width="460" alt="The sidebar in Godot: the agent asked which kind of hexagon map was meant, then created the scene, wrote and validated the script, ran the game and reported back">
+</p>
+<p align="center"><sub>Screenshots are rendered from the plugin's real UI components by <code>tools/readme_shots.gd</code>. The conversation in them is scripted, not a recorded model session.</sub></p>
 
 ---
 
@@ -23,6 +28,10 @@ running*.
 Most coding assistants do exactly what you literally said. Ask for a "hexagon"
 and you get one `MeshInstance3D`. Ask this one and it recognises that "hexagon"
 could mean three very different things, and stops to find out.
+
+<p align="center">
+  <img src="docs/media/clarification_en.png" width="460" alt="A clarification card offering three options: single hexagon object, playable hex grid, procedural map generator">
+</p>
 
 ```text
 You:  "Create a hexagon map system"
@@ -63,6 +72,24 @@ it is still a proposal.
 
 > Tools: `replace_file_content` (surgical), `read_script`, `validate_script`.
 
+### It plans before big changes
+
+When a request is system-sized ("build an inventory system", "create a hex map
+system"), the agent first proposes a plan: the goal, the files it will touch,
+the steps and how it will verify the result. Until you press **Apply Plan**,
+every tool that could modify your project is blocked in code, not just
+discouraged in the prompt. Small edits ("set speed to 300") skip this and run
+directly.
+
+<p align="center">
+  <img src="docs/media/plan_en.png" width="460" alt="An implementation plan card with goal, affected files, steps, verification, and Apply Plan / Cancel buttons">
+</p>
+
+Once approved, a task checklist follows the plan step by step as tools
+complete, so you can see which step is running and where it stopped.
+
+> Implemented by `PlanningPolicy` (the gate), `PlanCard` and `TaskChecklist`.
+
 ### You can undo everything
 
 Every scene and node mutation — added nodes, deleted nodes, property changes,
@@ -70,6 +97,10 @@ signal connections, attached scripts, reparenting, renames — goes through
 Godot's own `EditorUndoRedoManager`. **Ctrl+Z works exactly as it does for
 edits you made by hand.** There is no separate "AI undo" that leaves your scene
 in a state the editor cannot reason about.
+
+<p align="center">
+  <img src="docs/media/approval_en.png" width="460" alt="An approved surgical edit with View Diff, the applied change with a +5 -2 line count and Undo, and a pending delete waiting for approval">
+</p>
 
 ### It can look at the running game
 
@@ -87,6 +118,10 @@ Godot AI:  → inspect_runtime_tree   (what actually exists at runtime?)
            → maps the stack trace back to the source file
            → proposes a fix
 ```
+
+<p align="center">
+  <img src="docs/media/runtime_en.png" width="460" alt="The agent inspects the live scene tree and the player node, finds a runtime error at player.gd line 14 and explains the cause">
+</p>
 
 Runtime stack traces are mapped back to real project files by a source mapper,
 which is what lets the self-healing loop fix the *right* script.
@@ -344,10 +379,13 @@ The plugin has a headless test suite and a static compile validator. Both run
 without opening the editor.
 
 ```bash
-# 1. Static compile & scene-load check (129 GDScript, 4 scenes)
+# 0. One command: typecheck + full test suite (add -Live for the 9Router test)
+powershell -ExecutionPolicy Bypass -File .\verify.ps1
+
+# 1. Static compile & scene-load check (addons/ + tests/)
 powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
 
-# 2. Full test suite (55 suites / 331 assertions)
+# 2. Full test suite
 godot --headless --path . -s "res://tests/test_runner.gd"
 
 # 3. Live provider integration test (requires 9Router on 127.0.0.1:20128)
@@ -405,6 +443,15 @@ Before opening a PR, please make sure both of these pass:
 ```bash
 powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
 godot --headless --path . -s "res://tests/test_runner.gd"
+```
+
+The screenshots in `docs/media/` are generated from the real UI components. If
+you change the UI, regenerate them (English and Turkish):
+
+```bash
+godot --path . -s res://tools/readme_shots.gd -- docs/media en
+godot --path . -s res://tools/readme_shots.gd -- docs/media tr
+# On a headless Linux server, prefix with: xvfb-run -a  (and add --rendering-driver opengl3)
 ```
 
 If you are an AI agent working on this repository, read

@@ -9,7 +9,7 @@ extends RefCounted
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
-const AISidebarChatDock = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.gd")
+const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -114,22 +114,20 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T11 (prose preserved) failed.")
 
-	# 12. ask_user -> ClarificationCard bozulmuyor + dock helper'ları (limit/human-title)
+	# 12. ask_user -> ClarificationCard bozulmuyor + ToolPresentation (limit/human-title)
 	var card = AISidebarClarificationCard.new("2D mi 3D mi?", ["2D", "3D"])
 	card._ready()
-	var dock = AISidebarChatDock.new()
-	var t_ok = dock._get_human_tool_title("read_script", {"file_path": "res://HexCell.gd"}) == "Read script: HexCell.gd"
-	var l_ok = dock.is_task_limit_error("Maksimum ajan adım limitine (20) ulaşıldı.")
-	var f_ok = dock.format_limit_stop_reason(20, 20) == "Tool-call limit reached: 20/20"
-	var tech = dock._build_tech_details("read_script", {"api_key": "sk-999"}, {"success": true})
+	var t_ok = AISidebarToolPresentation.human_title("read_script", {"file_path": "res://HexCell.gd"}) == "Read script: HexCell.gd"
+	var l_ok = AISidebarToolPresentation.is_task_limit_error("Maksimum ajan adım limitine (20) ulaşıldı.")
+	var f_ok = AISidebarToolPresentation.format_limit_stop_reason(20, 20) == "Tool-call limit reached: 20/20"
+	var tech = AISidebarToolPresentation.tech_details("read_script", {"api_key": "sk-999"}, {"success": true})
 	var r_ok = not "sk-999" in tech and "[REDACTED]" in tech
 	if card.question_text == "2D mi 3D mi?" and t_ok and l_ok and f_ok and r_ok:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T12 (clarification + dock helpers) failed: t=%s l=%s f=%s r=%s" % [str(t_ok), str(l_ok), str(f_ok), str(r_ok)])
+		errors.append("T12 (clarification + ToolPresentation) failed: t=%s l=%s f=%s r=%s" % [str(t_ok), str(l_ok), str(f_ok), str(r_ok)])
 	card.queue_free()
-	dock.queue_free()
 
 	grp.queue_free()
 	return {"name": "ActivityProgressUX", "passed": passed, "failed": failed, "errors": errors}

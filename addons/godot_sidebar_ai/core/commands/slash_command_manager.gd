@@ -187,7 +187,7 @@ static func _init_default_commands() -> void:
 	# 2. /clear
 	register_command(
 		"clear",
-		"Mevcut agent task/context çalışma hafızasını sıfırlar (sohbet geçmişi silinmez).",
+		"Sohbeti temizler (Clear butonuyla aynı): ekran, ajan bağlamı ve oturum içeriği boşaltılır.",
 		"/clear",
 		AISidebarPermissionPolicy.RiskLevel.READ_ONLY,
 		Callable(AISidebarSlashCommandManager, "_handle_clear")
@@ -269,7 +269,7 @@ static func _init_default_commands() -> void:
 
 static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 	var cmds = get_commands()
-	var text = "### ⚡ Godot AI Slash Commands Rehberi\n\n"
+	var text = "### Godot AI Slash Commands Rehberi\n\n"
 	text += "Doğal dil yerine sık kullanılan ajan görevlerini tek satırda tetikleyebilirsiniz:\n\n"
 	
 	var sorted_keys = cmds.keys()
@@ -277,13 +277,13 @@ static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 	
 	for k in sorted_keys:
 		var c = cmds[k]
-		var risk_badge = "🛡️ READ_ONLY"
+		var risk_badge = "READ_ONLY"
 		if c["risk"] == AISidebarPermissionPolicy.RiskLevel.WRITE:
-			risk_badge = "✏️ WRITE"
+			risk_badge = "WRITE"
 		elif c["risk"] == AISidebarPermissionPolicy.RiskLevel.DESTRUCTIVE:
-			risk_badge = "⚠️ DESTRUCTIVE"
+			risk_badge = "DESTRUCTIVE"
 		elif c["risk"] == AISidebarPermissionPolicy.RiskLevel.EXTERNAL_SENSITIVE:
-			risk_badge = "🌐 SENSITIVE"
+			risk_badge = "SENSITIVE"
 			
 		text += "* `/" + c["name"] + "` — " + c["description"] + "\n"
 		text += "  * **Kullanım:** `" + c["usage"] + "` (" + risk_badge + ")\n"
@@ -295,15 +295,9 @@ static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 		"message": text
 	}
 
-static func _handle_clear(_args: String, context: Dictionary) -> Dictionary:
-	var agent_ctx = context.get("agent_context", null)
-	if agent_ctx:
-		agent_ctx.clear()
-		
-	return {
-		"action": "local_response",
-		"message": "🧹 **Agent çalışma hafızası sıfırlandı.**\nMevcut konuşma geçmişi (Chat Management) korundu. Yeni görevler için temiz bir ajan icra bağlamı başlatıldı."
-	}
+## Temizliği ChatDock yapar (Clear butonu yolu); komut yalnızca niyeti bildirir, yanıt balonu yok.
+static func _handle_clear(_args: String, _context: Dictionary) -> Dictionary:
+	return {"action": "clear_chat"}
 
 static func _handle_analyze(args: String, _context: Dictionary) -> Dictionary:
 	var target = args.strip_edges()

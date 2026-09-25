@@ -7,6 +7,13 @@ extends RefCounted
 const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
 const AISidebarThinkingCard = preload("res://addons/godot_sidebar_ai/ui/components/thinking_card.gd")
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
+const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
+const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
+const AISidebarPendingIndicator = preload("res://addons/godot_sidebar_ai/ui/components/pending_indicator.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
+const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
+const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
 
 const SECRET_MARKER = "GIZLI_DUSUNCE_XYZ_123"
 
@@ -16,10 +23,10 @@ static func _dock():
 	dock._auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
-	dock._current_assistant_bubble = null
-	dock._current_reasoning_card = null
-	dock._current_activity_group = null
-	dock._reset_stream_buffer()
+	dock._stream.assistant_bubble = null
+	dock._stream.reasoning_card = null
+	dock._activity.group = null
+	dock._stream.reset_stream_buffer()
 	return dock
 
 static func _reasoning_cards(dock) -> Array:
@@ -52,7 +59,7 @@ static func run() -> Dictionary:
 
 	# 1. summary gösteriliyor (tool event -> action kartı)
 	var dock1 = _dock()
-	dock1._on_agent_tool_executing("validate_script", {})
+	dock1._activity.on_tool_executing("validate_script", {})
 	var cards1 = _reasoning_cards(dock1)
 	for c in cards1:
 		c._ready()
@@ -65,10 +72,10 @@ static func run() -> Dictionary:
 
 	# 2. ham reasoning UI'a sızmıyor (chunk + final + bubble + export metni)
 	var dock2 = _dock()
-	dock2._on_agent_chunk_received("", SECRET_MARKER + " bir plan düşünüyorum")
-	dock2._on_agent_thinking_received(SECRET_MARKER + " tam gerekçe")
-	dock2._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
-	dock2._on_agent_chunk_received("Görünen cevap.", "")
+	dock2._stream.on_chunk_received("", SECRET_MARKER + " bir plan düşünüyorum")
+	dock2._stream.on_thinking_received(SECRET_MARKER + " tam gerekçe")
+	dock2._activity.on_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock2._stream.on_chunk_received("Görünen cevap.", "")
 	if not SECRET_MARKER in _stream_text(dock2):
 		passed += 1
 	else:
@@ -78,11 +85,11 @@ static func run() -> Dictionary:
 
 	# 3. no-reasoning provider normal çalışıyor (tool özeti + cevap akışı)
 	var dock3 = _dock()
-	dock3._on_agent_tool_executing("analyze_project", {})
-	dock3._on_agent_tool_completed("analyze_project", {"success": true, "data": {}, "message": "ok"})
-	dock3._on_agent_chunk_received("Analiz bitti.", "")
+	dock3._activity.on_tool_executing("analyze_project", {})
+	dock3._activity.on_tool_completed("analyze_project", {"success": true, "data": {}, "message": "ok"})
+	dock3._stream.on_chunk_received("Analiz bitti.", "")
 	var cards3 = _reasoning_cards(dock3)
-	var bubble3 = dock3._current_assistant_bubble.text_content if dock3._current_assistant_bubble else ""
+	var bubble3 = dock3._stream.assistant_bubble.text_content if dock3._stream.assistant_bubble else ""
 	if cards3.size() == 1 and bubble3 == "Analiz bitti.":
 		passed += 1
 	else:
@@ -92,9 +99,9 @@ static func run() -> Dictionary:
 
 	# 4. streaming sırasında UI bozulmuyor (tek kart, son action)
 	var dock4 = _dock()
-	dock4._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
-	dock4._on_agent_tool_executing("validate_script", {})
-	dock4._on_agent_tool_completed("validate_script", {"success": true, "data": {}, "message": "ok"})
+	dock4._activity.on_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock4._activity.on_tool_executing("validate_script", {})
+	dock4._activity.on_tool_completed("validate_script", {"success": true, "data": {}, "message": "ok"})
 	var cards4 = _reasoning_cards(dock4)
 	if cards4.size() == 1 and "Validat" in cards4[0].get_text():
 		passed += 1
@@ -105,8 +112,8 @@ static func run() -> Dictionary:
 
 	# 5. final response ayrı kalır
 	var dock5 = _dock()
-	dock5._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
-	dock5._on_agent_text_received("assistant", "Dosya okundu ve hazır.")
+	dock5._activity.on_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock5._stream.on_text_received("assistant", "Dosya okundu ve hazır.")
 	var bubble5 = ""
 	for child in dock5.message_stream.get_children():
 		if "text_content" in child and not (child is AISidebarReasoningCard):
@@ -134,8 +141,8 @@ static func run() -> Dictionary:
 	# 7. AGY tarzı akış: thinking yok, tool yoksa kart yok
 	var dock7 = _dock()
 	for i in range(3):
-		dock7._on_agent_chunk_received("parça ", "")
-	dock7._on_agent_thinking_received("")
+		dock7._stream.on_chunk_received("parça ", "")
+	dock7._stream.on_thinking_received("")
 	if _reasoning_cards(dock7).is_empty() and _thinking_cards(dock7).is_empty():
 		passed += 1
 	else:
@@ -145,7 +152,7 @@ static func run() -> Dictionary:
 
 	# 8. Thinking kartı: chunk ile oluşur, collapsed başlar, action kartından ayrı
 	var dock8 = _dock()
-	dock8._on_agent_chunk_received("", "Düşünce parçası.")
+	dock8._stream.on_chunk_received("", "Düşünce parçası.")
 	var tcards8 = _thinking_cards(dock8)
 	for c in tcards8:
 		c._ready()
@@ -158,9 +165,9 @@ static func run() -> Dictionary:
 
 	# 9. Thinking birikimi + final duplicate yok
 	var dock9 = _dock()
-	dock9._on_agent_chunk_received("", "A. ")
-	dock9._on_agent_chunk_received("", "B.")
-	dock9._on_agent_thinking_received("A. B.")
+	dock9._stream.on_chunk_received("", "A. ")
+	dock9._stream.on_chunk_received("", "B.")
+	dock9._stream.on_thinking_received("A. B.")
 	var tcards9 = _thinking_cards(dock9)
 	if tcards9.size() == 1 and tcards9[0].get_text() == "A. B.":
 		passed += 1
@@ -171,8 +178,8 @@ static func run() -> Dictionary:
 
 	# 10. Thinking cap + boş thinking kart açmaz
 	var dock10 = _dock()
-	dock10._on_agent_chunk_received("", "")
-	dock10._on_agent_thinking_received("   ")
+	dock10._stream.on_chunk_received("", "")
+	dock10._stream.on_thinking_received("   ")
 	var card10 = AISidebarThinkingCard.new()
 	card10._ready()
 	card10.append_thinking("y".repeat(5000))
@@ -183,5 +190,149 @@ static func run() -> Dictionary:
 		errors.append("T10 (thinking cap+empty) failed.")
 	card10.queue_free()
 	dock10.queue_free()
+
+	# 11. Yeni LLM turu: sahte "Düşünülüyor" asistan balonu açılmaz (bekleme göstergesi balon değildir).
+	# Gerçek thinking kartı cevabın ÜSTÜNDE kalır (önce düşünce, sonra cevap).
+	var dock11 = _dock()
+	dock11._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	var placeholder_after_planning = 0
+	for child in dock11.message_stream.get_children():
+		if child is AISidebarMessageBubble:
+			placeholder_after_planning += 1
+	dock11._stream.on_chunk_received("", "Kullanıcı selam veriyor.")
+	dock11._stream.on_chunk_received("Merhaba!", "")
+	var t_idx = -1
+	var b_idx = -1
+	var live_idx = 0
+	for child in dock11.message_stream.get_children():
+		if child.is_queued_for_deletion():
+			continue
+		if child is AISidebarThinkingCard and t_idx < 0:
+			t_idx = live_idx
+		if child is AISidebarMessageBubble and b_idx < 0:
+			b_idx = live_idx
+		live_idx += 1
+	if placeholder_after_planning == 0 and t_idx == 0 and b_idx > t_idx:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T11 (thinking above answer, no placeholder) failed: planning_children=%d thinking=%d bubble=%d" % [placeholder_after_planning, t_idx, b_idx])
+	dock11._stream.stop_thinking_timer()
+	dock11.free()
+
+	# 12. Metinsiz tool turu: akışta asılı kalan bekleme balonu yok
+	var dock12 = _dock()
+	dock12._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	dock12._activity.on_tool_executing("read_script", {"path": "res://a.gd"})
+	var stale = 0
+	for child in dock12.message_stream.get_children():
+		if child is AISidebarMessageBubble:
+			stale += 1
+	if stale == 0:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T12 (no stale waiting bubble) failed: bubbles=%d" % stale)
+	dock12._stream.stop_thinking_timer()
+	dock12.free()
+
+	# 13. Bekleme göstergesi: PLANNING'de akışın sonunda görünür, süre ve uzun bekleyiş
+	# ipucu güncellenir; ilk thinking geldiğinde kaybolur ve kart onun yerine oturur.
+	var dock13 = _dock()
+	dock13._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	var ind13 = dock13._stream.pending_indicator
+	var shown = ind13 != null and ind13.get_parent() == dock13.message_stream and ind13.get_index() == dock13.message_stream.get_child_count() - 1
+	var waiting_txt = shown and ind13.get_text() == AISidebarI18n.get_text("pending_waiting")
+	for i in AISidebarPendingIndicator.SLOW_HINT_AFTER_SEC:
+		dock13._stream._on_thinking_tick()
+	var ticked = shown and ("%ds" % AISidebarPendingIndicator.SLOW_HINT_AFTER_SEC) in ind13.get_text() and ind13.is_hint_visible()
+	dock13._stream.on_chunk_received("", "Düşünüyorum.")
+	var gone = dock13._stream.pending_indicator == null and ind13.is_queued_for_deletion()
+	if shown and waiting_txt and ticked and gone and _thinking_cards(dock13).size() == 1:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T13 (pending indicator lifecycle) failed: shown=%s text=%s ticked=%s gone=%s" % [str(shown), str(waiting_txt), str(ticked), str(gone)])
+	dock13._stream.stop_thinking_timer()
+	dock13.free()
+
+	# 14. Metinsiz tool turu (grup zaten açık): tool başlayınca gösterge kalmaz
+	var dock14 = _dock()
+	dock14._activity.on_tool_executing("read_script", {"path": "res://a.gd"})
+	dock14._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	var had14 = dock14._stream.pending_indicator != null
+	dock14._activity.on_tool_executing("read_script", {"path": "res://b.gd"})
+	if had14 and dock14._stream.pending_indicator == null:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T14 (indicator cleared on tool start) failed: had=%s" % str(had14))
+	dock14._stream.stop_thinking_timer()
+	dock14.free()
+
+	# 15. Yeniden deneme (RECOVERING) göstergeyi korur ve nedenini yazar; hata kaldırır
+	var dock15 = _dock()
+	dock15._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	dock15._stream.on_state_changed(AISidebarAgentRunner.AgentState.RECOVERING, "Tekrar deneniyor")
+	var ind15 = dock15._stream.pending_indicator
+	var kept = ind15 != null and "Tekrar deneniyor" in ind15.get_text()
+	dock15._stream.on_state_changed(AISidebarAgentRunner.AgentState.ERROR, "Bağlantı hatası")
+	if kept and dock15._stream.pending_indicator == null:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T15 (recovering keeps, error clears) failed: kept=%s" % str(kept))
+	dock15._stream.stop_thinking_timer()
+	dock15.free()
+
+	# 16. Runtime kartı modele giden teşhis metnini değil kısa özeti gösterir
+	var obs16 = AISidebarRuntimeObservation.new()
+	obs16.add_error("Invalid access to property 'SPEED' on a base object of type 'null instance'.", "res://player/player.gd", 14, "_physics_process")
+	obs16.add_error("Second error", "res://enemy.gd", 3)
+	var sum16 = AISidebarToolPresentation.runtime_error_summary(obs16)
+	var dock16 = _dock()
+	# Dock ağaçta değil: kartın _ready'si elle çalıştırılır (editörde add_child tetikler).
+	dock16._activity.runtime_card = AISidebarRuntimeCard.new()
+	dock16._activity.runtime_card._ready()
+	dock16._activity.on_runtime_observation(obs16)
+	var card_txt = ""
+	for rt in dock16._activity.runtime_card._status_list.get_children():
+		for c in rt.get_children():
+			if c is RichTextLabel:
+				card_txt += c.get_parsed_text()
+	var crashed = AISidebarRuntimeObservation.new()
+	crashed.status = AISidebarRuntimeObservation.RuntimeStatus.CRASHED
+	if sum16 == "Runtime error: Invalid access to property 'SPEED' on a base object of type 'null instance'. — player.gd:14 (+1 more)" \
+			and card_txt == sum16 and not "===" in card_txt \
+			and AISidebarToolPresentation.runtime_error_summary(crashed).begins_with("Runtime error"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T16 (runtime summary) failed: sum='%s' card='%s'" % [sum16, card_txt])
+	dock16._activity.runtime_card.free()
+	dock16.free()
+
+	# 17. "Model ne yapıyor?" başlığı dil ayarından gelir
+	var cfg_path = "res://addons/godot_sidebar_ai/config.json"
+	var had_cfg = FileAccess.file_exists(cfg_path)
+	var raw_cfg = FileAccess.get_file_as_string(cfg_path) if had_cfg else ""
+	AISidebarI18n.set_language("en")
+	var dock17 = _dock()
+	dock17._stream.set_action_summary("Reading files")
+	var rc17 = dock17._stream.reasoning_card
+	rc17._ready()
+	var en_header = rc17.get_header_text()
+	if had_cfg:
+		var f17 = FileAccess.open(cfg_path, FileAccess.WRITE)
+		f17.store_string(raw_cfg)
+		f17.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(cfg_path))
+	if en_header.ends_with("What is the model doing?"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T17 (reasoning title i18n) failed: " + en_header)
+	dock17.free()
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}

@@ -11,6 +11,7 @@ signal copy_code_requested(code_text: String)
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
+const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 
 var role: String = "assistant"
 var text_content: String = ""
@@ -62,12 +63,7 @@ static func is_tool_call_envelope(raw_text: String) -> bool:
 		txt = txt.substr(first_nl + 1).strip_edges()
 		if txt.ends_with("```"):
 			txt = txt.substr(0, txt.length() - 3).strip_edges()
-	if not txt.begins_with("{"):
-		return false
-	var parsed = JSON.parse_string(txt)
-	if parsed is Dictionary and parsed.has("tool_calls") and parsed["tool_calls"] is Array:
-		return true
-	return false
+	return _is_tool_calls_json(txt)
 
 ## Metinden tool-call zarflarini cikarir; gercek asistan metnini korur.
 ## drop_incomplete_tail: henuz kapanmamis (streaming sirasinda bolunmus) zarf
@@ -96,10 +92,16 @@ static func strip_tool_call_envelopes(raw_text: String, drop_incomplete_tail: bo
 		txt = _drop_incomplete_fence_tail(txt)
 	return txt
 
+## Metin bir {"tool_calls": [...]} nesnesi mi? Kod blokları (dosya ağacı, GDScript) çoğunlukla
+## JSON değildir ve akış sırasında her parçada kontrol edilir: JSON.parse_string başarısızlıkta
+## motor çıktısına ERROR bastığı için sessiz JSON.parse kullanılır ve ucuz ön eleme yapılır.
 static func _is_tool_calls_json(s: String) -> bool:
-	if s.is_empty():
+	if not s.begins_with("{") or not s.contains("tool_calls"):
 		return false
-	var parsed = JSON.parse_string(s)
+	var json := JSON.new()
+	if json.parse(s) != OK:
+		return false
+	var parsed = json.data
 	return parsed is Dictionary and parsed.has("tool_calls") and parsed["tool_calls"] is Array
 
 static func _strip_bare_envelopes(txt: String, drop_incomplete: bool) -> String:
@@ -268,7 +270,7 @@ func _setup_ui() -> void:
 	_content_label.focus_mode = Control.FOCUS_CLICK
 	_content_label.deselect_on_focus_loss_enabled = false
 	_content_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	_content_label.add_theme_font_size_override("normal_font_size", AISidebarTheme.FONT_SIZE_BODY)
+	AISidebarMarkdownRenderer.apply_font_sizes(_content_label, AISidebarTheme.FONT_SIZE_BODY)
 	_content_label.add_theme_color_override("default_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_content_label.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_label)
@@ -316,7 +318,9 @@ func _render_content() -> void:
 	_content_label.text = formatted
 
 func _format_text_with_links_and_code(raw: String) -> String:
-	var result = raw
+	# Asistan / komut yanıtı Markdown olarak işlenir; kullanıcı metni düz kalır.
+	# Her iki yolda köşeli parantezler kaçırılır (metin BBCode enjekte edemez).
+	var result = AISidebarMarkdownRenderer.escape_bbcode(raw) if role == "user" else AISidebarMarkdownRenderer.to_bbcode(raw)
 	# Dosya yollarını tıklanabilir linke dönüştür (res://...)
 	var regex = RegEx.new()
 	regex.compile("(res://[a-zA-Z0-9_/\\.\\-]+)")
