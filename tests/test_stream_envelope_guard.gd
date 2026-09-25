@@ -150,7 +150,7 @@ static func run() -> Dictionary:
 
 	dock._ready()
 	dock._auto_scroll_enabled = false
-	dock.current_session = null
+	dock._sessions.current = null
 
 	# --- Test 1: Saf ask_user JSON -> chat bubble GORUNMEZ ---
 	_hard_clear(dock)
