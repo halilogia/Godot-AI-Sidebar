@@ -58,13 +58,32 @@ Sıra riske göre: saf/izole olanlar önce, sinyal akışının kalbi en son.
 **Ara kontrol:** 1.1–1.6 kullanıcı tarafından editörde (yeni-oyun-projesi, junction) elle test edildi, sorun yok (2026-09-25).
 **Faz sonu:** editörde elle duman testi (aşağıdaki kontrol listesi) — headless testler UI'ın gerçek hissini kanıtlamaz.
 
+## Faz 1.1 — Harici inceleme sonrası temizlik (✅ 2026-09-25)
+
+ChatGPT'nin PR #1 diff incelemesindeki dört madde koda karşı doğrulandı:
+
+| Madde | Sonuç | Commit |
+|---|---|---|
+| Retry task hattını atlıyor | Doğru ve daha ciddi: slash komutunda modele düz "/analyze" gidiyordu | `30d4464` (+`TaskDispatchTests` T5) |
+| `/help` kaydı kayboluyor | Doğru (bulgu #7) | `8d46dcb` (+`ChatSessionStoreTests` T5) |
+| `verify.ps1 -Live` fail-closed değil | Doğru ve daha ciddi: canlı test her durumda `quit(0)` diyordu, 9Router kapalıyken sonsuza kadar asılıyordu | `e0f53b4` (sahte sunucu + PowerShell 7.5.3 ile 3 senaryo) |
+| ChatDock altyapıyı (`network/`, `providers/`) doğrudan kuruyor | Doğru; `AGENTS.md` §3.1 ile çelişiyor | Faz 2.0'a alındı |
+
 ## Faz 2 — AgentRunner
+
+**Başlangıç ölçümü (2026-09-25):** `core/agent/agent_runner.gd` 1061 satır · 56 alan · 20 sinyal · 35 fonksiyon. En büyük fonksiyonlar: `_on_provider_response` 201, `start_task` 71, `_finish_task` 52, `_build_changeset_for_tool` 45, `_run_next_step` 44, `approve_pending_action` 40. Alanların ~30'u telemetri sayacı/süresi, ~12'si bekleyen onay / soru / plan durumu. Runner'ı doğrudan kuran 26 test dosyası var.
+
+**Kurallar (Faz 1'den):** Önce sabitleme testi, sonra taşıma. Her adımda typecheck + test_runner yeşil ve motor hata/uyarı profili aynı. Bulunan bug ayrı commit'te, kırmızıya dönen testle. Faz sonunda `verify.ps1 -Live` (artık fail-closed) yerelde koşulur.
 
 | Adım | Yeni birim | İçerik | Risk |
 |---|---|---|---|
-| 2.1 | `core/agent/agent_telemetry.gd` | ~30 sayaç/süre değişkeni, `_record_tool_telemetry`, `_classify_telemetry_op`, `_record_category_time`, metrik üretimi | Orta |
-| 2.2 | `core/agent/pending_interaction.gd` | Bekleyen onay / clarification / plan durumu | Orta |
-| 2.3 | — | `_on_provider_response` (~200 satır) iç adımlara bölünür: parse → boş yanıt/retry → tool dispatch → tamamlama kapısı | **Yüksek** |
+| 2.0 | `core/agent/provider_factory.gd` (veya `plugin.gd` kompozisyonu) | Provider + NetworkManager oluşturma ChatDock'tan çıkar; ChatDock provider'ı enjekte alır. `AGENTS.md` §3.1 çelişkisi kapanır. Karar notu: factory mi, `plugin.gd` composition root mu | Orta |
+| 2.1 | `core/agent/agent_telemetry.gd` | ~30 sayaç/süre alanı, `_record_tool_telemetry`, `_classify_telemetry_op`, `_record_category_time`, `_finish_task` içindeki metrik sözlüğü | Orta |
+| 2.2 | `core/agent/pending_interaction.gd` | Bekleyen onay / netleştirme / plan durumu ve onay-red geçişleri | Orta |
+| 2.3 | — | `_on_provider_response` (201 satır) iç adımlara bölünür: parse → boş yanıt / retry → tool dispatch → tamamlama kapısı. Önce her dal için sabitleme testi | **Yüksek** |
+| 2.4 | — | Bağımsızlık: iki `AgentRunner` aynı anda kurulup çalıştırılır (ayrı context, ayrı telemetri, birbirini etkilemez). Ürün Faz 10 (alt ajanlar) ve CLI / MCP köprüsünün önkoşulu | Orta |
+
+**Paylaşılan (statik) durum envanteri:** `verification_pipeline` (`_validators`, `_engine_verifiers`), `permission_policy` (`_tool_risk_registry`), `slash_command_manager` (`_commands`) salt okunur kayıt defteri; paylaşılması sorun değil. `runtime_debugger` izleme durumu (`_is_monitoring`, log offset'leri, `_last_observation`) gerçekten paylaşılan: tek oyun örneği olduğu için anlamlı, ama alt ajanlar oyunu çalıştıramamalı (2.4'te test edilir). `ui_telemetry_tools._registered_sidebar_dock` tek dock referansı.
 
 Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur.
 
