@@ -15,6 +15,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Provider ve `NetworkManager` artık arayüz tarafından değil, `plugin.gd`'nin kurduğu `AgentHost` (`core/agent/agent_host.gd`) tarafından oluşturuluyor; ChatDock bu birimi enjekte olarak alıyor. Provider seçimi, ayar kaydında provider değişimi, AGY hazırlık rozeti ve Refresh ilk kez test altında.
 * AgentRunner'ın telemetri sayaçları, süre dağılımı ve task sonu metrikleri `AgentTelemetry` (`core/agent/agent_telemetry.gd`) birimine taşındı; bekleme / LLM süresi muhasebesi ve metrik sözlüğünün tamamı ilk kez test altında.
 * Bekleyen kullanıcı kararları (tool onayı, netleştirme sorusu, plan) `PendingInteraction` (`core/agent/pending_interaction.gd`) birimine taşındı; karar fonksiyonlarının koruma koşulları ve temizlik kuralları test altında.
+* Model yanıtını işleyen 201 satırlık `_on_provider_response` adımlara bölündü (boş yanıt, tool dağıtımı, çağrı başına korumalar, icra, tamamlama kapısı); her dal önce 13 senaryoluk birebir iz testiyle sabitlendi.
 
 ### Düzeltilenler
 * `/clear` sohbeti gerçekten temizliyor (Clear butonuyla aynı yol).

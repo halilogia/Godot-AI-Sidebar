@@ -39,6 +39,10 @@ enum AgentState {
 	CANCELLED
 }
 
+## Tool çağrısı işlendikten sonra turun akışı: sonraki çağrıya geç ya da turu burada bitir
+## (bekleme, hata veya yeni tur zaten başlatıldı).
+enum ToolCallFlow { NEXT, HALT }
+
 signal state_changed(new_state: AgentState, state_description: String)
 signal thinking_received(thinking_text: String)
 signal chunk_received(text_delta: String, thinking_delta: String)
@@ -471,22 +475,9 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		
 	telemetry.end_llm_step()
 		
-	# Boş Yanıt Kontrolü (Empty Response Guard & Controlled Retry)
-	if text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty():
-		if _empty_response_retry_count < max_empty_response_retries:
-			_empty_response_retry_count += 1
-			telemetry.note_retry()
-			print("[TIMING] %s | PROVIDER_EMPTY_RESPONSE_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
-			_set_state(AgentState.RECOVERING, "Geçici boş yanıt alındı, tekrar deneniyor...")
-			_run_next_step()
-			return
-		else:
-			_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
-			error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE).")
-			last_completion = {"verdict": "failed", "reason": "Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE)."}
-			_finish_task(false)
-			return
-			
+	if _handle_empty_response(text_content, thinking_content, tool_calls):
+		return
+				
 	_empty_response_retry_count = 0
 		
 	# 1. Thinking
@@ -499,164 +490,214 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 		
 	# 3. Araç İcrası
 	if tool_calls.size() > 0:
-		if context:
-			context.add_assistant_tool_call_message(text_content, tool_calls, thinking_content)
-			
-		for _tc_idx in range(tool_calls.size()):
-			var tc = tool_calls[_tc_idx]
-			var fn_name: String = tc.get("name", "")
-			var tc_id: String = tc.get("id", "call_default")
-			var args: Dictionary = tc.get("arguments", {})
-			
-			telemetry.tool_calls_count += 1
-			if not fn_name in _unlocked_tools:
-				_unlocked_tools.append(fn_name)
-			
-			# Stagnation Guard
-			var sig = fn_name + ":" + JSON.stringify(args)
-			if sig == _last_tool_signature:
-				_stagnation_count += 1
-				if _stagnation_count >= 2:
-					_set_state(AgentState.ERROR, "Aynı araç (" + fn_name + ") tekrar tekrar çağrıldı.")
-					error_occurred.emit("Ajan aynı aracı (" + fn_name + ") tekrarladı. Görev sonlandırıldı.")
-					last_completion = {"verdict": "failed", "reason": "Ajan aynı aracı (" + fn_name + ") tekrarladı."}
-					_finish_task(false)
-					return
-				else:
-					if context:
-						context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
-						# Katı gateway'ler her tool_call için sonuç ister; tekrar da kayıtsız kalmaz.
-						context.add_tool_result_message(tc_id, fn_name, AISidebarToolResult.err("DUPLICATE_CALL", "'" + fn_name + "' zaten çalıştırıldı; yukarıdaki sonuç geçerlidir.", true))
-					_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_AFTER_STAGNATION_WARNING", "Tekrarlanan çağrı nedeniyle yeni tura geçildi; bu çağrı ertelendi.")
-					_run_next_step()
-					return
-			else:
-				_last_tool_signature = sig
-				_stagnation_count = 0
-				
-			# Kullanıcıdan Netleştirme İsteme (Clarification Intercept)
-			if fn_name == "ask_user":
-				var question = str(args.get("question", "Lütfen seçiminizi belirtin."))
-				var options_raw = args.get("options", [])
-				var options: Array = []
-				if options_raw is Array:
-					for opt in options_raw:
-						options.append(str(opt))
-						
-				pending.request_clarification(tc_id, question, options)
-				telemetry.begin_waiting()
-				
-				_set_state(AgentState.WAITING_FOR_CLARIFICATION, "Kullanıcıdan yanıt bekleniyor...")
-				print("[TIMING] %s | CLARIFICATION_REQUESTED | question=%s options=%s" % [get_ts(), question, str(options)])
-				_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_FOR_CLARIFICATION", "Kullanıcı yanıtı bekleniyor; bu çağrı ertelendi. Gerekirse yanıt sonrası tekrar isteyin.")
-				clarification_requested.emit(question, options, tc_id)
-				return
+		await _dispatch_tool_calls(text_content, thinking_content, tool_calls)
+	else:
+		_evaluate_completion(text_content)
 
-			# Uygulama Planı Sunumu (Plan Review Intercept)
-			# ask_user gibi: araç ÇALIŞTIRILMAZ, plan kullanıcıya sunulur ve onay beklenir.
-			if fn_name == "propose_plan":
-				var plan = AISidebarImplementationPlan.new(args)
-				pending.propose_plan(plan, tc_id)
-				telemetry.begin_waiting()
-
-				_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")
-				print("[TIMING] %s | PLAN_PROPOSED | steps=%d files=%d" % [get_ts(), plan.steps.size(), plan.affected_files.size()])
-				_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_FOR_PLAN", "Plan onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
-				plan_proposed.emit(plan)
-				return
-
-			# Mutation Guard: plan fazı aktifken değiştirici araç çağrılamaz.
-			# Bu kontrol LLM davranışına bırakılmaz; DETERMINISTIK olarak uygulanır.
-			# Stagnation kontrolünden SONRA çalışır ki tekrarlanan engellenmiş çağrılar
-			# modeli uyaran mevcut mekanizmayı atlamasın.
-			if _plan_phase_active and AISidebarPlanningPolicy.is_mutation_blocked(fn_name):
-				print("[TIMING] %s | PLAN_PHASE_MUTATION_BLOCKED | tool=%s" % [get_ts(), fn_name])
-				var blocked = AISidebarToolResult.err(
-					"PLAN_PHASE_MUTATION_BLOCKED",
-					"Plan onaylanmadan '" + fn_name + "' çalıştırılamaz. Lütfen önce 'propose_plan' ile plan sunun.",
-					true
-				)
-				if context:
-					context.add_tool_result_message(tc_id, fn_name, blocked)
-				# Engellenen çağrı kuyruğu durdurmaz; sonraki (izinli) çağrılar
-				# aynı turda işlenmeye devam eder, tur sonu tek _run_next_step.
-				continue
-
-			# Telemetri sınıflandırması guard'dan SONRA yapılır; böylece engellenen
-			# (hiç çalışmayan) bir işlem 'file_ops' / 'editor_ops' olarak SAYILMAZ.
-			telemetry.classify_op(fn_name, args)
-
-			# Değişiklik Öncesi Eski İçerikleri Kaydet (ChangeSet Hazırlığı)
-			var cs = _build_changeset_for_tool(fn_name, args)
-			
-			# Yetki ve Onay Kontrolü
-			_set_state(AgentState.EXECUTING, "Araç çalıştırılıyor: " + fn_name)
-			print("[TIMING] %s | TOOL_START | tool=%s" % [get_ts(), fn_name])
-			tool_executing.emit(fn_name, args)
-			
-			var t_start = Time.get_ticks_msec()
-			var result: Dictionary = await AISidebarToolManager.execute_tool_async(fn_name, args, false)
-			if not is_running():
-				return
-			var t_delta = Time.get_ticks_msec() - t_start
-			telemetry.tool_time_msec += t_delta
-			telemetry.record_category_time(fn_name, t_delta)
-			telemetry.record_tool(fn_name, args, t_delta, result)
-			
-			# search_tools ile keşfedilen araçları dynamic context'e ekle
-			if fn_name == "search_tools" and result.get("success", false):
-				var s_data = result.get("data", {})
-				var s_list = s_data.get("tools", [])
-				for s_item in s_list:
-					var s_name = s_item.get("name", "")
-					if not s_name.is_empty() and not s_name in _unlocked_tools:
-						_unlocked_tools.append(s_name)
-			
-			print("[TIMING] %s | TOOL_DONE | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
-			
-			# Onay gerekiyorsa durakla
-			if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
-				pending.request_approval(fn_name, tc_id, args, cs)
-				telemetry.begin_waiting()
-				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
-				print("[TIMING] %s | APPROVAL_REQUESTED | tool=%s" % [get_ts(), fn_name])
-				_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_FOR_APPROVAL", "Kullanıcı onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
-				approval_requested.emit(fn_name, args, cs)
-				return
-				
-			tool_completed.emit(fn_name, result)
-			if cs and result.get("success", false):
-				changes_applied.emit(cs)
-				
-			if fn_name == "play_game" or fn_name == "restart_game":
-				_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor...")
-				
-			var verified = _verify_tool_result(fn_name, args, result)
-			_complete_tool_turn(fn_name, tc_id, args, result, bool(verified.get("is_valid", false)), str(verified.get("message", "")))
-		# Tüm kuyruk aynı turda işlendi; tek LLM turu harcandı.
+## Boş Yanıt Kontrolü (Empty Response Guard & Controlled Retry).
+## Yanıt boşsa bir kez yeniden dener, sonra görevi hatayla bitirir; işlendiyse true.
+func _handle_empty_response(text_content: String, thinking_content: String, tool_calls: Array) -> bool:
+	if not (text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty()):
+		return false
+	if _empty_response_retry_count < max_empty_response_retries:
+		_empty_response_retry_count += 1
+		telemetry.note_retry()
+		print("[TIMING] %s | PROVIDER_EMPTY_RESPONSE_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
+		_set_state(AgentState.RECOVERING, "Geçici boş yanıt alındı, tekrar deneniyor...")
 		_run_next_step()
 	else:
-		# Completion Integrity Gate: toolsuz final metin tek başına SUCCESS değildir.
-		var gate_state = {
-			"tool_calls": telemetry.tool_calls_count,
-			"unrecovered": unrecovered_failures,
-			"plan_approved": plan_was_approved,
-			"mutations_done": (telemetry.file_ops_count + telemetry.editor_ops_count + telemetry.write_ops_count) > 0,
-			"limit_hit": telemetry.limit_hit,
-			"steps_summary": str(current_step) + " / " + str(max_steps),
-		}
-		var gate = AISidebarCompletionPolicy.evaluate(gate_state)
-		last_completion = gate
-		if not text_content.is_empty() and context:
-			context.add_assistant_message(text_content)
-		if str(gate.get("verdict", "success")) == "success":
-			_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
-			_finish_task(true)
-		else:
-			print("[TIMING] %s | COMPLETION_GATE | verdict=%s reason=%s" % [get_ts(), str(gate.get("verdict", "")), str(gate.get("reason", ""))])
-			_set_state(AgentState.ERROR, str(gate.get("reason", "")))
-			error_occurred.emit(str(gate.get("reason", "")))
-			_finish_task(false)
+		_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
+		error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE).")
+		last_completion = {"verdict": "failed", "reason": "Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE)."}
+		_finish_task(false)
+	return true
+
+## Aynı turdaki tool çağrıları sırayla işlenir; tur sonunda tek LLM turu harcanır.
+func _dispatch_tool_calls(text_content: String, thinking_content: String, tool_calls: Array) -> void:
+	if context:
+		context.add_assistant_tool_call_message(text_content, tool_calls, thinking_content)
+		
+	for _tc_idx in range(tool_calls.size()):
+		var flow = await _process_tool_call(tool_calls, _tc_idx)
+		if flow == ToolCallFlow.HALT:
+			return
+	# Tüm kuyruk aynı turda işlendi; tek LLM turu harcandı.
+	_run_next_step()
+
+## Tek çağrı: tekrar koruması → netleştirme / plan araya girişi → plan fazı engeli → icra.
+func _process_tool_call(tool_calls: Array, tc_idx: int) -> ToolCallFlow:
+	var tc = tool_calls[tc_idx]
+	var fn_name: String = tc.get("name", "")
+	var tc_id: String = tc.get("id", "call_default")
+	var args: Dictionary = tc.get("arguments", {})
+	var remaining = tool_calls.slice(tc_idx + 1)
+	
+	telemetry.tool_calls_count += 1
+	if not fn_name in _unlocked_tools:
+		_unlocked_tools.append(fn_name)
+	
+	if _guard_stagnation(fn_name, tc_id, args, remaining):
+		return ToolCallFlow.HALT
+		
+	# Kullanıcıdan Netleştirme İsteme (Clarification Intercept)
+	if fn_name == "ask_user":
+		_request_clarification(tc_id, args, remaining)
+		return ToolCallFlow.HALT
+
+	# Uygulama Planı Sunumu (Plan Review Intercept)
+	# ask_user gibi: araç ÇALIŞTIRILMAZ, plan kullanıcıya sunulur ve onay beklenir.
+	if fn_name == "propose_plan":
+		_request_plan_approval(tc_id, args, remaining)
+		return ToolCallFlow.HALT
+
+	# Mutation Guard: plan fazı aktifken değiştirici araç çağrılamaz.
+	# Bu kontrol LLM davranışına bırakılmaz; DETERMINISTIK olarak uygulanır.
+	# Stagnation kontrolünden SONRA çalışır ki tekrarlanan engellenmiş çağrılar
+	# modeli uyaran mevcut mekanizmayı atlamasın.
+	if _plan_phase_active and AISidebarPlanningPolicy.is_mutation_blocked(fn_name):
+		_block_plan_phase_mutation(fn_name, tc_id)
+		# Engellenen çağrı kuyruğu durdurmaz; sonraki (izinli) çağrılar
+		# aynı turda işlenmeye devam eder, tur sonu tek _run_next_step.
+		return ToolCallFlow.NEXT
+
+	return await _execute_tool_call(fn_name, tc_id, args, remaining)
+
+## Stagnation Guard: aynı çağrı art arda gelirse önce uyarı (yeni tur), sonra görev sonu.
+## Tur burada bittiyse true.
+func _guard_stagnation(fn_name: String, tc_id: String, args: Dictionary, remaining: Array) -> bool:
+	var sig = fn_name + ":" + JSON.stringify(args)
+	if sig != _last_tool_signature:
+		_last_tool_signature = sig
+		_stagnation_count = 0
+		return false
+	_stagnation_count += 1
+	if _stagnation_count >= 2:
+		_set_state(AgentState.ERROR, "Aynı araç (" + fn_name + ") tekrar tekrar çağrıldı.")
+		error_occurred.emit("Ajan aynı aracı (" + fn_name + ") tekrarladı. Görev sonlandırıldı.")
+		last_completion = {"verdict": "failed", "reason": "Ajan aynı aracı (" + fn_name + ") tekrarladı."}
+		_finish_task(false)
+		return true
+	if context:
+		context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
+		# Katı gateway'ler her tool_call için sonuç ister; tekrar da kayıtsız kalmaz.
+		context.add_tool_result_message(tc_id, fn_name, AISidebarToolResult.err("DUPLICATE_CALL", "'" + fn_name + "' zaten çalıştırıldı; yukarıdaki sonuç geçerlidir.", true))
+	_defer_remaining_calls(remaining, "DEFERRED_AFTER_STAGNATION_WARNING", "Tekrarlanan çağrı nedeniyle yeni tura geçildi; bu çağrı ertelendi.")
+	_run_next_step()
+	return true
+
+func _request_clarification(tc_id: String, args: Dictionary, remaining: Array) -> void:
+	var question = str(args.get("question", "Lütfen seçiminizi belirtin."))
+	var options_raw = args.get("options", [])
+	var options: Array = []
+	if options_raw is Array:
+		for opt in options_raw:
+			options.append(str(opt))
+			
+	pending.request_clarification(tc_id, question, options)
+	telemetry.begin_waiting()
+	
+	_set_state(AgentState.WAITING_FOR_CLARIFICATION, "Kullanıcıdan yanıt bekleniyor...")
+	print("[TIMING] %s | CLARIFICATION_REQUESTED | question=%s options=%s" % [get_ts(), question, str(options)])
+	_defer_remaining_calls(remaining, "DEFERRED_FOR_CLARIFICATION", "Kullanıcı yanıtı bekleniyor; bu çağrı ertelendi. Gerekirse yanıt sonrası tekrar isteyin.")
+	clarification_requested.emit(question, options, tc_id)
+
+func _request_plan_approval(tc_id: String, args: Dictionary, remaining: Array) -> void:
+	var plan = AISidebarImplementationPlan.new(args)
+	pending.propose_plan(plan, tc_id)
+	telemetry.begin_waiting()
+
+	_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")
+	print("[TIMING] %s | PLAN_PROPOSED | steps=%d files=%d" % [get_ts(), plan.steps.size(), plan.affected_files.size()])
+	_defer_remaining_calls(remaining, "DEFERRED_FOR_PLAN", "Plan onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
+	plan_proposed.emit(plan)
+
+func _block_plan_phase_mutation(fn_name: String, tc_id: String) -> void:
+	print("[TIMING] %s | PLAN_PHASE_MUTATION_BLOCKED | tool=%s" % [get_ts(), fn_name])
+	var blocked = AISidebarToolResult.err(
+		"PLAN_PHASE_MUTATION_BLOCKED",
+		"Plan onaylanmadan '" + fn_name + "' çalıştırılamaz. Lütfen önce 'propose_plan' ile plan sunun.",
+		true
+	)
+	if context:
+		context.add_tool_result_message(tc_id, fn_name, blocked)
+
+## Gerçek icra: telemetri, keşfedilen araçlar, onay gerekiyorsa bekleme, sonuç + doğrulama.
+func _execute_tool_call(fn_name: String, tc_id: String, args: Dictionary, remaining: Array) -> ToolCallFlow:
+	# Telemetri sınıflandırması guard'dan SONRA yapılır; böylece engellenen
+	# (hiç çalışmayan) bir işlem 'file_ops' / 'editor_ops' olarak SAYILMAZ.
+	telemetry.classify_op(fn_name, args)
+
+	# Değişiklik Öncesi Eski İçerikleri Kaydet (ChangeSet Hazırlığı)
+	var cs = _build_changeset_for_tool(fn_name, args)
+	
+	# Yetki ve Onay Kontrolü
+	_set_state(AgentState.EXECUTING, "Araç çalıştırılıyor: " + fn_name)
+	print("[TIMING] %s | TOOL_START | tool=%s" % [get_ts(), fn_name])
+	tool_executing.emit(fn_name, args)
+	
+	var t_start = Time.get_ticks_msec()
+	var result: Dictionary = await AISidebarToolManager.execute_tool_async(fn_name, args, false)
+	if not is_running():
+		return ToolCallFlow.HALT
+	var t_delta = Time.get_ticks_msec() - t_start
+	telemetry.tool_time_msec += t_delta
+	telemetry.record_category_time(fn_name, t_delta)
+	telemetry.record_tool(fn_name, args, t_delta, result)
+	
+	# search_tools ile keşfedilen araçları dynamic context'e ekle
+	if fn_name == "search_tools" and result.get("success", false):
+		var s_data = result.get("data", {})
+		var s_list = s_data.get("tools", [])
+		for s_item in s_list:
+			var s_name = s_item.get("name", "")
+			if not s_name.is_empty() and not s_name in _unlocked_tools:
+				_unlocked_tools.append(s_name)
+	
+	print("[TIMING] %s | TOOL_DONE | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
+	
+	# Onay gerekiyorsa durakla
+	if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
+		pending.request_approval(fn_name, tc_id, args, cs)
+		telemetry.begin_waiting()
+		_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
+		print("[TIMING] %s | APPROVAL_REQUESTED | tool=%s" % [get_ts(), fn_name])
+		_defer_remaining_calls(remaining, "DEFERRED_FOR_APPROVAL", "Kullanıcı onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
+		approval_requested.emit(fn_name, args, cs)
+		return ToolCallFlow.HALT
+		
+	tool_completed.emit(fn_name, result)
+	if cs and result.get("success", false):
+		changes_applied.emit(cs)
+		
+	if fn_name == "play_game" or fn_name == "restart_game":
+		_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor...")
+		
+	var verified = _verify_tool_result(fn_name, args, result)
+	_complete_tool_turn(fn_name, tc_id, args, result, bool(verified.get("is_valid", false)), str(verified.get("message", "")))
+	return ToolCallFlow.NEXT
+
+## Completion Integrity Gate: toolsuz final metin tek başına SUCCESS değildir.
+func _evaluate_completion(text_content: String) -> void:
+	var gate_state = {
+		"tool_calls": telemetry.tool_calls_count,
+		"unrecovered": unrecovered_failures,
+		"plan_approved": plan_was_approved,
+		"mutations_done": (telemetry.file_ops_count + telemetry.editor_ops_count + telemetry.write_ops_count) > 0,
+		"limit_hit": telemetry.limit_hit,
+		"steps_summary": str(current_step) + " / " + str(max_steps),
+	}
+	var gate = AISidebarCompletionPolicy.evaluate(gate_state)
+	last_completion = gate
+	if not text_content.is_empty() and context:
+		context.add_assistant_message(text_content)
+	if str(gate.get("verdict", "success")) == "success":
+		_set_state(AgentState.COMPLETED, AISidebarI18n.get_text("status_ready"))
+		_finish_task(true)
+	else:
+		print("[TIMING] %s | COMPLETION_GATE | verdict=%s reason=%s" % [get_ts(), str(gate.get("verdict", "")), str(gate.get("reason", ""))])
+		_set_state(AgentState.ERROR, str(gate.get("reason", "")))
+		error_occurred.emit(str(gate.get("reason", "")))
+		_finish_task(false)
 
 func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarChangeSet:
 	if fn_name == "create_or_update_script":
