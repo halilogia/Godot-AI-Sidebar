@@ -240,18 +240,24 @@ func dispatch_next_queued() -> void:
 		return
 		
 	if queue_panel.count() > 0:
-		var next_item = queue_panel.pop_next()
-		if next_item is Dictionary and next_item.has("prompt"):
-			var next_prompt = str(next_item["prompt"])
-			var next_disp = str(next_item.get("display_prompt", next_prompt))
-			var q_vision = next_item.get("vision_inputs", [])
-			var t = get_tree()
-			if t:
-				t.create_timer(0.05).timeout.connect(func():
-					start_task_prompt(next_prompt, next_disp, q_vision)
-				)
-			else:
-				start_task_prompt(next_prompt, next_disp, q_vision)
+		var t = get_tree()
+		if t:
+			t.create_timer(0.05).timeout.connect(_start_next_queued)
+		else:
+			_start_next_queued()
+
+## Kuyruktaki sıradaki isteği başlatır. Öğe ancak başlatılacağı an kuyruktan çekilir: arada
+## başka bir görev başladıysa (Retry, hatada ikinci dağıtım çağrısı) veya kullanıcı durdurduysa
+## öğe kuyrukta kalır; çalışan görev bitince yeniden dağıtılır.
+func _start_next_queued() -> void:
+	if is_user_stopped or queue_panel.count() == 0 or (runner and runner.is_running()):
+		return
+	var next_item = queue_panel.pop_next()
+	if next_item is Dictionary and next_item.has("prompt"):
+		var next_prompt = str(next_item["prompt"])
+		var next_disp = str(next_item.get("display_prompt", next_prompt))
+		var q_vision = next_item.get("vision_inputs", [])
+		start_task_prompt(next_prompt, next_disp, q_vision)
 
 func on_task_completed(metrics: Dictionary) -> void:
 	stream.end_task()

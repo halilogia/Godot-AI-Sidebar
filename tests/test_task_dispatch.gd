@@ -171,6 +171,30 @@ static func run() -> Dictionary:
 		errors.append("T5 (retry pipeline) failed: retried=%s same_prompt=%s ('%s') new_task=%s image=%s" % [str(retried), str(same_prompt), str(last_user.get("content", "")).left(40), str(new_task), str(image_kept)])
 	_dispose(d5, created)
 
+	# 6. Kuyruk dağıtımı başka bir görev başladıktan sonra gelirse (Retry, ya da hatada
+	# on_error + on_task_completed'in ikinci dağıtımı) öğe kuyrukta kalır; çalışan görevin
+	# transcript'i iptal edilmez, istem kaybolmaz.
+	var s6 = _make_dock()
+	var d6 = s6["dock"]
+	var r6 = s6["runner"]
+	var ctx6 = s6["ctx"]
+	d6._queue_panel.enqueue("Q1", "Q1")
+	d6._queue_panel.enqueue("Q2", "Q2")
+	d6._tasks.dispatch_next_queued()
+	d6._tasks.dispatch_next_queued()
+	var double_ok = r6.is_running() and d6._queue_panel.count() == 1 and str(ctx6.get_transcript().get_current_task().get("display_prompt", "")) == "Q1" and str(ctx6.get_transcript().get_current_task().get("status", "")) == "running"
+	d6._tasks.stop_by_user()
+	d6._tasks.retry_last_task()
+	var retry_task6 = str(ctx6.get_transcript().get_current_task().get("id", ""))
+	d6._tasks.dispatch_next_queued()
+	var retry_ok = r6.is_running() and d6._queue_panel.count() == 1 and str(ctx6.get_transcript().get_current_task().get("id", "")) == retry_task6 and str(ctx6.get_transcript().get_current_task().get("status", "")) == "running"
+	if double_ok and retry_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T6 (dispatch after another start) failed: double=%s retry=%s queue=%d task=%s" % [str(double_ok), str(retry_ok), d6._queue_panel.count(), str(ctx6.get_transcript().get_current_task().get("display_prompt", ""))])
+	_dispose(d6, created)
+
 	for id in created:
 		if not str(id).is_empty():
 			AISidebarChatManager.delete_session(id)
