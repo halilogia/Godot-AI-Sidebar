@@ -66,20 +66,16 @@ static func run() -> Dictionary:
 		errors.append("Test 4 (Dynamic tool filtering for vision prompt) failed.")
 		
 	# Test 5: Görsel Boyutlandırma / Token Tasarrufu Algoritması
+	var ds_tools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/editor_tools.gd")
 	var large_img = Image.create(2000, 1000, false, Image.FORMAT_RGBA8)
-	var max_dim = 1000
-	var orig_w = large_img.get_width()
-	var orig_h = large_img.get_height()
-	var ratio = float(orig_w) / float(orig_h)
-	var new_w = max_dim
-	var new_h = max_dim
-	if ratio >= 1.0:
-		new_h = maxi(1, int(float(max_dim) / ratio))
-	else:
-		new_w = maxi(1, int(float(max_dim) * ratio))
-	large_img.resize(new_w, new_h, Image.INTERPOLATE_BILINEAR)
-	
-	if large_img.get_width() == 1000 and large_img.get_height() == 500:
+	ds_tools.downscale_to_max(large_img, 1000)
+	var tall_img = Image.create(300, 1200, false, Image.FORMAT_RGBA8)
+	ds_tools.downscale_to_max(tall_img, 600)
+	var small_img = Image.create(200, 100, false, Image.FORMAT_RGBA8)
+	ds_tools.downscale_to_max(small_img, 1000)
+	var keep_img = Image.create(3000, 10, false, Image.FORMAT_RGBA8)
+	ds_tools.downscale_to_max(keep_img, 0)
+	if large_img.get_size() == Vector2i(1000, 500) and tall_img.get_size() == Vector2i(150, 600) and small_img.get_size() == Vector2i(200, 100) and keep_img.get_size() == Vector2i(3000, 10):
 		passed += 1
 	else:
 		failed += 1

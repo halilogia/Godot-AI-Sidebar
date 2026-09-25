@@ -145,20 +145,9 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 5 (queue_with_approval) failed: state=" + str(runner.current_state))
 		
-	# Test 6: Queue with User Stop
-	var stopped_by_user = true
-	var queue_after_stop: Array[Dictionary] = [{"id": "q_saved", "prompt": "Saved Task"}]
-	var auto_dispatched = false
-	
-	if not stopped_by_user and queue_after_stop.size() > 0:
-		auto_dispatched = true
-		
-	if not auto_dispatched and queue_after_stop.size() == 1:
-		passed += 1
-	else:
-		failed += 1
-		errors.append("Test 6 (queue_with_stop) failed: auto_dispatched=" + str(auto_dispatched))
-		
+	# (Eski Test 6 "queue with user stop" yerel değişkenleri test ediyordu; aynı davranış
+	# gerçek hat üzerinden TaskDispatchTests T1'de: durdurulmuşken kuyruk dağıtılmaz.)
+
 	# Test 7: Clipboard VisionInput creation and Texture preview
 	var test_img = Image.create(16, 16, false, Image.FORMAT_RGBA8)
 	test_img.fill(Color.BLUE)
