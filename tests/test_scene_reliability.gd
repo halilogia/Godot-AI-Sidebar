@@ -137,5 +137,14 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("G (non-Node root_type) failed: " + str(g_bad))
 
+	# H) (bulgu #24) File-first sonuç, argüman varsayılanlarını değil sahnedeki gerçek kökü raporlar
+	var res_h = AISidebarSceneTools.execute("create_scene", {"scene_path": p_g, "tscn_content": VALID_TSCN})
+	var data_h = res_h.get("data", {})
+	if bool(res_h.get("success", false)) and data_h is Dictionary and str(data_h.get("root_name", "")) == "RelRoot" and str(data_h.get("root_type", "")) == "Node3D" and str(data_h.get("root_path", "")) == "RelRoot" and str(res_h.get("message", "")).contains("RelRoot (Node3D)"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("H (file-first reports real root) failed: " + str(res_h).left(300))
+
 	_clean([p_invalid, p_valid, p_second, p_g])
 	return {"name": "SceneReliabilityTests", "passed": passed, "failed": failed, "errors": errors}

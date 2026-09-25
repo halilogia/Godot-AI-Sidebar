@@ -40,6 +40,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * `write_files` ile aynı pakette birbirini kullanan betikler yazılırken sözdizimi hatalı bir betik artık "doğrulandı" sayılıp diske yazılmıyor; paket içi bağımlılık gerçekten derlenerek kontrol ediliyor.
 * Ekran görüntüsü araçları (`take_viewport_screenshot`, `take_editor_screenshot`, `take_runtime_screenshot`) artık korumalı dosyalara (`project.godot`, eklenti klasörü, `.git`) veya proje dışına kaydedemiyor.
 * `create_scene` / `add_node` Node olmayan bir tipte (`Resource` gibi) sessizce boş sonuç döndürmek yerine anlaşılır bir `INVALID_CLASS` hatası veriyor.
+* Tam `.tscn` içeriğiyle oluşturulan sahnede sonuç mesajı artık varsayılan "Root (Node2D)" değil, sahnenin gerçek kök düğümünü gösteriyor.
 
 ### Eklenenler
 * Asistan cevaplarında ve plan kartında Markdown (başlık, kalın, italik, kod, liste, alıntı).

@@ -304,7 +304,11 @@ static func validate_scene_parse(scene_path: String) -> Dictionary:
 	if loaded == null or not (loaded is PackedScene):
 		return AISidebarToolResult.err("SCENE_PARSE_ERROR", "Godot resource sistemi sahneyi parse edemedi (PackedScene yüklenemedi): " + scene_path, false, {"scene_path": scene_path})
 	var state = (loaded as PackedScene).get_state()
-	return AISidebarToolResult.ok({"scene_path": scene_path, "parse_validated": true, "node_count": state.get_node_count()})
+	var parsed: Dictionary = {"scene_path": scene_path, "parse_validated": true, "node_count": state.get_node_count()}
+	if state.get_node_count() > 0:
+		parsed["root_name"] = str(state.get_node_name(0))
+		parsed["root_type"] = str(state.get_node_type(0))
+	return AISidebarToolResult.ok(parsed)
 
 static func _default_edited_root():
 	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
@@ -396,6 +400,13 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 			var pmsg = perr.get("message", "Parse hatası") if perr is Dictionary else str(perr)
 			return AISidebarToolResult.err("SCENE_PARSE_ERROR", "Sahne parse edilemedi, oluşturuldu olarak raporlanmıyor: " + pmsg, false, {"scene_path": scene_path, "existed_before": existed_before, "restored": restored, "restore_verified": restore_verified})
 		parse_validated = true
+		# Rapor argüman varsayılanlarını değil, yazılan sahnenin gerçek kökünü taşır.
+		var pdata = parse_res.get("data", {})
+		if pdata is Dictionary:
+			if not str(pdata.get("root_name", "")).is_empty():
+				root_name = str(pdata["root_name"])
+			if not str(pdata.get("root_type", "")).is_empty():
+				root_type = str(pdata["root_type"])
 	else:
 		if not ClassDB.class_exists(root_type):
 			return AISidebarToolResult.err("INVALID_CLASS", "Geçersiz kök düğüm tipi: " + root_type)
