@@ -36,7 +36,6 @@ const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
-const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
 const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
@@ -49,6 +48,7 @@ const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/pres
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
 const AISidebarChatExportActions = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_export_actions.gd")
+const AISidebarChatSessionStore = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_session_store.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -89,7 +89,8 @@ var pending_tool_args: Dictionary = {}
 var last_user_prompt: String = ""
 
 # Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
-var current_session: AISidebarChatSession = null
+## Aktif oturumun kalıcı durumu (kaydet/yükle/temizle/checkpoint).
+var _sessions: AISidebarChatSessionStore = AISidebarChatSessionStore.new()
 var history_panel: AISidebarHistoryPanel = null
 ## Export / Copy Chat / per-task copy / history export eylemleri.
 var _export_actions: AISidebarChatExportActions = null
@@ -131,7 +132,6 @@ var _thinking_elapsed_sec: int = 0
 ## Yalnizca status rozeti metnini bilgilendirici yapar; thinking timer'i BOZMAZ.
 var _agy_preparing: bool = false
 
-var _session_base_messages: Array = []
 
 func _exit_tree() -> void:
 	_stop_thinking_timer()
@@ -178,7 +178,7 @@ func _setup_provider() -> void:
 
 func _ready() -> void:
 	_export_actions = AISidebarChatExportActions.new()
-	_export_actions.get_session = func(): return current_session
+	_export_actions.get_session = func(): return _sessions.current
 	_export_actions.status_badge = status_badge
 	_export_actions.export_btn = export_btn
 	_export_actions.copy_task_btn = copy_task_btn
@@ -198,6 +198,7 @@ func _ready() -> void:
 	add_child(network_manager)
 	
 	agent_context = AISidebarAgentContext.new()
+	_sessions.context = agent_context
 	_export_actions.agent_context = agent_context
 	_checklist_tracker.context = agent_context
 	_setup_provider()
@@ -432,7 +433,7 @@ func set_history_view_visible(is_visible: bool) -> void:
 	if history_panel:
 		history_panel.visible = is_visible
 		if is_visible:
-			history_panel.set_active_session(current_session.id if current_session else "")
+			history_panel.set_active_session(_sessions.current_id())
 			history_panel.refresh_list()
 	if chat_scroll:
 		chat_scroll.visible = not is_visible
@@ -452,17 +453,16 @@ func _on_toggle_history_pressed() -> void:
 
 func _on_history_session_selected(session_id: String) -> void:
 	set_history_view_visible(false)
-	if current_session and current_session.id == session_id:
+	if _sessions.is_current(session_id):
 		return
 	_load_session_by_id(session_id)
 
 func _on_history_session_deleted(session_id: String) -> void:
-	if current_session and current_session.id == session_id:
+	if _sessions.is_current(session_id):
 		_start_new_chat_session()
 
 func _on_history_session_renamed(session_id: String, new_title: String) -> void:
-	if current_session and current_session.id == session_id:
-		current_session.title = new_title
+	if _sessions.rename_if_current(session_id, new_title):
 		_update_header_title()
 
 func _on_history_close_requested() -> void:
@@ -473,59 +473,43 @@ func _start_new_chat_session() -> void:
 		_is_user_stopped = true
 		agent_runner.stop()
 		
-	if current_session and agent_context and not agent_context.messages.is_empty():
+	if _sessions.has_live_messages():
 		_save_current_session()
 		
-	current_session = AISidebarChatSession.new()
-	_session_base_messages.clear()
-	if agent_context:
-		agent_context.clear()
+	_sessions.start_new()
 		
 	_queue_panel.clear_all()
 	_clear_ui_stream()
 	_show_welcome_card_if_empty()
 	_update_header_title()
 	if history_panel:
-		history_panel.set_active_session(current_session.id)
+		history_panel.set_active_session(_sessions.current_id())
 	set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
 
+## Kaydet + başlığı yenile (kayıt başlığı ilk mesajdan üretebilir).
 func _save_current_session() -> void:
-	if current_session == null:
-		return
-	if agent_context:
-		var combined = _session_base_messages.duplicate(true)
-		combined.append_array(agent_context.messages)
-		current_session.messages = combined
-		current_session.transcript_tasks = agent_context.get_transcript().to_data()
-	AISidebarChatManager.save_session(current_session)
+	_sessions.save()
 	_update_header_title()
 
 func _load_session_by_id(session_id: String) -> void:
-	if current_session and current_session.id != session_id and agent_context and not agent_context.messages.is_empty():
+	if not _sessions.is_current(session_id) and _sessions.has_live_messages():
 		_save_current_session()
 		
 	if agent_runner and agent_runner.is_running():
 		_is_user_stopped = true
 		agent_runner.stop()
 		
-	var loaded = AISidebarChatManager.load_session(session_id)
-	if not loaded:
+	if not _sessions.load_by_id(session_id):
 		_start_new_chat_session()
 		return
-		
-	current_session = loaded
-	_session_base_messages.clear()
-	if agent_context:
-		agent_context.clear()
-		agent_context.messages = loaded.messages.duplicate(true)
-		agent_context.get_transcript().load_data(loaded.transcript_tasks)
+	var loaded = _sessions.current
 		
 	_queue_panel.clear_all()
 	_clear_ui_stream()
 	_rebuild_ui_stream_from_session(loaded)
 	_show_welcome_card_if_empty()
-	if current_session.checkpoint is Dictionary and bool(current_session.checkpoint.get("resumable", false)):
-		_show_paused_badge(int(current_session.checkpoint.get("current_step", 0)), int(current_session.checkpoint.get("max_steps", 20)))
+	if _sessions.has_resumable_checkpoint():
+		_show_paused_badge(int(loaded.checkpoint.get("current_step", 0)), int(loaded.checkpoint.get("max_steps", 20)))
 	_update_header_title()
 	if history_panel:
 		history_panel.set_active_session(loaded.id)
@@ -639,7 +623,7 @@ func _clear_ui_stream() -> void:
 	_reset_stream_buffer()
 
 func _show_welcome_card_if_empty() -> void:
-	if current_session == null or current_session.messages.is_empty():
+	if _sessions.current == null or _sessions.current.messages.is_empty():
 		if _welcome_card == null or not is_instance_valid(_welcome_card):
 			_welcome_card = AISidebarWelcomeCard.new()
 			_welcome_card.prompt_selected.connect(_on_welcome_prompt_selected)
@@ -707,9 +691,10 @@ func _on_provider_readiness_changed(state: int, _message: String) -> void:
 
 func _update_header_title() -> void:
 	if title_label:
-		if current_session and not current_session.title.is_empty() and current_session.title != "New Chat":
-			title_label.text = "Godot AI - " + current_session.title
-			title_label.tooltip_text = current_session.title
+		var sess = _sessions.current
+		if sess and not sess.title.is_empty() and sess.title != "New Chat":
+			title_label.text = "Godot AI - " + sess.title
+			title_label.tooltip_text = sess.title
 		else:
 			title_label.text = "Godot AI"
 			title_label.tooltip_text = "Godot AI Assistant"
@@ -757,17 +742,13 @@ func _on_send_pressed() -> void:
 		return
 		
 	# 3. Continuation: boştayken resume komutu + resumable checkpoint varsa devam et
-	if not agent_runner.is_running() and AISidebarTaskCheckpoint.is_resume_command(user_text) and _has_resumable_checkpoint():
+	if not agent_runner.is_running() and AISidebarTaskCheckpoint.is_resume_command(user_text) and _sessions.has_resumable_checkpoint():
 		input_field.text = ""
 		_resume_paused_task(user_text)
 		return
 
 	# Ajan boşta ise görevi hemen başlat
 	_start_task_prompt(user_text, "", vision_inputs)
-
-## Resumable checkpoint var mı? (session'da saklı tek slot)
-func _has_resumable_checkpoint() -> bool:
-	return current_session != null and current_session.checkpoint is Dictionary and bool(current_session.checkpoint.get("resumable", false))
 
 func _active_scene_path_now() -> String:
 	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
@@ -778,20 +759,17 @@ func _active_scene_path_now() -> String:
 
 ## Durmuş tasktan checkpoint üret, session'a yaz, Paused rozeti göster.
 func _refresh_pause_checkpoint() -> void:
-	if agent_context == null or current_session == null or agent_runner == null:
-		return
-	var task = agent_context.get_transcript().get_current_task()
-	if task.is_empty():
+	if agent_runner == null:
 		return
 	var live = {
 		"current_step": agent_runner.current_step,
-		"maximum_steps": agent_runner.max_steps,
+		"max_steps": agent_runner.max_steps,
 		"elapsed_s": agent_runner.get_elapsed_s(),
 	}
-	live["max_steps"] = live["maximum_steps"]
-	var cp = AISidebarTaskCheckpoint.build(task, live, _active_scene_path_now())
-	current_session.checkpoint = cp
-	_save_current_session()
+	var cp = _sessions.store_pause_checkpoint(live, _active_scene_path_now())
+	if cp.is_empty():
+		return
+	_update_header_title()
 	if bool(cp.get("resumable", false)):
 		_show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
 
@@ -803,15 +781,13 @@ func _show_paused_badge(cur: int, mx: int) -> void:
 	status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 
 func _resume_paused_task(user_text: String) -> void:
-	if current_session == null:
+	if _sessions.current == null:
 		return
-	var cp = (current_session.checkpoint as Dictionary).duplicate(true)
+	var cp = _sessions.checkpoint_copy()
 	_hide_welcome_card()
 	_last_sent_vision_input = null
 	_is_user_stopped = false
 	_current_user_vision_inputs.clear()
-	if current_session == null:
-		current_session = AISidebarChatSession.new()
 	var msg = AISidebarTaskCheckpoint.build_resume_message(cp)
 	if agent_runner and agent_runner.resume_task(cp, msg, user_text):
 		return
@@ -847,22 +823,9 @@ func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -
 		assistant_bubble.meta_clicked.connect(_on_meta_clicked)
 		_add_stream_component(assistant_bubble)
 		
-		if current_session == null:
-			current_session = AISidebarChatSession.new()
-			
-		if cmd_name == "clear":
-			# Önceki sohbet geçmişini base listeye sabitle
-			_session_base_messages = current_session.messages.duplicate(true)
-			_session_base_messages.append({"role": "command", "content": raw_text})
-			_session_base_messages.append({"role": "assistant", "content": reply_text})
-			current_session.messages = _session_base_messages.duplicate(true)
-			if agent_context:
-				agent_context.clear()
-		else:
-			current_session.messages.append({"role": "command", "content": raw_text})
-			current_session.messages.append({"role": "assistant", "content": reply_text})
-			
-		_save_current_session()
+		# /clear önceki sohbeti base listeye sabitler (ChatSessionStore).
+		_sessions.record_local_command(raw_text, reply_text, cmd_name == "clear")
+		_update_header_title()
 		return
 		
 	elif action == "run_agent":
@@ -888,11 +851,9 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	_is_user_stopped = false
 	_current_user_vision_inputs = vision_inputs.duplicate()
 	
-	if current_session == null:
-		current_session = AISidebarChatSession.new()
 	# Yeni task eskisini geçersiz kılar (devam yolu buradan geçmez).
-	current_session.checkpoint = {}
-	_save_current_session()
+	_sessions.begin_new_task()
+	_update_header_title()
 
 	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
 	if agent_context:
@@ -924,15 +885,7 @@ func _on_clear_pressed() -> void:
 	if agent_runner and agent_runner.is_running():
 		_is_user_stopped = true
 		agent_runner.stop()
-	if agent_context:
-		agent_context.clear()
-	_session_base_messages.clear()
-	if current_session:
-		current_session.messages.clear()
-		current_session.telemetry.clear()
-		current_session.transcript_tasks.clear()
-		current_session.checkpoint = {}
-		_save_current_session()
+	_sessions.clear_contents()
 	_queue_panel.clear_all()
 	_clear_ui_stream()
 	_update_header_title()
@@ -1453,11 +1406,11 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_add_stream_component(telemetry_comp)
 	update_ui_language()
 	
-	if current_session:
-		current_session.telemetry = metrics.duplicate(true)
+	if _sessions.current:
+		_sessions.current.telemetry = metrics.duplicate(true)
 		if t_ok:
 			# Başarıyla biten taskın resume ihtiyacı kalmaz.
-			current_session.checkpoint = {}
+			_sessions.current.checkpoint = {}
 		else:
 			_refresh_pause_checkpoint()
 		_save_current_session()
