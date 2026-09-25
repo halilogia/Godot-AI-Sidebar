@@ -22,7 +22,7 @@
 * 🐞 **Çalışma Zamanı Denetimi (`inspect_runtime_tree`, `inspect_runtime_node`):** `EditorDebuggerPlugin` ve autoload köprüsü ile **çalışan oyunun** canlı sahne ağacını ve düğüm değerlerini sorgular; stack trace'i gerçek kaynak dosyaya eşler.
 * 🎨 **Modern Slate & Midnight Dark Tasarım Sistemi (`AISidebarTheme`):** Cursor ve VS Code tarzı koyu slate zemin, rol bazlı konuşma balonları, kopyalanabilir/seçilebilir kod blokları, ghost butonlar ve dinamik odak stilleri.
 * 📐 **AI-Native UI Layout Telemetri Motoru (`inspect_ui_layout`):** Salt-okunur (read-only) güvenlik profiliyle LLM'nin hem açık oyun sahnelerini (`@edited_scene`) hem de eklentinin kendi arayüzünü (`@sidebar`, `@sidebar/HistoryPanel`) düğüm hiyerarşisi, kümülatif taşma (`UI_CONTAINER_OVERFLOW`), görünürlük ve tema detaylarıyla denetleyebilmesi.
-* 🔍 **Headless GDScript Derleme ve Sahne Doğrulayıcı (`typecheck.ps1`):** Godot editörünü açmadan 1.5 saniyede eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) altındaki tüm GDScript ve Sahne dosyalarını (129 script, 4 sahne) statik olarak derleyip yükleyen sözdizimi doğrulayıcı. VS Code'da `Ctrl+Shift+B` kısayoluyla çalışır.
+* 🔍 **Headless GDScript Derleme ve Sahne Doğrulayıcı (`typecheck.ps1`):** Godot editörünü açmadan 1.5 saniyede eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) altındaki tüm GDScript ve Sahne dosyalarını statik olarak derleyip yükleyen sözdizimi doğrulayıcı. VS Code'da `Ctrl+Shift+B` kısayoluyla çalışır.
 * 🌊 **Canlı Gerçek Zamanlı SSE Streaming:** Model yanıtları anında, kelime kelime sohbet baloncuğuna akar; "AI yazıyor..." göstergesi ve düşünce blokları canlı render edilir.
 * ✂️ **Cerrahi Dosya Düzenleme (`replace_file_content`):** 400 satırlık scriptlerde tek bir satırı değiştirmek için tüm dosyayı baştan yazmaz; hedef kodu güvenli ve atomik şekilde değiştirir.
 * 🏷️ **`@mention` Dosya & Düğüm Otomatik Tamamlama:** Sohbet kutusunda `@` yazıldığında projedeki `.gd`, `.tscn` dosyalarını ve sahne ağacındaki düğümleri listeler, seçilen bağlamı prompta güvenli limitlerle otomatik enjekte eder.
@@ -96,8 +96,9 @@ addons/godot_sidebar_ai/
 │   └── docks/chat_dock.*             # UI Sohbet, Streaming & @Mention Dock'u
 ├── tools/typecheck.gd                # Headless Statik GDScript Derleyici
 ├── typecheck.ps1                     # PowerShell Statik Tip Denetleyici
+├── verify.ps1                        # Tek komut: typecheck + tüm testler (-Live ile canlı test)
 └── tests/
-    ├── test_runner.gd                # 55 Test Paketi (331 Assertion)
+    ├── test_runner.gd                # Tüm Birim Test Paketleri
     └── integration/test_real_9router_live.gd # Gerçek Canlı 9Router Test Aracı
 ```
 
@@ -129,13 +130,13 @@ addons/godot_sidebar_ai/
 ## 🧪 Test ve Doğrulama
 
 ### 1. Headless GDScript Derleme ve Sahne Doğrulama (Compilation Validator)
-`typecheck.ps1` scripti, `tools/typecheck.gd` aracılığıyla eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) dizinlerindeki tüm GDScript ve `.tscn` dosyalarını (129 script, 4 sahne) Godot motoru üzerinden statik olarak derleyip sözdizimi hatalarını yakalar:
+`typecheck.ps1` scripti, `tools/typecheck.gd` aracılığıyla eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) dizinlerindeki tüm GDScript ve `.tscn` dosyalarını Godot motoru üzerinden statik olarak derleyip sözdizimi hatalarını yakalar:
 ```powershell
 ./typecheck.ps1
 ```
 *(VS Code içinde `Ctrl+Shift+B` kısayolu ile derleme görevini de tetikleyebilirsiniz)*
 
-### 2. Headless Master Test Suite (55 Test Paketi / 331 Assertion)
+### 2. Headless Master Test Suite
 ```bash
 godot --headless -s res://tests/test_runner.gd
 ```
