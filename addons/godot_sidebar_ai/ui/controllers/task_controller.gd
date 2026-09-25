@@ -94,21 +94,22 @@ func submit_input() -> void:
 		return
 		
 	input_field.text = ""
-	last_sent_vision_input = attached_img
-	composer.clear_attached_image()
 	is_user_stopped = false
 	
-	var vision_inputs: Array = []
-	if attached_img != null:
-		vision_inputs.append(attached_img)
-	
-	# 1. Slash Command Kontrolü (/)
+	# 1. Slash Command Kontrolü (/). Görsel ekini yalnızca ajan başlatan komut tüketir
+	# (handle_slash_command); yerel komut ve hata eki yerinde bırakır.
 	if user_text.begins_with("/"):
 		var parsed_cmd = AISidebarSlashCommandManager.parse(user_text)
 		if parsed_cmd.get("is_command", false):
 			handle_slash_command(parsed_cmd, user_text)
 			return
 			
+	last_sent_vision_input = attached_img
+	composer.clear_attached_image()
+	var vision_inputs: Array = []
+	if attached_img != null:
+		vision_inputs.append(attached_img)
+	
 	# 2. Normal Mesaj Akışı: Eğer ajan şu anda başka bir görev çalıştırıyorsa -> Mesajı Kuyruğa Al
 	if runner.is_running():
 		queue_panel.enqueue(user_text, user_text, vision_inputs)
@@ -207,12 +208,19 @@ func handle_slash_command(parsed_cmd: Dictionary, raw_text: String) -> void:
 	elif action == "run_agent":
 		var prompt = result.get("prompt", "")
 		var display_prompt = result.get("display_prompt", raw_text)
+		# Ajan başlatan komut normal istemin kısayoludur: ekli görsel aynı hattan modele gider.
+		var attached_img = composer.attached_vision_input
+		last_sent_vision_input = attached_img
+		composer.clear_attached_image()
+		var vision_inputs: Array = []
+		if attached_img != null:
+			vision_inputs.append(attached_img)
 		
 		if runner.is_running():
-			queue_panel.enqueue(prompt, display_prompt)
+			queue_panel.enqueue(prompt, display_prompt, vision_inputs)
 			return
 			
-		start_task_prompt(prompt, display_prompt)
+		start_task_prompt(prompt, display_prompt, vision_inputs)
 
 func start_task_prompt(prompt_text: String, display_prompt: String = "", vision_inputs: Array = []) -> void:
 	hide_welcome.call()

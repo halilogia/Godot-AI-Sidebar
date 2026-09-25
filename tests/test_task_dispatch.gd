@@ -14,6 +14,9 @@ const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/v
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 
+## Geçerli 4x4 PNG (sahte veri önizlemede görsel çözme hatası basar).
+const PNG_4X4 = "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGP4z8AARwzEcQCukw/x0F8jngAAAABJRU5ErkJggg=="
+
 class SilentProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
 		pass
@@ -96,21 +99,31 @@ static func run() -> Dictionary:
 
 	# 3. Slash yolları: bilinmeyen komut hata balonu; /help yerel yanıt; /analyze boşta task,
 	#    çalışırken kuyruk
+	#    Görsel eki (#12): yerel komut / hata eki tüketmez; ajan başlatan komut eki modele gönderir,
+	#    çalışırken kuyruğa görselle birlikte alır.
 	var s3 = _make_dock()
 	var d3 = s3["dock"]
+	var img3 = AISidebarVisionInput.new("user://slash.png", PNG_4X4, 4, 4)
+	d3._composer.attach_vision_input(img3)
 	_send(d3, "/bilinmeyen")
 	var unknown_ok = not s3["runner"].is_running() and d3.message_stream.get_child_count() == 2
 	_send(d3, "/help")
 	var help_ok = not s3["runner"].is_running() and d3.message_stream.get_child_count() == 4
+	var local_keeps_image = d3._composer.attached_vision_input == img3
 	_send(d3, "/analyze")
 	var analyze_ok = s3["runner"].is_running() and d3._tasks.last_user_prompt == "/analyze"
+	var sent_msgs = s3["ctx"].messages.filter(func(m): return str(m.get("role", "")) == "user" and str(m.get("display_text", "")) == "/analyze")
+	var image_sent = sent_msgs.size() == 1 and sent_msgs[0].has("vision_inputs") and d3._composer.attached_vision_input == null and d3._tasks.last_sent_vision_input == img3
+	var img3b = AISidebarVisionInput.new("user://slash2.png", PNG_4X4, 4, 4)
+	d3._composer.attach_vision_input(img3b)
 	_send(d3, "/analyze Player")
 	var queued_ok = d3._queue_panel.count() == 1
-	if unknown_ok and help_ok and analyze_ok and queued_ok:
+	var queued_image = queued_ok and d3._queue_panel.get_items()[0].get("vision_inputs", []) == [img3b] and d3._composer.attached_vision_input == null
+	if unknown_ok and help_ok and analyze_ok and queued_ok and local_keeps_image and image_sent and queued_image:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T3 (slash paths) failed: unknown=%s help=%s analyze=%s queued=%s" % [str(unknown_ok), str(help_ok), str(analyze_ok), str(queued_ok)])
+		errors.append("T3 (slash paths) failed: unknown=%s help=%s analyze=%s queued=%s image_kept=%s image_sent=%s queued_image=%s" % [str(unknown_ok), str(help_ok), str(analyze_ok), str(queued_ok), str(local_keeps_image), str(image_sent), str(queued_image)])
 	_dispose(d3, created)
 
 	# 4. Kuyruk dağıtımı: kullanıcı durdurduysa bekler; aksi halde sıradakini başlatır
