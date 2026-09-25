@@ -5,13 +5,9 @@ extends Control
 ## Cursor / Claude Code tarzı doğal konuşma, katlanabilir aktivite kartları, diff ve geri alma sunar.
 
 const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd")
-const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/network/network_manager.gd")
-const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
-const AISidebarOpenAICompatibleProvider = preload("res://addons/godot_sidebar_ai/core/providers/openai_compatible_provider.gd")
-const AISidebarAGYProvider = preload("res://addons/godot_sidebar_ai/core/providers/agy_cli_provider.gd")
+const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
-const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 # Modüler UI Bileşenleri
@@ -60,8 +56,8 @@ const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/contro
 @onready var settings_dialog: AcceptDialog = $SettingsDialog
 @onready var change_set_dialog: AISidebarChangeSetDialog = $ChangeSetDialog
 
-var network_manager: AISidebarNetworkManager
-var provider: AISidebarAIProvider
+## Ajan katmanı (provider, context, runner); plugin.gd kurar ve _ready'den önce enjekte eder.
+var agent_host: AISidebarAgentHost = null
 var agent_context: AISidebarAgentContext
 var agent_runner: AISidebarAgentRunner
 
@@ -96,44 +92,20 @@ var _welcome_card: AISidebarWelcomeCard = null
 
 
 func _exit_tree() -> void:
-	if provider and provider.has_method("stop_process"):
-		provider.stop_process()
+	if agent_host:
+		agent_host.stop_provider_process()
 
 func _notification(what: int) -> void:
 	# InputArea yoksa kuyruk paneli ağaca hiç eklenmez; sahipsiz kalmasın.
 	if what == NOTIFICATION_PREDELETE and is_instance_valid(_queue_panel) and _queue_panel.get_parent() == null:
 		_queue_panel.free()
 
-func _setup_provider() -> void:
-	var cfg = AISidebarConfig.load_config()
-	var prov_type = cfg.get("provider_type", "antigravity_cli")
-	
-	if provider:
-		if provider.has_method("stop_process"):
-			provider.stop_process()
-		if provider.models_fetched.is_connected(_model_bar.on_models_fetched):
-			provider.models_fetched.disconnect(_model_bar.on_models_fetched)
-		if provider.has_signal("readiness_changed") and provider.readiness_changed.is_connected(_on_provider_readiness_changed):
-			provider.readiness_changed.disconnect(_on_provider_readiness_changed)
-		
+## Provider'ı config'e göre yeniden kurdurur; eski provider'dan kalan hazırlık durumu sıfırlanır.
+func _rebuild_provider() -> void:
 	if _stream:
 		_stream.agy_preparing = false
-			
-	if prov_type == "openai_compatible":
-		if not network_manager:
-			network_manager = AISidebarNetworkManager.new()
-			add_child(network_manager)
-		provider = AISidebarOpenAICompatibleProvider.new(network_manager)
-	else:
-		provider = AISidebarAGYProvider.new()
-		
-	provider.models_fetched.connect(_model_bar.on_models_fetched)
-	if provider.has_signal("readiness_changed"):
-		provider.readiness_changed.connect(_on_provider_readiness_changed)
-	if provider.has_method("pre_warm"):
-		provider.pre_warm()
-	if agent_runner:
-		agent_runner.set_provider(provider)
+	if agent_host:
+		agent_host.rebuild_provider()
 
 func _ready() -> void:
 	_export_actions = AISidebarChatExportActions.new()
@@ -152,7 +124,7 @@ func _ready() -> void:
 	_activity.add_component = _add_stream_component
 	_activity.on_meta_clicked = _on_meta_clicked
 	_activity.set_status = set_status_badge
-	_activity.supports_vision = func(): return provider != null and provider.has_method("supports_vision") and provider.supports_vision()
+	_activity.supports_vision = func(): return agent_host != null and agent_host.supports_vision()
 	_activity.stream = _stream
 	_activity.checklist_tracker = _checklist_tracker
 	_interaction.add_component = _add_stream_component
@@ -196,23 +168,11 @@ func _ready() -> void:
 		
 	AISidebarUITelemetryTools.register_sidebar_dock(self)
 	
-	# 1. Katmanların Başlatılması
-	network_manager = AISidebarNetworkManager.new()
-	add_child(network_manager)
-	
-	agent_context = AISidebarAgentContext.new()
-	_sessions.context = agent_context
-	_export_actions.agent_context = agent_context
-	_checklist_tracker.context = agent_context
-	_activity.context = agent_context
-	_interaction.context = agent_context
-	_tasks.context = agent_context
-	_setup_provider()
-	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
-	_interaction.runner = agent_runner
-	_tasks.runner = agent_runner
-	
-	_connect_agent_runner()
+	# 1. Ajan katmanı: plugin.gd (kompozisyon kökü) kurar ve enjekte eder. Önce bağlanılır,
+	# sonra provider kurulur; böylece pre_warm'ın hazırlık olayı rozete ulaşır.
+	if agent_host:
+		attach_agent_host(agent_host)
+		_rebuild_provider()
 
 	# 2. UI Olayları
 	if new_chat_btn:
@@ -260,8 +220,26 @@ func _ready() -> void:
 	# 5. Başlangıç Yüklemesi
 	update_ui_language()
 	_model_bar.load_cached_models()
-	if provider:
-		provider.fetch_models()
+	if agent_host and agent_host.has_provider():
+		agent_host.fetch_models()
+
+## Ajan katmanını dock birimlerine bağlar: context ve runner presenter / controller'lara verilir,
+## host'un model listesi ve hazırlık olayları ile runner sinyalleri dinlenir.
+func attach_agent_host(host: AISidebarAgentHost) -> void:
+	agent_host = host
+	agent_context = host.context
+	_sessions.context = agent_context
+	_export_actions.agent_context = agent_context
+	_checklist_tracker.context = agent_context
+	_activity.context = agent_context
+	_interaction.context = agent_context
+	_tasks.context = agent_context
+	host.models_fetched.connect(_model_bar.on_models_fetched)
+	host.readiness_changed.connect(_on_provider_readiness_changed)
+	agent_runner = host.runner
+	_interaction.runner = agent_runner
+	_tasks.runner = agent_runner
+	_connect_agent_runner()
 
 ## AgentRunner sinyallerini presenter'lara ve ChatDock orkestrasyonuna bağlar.
 func _connect_agent_runner() -> void:
@@ -350,9 +328,9 @@ func update_ui_language() -> void:
 	_model_bar.update_approve_mode_ui()
 
 func _on_refresh_models_pressed() -> void:
-	if provider:
+	if agent_host and agent_host.has_provider():
 		set_status_badge("Refreshing...", AISidebarTheme.COLOR_WARNING)
-		provider.fetch_models()
+		agent_host.fetch_models()
 
 func _on_settings_pressed() -> void:
 	if settings_dialog:
@@ -360,9 +338,9 @@ func _on_settings_pressed() -> void:
 
 func _on_settings_saved() -> void:
 	update_ui_language()
-	_setup_provider()
-	if provider:
-		provider.fetch_models()
+	_rebuild_provider()
+	if agent_host and agent_host.has_provider():
+		agent_host.fetch_models()
 
 # --- Chat Management Olayları ve Yardımcıları ---
 
@@ -489,9 +467,9 @@ func _on_welcome_prompt_selected(prompt_text: String) -> void:
 ## AGY provider hazirlik durumu degisti (STARTING / INITIALIZING / READY).
 ## Yalnizca bilgilendirici rozet metni guncellenir; ajan durumu DEGISTIRILMEZ.
 func _on_provider_readiness_changed(state: int, _message: String) -> void:
-	if not provider or not provider.has_method("is_ready"):
+	if not agent_host or not agent_host.has_readiness_state():
 		return
-	_stream.agy_preparing = not provider.is_ready()
+	_stream.agy_preparing = not agent_host.is_provider_ready()
 	if _stream.agy_preparing:
 		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
 	elif agent_runner and agent_runner.is_running():

@@ -2,12 +2,12 @@
 extends RefCounted
 
 ## ChatDock ↔ AgentRunner sinyal bağlantıları (editörde kurulur, headless'ta normalde hiç
-## çalışmaz). Gerçek AgentRunner ile _connect_agent_runner() kurulur ve her sinyal
+## çalışmaz). Gerçek AgentHost/AgentRunner ile attach_agent_host() kurulur ve her sinyal
 ## yayınlanır: yanlış handler / argüman sayısı / kopuk presenter bağlantısı burada yakalanır.
 
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
-const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
@@ -44,20 +44,12 @@ static func run() -> Dictionary:
 	dock._auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
-	var ctx = AISidebarAgentContext.new()
-	var runner = AISidebarAgentRunner.new(SilentProvider.new(), ctx)
-	# _ready'nin editör yolundaki bağlama ile aynı
-	dock.agent_context = ctx
-	dock._sessions.context = ctx
-	dock._export_actions.agent_context = ctx
-	dock._checklist_tracker.context = ctx
-	dock._activity.context = ctx
-	dock._interaction.context = ctx
-	dock.agent_runner = runner
-	dock._interaction.runner = runner
-	dock._tasks.context = ctx
-	dock._tasks.runner = runner
-	dock._connect_agent_runner()
+	# _ready'nin editör yolundaki bağlama ile aynı (host plugin.gd yerine burada kurulur)
+	var host = AISidebarAgentHost.new()
+	host.set_provider(SilentProvider.new())
+	dock.attach_agent_host(host)
+	var ctx = host.context
+	var runner = host.runner
 
 	# 1. Her sinyalin bir dinleyicisi var (bağlantı listesi eksiksiz)
 	var expected = ["state_changed", "thinking_received", "chunk_received", "text_received",
@@ -128,4 +120,5 @@ static func run() -> Dictionary:
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.free()
+	host.free()
 	return {"name": "DockAgentWiringTests", "passed": passed, "failed": failed, "errors": errors}

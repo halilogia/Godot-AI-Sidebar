@@ -134,14 +134,14 @@ static func run() -> Dictionary:
 	# Test 10: approval_state_not_replayed
 	var runner_mock = AISidebarAgentRunner.new()
 	# Eski sohbet yüklendiğinde runner IDLE olmalı ve approval tetiklenmemeli
-	if runner_mock.current_state == AISidebarAgentRunner.AgentState.IDLE and runner_mock._pending_tool_name.is_empty():
+	if runner_mock.current_state == AISidebarAgentRunner.AgentState.IDLE and runner_mock.pending.tool_name.is_empty():
 		passed += 1
 	else:
 		failed += 1
 		errors.append("Test 10 (approval_state_not_replayed) failed.")
 		
 	# Test 11: clarification_state_not_replayed
-	if runner_mock._pending_clarification_id.is_empty() and runner_mock.current_state != AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION:
+	if runner_mock.pending.clarification_id.is_empty() and runner_mock.current_state != AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION:
 		passed += 1
 	else:
 		failed += 1

@@ -167,7 +167,7 @@ static func run() -> Dictionary:
 	# --- SENARYO 6: Plan approval sonrasi mevcut execution loop calisir ---
 	runner1.approve_plan()
 	var is_completed = (runner1.current_state == AISidebarAgentRunner.AgentState.IDLE or runner1.current_state == AISidebarAgentRunner.AgentState.COMPLETED)
-	if is_completed and not runner1._plan_phase_active and runner1._pending_plan == null:
+	if is_completed and not runner1._plan_phase_active and runner1.pending.plan == null:
 		passed += 1
 	else:
 		failed += 1
@@ -434,7 +434,7 @@ static func run() -> Dictionary:
 	mock21.response_queue = [{"tool_calls": [{"id": "p21", "name": "propose_plan", "arguments": _valid_plan_args()}]}]
 	runner21.start_task("Bir save/load sistemi ekle")
 	runner21.stop()
-	if runner21.current_state == AISidebarAgentRunner.AgentState.IDLE and runner21._pending_plan == null and not runner21._plan_phase_active:
+	if runner21.current_state == AISidebarAgentRunner.AgentState.IDLE and runner21.pending.plan == null and not runner21._plan_phase_active:
 		passed += 1
 	else:
 		failed += 1
@@ -453,11 +453,11 @@ static func run() -> Dictionary:
 	]
 	runner22.start_task("Bir save/load sistemi ekle")
 	var probe_absent = not FileAccess.file_exists(GUARD_PROBE_PATH)
-	if runner22.file_ops_count == 0 and runner22.tool_calls_count == 1 and probe_absent:
+	if runner22.telemetry.file_ops_count == 0 and runner22.telemetry.tool_calls_count == 1 and probe_absent:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 22 (blocked tool not counted) failed: file_ops=" + str(runner22.file_ops_count) + " tool_calls=" + str(runner22.tool_calls_count) + " probe_absent=" + str(probe_absent))
+		errors.append("Test 22 (blocked tool not counted) failed: file_ops=" + str(runner22.telemetry.file_ops_count) + " tool_calls=" + str(runner22.telemetry.tool_calls_count) + " probe_absent=" + str(probe_absent))
 
 	_cleanup_probe_file()
 	AISidebarPermissionPolicy.set_auto_approve_mode(prev_mode)

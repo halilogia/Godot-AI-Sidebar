@@ -85,6 +85,11 @@ const TestIconSystem = preload("res://tests/test_icon_system.gd")
 const TestDockAgentWiring = preload("res://tests/test_dock_agent_wiring.gd")
 const TestModelBarController = preload("res://tests/test_model_bar_controller.gd")
 const TestTaskDispatch = preload("res://tests/test_task_dispatch.gd")
+const TestProviderComposition = preload("res://tests/test_provider_composition.gd")
+const TestAgentTelemetry = preload("res://tests/test_agent_telemetry.gd")
+const TestPendingInteraction = preload("res://tests/test_pending_interaction.gd")
+const TestProviderResponse = preload("res://tests/test_provider_response.gd")
+const TestRunnerIndependence = preload("res://tests/test_runner_independence.gd")
 const TestMarkdownRenderer = preload("res://tests/test_markdown_renderer.gd")
 const TestDocsCoverage = preload("res://tests/test_docs_coverage.gd")
 
@@ -174,6 +179,11 @@ func _init() -> void:
 		TestDockAgentWiring,
 		TestModelBarController,
 		TestTaskDispatch,
+		TestProviderComposition,
+		TestAgentTelemetry,
+		TestPendingInteraction,
+		TestProviderResponse,
+		TestRunnerIndependence,
 		TestMarkdownRenderer,
 		TestDocsCoverage,
 		TestReasoningUI,

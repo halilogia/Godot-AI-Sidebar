@@ -218,7 +218,7 @@ static func run() -> Dictionary:
 		
 	# Test 8: Clarification with Stop
 	runner7.stop()
-	if runner7.current_state == AISidebarAgentRunner.AgentState.IDLE and runner7._pending_clarification_id.is_empty():
+	if runner7.current_state == AISidebarAgentRunner.AgentState.IDLE and runner7.pending.clarification_id.is_empty():
 		passed += 1
 	else:
 		failed += 1
