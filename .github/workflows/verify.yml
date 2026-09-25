@@ -1,0 +1,37 @@
+name: verify
+
+# Refactor Faz 4.A.8: her push / PR'da yerel `verify.ps1` ile aynı doğrulama
+# (typecheck + sıkı uyarı cırcırı + birim testleri), Linux headless Godot ile.
+# Canlı 9Router testi (-Live) CI'da koşmaz: 127.0.0.1:20128 yerel bir servistir.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GODOT_VERSION: 4.7.2-stable
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot ${{ env.GODOT_VERSION }}
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/godot.zip" \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          echo "GODOT_BIN=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Import project (first open)
+        # İlk açılış .godot/ önbelleğini ve içe aktarmaları üretir; hüküm verify adımındadır.
+        run: timeout 300 "$GODOT_BIN" --headless --editor --quit --path . || true
+
+      - name: Verify (typecheck + strict warnings + unit tests)
+        shell: pwsh
+        run: ./verify.ps1 -GodotPath $env:GODOT_BIN
