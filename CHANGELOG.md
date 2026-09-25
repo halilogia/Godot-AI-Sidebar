@@ -7,7 +7,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
-## [Unreleased] - Faz 1–2: ChatDock ve AgentRunner refactor + UI düzeltmeleri
+## [Unreleased] - Faz 1–3: ChatDock, AgentRunner ve doğrulama refactor + düzeltmeler
 
 ### Yeniden yapılanma (davranış değişmeden)
 * `ui/docks/chat_dock.gd` 2349 satırdan ~600 satıra indi; sorumluluklar ayrı birimlere taşındı: `ChatDockTheme`, `ToolPresentation`, `PlanChecklistTracker`, `MessageQueuePanel`, `InputComposer`, `ChatExportActions`, `ChatSessionStore`, `SessionReplayRenderer`, `AgentStreamPresenter`, `AgentActivityPresenter`, `AgentInteractionPresenter`, `ModelBarController`, `TaskController`. Plan ve kararlar: `docs/REFACTOR_PLAN.md`.
@@ -17,6 +17,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Bekleyen kullanıcı kararları (tool onayı, netleştirme sorusu, plan) `PendingInteraction` (`core/agent/pending_interaction.gd`) birimine taşındı; karar fonksiyonlarının koruma koşulları ve temizlik kuralları test altında.
 * Model yanıtını işleyen 201 satırlık `_on_provider_response` adımlara bölündü (boş yanıt, tool dağıtımı, çağrı başına korumalar, icra, tamamlama kapısı); her dal önce 13 senaryoluk birebir iz testiyle sabitlendi.
 * Aynı süreçte iki bağımsız `AgentRunner` / `AgentHost` testi: context, telemetri, bekleyen kararlar, tekrar koruması, açılan araçlar ve Stop birbirine karışmıyor (alt ajanlar ve CLI / MCP köprüsü için önkoşul).
+* TSCN/TRES yapısal doğrulayıcısı `VerificationPipeline`'dan ayrı bir birime (`core/verification/tscn_validator.gd`) taşındı; her hata kodu ve sonuç metni önce sabitleme testiyle kilitlendi. `chat_exporter.gd`, `editor_tools.gd` ve `scene_tools.gd` değerlendirildi ve gerekçesiyle bölünmedi.
 
 ### Düzeltilenler
 * `/clear` sohbeti gerçekten temizliyor (Clear butonuyla aynı yol).

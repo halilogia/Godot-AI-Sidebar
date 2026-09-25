@@ -1,6 +1,6 @@
 # Refactor Planı — Ertelenen Borcun Ödenmesi
 
-> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) tamamlandı ve `main`'e birleştirildi (2026-09-25, PR #3)**: canlı 9Router doğrulaması (yerel) ve editör duman testi sonradan yapılacak · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
+> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) tamamlandı ve `main`'e birleştirildi (2026-09-25, PR #3)**: canlı 9Router doğrulaması (yerel) ve editör duman testi sonradan yapılacak · Başlangıç: 2026-09-25 · Baz commit: `1af07d3` · **Faz 3 (diğer büyük dosyalar) tamamlandı (2026-09-26)**: 1 bölme, 3 bilinçli bırakma, 5 bug düzeltmesi
 > Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
@@ -130,6 +130,9 @@ Faz 2, ROADMAP'teki ürün Faz 10'un (Alt Ajanlar) ve Faz 7'deki editör köprü
 | 3.2 | `core/verification/tscn_validator.gd` | `validate_tscn_source` → `AISidebarTscnValidator.validate`; pipeline `tscn` / `tres` için yeni birimi kaydeder. Test yeni birime yönlendirildi, delege yok | ✅ |
 
 **3.2 notu:** Gövde birebir taşındı; hata sözlükleri `fail_result()`'a çevrilmedi (o yardımcı `suggestion` / `line` anahtarlarını ekler, çıktı değişirdi). `VerificationStatus` enum'u pipeline'da kaldı; doğrulayıcı onu `const VerificationStatus = AISidebarVerificationPipeline.VerificationStatus` ile kullanır. Pipeline ↔ doğrulayıcı döngüsel preload'u Godot 4.7.2'de sorunsuz: altın iz taşıma sonrası birebir aynı. Motor hata/uyarı profili baz ile aynı.
+
+**Faz 3 kapanışı (2026-09-26):** Dört adaydan biri bölündü, üçü gerekçesiyle bırakıldı. Değerlendirmede 6 bulgu (#21–#26) ve 8 gözlem çıktı; 5'i ayrı `fix` commit'lerinde, düzeltme olmadan kırmızı olan testlerle kapandı, #25 headless'ta kırmızı test yazılamadığı için açık (duman testine eklendi). Her commit öncesi typecheck + test_runner yeşil; motor profili tek istisnayla baz ile aynı: #21'in Test F'si kasıtlı derleme hataları basar (3 × `Expected parameter name`, 2 × `Preload file … does not exist`, 1 × `Could not resolve super class path`, 1 × `Static function "nope()" not found`), yeni tür yalnızca bunlar. Ağ / provider katmanına dokunulmadı; `verify.ps1 -Live` gerekmez.
+Commit'ler: `7bdf87d` (3.1) · `fe8a211` (3.2) · `6185178` (#21) · `127a109` (#22) · `120d017` (#23) · `815cbf0` (#24) · `e5c6a69` (#26).
 
 ## Faz 3.5 — Test denetimi (Faz 1–2 bittikten sonra)
 
