@@ -176,7 +176,8 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T3 (llm time) failed: turns=%d llm=%d start=%d" % [turns_after_start, r7.telemetry.llm_time_msec, r7.telemetry.llm_step_start_time])
 
-	# 4. Op sınıflandırması ve kategori süreleri (mevcut eşlemeler olduğu gibi)
+	# 4. Op sınıflandırması ve kategori süreleri: file_ops sayılan her dosya aracının süresi
+	# file_time'a da girer (bulgu #13: replace_file_content / delete_file eksikti)
 	var r8 = AISidebarAgentRunner.new()
 	r8.telemetry.classify_op("write_files", {"files": [{}, {}, {}]})
 	r8.telemetry.classify_op("write_files", {})
@@ -192,7 +193,7 @@ static func run() -> Dictionary:
 	r8.telemetry.record_category_time("reparent_node", 30)
 	r8.telemetry.record_category_time("get_runtime_errors", 20)
 	r8.telemetry.record_category_time("read_script", 10)
-	var cat_ok = r8.telemetry.file_time_msec == 140 and r8.telemetry.editor_time_msec == 30 and r8.telemetry.runtime_time_msec == 20
+	var cat_ok = r8.telemetry.file_time_msec == 250 and r8.telemetry.editor_time_msec == 30 and r8.telemetry.runtime_time_msec == 20
 	if ops_ok and cat_ok:
 		passed += 1
 	else:

@@ -111,7 +111,7 @@ func classify_op(fn_name: String, args: Dictionary) -> void:
 
 func record_category_time(fn_name: String, duration_msec: int) -> void:
 	match fn_name:
-		"create_or_update_script", "create_scene", "save_scene", "write_files":
+		"create_or_update_script", "replace_file_content", "delete_file", "create_scene", "save_scene", "write_files":
 			file_time_msec += duration_msec
 		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
 			editor_time_msec += duration_msec

@@ -27,6 +27,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Uzun model düşünceleri (thinking) kesilmiyor: kart 3000 yerine 20.000 karaktere kadar gösteriyor, transcript / export 1000 yerine 16.000 karaktere kadar saklıyor.
 * Kod blokları komşu satırları örtmüyor; kalın / kod metni gövdeyle aynı boyutta.
 * Onay modu ekranda iki kez yazmıyor: durum rozeti yalnızca "Hazır" gösteriyor, mod model çubuğundaki butonda.
+* Telemetri kartı ve export'taki dosya süresi (`file_time`) artık cerrahi düzenleme (`replace_file_content`) ve dosya silme (`delete_file`) sürelerini de içeriyor.
 * History replay'de yanıtlanmış `ask_user` kartı akışı durdurmuyor; uzun başlıklar header butonlarını taşırmıyor.
 
 ### Eklenenler
