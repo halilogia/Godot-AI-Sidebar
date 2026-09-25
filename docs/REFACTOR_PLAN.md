@@ -160,8 +160,8 @@ Commit'ler: `4f932c5`, `bc65199`, `0c17f5a`, `5524f9c`, `210a4dd`, `7a89c9a`, `5
 
 ## Faz 4 — Borcun geri gelmesini önleme
 
-- [ ] Satır bütçesi testi: `.gd` dosyası > 600 satırsa uyarı, > 900 ise test başarısız (istisna listesi açık yazılır).
-- [ ] `ARCHITECTURE.md` yeni UI katmanlarını (components / presenters / controllers) anlatacak şekilde güncellenir.
+- [x] Satır bütçesi testi: `.gd` dosyası > 600 satırsa uyarı, > 900 ise test başarısız (istisna listesi açık yazılır). → `tests/test_line_budget.gd` (`LineBudgetTests`): eklentideki her `.gd` `wc -l` ile aynı sayımla ölçülür; 600 üstü çıktıya uyarı olarak basılır, 900 üstü kırmızı. `EXCEPTIONS` tavan + gerekçe tutar ve bayatlarsa (dosya tavanın altına inerse / silinirse) kırmızı olur; bugün boş. Açılışta uyarı listesi: `agent_runner.gd` 871, `chat_exporter.gd` 807, `editor_tools.gd` 672, `scene_tools.gd` 667 (her biri için karar notu Faz 2 / Faz 3'te). Mutasyon: sınır 800'e çekilince `agent_runner` ve `chat_exporter` kırmızı.
+- [x] `ARCHITECTURE.md` yeni UI katmanlarını (components / presenters / controllers) anlatacak şekilde güncellenir. → Faz 1 sırasında yapılmıştı (Presentation katmanı: Dock / Controllers / Presenters / Components alt başlıkları, katman şeması); `DocsCoverageTests` her `.gd`'nin belgede geçtiğini zorlar.
 
 ### Faz 4.A — Sıkı GDScript kontrolü (`tsc --noEmit` benzeri)
 

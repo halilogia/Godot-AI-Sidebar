@@ -93,6 +93,7 @@ const TestRunnerIndependence = preload("res://tests/test_runner_independence.gd"
 const TestRuntimeOwnership = preload("res://tests/test_runtime_ownership.gd")
 const TestMarkdownRenderer = preload("res://tests/test_markdown_renderer.gd")
 const TestDocsCoverage = preload("res://tests/test_docs_coverage.gd")
+const TestLineBudget = preload("res://tests/test_line_budget.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -188,6 +189,7 @@ func _init() -> void:
 		TestRuntimeOwnership,
 		TestMarkdownRenderer,
 		TestDocsCoverage,
+		TestLineBudget,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,
