@@ -22,7 +22,7 @@
 1. **Refactor commit'i davranış değiştirmez.** Kod taşınır, mantık aynen kalır.
 2. **Bulunan bug'lar ayrı commit'te düzeltilir**, testle birlikte ve refactor commit'lerine karıştırılmadan (bkz. "Okurken bulunanlar").
 3. **Her adımdan sonra** typecheck + `test_runner` yeşil olmalı. Kırmızıysa adım geri alınır, yamanmaz.
-4. **Testler iç üyelere dokunuyor** (ChatDock'un ~40 private üyesi: `_on_agent_text_received`, `_current_checklist`…). Taşınan her parça için ilgili testler yeni birime yönlendirilir; eski isimlere geçici delege bırakılmaz.
+4. **Testler iç üyelere dokunuyor** (ChatDock'un ~40 private üyesi: `_on_agent_text_received`, `_current_checklist`…). Taşınan her parça için ilgili testler yeni birime yönlendirilir; eski isimlere geçici delege bırakılmaz. (Faz 3.5'te giderildi: testler artık ChatDock'a yalnızca public üyeleri ve `_ready` / `_exit_tree` motor geri çağrıları üzerinden erişir.)
 5. Yeni dosyalar `preload` ile bağlanır (headless kuralı), `AISidebar` önekini korur.
 6. Çalışma biçimi (2026-09-25'ten itibaren, tek geliştirici): doğrulanmış küçük, atomik commit'ler doğrudan `main`'e push'lanır; dal / PR zorunlu değildir. Her commit'ten önce typecheck + tüm testler yeşil olmalı; kırmızı kod `main`'e gitmez (AGENTS.md §8.6). Faz 1–2 `refactor/*` dallarında yürütülüp PR #1–#3 ile birleştirildi.
 
@@ -246,6 +246,7 @@ Gözlemler (bug değil ya da etkisi düşük; düzeltilmedi): (O1) `TSCN_EMPTY_F
 - [ ] Stop → Paused rozeti → "devam et" ile resume
 - [ ] (#14) Oyunu F5 ile aç, ajana metin görevi ver, Stop → oyun açık kalmalı; ajan `play_game` ile açtıysa Stop → oyun kapanmalı
 - [ ] (#22) Ajandan `take_viewport_screenshot` / `take_runtime_screenshot` iste → varsayılan `user://` yolunda PNG oluşmalı; `save_path="res://project.godot"` ile `PERMISSION_DENIED`
+- [ ] (Faz 5) Ayarlardan dili TR ↔ EN değiştir → onay / plan / netleştirme / hata kartları, kuyruk paneli, telemetri başlığı, etkinlik grubu ve üst çubuk seçilen dilde; eski oturum yüklenince karşılama kartı dile uygun
 - [ ] (#25) Açık sahnede `instantiate_scene` ile bir `.gd` yolu ver → araç çökmeden hata dönmeli (bugün tip atama hatası bekleniyor)
 
 **Faz 1 kapanışı (2026-09-25):** Kullanıcı editörde (yeni-oyun-projesi, junction) genel duman testi yaptı; maddeler tek tek kayda geçmedi. Testte bulunan iki sorun ayrı commit'lerde düzeltildi (`89dd0cd` normal kod bloklarında "Parse JSON failed" logu, `e78b8f3` kod bloğunun komşu satırları örtmesi). Başka sorun bildirilmedi; kullanıcı onayıyla `main`'e birleştirildi.
