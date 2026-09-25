@@ -10,10 +10,11 @@ extends RefCounted
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 
 var current: AISidebarChatSession = null
 ## Mesaj ve transcript kaynağı olan AgentContext (headless testlerde null olabilir).
-var context = null
+var context: AISidebarAgentContext = null
 ## LLM'siz yanıtlanan yerel komutlar (/help): oturumda ve History'de görünür, modele gitmez.
 ## Her kayıt "anchor" = eklendiği andaki context mesaj sayısı; kayıtta araya bu sırayla girer.
 var _local_entries: Array = []

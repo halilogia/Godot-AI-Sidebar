@@ -24,6 +24,7 @@ const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/u
 const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 
 # --- ChatDock'tan gelen bağımlılıklar ---
 var input_field: TextEdit = null
@@ -38,7 +39,7 @@ var activity: AISidebarAgentActivityPresenter = null
 var interaction: AISidebarAgentInteractionPresenter = null
 var checklist_tracker: AISidebarPlanChecklistTracker = null
 ## AgentContext / AgentRunner (headless testlerde null olabilir).
-var context = null
+var context: AISidebarAgentContext = null
 var runner: AISidebarAgentRunner = null
 ## func(comp: Control) — bileşeni message stream'e ekler.
 var add_component: Callable = func(_c): pass

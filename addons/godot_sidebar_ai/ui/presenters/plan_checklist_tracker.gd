@@ -6,6 +6,7 @@ extends RefCounted
 ## Checklist bileşenini oluşturmak ve stream'e eklemek ChatDock'un işidir; bu sınıf yalnızca günceller.
 
 const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 
 const MUTATING_TOOLS = ["create_or_update_script", "replace_file_content", "write_files", "create_scene", "save_scene", "delete_file", "delete_node", "add_node"]
 const VERIFYING_TOOLS = ["validate_script", "play_game", "get_runtime_errors"]
@@ -13,7 +14,7 @@ const VERIFY_KEYWORDS = ["valid", "test", "verif", "doğrul", "kontrol", "check"
 
 var checklist: AISidebarTaskChecklist = null
 ## Snapshot'ların yazılacağı AgentContext (null ise snapshot atlanır).
-var context = null
+var context: AISidebarAgentContext = null
 ## Son görülen tool argümanları (tool_completed argüman taşımadığı için).
 var _last_tool_args: Dictionary = {}
 

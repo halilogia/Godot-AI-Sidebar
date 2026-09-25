@@ -16,6 +16,8 @@ const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialo
 const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd")
 const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_activity_presenter.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 
 ## func(comp: Control) — bileşeni message stream'e ekler.
 var add_component: Callable = func(_c): pass
@@ -29,9 +31,9 @@ var stream: AISidebarAgentStreamPresenter = null
 var activity: AISidebarAgentActivityPresenter = null
 var checklist_tracker: AISidebarPlanChecklistTracker = null
 ## Transcript kaynağı olan AgentContext (headless testlerde null olabilir).
-var context = null
+var context: AISidebarAgentContext = null
 ## Kararların iletildiği AgentRunner (headless testlerde null olabilir).
-var runner = null
+var runner: AISidebarAgentRunner = null
 var change_set_dialog: AISidebarChangeSetDialog = null
 
 var approval_card: AISidebarApprovalCard = null

@@ -320,13 +320,13 @@
     "unsafe_call_argument": 8
   },
   "ui/controllers/chat_export_actions.gd": {
-    "untyped_declaration": 32,
-    "unsafe_method_access": 18,
+    "untyped_declaration": 31,
+    "unsafe_method_access": 10,
     "unsafe_call_argument": 13
   },
   "ui/controllers/chat_session_store.gd": {
-    "untyped_declaration": 11,
-    "unsafe_method_access": 22,
+    "untyped_declaration": 10,
+    "unsafe_method_access": 10,
     "unsafe_call_argument": 10
   },
   "ui/controllers/model_bar_controller.gd": {
@@ -334,9 +334,9 @@
     "unsafe_call_argument": 8
   },
   "ui/controllers/task_controller.gd": {
-    "untyped_declaration": 47,
-    "unsafe_method_access": 16,
-    "unsafe_call_argument": 33,
+    "untyped_declaration": 46,
+    "unsafe_method_access": 6,
+    "unsafe_call_argument": 37,
     "unsafe_cast": 1
   },
   "ui/dialogs/change_set_dialog.gd": {
@@ -362,14 +362,14 @@
     "unsafe_call_argument": 11
   },
   "ui/presenters/agent_activity_presenter.gd": {
-    "untyped_declaration": 38,
-    "unsafe_method_access": 22,
-    "unsafe_call_argument": 25,
+    "untyped_declaration": 37,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 26,
     "unsafe_cast": 2
   },
   "ui/presenters/agent_interaction_presenter.gd": {
-    "untyped_declaration": 25,
-    "unsafe_method_access": 42,
+    "untyped_declaration": 23,
+    "unsafe_method_access": 15,
     "unsafe_call_argument": 7,
     "unsafe_cast": 2
   },
@@ -383,8 +383,7 @@
     "unsafe_call_argument": 3
   },
   "ui/presenters/plan_checklist_tracker.gd": {
-    "untyped_declaration": 15,
-    "unsafe_method_access": 2,
+    "untyped_declaration": 14,
     "unsafe_call_argument": 5,
     "unsafe_cast": 4
   },

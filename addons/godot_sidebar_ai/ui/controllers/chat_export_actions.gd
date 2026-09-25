@@ -10,8 +10,9 @@ const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/ch
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 
-var agent_context = null
+var agent_context: AISidebarAgentContext = null
 ## Aktif ChatSession'ı döndürür (oturum değiştikçe güncel kalsın diye callable).
 var get_session: Callable = func(): return null
 var status_badge: Label = null

@@ -17,6 +17,7 @@ const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 
 ## func(comp: Control) — bileşeni message stream'e ekler.
 var add_component: Callable = func(_c): pass
@@ -31,7 +32,7 @@ var stream: AISidebarAgentStreamPresenter = null
 ## Onaylı plan checklist'ini tool olaylarıyla ilerletir.
 var checklist_tracker: AISidebarPlanChecklistTracker = null
 ## Transcript kaynağı olan AgentContext (headless testlerde null olabilir).
-var context = null
+var context: AISidebarAgentContext = null
 
 var group: AISidebarActivityGroup = null
 var runtime_card: AISidebarRuntimeCard = null
