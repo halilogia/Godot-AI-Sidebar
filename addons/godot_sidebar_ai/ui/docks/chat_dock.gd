@@ -45,6 +45,7 @@ const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_t
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/components/welcome_card.gd")
 const AISidebarChatDockTheme = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock_theme.gd")
+const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -1023,7 +1024,7 @@ func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 						if tc is Dictionary:
 							var fn = tc.get("name", "")
 							var args = tc.get("arguments", {})
-							grp.add_activity("✓", _get_human_tool_title(fn, args), 100, JSON.stringify(args))
+							grp.add_activity("✓", AISidebarToolPresentation.human_title(fn, args), 100, JSON.stringify(args))
 					grp.complete_group()
 					_add_stream_component(grp)
 					
@@ -1735,20 +1736,6 @@ func _record_checklist_snapshot() -> void:
 		"stop_reason": _current_checklist.stop_reason.left(200),
 	})
 
-func _build_tech_details(tool_name: String, args: Dictionary, result: Dictionary) -> String:
-	var args_txt = AISidebarActivityGroup.redact_secrets(JSON.stringify(args))
-	var res_txt = AISidebarActivityGroup.redact_secrets(JSON.stringify(result))
-	if args_txt.length() > 1200:
-		args_txt = args_txt.left(1200) + "..."
-	if res_txt.length() > 1200:
-		res_txt = res_txt.left(1200) + "..."
-	return "tool: " + tool_name + "\nargs: " + args_txt + "\nresult: " + res_txt
-
-func _extract_tool_error(result: Dictionary) -> String:
-	# Gerçek hüküm helper'dan (outer ok + payload fail durumunu yakalar).
-	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
-	return str(outcome["error"])
-
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_current_assistant_bubble = null
 	# ask_user / propose_plan kart olarak gösterilir; activity satırı şişirmesin.
@@ -1756,7 +1743,7 @@ func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 		return
 	var grp = _ensure_activity_group()
 	grp.set_expanded(true)
-	var human_title = _get_human_tool_title(tool_name, args)
+	var human_title = AISidebarToolPresentation.human_title(tool_name, args)
 	var details = "tool: " + tool_name + "\nargs: " + AISidebarActivityGroup.redact_secrets(JSON.stringify(args))
 	if details.length() > 1500:
 		details = details.left(1500) + "..."
@@ -1781,7 +1768,7 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
 	var is_ok = bool(outcome["success"])
 	var icon = "•" if is_deferred else ("✓" if is_ok else "✕")
-	var human_title = _get_human_tool_title(tool_name, {})
+	var human_title = AISidebarToolPresentation.human_title(tool_name, {})
 	var msg = str(result.get("message", "")).strip_edges()
 	if not msg.is_empty() and msg.length() < 200 and not msg.contains("\"tool_calls\""):
 		human_title = msg
@@ -1789,15 +1776,15 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if _activity_tool_start_msec > 0:
 		elapsed = Time.get_ticks_msec() - _activity_tool_start_msec
 	_activity_tool_start_msec = 0
-	var err_summary = "" if is_ok else _extract_tool_error(result)
-	var details = _build_tech_details(tool_name, {}, result)
+	var err_summary = "" if is_ok else AISidebarToolPresentation.tool_error(result)
+	var details = AISidebarToolPresentation.tech_details(tool_name, {}, result)
 	if _activity_running_idx >= 0 and _activity_running_tool == tool_name and _activity_running_idx < grp.get_item_count():
 		grp.update_activity(_activity_running_idx, icon, human_title, elapsed, details, err_summary)
 	else:
 		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
 	_activity_running_idx = -1
 	_activity_running_tool = ""
-	var action_base = _get_human_tool_title(tool_name, {})
+	var action_base = AISidebarToolPresentation.human_title(tool_name, {})
 	var action_line = icon + " " + action_base
 	if not msg.is_empty() and msg != action_base:
 		action_line += " — " + str(msg.split("\n")[0]).left(120)
@@ -1807,7 +1794,7 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 		_checklist_on_tool_done(tool_name, is_ok, err_summary)
 	if agent_context:
 		var completed_data = {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500), "duration_ms": elapsed}
-		var shot_path = _screenshot_image_path(tool_name, result)
+		var shot_path = AISidebarToolPresentation.screenshot_image_path(tool_name, result)
 		if not shot_path.is_empty():
 			completed_data["has_image"] = true
 			completed_data["image_path"] = shot_path.left(300)
@@ -1815,25 +1802,9 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 		agent_context.get_transcript().record("activity", {"icon": icon, "title": (human_title + ("" if is_ok else (" — Error: " + err_summary))).left(300)})
 	_show_screenshot_preview(tool_name, result)
 
-## Başarılı screenshot sonucu varsa image path'ini döndürür (transcript + preview).
-func _screenshot_image_path(tool_name: String, result: Dictionary) -> String:
-	if tool_name != "take_runtime_screenshot" and tool_name != "take_viewport_screenshot" and tool_name != "take_editor_screenshot":
-		return ""
-	if not bool(result.get("success", false)):
-		return ""
-	var data = result.get("data", {})
-	if not (data is Dictionary):
-		return ""
-	if bool(data.get("has_vision_data", false)):
-		return str(data.get("path", ""))
-	# Editor screenshot yalnızca path döner; dosya diskte varsa preview kurulabilir.
-	if tool_name == "take_editor_screenshot" and FileAccess.file_exists(str(data.get("path", ""))):
-		return str(data.get("path", ""))
-	return ""
-
 ## AI screenshot'u chatte thumbnail kart olarak gösterir.
 func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
-	var shot_path = _screenshot_image_path(tool_name, result)
+	var shot_path = AISidebarToolPresentation.screenshot_image_path(tool_name, result)
 	if shot_path.is_empty():
 		return
 	var data = result.get("data", {}) as Dictionary
@@ -1861,51 +1832,6 @@ func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
 	var card = AISidebarScreenshotCard.new(vi, kind, capable)
 	card.meta_clicked.connect(_on_meta_clicked)
 	_add_stream_component(card)
-
-func _get_human_tool_title(tool_name: String, args: Dictionary) -> String:
-	match tool_name:
-		"create_or_update_script":
-			var p = args.get("file_path", "")
-			return "Updated " + p.get_file() if not p.is_empty() else "Updated script"
-		"write_files":
-			var f_arr = args.get("files", [])
-			return "Batch wrote " + str(f_arr.size()) + " files"
-		"create_scene":
-			var sp = args.get("scene_path", "")
-			return "Created scene " + sp.get_file()
-		"save_scene":
-			return "Saved active scene"
-		"analyze_project":
-			return "Inspected project structure"
-		"get_project_files":
-			return "Scanned project files"
-		"read_script":
-			return "Read script: " + args.get("file_path", "").get_file()
-		"validate_script":
-			return "Validated GDScript source"
-		"play_game":
-			return "Launched game instance"
-		"stop_game":
-			return "Stopped running game"
-		"get_runtime_errors":
-			return "Checked runtime logs"
-		"delete_node":
-			return "Deleted node: " + str(args.get("node_path", ""))
-		"replace_file_content":
-			var rp = str(args.get("file_path", ""))
-			return "Updated " + rp.get_file() if not rp.is_empty() else "Updated script"
-		"read_file":
-			return "Read file: " + str(args.get("file_path", "")).get_file()
-		"list_files":
-			return "Listed files: " + str(args.get("directory", ""))
-		"search_tools":
-			return "Searched available tools"
-		"ask_user":
-			return "Asked clarification"
-		"propose_plan":
-			return "Proposed implementation plan"
-		_:
-			return str(tool_name).replace("_", " ")
 
 func _on_agent_clarification_requested(question: String, options: Array, clarification_id: String) -> void:
 	_current_assistant_bubble = null
@@ -2153,13 +2079,6 @@ func report_task_stop(stop_reason: String, keep_open: bool = true) -> void:
 	else:
 		_current_activity_group = null
 
-func is_task_limit_error(err_msg: String) -> bool:
-	var s = err_msg.to_lower()
-	return s.contains("limit") or s.contains("maksimum ajan ad")
-
-func format_limit_stop_reason(current_step: int, max_steps: int) -> String:
-	return "Tool-call limit reached: " + str(current_step) + "/" + str(max_steps)
-
 func _on_agent_error(err_msg: String) -> void:
 	_current_assistant_bubble = null
 	_current_reasoning_card = null
@@ -2174,7 +2093,7 @@ func _on_agent_error(err_msg: String) -> void:
 	# Stop/fail sonrası kaldığı noktadan devam için checkpoint üret.
 	_refresh_pause_checkpoint()
 	if _current_activity_group:
-		if is_task_limit_error(err_msg):
+		if AISidebarToolPresentation.is_task_limit_error(err_msg):
 			var grp = _current_activity_group
 			grp.add_activity("✕", "Task stopped\nError: " + AISidebarActivityGroup.summarize_error(err_msg), 0, "stop_reason: " + err_msg.left(500))
 			grp.set_stop_reason(err_msg)
