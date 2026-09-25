@@ -63,12 +63,7 @@ static func is_tool_call_envelope(raw_text: String) -> bool:
 		txt = txt.substr(first_nl + 1).strip_edges()
 		if txt.ends_with("```"):
 			txt = txt.substr(0, txt.length() - 3).strip_edges()
-	if not txt.begins_with("{"):
-		return false
-	var parsed = JSON.parse_string(txt)
-	if parsed is Dictionary and parsed.has("tool_calls") and parsed["tool_calls"] is Array:
-		return true
-	return false
+	return _is_tool_calls_json(txt)
 
 ## Metinden tool-call zarflarini cikarir; gercek asistan metnini korur.
 ## drop_incomplete_tail: henuz kapanmamis (streaming sirasinda bolunmus) zarf
@@ -97,10 +92,16 @@ static func strip_tool_call_envelopes(raw_text: String, drop_incomplete_tail: bo
 		txt = _drop_incomplete_fence_tail(txt)
 	return txt
 
+## Metin bir {"tool_calls": [...]} nesnesi mi? Kod blokları (dosya ağacı, GDScript) çoğunlukla
+## JSON değildir ve akış sırasında her parçada kontrol edilir: JSON.parse_string başarısızlıkta
+## motor çıktısına ERROR bastığı için sessiz JSON.parse kullanılır ve ucuz ön eleme yapılır.
 static func _is_tool_calls_json(s: String) -> bool:
-	if s.is_empty():
+	if not s.begins_with("{") or not s.contains("tool_calls"):
 		return false
-	var parsed = JSON.parse_string(s)
+	var json := JSON.new()
+	if json.parse(s) != OK:
+		return false
+	var parsed = json.data
 	return parsed is Dictionary and parsed.has("tool_calls") and parsed["tool_calls"] is Array
 
 static func _strip_bare_envelopes(txt: String, drop_incomplete: bool) -> String:
