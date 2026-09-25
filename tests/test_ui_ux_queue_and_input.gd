@@ -195,16 +195,15 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 9 (agent_runner_initial_vision_inputs) failed: sent_imgs=" + str(mock_p2.last_sent_images.size()) + " ctx=" + str(ctx2.messages))
 
-	# Test 10: Queueing item with vision_inputs
-	var queue_with_vi: Array[Dictionary] = []
-	var q_item = {
-		"id": "q_img",
-		"prompt": "Analyze screenshot",
-		"vision_inputs": [vi]
-	}
-	queue_with_vi.append(q_item)
-	var popped_q = queue_with_vi.pop_front()
-	if popped_q.has("vision_inputs") and popped_q["vision_inputs"].size() == 1:
+	# Test 10: Queueing item with vision_inputs (gerçek MessageQueuePanel)
+	var vq = AISidebarMessageQueuePanel.new()
+	vq.enqueue("Analyze screenshot", "Analyze screenshot", [vi])
+	vq.enqueue("No image", "No image")
+	var popped_q = vq.pop_next()
+	var popped_plain = vq.pop_next()
+	var vq_empty = vq.count() == 0
+	vq.free()
+	if popped_q.get("vision_inputs", []) == [vi] and popped_q.get("prompt", "") == "Analyze screenshot" and not popped_plain.has("vision_inputs") and vq_empty:
 		passed += 1
 	else:
 		failed += 1

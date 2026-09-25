@@ -7,6 +7,16 @@ const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/c
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
+const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
+const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
+const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
+
+class ScriptedProvider extends AISidebarAIProvider:
+	var responses: Array = []
+	func send_chat(_messages: Array, _tools_schema: Array) -> void:
+		if responses.size() > 0:
+			var r = responses.pop_front()
+			response_received.emit(r.get("content", ""), r.get("thinking", ""), r.get("tool_calls", []))
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -118,42 +128,66 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 8 (export_loaded_chat) failed.")
 		
-	# Test 9: queue_isolated_between_chats
-	var mock_queue: Array[Dictionary] = [
-		{"id": "q1", "prompt": "Sıradaki prompt 1"},
-		{"id": "q2", "prompt": "Sıradaki prompt 2"}
-	]
-	# Sohbet geçişi veya yeni sohbet simülasyonu
-	mock_queue.clear()
-	if mock_queue.is_empty():
+	# Gerçek dock + runner (editör yolundaki bağlama; dock ağaçta değil).
+	var dock = ChatDockScene.instantiate()
+	dock._ready()
+	dock._auto_scroll_enabled = false
+	var host = AISidebarAgentHost.new()
+	var prov = ScriptedProvider.new()
+	host.set_provider(prov)
+	dock.attach_agent_host(host)
+	var runner = host.runner
+
+	# Test 9: queue_isolated_between_chats — New Chat ve History'den yükleme kuyruğu boşaltır
+	dock._queue_panel.enqueue("Sıradaki prompt 1", "Sıradaki prompt 1")
+	dock._queue_panel.enqueue("Sıradaki prompt 2", "Sıradaki prompt 2")
+	dock.history_panel.new_chat_requested.emit()
+	var after_new = dock._queue_panel.count()
+	dock._queue_panel.enqueue("Sıradaki prompt 3", "Sıradaki prompt 3")
+	dock.history_panel.session_selected.emit(session1.id)
+	var after_load = dock._queue_panel.count()
+	if after_new == 0 and after_load == 0 and dock._sessions.is_current(session1.id):
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 9 (queue_isolated_between_chats) failed.")
-		
-	# Test 10: approval_state_not_replayed
-	var runner_mock = AISidebarAgentRunner.new()
-	# Eski sohbet yüklendiğinde runner IDLE olmalı ve approval tetiklenmemeli
-	if runner_mock.current_state == AISidebarAgentRunner.AgentState.IDLE and runner_mock.pending.tool_name.is_empty():
+		errors.append("Test 9 (queue_isolated_between_chats) failed: after_new=%d after_load=%d" % [after_new, after_load])
+
+	# Test 10: approval_state_not_replayed — onay beklerken başka sohbete geçmek bekleyen kararı düşürür
+	dock.history_panel.new_chat_requested.emit()
+	prov.responses = [{"content": "", "thinking": "", "tool_calls": [{"name": "delete_node", "arguments": {"node_path": "TempNode"}}]}]
+	dock.input_field.text = "Delete TempNode"
+	dock._tasks.submit_input()
+	var was_waiting = runner.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL and runner.pending.has_approval()
+	dock.history_panel.session_selected.emit(session1.id)
+	if was_waiting and not runner.pending.has_approval() and runner.current_state != AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL and not runner.is_running():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 10 (approval_state_not_replayed) failed.")
-		
-	# Test 11: clarification_state_not_replayed
-	if runner_mock.pending.clarification_id.is_empty() and runner_mock.current_state != AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION:
+		errors.append("Test 10 (approval_state_not_replayed) failed: was_waiting=%s state=%s" % [str(was_waiting), str(runner.current_state)])
+
+	# Test 11: clarification_state_not_replayed — soru beklerken yeni sohbet bekleyen soruyu düşürür
+	prov.responses = [{"content": "", "thinking": "", "tool_calls": [{"name": "ask_user", "arguments": {"question": "Hangisi?", "options": ["A", "B"]}}]}]
+	dock.input_field.text = "Belirsiz istek"
+	dock._tasks.submit_input()
+	var was_asking = runner.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION and runner.pending.has_clarification()
+	dock.history_panel.new_chat_requested.emit()
+	if was_asking and not runner.pending.has_clarification() and runner.current_state != AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION and not runner.is_running():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 11 (clarification_state_not_replayed) failed.")
-		
-	# Test 12: runtime_state_not_replayed
-	if runner_mock.current_state != AISidebarAgentRunner.AgentState.DEBUGGING and runner_mock.current_state != AISidebarAgentRunner.AgentState.RUNNING_GAME:
+		errors.append("Test 11 (clarification_state_not_replayed) failed: was_asking=%s state=%s" % [str(was_asking), str(runner.current_state)])
+
+	# Test 12: runtime_state_not_replayed — yüklenen eski sohbet runner'ı çalışma/runtime durumuna sokmaz
+	dock.history_panel.session_selected.emit(session1.id)
+	var rs = runner.current_state
+	if not runner.is_running() and rs != AISidebarAgentRunner.AgentState.DEBUGGING and rs != AISidebarAgentRunner.AgentState.RUNNING_GAME and rs != AISidebarAgentRunner.AgentState.WAITING_FOR_PLAN_APPROVAL:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 12 (runtime_state_not_replayed) failed.")
-		
+		errors.append("Test 12 (runtime_state_not_replayed) failed: state=" + str(rs))
+	dock.free()
+	host.free()
+
 	# Test 13: HistoryPanel UI Component
 	var panel = AISidebarHistoryPanel.new()
 	panel._ready()
