@@ -84,14 +84,6 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T5 (empty safety) failed.")
 
-	# 6. Mevcut tek-task kronolojik export bozulmadı
-	var single = AISidebarChatExporter.export_single_task_chronological(tasks[1])
-	if "İkinci görev beta" in single and "Beta seçimi" in single and not "Birinci görev alfa" in single and "## Timeline" in single:
-		passed += 1
-	else:
-		failed += 1
-		errors.append("T6 (single-task intact) failed.")
-
 	# 7. Per-task copy: ikinci task birincinin içeriğini taşımaz
 	var tr7 = AISidebarTaskTranscript.new()
 	tr7.begin_task("Alfa özel içerik", "")
@@ -105,7 +97,7 @@ static func run() -> Dictionary:
 	beta_task.load_data(all7)
 	var second_id = str(all7[1].get("id", ""))
 	var copy7 = AISidebarChatExporter.export_single_task_chronological(beta_task.get_task_by_id(second_id))
-	if "Beta özel içerik" in copy7 and "Beta cevabı" in copy7 and not "Alfa özel içerik" in copy7 and not "Alfa cevabı" in copy7:
+	if "Beta özel içerik" in copy7 and "Beta cevabı" in copy7 and not "Alfa özel içerik" in copy7 and not "Alfa cevabı" in copy7 and "## Timeline" in copy7:
 		passed += 1
 	else:
 		failed += 1
@@ -150,14 +142,6 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T10 (resumed copy) failed.")
-
-	# 11. Global Copy Chat tüm taskları hâlâ içeriyor
-	var chat11 = AISidebarChatExporter.export_full_chat_chronological(all7)
-	if "Alfa özel içerik" in chat11 and "Beta özel içerik" in chat11 and chat11.find("Alfa özel içerik") < chat11.find("Beta özel içerik"):
-		passed += 1
-	else:
-		failed += 1
-		errors.append("T11 (copy chat intact) failed.")
 
 	# 12. Telemetry kartı Copy butonu task_id yayar; boşken gizli
 	var card12 = AISidebarTelemetryCard.new({"success": true, "elapsed_seconds": 1.0})

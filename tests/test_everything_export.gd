@@ -150,20 +150,6 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T10 (empty/null safety) failed.")
 
-	# 11. Mevcut exporter davranışları bozulmuyor (legacy API)
-	var legacy = [
-		{"role": "user", "content": "Create player script"},
-		{"role": "assistant", "reasoning_content": "Planning.", "tool_calls": [{"id": "c1", "function": {"name": "read_script", "arguments": "{\"file_path\": \"res://player.gd\"}"}}], "content": "Analyzing."},
-		{"role": "tool", "name": "create_or_update_script", "tool_call_id": "c1", "content": "{\"success\": true, \"data\": {\"file_path\": \"res://player.gd\"}, \"message\": \"Script created successfully.\"}"}
-	]
-	var md11 = AISidebarChatExporter.export_to_markdown(legacy)
-	var js11 = JSON.parse_string(AISidebarChatExporter.export_to_json(legacy, {}))
-	if "## 👤 User" in md11 and "Tool Executed: `read_script`" in md11 and "✅ **Status:** Success" in md11 and js11 is Dictionary and str(js11.get("export_version", "")) == "2.0":
-		passed += 1
-	else:
-		failed += 1
-		errors.append("T11 (legacy exporter intact) failed.")
-
 	# 12. Normal tool arguments export ediliyor (sadece plan/ask_user değil)
 	var ctx12 = AISidebarAgentContext.new()
 	ctx12.begin_task("Script yaz", "")

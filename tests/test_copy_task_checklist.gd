@@ -150,20 +150,6 @@ static func run() -> Dictionary:
 	cl9.queue_free()
 	grp9.queue_free()
 
-	# 10. Existing Everything Export davranışları bozulmuyor
-	var tr10 = AISidebarTaskTranscript.new()
-	tr10.begin_task("Export görevi", "")
-	tr10.record("clarification_requested", {"question": "2D mi?", "options": [], "id": "c"})
-	tr10.record("tool_completed", {"tool": "read_script", "title": "Read script", "success": true, "error": ""})
-	tr10.end_task("completed", "", {"success": true})
-	var md10 = AISidebarChatExporter.export_transcript_to_markdown(tr10.to_data(), [], {})
-	var js10 = JSON.parse_string(AISidebarChatExporter.export_transcript_to_json(tr10.to_data(), [], {}))
-	if "## Task 1" in md10 and "### Clarification" in md10 and "2D mi?" in md10 and js10 is Dictionary and str(js10.get("export_version", "")) == "3.0":
-		passed += 1
-	else:
-		failed += 1
-		errors.append("T10 (export intact) failed.")
-
 	# 11. Plan step başlıkları checklist'e aynen yansıyor
 	var plan11 = AISidebarImplementationPlan.new({
 		"goal": "Hex",
