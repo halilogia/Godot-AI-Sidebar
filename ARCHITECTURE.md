@@ -189,7 +189,7 @@ AgentRunner sinyallerini presenter'lar dinler; görev akışını controller'lar
 * **[`task_transcript.gd`](addons/godot_sidebar_ai/core/chat/task_transcript.gd):** Görev bazlı tam transcript deposu; `agent_context.messages` compact edilse de bu depo ASLA budanmaz ve export'un tek kaynağıdır.
 * **[`task_checkpoint.gd`](addons/godot_sidebar_ai/core/chat/task_checkpoint.gd):** Pause / resume checkpoint modeli; transcript'ten türetilir, "devam et" aynı task'ı kaldığı adımdan sürdürür.
 * **[`chat_exporter.gd`](addons/godot_sidebar_ai/core/chat/chat_exporter.gd):** Konuşmayı, tool çağrılarını, diff'leri, runtime hatalarını ve telemetriyi Markdown + JSON olarak dışa aktarır.
-* **[`i18n.gd`](addons/godot_sidebar_ai/core/i18n/i18n.gd):** TR / EN sözlüğü ve `get_text(key, params)`.
+* **[`i18n.gd`](addons/godot_sidebar_ai/core/i18n/i18n.gd):** TR / EN çevirisi: `get_text(key, params)` (config'teki dil), `translate(lang, key, params)` (config'e dokunmaz), `get_keys(lang)`. Metinler [`i18n/tr.json`](addons/godot_sidebar_ai/i18n/tr.json) ve [`i18n/en.json`](addons/godot_sidebar_ai/i18n/en.json) kaynak dosyalarındadır; ilk kullanımda okunup önbelleğe alınır. Denetimler: `tests/test_i18n.gd`.
 
 ### 3. 🛠️ Domain Katmanı (`core/tools/`, `core/mutations/`, `core/security/`, `core/verification/`)
 * **[`script_tools.gd`](addons/godot_sidebar_ai/core/tools/primitive/script_tools.gd):** Cerrahi kod düzenleme (`replace_file_content`), toplu dosya yazma (`write_files`) ve silme (`delete_file`).
