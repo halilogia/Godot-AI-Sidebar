@@ -14,22 +14,18 @@ const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
-const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
 
 # Modüler UI Bileşenleri
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 const AISidebarChangesCard = preload("res://addons/godot_sidebar_ai/ui/components/changes_card.gd")
 const AISidebarApprovalCard = preload("res://addons/godot_sidebar_ai/ui/components/approval_card.gd")
-const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
 const AISidebarPlanCard = preload("res://addons/godot_sidebar_ai/ui/components/plan_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
-const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
-const AISidebarScreenshotCard = preload("res://addons/godot_sidebar_ai/ui/components/screenshot_card.gd")
 const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
@@ -42,13 +38,13 @@ const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_t
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/components/welcome_card.gd")
 const AISidebarChatDockTheme = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock_theme.gd")
-const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
 const AISidebarChatExportActions = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_export_actions.gd")
 const AISidebarChatSessionStore = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_session_store.gd")
 const AISidebarSessionReplayRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/session_replay_renderer.gd")
 const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd")
+const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_activity_presenter.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -106,14 +102,10 @@ var _composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
 var _stream: AISidebarAgentStreamPresenter = null
 
-var _current_activity_group: AISidebarActivityGroup = null
+## Activity grubu, tool satırları, doğrulama/runtime/debug ve screenshot önizlemesi.
+var _activity: AISidebarAgentActivityPresenter = AISidebarAgentActivityPresenter.new()
 ## Onaylı plan checklist'inin tool olaylarıyla ilerletilmesi.
 var _checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
-## Running satırının indeksi (tool_completed geldiğinde yerinde güncellenir, satır çoğalmaz).
-var _activity_running_idx: int = -1
-var _activity_running_tool: String = ""
-var _activity_tool_start_msec: int = 0
-var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
 var _current_plan_card: AISidebarPlanCard = null
 var _auto_scroll_enabled: bool = true
@@ -172,8 +164,14 @@ func _ready() -> void:
 	_stream.on_meta_clicked = _on_meta_clicked
 	_stream.set_status = set_status_badge
 	_stream.scroll_if_following = _scroll_if_following
-	_stream.answer_text_started.connect(_close_activity_group)
+	_stream.answer_text_started.connect(_activity.close_group)
 	add_child(_stream)
+	_activity.add_component = _add_stream_component
+	_activity.on_meta_clicked = _on_meta_clicked
+	_activity.set_status = set_status_badge
+	_activity.supports_vision = func(): return provider != null and provider.has_method("supports_vision") and provider.supports_vision()
+	_activity.stream = _stream
+	_activity.checklist_tracker = _checklist_tracker
 	_setup_history_panel()
 	_setup_queue_ui()
 	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
@@ -192,6 +190,7 @@ func _ready() -> void:
 	_sessions.context = agent_context
 	_export_actions.agent_context = agent_context
 	_checklist_tracker.context = agent_context
+	_activity.context = agent_context
 	_setup_provider()
 	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
 	
@@ -200,19 +199,19 @@ func _ready() -> void:
 	agent_runner.thinking_received.connect(_stream.on_thinking_received)
 	agent_runner.chunk_received.connect(_stream.on_chunk_received)
 	agent_runner.text_received.connect(_stream.on_text_received)
-	agent_runner.tool_executing.connect(_on_agent_tool_executing)
-	agent_runner.tool_completed.connect(_on_agent_tool_completed)
+	agent_runner.tool_executing.connect(_activity.on_tool_executing)
+	agent_runner.tool_completed.connect(_activity.on_tool_completed)
 	agent_runner.approval_requested.connect(_on_agent_approval_requested)
 	agent_runner.clarification_requested.connect(_on_agent_clarification_requested)
 	agent_runner.plan_proposed.connect(_on_agent_plan_proposed)
 	agent_runner.changes_applied.connect(_on_agent_changes_applied)
-	agent_runner.verification_started.connect(_on_agent_verification_started)
-	agent_runner.verification_completed.connect(_on_agent_verification_completed)
-	agent_runner.runtime_observation_received.connect(_on_agent_runtime_observation)
-	agent_runner.debugging_started.connect(_on_agent_debugging_started)
+	agent_runner.verification_started.connect(_activity.on_verification_started)
+	agent_runner.verification_completed.connect(_activity.on_verification_completed)
+	agent_runner.runtime_observation_received.connect(_activity.on_runtime_observation)
+	agent_runner.debugging_started.connect(_activity.on_debugging_started)
 	agent_runner.error_occurred.connect(_on_agent_error)
 	agent_runner.task_completed.connect(_on_agent_task_completed)
-	agent_runner.step_progress.connect(_on_agent_step_progress)
+	agent_runner.step_progress.connect(_activity.on_step_progress)
 
 	# 2. UI Olayları
 	if new_chat_btn:
@@ -520,12 +519,8 @@ func _clear_ui_stream() -> void:
 	if message_stream:
 		for child in message_stream.get_children():
 			child.queue_free()
-	_current_activity_group = null
+	_activity.reset()
 	_checklist_tracker.reset()
-	_activity_running_idx = -1
-	_activity_running_tool = ""
-	_activity_tool_start_msec = 0
-	_current_runtime_card = null
 	_current_approval_card = null
 	_current_plan_card = null
 	_stream.reset()
@@ -721,10 +716,9 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	_hide_welcome_card()
 	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
 	last_user_prompt = final_display
-	_current_activity_group = null
+	_activity.begin_task()
 	_stream.begin_task()
 	_checklist_tracker.reset()
-	_current_runtime_card = null
 	_current_approval_card = null
 	_is_user_stopped = false
 	_stream.user_vision_inputs = vision_inputs.duplicate()
@@ -823,132 +817,19 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 	update_ui_language()
 	_stream.on_state_changed(new_state, state_desc)
 
-## Cevap metni başladı: açık activity grubu tamamlanır (sonraki tool yeni grup açar).
-func _close_activity_group() -> void:
-	if _current_activity_group:
-		_current_activity_group.complete_group()
-		_current_activity_group = null
-
-func _ensure_activity_group() -> AISidebarActivityGroup:
-	if not _current_activity_group or not is_instance_valid(_current_activity_group) or not _current_activity_group.is_active:
-		_current_activity_group = AISidebarActivityGroup.new(true)
-		_current_activity_group.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(_current_activity_group)
-		_activity_running_idx = -1
-		_activity_running_tool = ""
-	return _current_activity_group
-
-func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
-	_stream.detach_bubble()
-	# ask_user / propose_plan kart olarak gösterilir; activity satırı şişirmesin.
-	if tool_name == "ask_user" or tool_name == "propose_plan":
-		return
-	var grp = _ensure_activity_group()
-	grp.set_expanded(true)
-	var human_title = AISidebarToolPresentation.human_title(tool_name, args)
-	var details = "tool: " + tool_name + "\nargs: " + AISidebarActivityGroup.redact_secrets(JSON.stringify(args))
-	if details.length() > 1500:
-		details = details.left(1500) + "..."
-	_activity_running_tool = tool_name
-	_activity_tool_start_msec = Time.get_ticks_msec()
-	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
-	_checklist_tracker.on_tool_start(tool_name, args)
-	_stream.set_action_summary(human_title)
-	if agent_context:
-		agent_context.get_transcript().record("tool_executing", {"tool": tool_name, "title": human_title.left(200), "args": AISidebarActivityGroup.redact_secrets(JSON.stringify(args)).left(800)})
-		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Running " + human_title.left(200)})
-
-func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
-	if tool_name == "ask_user" or tool_name == "propose_plan":
-		return
-	var grp = _ensure_activity_group()
-	var err_code = ""
-	if result.get("error") is Dictionary:
-		err_code = str((result.get("error") as Dictionary).get("code", ""))
-	var is_deferred = err_code.begins_with("DEFERRED")
-	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
-	var is_ok = bool(outcome["success"])
-	var icon = "•" if is_deferred else ("✓" if is_ok else "✕")
-	var human_title = AISidebarToolPresentation.human_title(tool_name, {})
-	var msg = str(result.get("message", "")).strip_edges()
-	if not msg.is_empty() and msg.length() < 200 and not msg.contains("\"tool_calls\""):
-		human_title = msg
-	var elapsed = 100
-	if _activity_tool_start_msec > 0:
-		elapsed = Time.get_ticks_msec() - _activity_tool_start_msec
-	_activity_tool_start_msec = 0
-	var err_summary = "" if is_ok else AISidebarToolPresentation.tool_error(result)
-	var details = AISidebarToolPresentation.tech_details(tool_name, {}, result)
-	if _activity_running_idx >= 0 and _activity_running_tool == tool_name and _activity_running_idx < grp.get_item_count():
-		grp.update_activity(_activity_running_idx, icon, human_title, elapsed, details, err_summary)
-	else:
-		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
-	_activity_running_idx = -1
-	_activity_running_tool = ""
-	var action_base = AISidebarToolPresentation.human_title(tool_name, {})
-	var action_line = icon + " " + action_base
-	if not msg.is_empty() and msg != action_base:
-		action_line += " — " + str(msg.split("\n")[0]).left(120)
-	_stream.set_action_summary(action_line)
-	# Ertelenen çağrı hiç çalışmadı: checklist'i kirletme, sadece activity'de göster.
-	if not is_deferred:
-		_checklist_tracker.on_tool_done(tool_name, is_ok, err_summary)
-	if agent_context:
-		var completed_data = {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500), "duration_ms": elapsed}
-		var shot_path = AISidebarToolPresentation.screenshot_image_path(tool_name, result)
-		if not shot_path.is_empty():
-			completed_data["has_image"] = true
-			completed_data["image_path"] = shot_path.left(300)
-		agent_context.get_transcript().record("tool_completed", completed_data)
-		agent_context.get_transcript().record("activity", {"icon": icon, "title": (human_title + ("" if is_ok else (" — Error: " + err_summary))).left(300)})
-	_show_screenshot_preview(tool_name, result)
-
-## AI screenshot'u chatte thumbnail kart olarak gösterir.
-func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
-	var shot_path = AISidebarToolPresentation.screenshot_image_path(tool_name, result)
-	if shot_path.is_empty():
-		return
-	var data = result.get("data", {}) as Dictionary
-	var vi = null
-	if not str(data.get("base64", "")).is_empty():
-		vi = AISidebarVisionInput.new(
-			shot_path,
-			str(data.get("base64", "")),
-			int(data.get("width", 0)),
-			int(data.get("height", 0))
-		)
-	else:
-		vi = AISidebarVisionInput.from_file(shot_path)
-	if vi == null or vi.image_data_base64.is_empty():
-		return
-	var kind = str(data.get("capture_target", ""))
-	if kind.is_empty():
-		if tool_name == "take_viewport_screenshot":
-			kind = "editor_viewport"
-		elif tool_name == "take_editor_screenshot":
-			kind = "editor"
-		else:
-			kind = "runtime_viewport"
-	var capable = provider != null and provider.has_method("supports_vision") and provider.supports_vision()
-	var card = AISidebarScreenshotCard.new(vi, kind, capable)
-	card.meta_clicked.connect(_on_meta_clicked)
-	_add_stream_component(card)
-
 func _on_agent_clarification_requested(question: String, options: Array, clarification_id: String) -> void:
 	_stream.detach_bubble()
-	_activity_running_idx = -1
-	_activity_running_tool = ""
-	if _current_activity_group:
-		_current_activity_group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
-		_current_activity_group.complete_group()
-		_current_activity_group = null
+	_activity.clear_running()
+	if _activity.group:
+		_activity.group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
+		_activity.close_group()
 	_stream.set_action_summary("Question: " + question.left(120))
 	if agent_context:
 		agent_context.get_transcript().record("clarification_requested", {"question": question.left(500), "options": options.duplicate(), "id": clarification_id})
 
 	var card = AISidebarClarificationCard.new(question, options)
 	card.response_submitted.connect(func(ans: String):
-		var grp = _ensure_activity_group()
+		var grp = _activity.ensure_group()
 		grp.add_activity("✓", "User selected: " + AISidebarActivityGroup.summarize_error(ans, 120), 50, "answer: " + str(ans).left(500))
 		if agent_context:
 			agent_context.get_transcript().record("clarification_answered", {"answer": str(ans).left(500)})
@@ -1002,9 +883,7 @@ func _on_reject_pressed() -> void:
 ## kullanıcı onayı bekleniyor.
 func _on_agent_plan_proposed(plan) -> void:
 	_stream.detach_bubble()
-	if _current_activity_group:
-		_current_activity_group.complete_group()
-		_current_activity_group = null
+	_activity.close_group()
 
 	if not guard_plan_card_integrity(plan):
 		return
@@ -1080,57 +959,15 @@ func _on_agent_changes_applied(cs: AISidebarChangeSet) -> void:
 func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
 	if cs:
 		var res = cs.rollback()
-		var grp = _ensure_activity_group()
+		var grp = _activity.ensure_group()
 		if res.get("success", false):
 			grp.add_activity("✓", "Undo successful: changes reverted", 50)
 		else:
 			grp.add_activity("✕", "Undo failed: " + res.get("error", "Error"), 50)
 
-func _on_agent_verification_started(tool_name: String) -> void:
-	var grp = _ensure_activity_group()
-	grp.add_activity("•", "Verifying " + tool_name + "...", -1)
-	_stream.set_action_summary("Verifying " + tool_name)
-	if agent_context:
-		agent_context.get_transcript().record("verification_started", {"tool": tool_name})
-		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Verifying " + tool_name})
-
-func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: String) -> void:
-	var grp = _ensure_activity_group()
-	var icon = "✓" if is_valid else "!"
-	grp.add_activity(icon, "Verification: " + msg, 50)
-	_stream.set_action_summary((icon + " Verification: " + msg).split("\n")[0])
-	if agent_context:
-		agent_context.get_transcript().record("verification_completed", {"tool": tool_name, "valid": is_valid, "message": msg.left(500)})
-		agent_context.get_transcript().record("activity", {"icon": icon, "title": ("Verification: " + msg).left(300)})
-
-func _on_agent_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
-	if not _current_runtime_card:
-		_current_runtime_card = AISidebarRuntimeCard.new()
-		_current_runtime_card.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(_current_runtime_card)
-		
-	if obs.has_errors():
-		_current_runtime_card.add_status("✕", "Runtime Error: " + obs.format_diagnostic_prompt(), "#bf616a")
-	else:
-		_current_runtime_card.add_status("✓", "No runtime errors detected", "#a3be8c")
-	if agent_context:
-		agent_context.get_transcript().record("runtime_observation", {"summary": obs.format_diagnostic_prompt().left(1000), "has_errors": obs.has_errors()})
-
-func _on_agent_debugging_started(summary: String) -> void:
-	var grp = _ensure_activity_group()
-	grp.add_activity("•", "Auto-diagnosing runtime error: " + summary, -1)
-	if agent_context:
-		agent_context.get_transcript().record("debugging_started", {"summary": summary.left(500)})
-
-func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
-	set_status_badge("Step " + str(current_step) + " / " + str(max_steps), AISidebarTheme.COLOR_ACCENT)
-	if _current_activity_group and is_instance_valid(_current_activity_group):
-		_current_activity_group.set_step_progress(current_step, max_steps)
-
 func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_stream.end_task()
-	_activity_running_idx = -1
-	_activity_running_tool = ""
+	_activity.clear_running()
 	var t_ok = bool(metrics.get("success", false))
 	var completion = str(metrics.get("completion", "success" if t_ok else "failed"))
 	var show_ok = t_ok and completion == "success"
@@ -1140,12 +977,7 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	if agent_context and agent_context.get_transcript().has_running_task():
 		var t_status = "completed" if show_ok else ("incomplete" if completion == "incomplete" else "failed")
 		agent_context.end_task(t_status, done_reason, metrics)
-	if _current_activity_group:
-		var stop_reason = str(metrics.get("stop_reason", ""))
-		if not stop_reason.is_empty():
-			_current_activity_group.set_stop_reason(stop_reason)
-		_current_activity_group.complete_group()
-		_current_activity_group = null
+	_activity.finish_task(str(metrics.get("stop_reason", "")))
 		
 	var telemetry_comp = AISidebarTelemetryCard.new(metrics)
 	if agent_context:
@@ -1170,8 +1002,7 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 
 func _on_agent_error(err_msg: String) -> void:
 	_stream.end_task()
-	_activity_running_idx = -1
-	_activity_running_tool = ""
+	_activity.clear_running()
 	_checklist_tracker.finish(false, err_msg)
 	_checklist_tracker.clear_tool_args()
 	if agent_context and agent_context.get_transcript().has_running_task():
@@ -1179,18 +1010,7 @@ func _on_agent_error(err_msg: String) -> void:
 		agent_context.end_task(e_status, err_msg)
 	# Stop/fail sonrası kaldığı noktadan devam için checkpoint üret.
 	_refresh_pause_checkpoint()
-	if _current_activity_group:
-		if AISidebarToolPresentation.is_task_limit_error(err_msg):
-			var grp = _current_activity_group
-			grp.add_activity("✕", "Task stopped\nError: " + AISidebarActivityGroup.summarize_error(err_msg), 0, "stop_reason: " + err_msg.left(500))
-			grp.set_stop_reason(err_msg)
-			grp.complete_group_keep_open(true)
-			# keep_open: limit satırı görünür kalsın diye grup referansı korunur,
-			# sıradaki task yeni grup açar (ensure içinde is_active kontrolü yok;
-			# task_completed / yeni executing yeni grup kurar).
-		else:
-			_current_activity_group.complete_group()
-			_current_activity_group = null
+	_activity.stop_on_error(err_msg)
 		
 	# Hata durumunda veya model reddettiğinde görsel ekinin kaybolmasını önle (P2 UX Fix)
 	if _last_sent_vision_input != null and _composer.attached_vision_input == null:

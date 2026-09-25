@@ -32,7 +32,7 @@ static func _clear_stream(dock) -> void:
 	if dock.message_stream:
 		for child in dock.message_stream.get_children():
 			child.free()
-	dock._current_activity_group = null
+	dock._activity.group = null
 	dock._checklist_tracker.checklist = null
 
 static func run() -> Dictionary:

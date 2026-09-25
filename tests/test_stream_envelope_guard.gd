@@ -26,7 +26,7 @@ static func _hard_clear(dock) -> void:
 		for child in dock.message_stream.get_children():
 			child.free()
 	dock._stream.assistant_bubble = null
-	dock._current_activity_group = null
+	dock._activity.group = null
 	dock._welcome_card = null
 	dock._stream.reset_stream_buffer()
 
