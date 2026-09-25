@@ -87,10 +87,10 @@ Refactor sürerken test silinmez: güvenlik ağı odur. Refactor sırasında yal
 0. ✅ **Düzeltildi (`d5efc41`) — Test runner açığı:** çalışma anında çöken bir paket `[PASS] Unknown (0/0)` sayılıyor, koşu yeşil kalıyordu. Artık FAIL. 1af07d3 bazında gizli çökme yoktu (doğrulandı).
 
 1. **Şüpheli bug — Retry yolu:** `ErrorCard.retry_requested`, `agent_runner.start_task`'ı doğrudan çağırıyor; `_start_task_prompt` atlanıyor. Sonuç olarak `agent_context.begin_task`, mention çözümleme ve checkpoint sıfırlama yapılmıyor olabilir, yani yeniden denenen task transcript/export'ta eksik görünebilir. Test ile doğrulanacak.
-2. **Ölü değişken:** `_stream_is_envelope` hiçbir yerde `true` yapılmıyor.
+2. ✅ **Kaldırıldı — Ölü değişken:** `_stream_is_envelope` hiçbir yerde `true` yapılmıyordu.
 3. **Tekrarlı kontrol:** `_resume_paused_task` içinde `current_session == null` iki kez kontrol ediliyor.
 4. **Tema dışı renkler:** Kuyruk panelinde `Color(0.7, 0.7, 0.7)`, `Color(0.9, 0.4, 0.4)` gibi sabit renkler var (tema token'ı değil).
-5. **Ölü kod:** `report_task_stop` hiçbir yerden çağrılmıyor; `ToolPresentation.format_limit_stop_reason` yalnızca testte kullanılıyor.
+5. ✅ **Kaldırıldı — Ölü kod:** `report_task_stop` hiçbir yerden çağrılmıyordu (1.9b'de yeni birime taşınmadan önce silindi). `ToolPresentation.format_limit_stop_reason` yalnızca testte kullanılıyor; testli yardımcı olduğu için şimdilik korundu.
 6. **Sahte testler (kalan):** `test_ui_ux_queue_and_input.gd` Test 10 hâlâ düz Array üzerinde çalışıyor. Benzer "kendi ifadesini test eden" testler için Faz 3'te tarama yapılacak.
 7. **Doğrulanmış bug — yerel slash komutları kaybolur:** `/help` gibi LLM'siz yanıtlanan komutlar oturuma eklenir ama hemen ardından `save()` mesajları context'ten yeniden kurar ve silinir; History'den yüklenen sohbette görünmezler. Orijinal kodda da vardı (1.7'de `ChatSessionStoreTests` T5 yakaladı ve belgeledi). Düzeltme tasarım kararı ister: context'e eklemek LLM'e geçersiz `command` rolü gönderir. (`/clear`'ın base sabitlemesi 9. madde ile kaldırıldı.)
 8. ✅ **Düzeltildi (`826fc68`) — History replay çökmesi:** yanıtlanmış `ask_user` içeren oturum yüklenince replay var olmayan `card._input_container` alanında çöküyor, sonraki mesajlar/telemetri çizilmiyordu; kart ayrıca `_ready` iki kez çağrıldığı için çift kuruluyordu. Gerçek SceneTree probe'u ile kanıtlandı.

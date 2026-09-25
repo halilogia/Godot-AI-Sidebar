@@ -35,7 +35,6 @@ var agy_preparing: bool = false
 
 var _thinking_seen_this_turn: bool = false
 var _stream_buffer: String = ""
-var _stream_is_envelope: bool = false
 var _thinking_timer: Timer = null
 var _thinking_elapsed_sec: int = 0
 
@@ -182,7 +181,6 @@ func _render_stream_buffer() -> void:
 ## Akış tamponunu sıfırla (yeni metin turu / temizleme).
 func reset_stream_buffer() -> void:
 	_stream_buffer = ""
-	_stream_is_envelope = false
 
 func on_text_received(role: String, text: String) -> void:
 	answer_text_started.emit()

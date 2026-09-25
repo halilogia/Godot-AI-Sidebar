@@ -1168,17 +1168,6 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_check_and_dispatch_next_queue()
 	_last_sent_vision_input = null
 
-## Limit / durma nedenini activity'de görünür satır + başlık olarak işler.
-func report_task_stop(stop_reason: String, keep_open: bool = true) -> void:
-	var grp = _ensure_activity_group()
-	grp.add_activity("✕", "Task stopped\nError: " + AISidebarActivityGroup.summarize_error(stop_reason), 0, "stop_reason: " + stop_reason.left(500))
-	grp.set_stop_reason(stop_reason)
-	grp.complete_group_keep_open(keep_open)
-	if keep_open:
-		_current_activity_group = grp
-	else:
-		_current_activity_group = null
-
 func _on_agent_error(err_msg: String) -> void:
 	_stream.end_task()
 	_activity_running_idx = -1
