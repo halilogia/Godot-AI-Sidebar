@@ -24,7 +24,7 @@
 3. **Her adımdan sonra** typecheck + `test_runner` yeşil olmalı. Kırmızıysa adım geri alınır, yamanmaz.
 4. **Testler iç üyelere dokunuyor** (ChatDock'un ~40 private üyesi: `_on_agent_text_received`, `_current_checklist`…). Taşınan her parça için ilgili testler yeni birime yönlendirilir; eski isimlere geçici delege bırakılmaz.
 5. Yeni dosyalar `preload` ile bağlanır (headless kuralı), `AISidebar` önekini korur.
-6. Çalışma `refactor/*` dalında yürür; her faz sonunda `main`'e birleştirme kullanıcı onayıyla yapılır.
+6. Çalışma biçimi (2026-09-25'ten itibaren, tek geliştirici): doğrulanmış küçük, atomik commit'ler doğrudan `main`'e push'lanır; dal / PR zorunlu değildir. Her commit'ten önce typecheck + tüm testler yeşil olmalı; kırmızı kod `main`'e gitmez (AGENTS.md §8.6). Faz 1–2 `refactor/*` dallarında yürütülüp PR #1–#3 ile birleştirildi.
 
 ## Faz 0 — Hazırlık (küçük, düşük risk)
 

@@ -95,6 +95,7 @@ Aktif plan ve ilerleme: `docs/REFACTOR_PLAN.md`.
 3. **Her adımdan sonra `verify.ps1` yeşil olmalı.** Kırmızıysa adım geri alınır, üstüne yama yapılmaz.
 4. **Testler taşınan birime yönlendirilir.** Eski private isimler için geçici delege bırakılmaz.
 5. Yeni dosyalar `preload` ile bağlanır ve `AISidebar` önekini korur (bkz. §3.3).
+6. **Git çalışma biçimi (tek geliştirici):** Doğrulanmış küçük, atomik commit'ler doğrudan `main`'e push'lanır; dal veya PR zorunlu değildir. Her commit'ten önce typecheck + tüm testler (`verify.ps1`) yeşil olmalı; kırmızı kod `main`'e push'lanmaz. Refactor ve bug düzeltmesi yine ayrı commit'lerdir (madde 1–2).
 
 ---
 
