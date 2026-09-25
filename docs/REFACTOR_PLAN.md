@@ -1,6 +1,6 @@
 # Refactor Planı — Ertelenen Borcun Ödenmesi
 
-> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) kodda tamamlandı (2026-09-25, `refactor/agent-runner`)**: canlı 9Router doğrulaması (yerel) ve `main`'e birleştirme onayı bekliyor · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
+> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) tamamlandı ve `main`'e birleştirildi (2026-09-25, PR #3)**: canlı 9Router doğrulaması (yerel) ve editör duman testi sonradan yapılacak · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
 > Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
