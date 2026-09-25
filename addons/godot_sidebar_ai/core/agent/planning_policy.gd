@@ -124,7 +124,7 @@ static func _tokenize(text: String) -> Array:
 		"\"", "'", "`", "/", "\\", "*", "\n", "\r", "\t", "|", "+",
 		"&", "%", "#", "@", "$", "=", "<", ">", "~", "^", "’", "‘", "“", "”", "-", "_"
 	]
-	for sep in separators:
+	for sep: Variant in separators:
 		cleaned = cleaned.replace(str(sep), " ")
 
 	var tokens: Array = []
@@ -137,9 +137,9 @@ static func _tokenize(text: String) -> Array:
 ## Token'lardan herhangi biri verilen köklerden biriyle BAŞLIYOR mu?
 ## (Türkçe eklerini ayrı ayrı listelememek için önek eşleşmesi kullanılır.)
 static func _starts_with_any(tokens: Array, stems: Array) -> bool:
-	for raw_tok in tokens:
+	for raw_tok: Variant in tokens:
 		var tok: String = str(raw_tok)
-		for raw_stem in stems:
+		for raw_stem: Variant in stems:
 			var stem: String = str(raw_stem)
 			if not stem.is_empty() and tok.begins_with(stem):
 				return true

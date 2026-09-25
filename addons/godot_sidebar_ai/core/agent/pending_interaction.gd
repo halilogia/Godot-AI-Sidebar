@@ -32,7 +32,7 @@ func has_approval() -> bool:
 
 ## Bekleyen onayı tüketir: {"name", "id", "args", "change_set"} döner ve temizler.
 func take_approval() -> Dictionary:
-	var req = {"name": tool_name, "id": tool_id, "args": tool_args, "change_set": change_set}
+	var req: Dictionary = {"name": tool_name, "id": tool_id, "args": tool_args, "change_set": change_set}
 	clear_approval()
 	return req
 
@@ -53,7 +53,7 @@ func has_clarification() -> bool:
 
 ## Bekleyen soruyu tüketir: {"id", "question"} döner ve temizler.
 func take_clarification() -> Dictionary:
-	var req = {"id": clarification_id, "question": clarification_question}
+	var req: Dictionary = {"id": clarification_id, "question": clarification_question}
 	clear_clarification()
 	return req
 
@@ -68,7 +68,7 @@ func propose_plan(p_plan: AISidebarImplementationPlan, p_plan_id: String) -> voi
 
 ## Bekleyen planı tüketir: {"plan", "id"} döner ve temizler (plan yoksa null / "").
 func take_plan() -> Dictionary:
-	var req = {"plan": plan, "id": plan_id}
+	var req: Dictionary = {"plan": plan, "id": plan_id}
 	clear_plan()
 	return req
 

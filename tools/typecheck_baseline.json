@@ -18,13 +18,11 @@
     "unsafe_cast": 1
   },
   "core/agent/agent_telemetry.gd": {
-    "untyped_declaration": 11,
     "unsafe_method_access": 1,
     "unsafe_call_argument": 4,
     "unsafe_cast": 2
   },
   "core/agent/completion_policy.gd": {
-    "untyped_declaration": 4,
     "unsafe_method_access": 2,
     "unsafe_call_argument": 4,
     "unsafe_cast": 3
@@ -33,12 +31,6 @@
     "untyped_declaration": 35,
     "unsafe_method_access": 33,
     "unsafe_call_argument": 4
-  },
-  "core/agent/pending_interaction.gd": {
-    "untyped_declaration": 3
-  },
-  "core/agent/planning_policy.gd": {
-    "untyped_declaration": 3
   },
   "core/chat/chat_exporter.gd": {
     "untyped_declaration": 136,

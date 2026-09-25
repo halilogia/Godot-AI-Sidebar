@@ -80,7 +80,7 @@ func begin_llm_step() -> void:
 ## LLM yanıtı geldi: istekten bu yana geçen süre LLM süresine eklenir.
 func end_llm_step() -> void:
 	if llm_step_start_time > 0:
-		var delta_req = Time.get_ticks_msec() - llm_step_start_time
+		var delta_req: int = Time.get_ticks_msec() - llm_step_start_time
 		llm_time_msec += delta_req
 		llm_step_start_time = 0
 
@@ -102,7 +102,7 @@ func classify_op(fn_name: String, args: Dictionary) -> void:
 		"create_or_update_script", "replace_file_content", "delete_file", "create_scene", "save_scene":
 			file_ops_count += 1
 		"write_files":
-			var files_arr = args.get("files", [])
+			var files_arr: Variant = args.get("files", [])
 			file_ops_count += maxi(1, files_arr.size())
 		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
 			editor_ops_count += 1
@@ -144,7 +144,7 @@ static func classify_tool_kind(tool_name: String) -> String:
 ## Her GERÇEK tool icrası için tek kayıt noktası (normal + onaylı yol).
 ## Başarı hükmü transcript helper ile (outer ok + payload fail yakalanır).
 func record_tool(fn_name: String, args: Dictionary, duration_msec: int, result: Dictionary) -> void:
-	var kind = classify_tool_kind(fn_name)
+	var kind: String = classify_tool_kind(fn_name)
 	match kind:
 		"read":
 			read_ops_count += 1
@@ -155,12 +155,12 @@ func record_tool(fn_name: String, args: Dictionary, duration_msec: int, result: 
 		"write":
 			write_ops_count += 1
 	tool_time_by_name[fn_name] = int(tool_time_by_name.get(fn_name, 0)) + duration_msec
-	for f in file_targets(args):
+	for f: String in file_targets(args):
 		if kind == "write":
 			files_written[f] = true
 		else:
 			files_read[f] = true
-	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
+	var outcome: Dictionary = AISidebarTaskTranscript.effective_tool_outcome(result)
 	if not bool(outcome.get("success", false)):
 		failed_tool_count += 1
 
@@ -168,15 +168,15 @@ static func file_targets(args: Dictionary) -> Array:
 	var out: Array = []
 	if args == null:
 		return out
-	for k in ["file_path", "scene_path"]:
-		var v = str(args.get(k, "")).strip_edges()
+	for k: String in ["file_path", "scene_path"]:
+		var v: String = str(args.get(k, "")).strip_edges()
 		if not v.is_empty():
 			out.append(v)
-	var files = args.get("files", [])
+	var files: Variant = args.get("files", [])
 	if files is Array:
-		for f in files:
+		for f: Variant in files:
 			if f is Dictionary:
-				var fp = str((f as Dictionary).get("file_path", (f as Dictionary).get("path", ""))).strip_edges()
+				var fp: String = str((f as Dictionary).get("file_path", (f as Dictionary).get("path", ""))).strip_edges()
 				if not fp.is_empty():
 					out.append(fp)
 	return out
@@ -184,7 +184,7 @@ static func file_targets(args: Dictionary) -> Array:
 ## Test edilebilir metrik yardımcıları (pure hesap, sinyal yok).
 func tool_time_by_tool_seconds() -> Dictionary:
 	var out: Dictionary = {}
-	for k in tool_time_by_name.keys():
+	for k: Variant in tool_time_by_name.keys():
 		out[k] = snappedf(int(tool_time_by_name[k]) / 1000.0, 0.1)
 	return out
 

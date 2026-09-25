@@ -14,13 +14,13 @@ class_name AISidebarCompletionPolicy
 static func evaluate(s: Dictionary) -> Dictionary:
 	if bool(s.get("limit_hit", false)):
 		return {"verdict": "failed", "reason": "Step limit reached (" + str(s.get("steps_summary", "")) + ") before task completion."}
-	var unrec = s.get("unrecovered", {})
+	var unrec: Variant = s.get("unrecovered", {})
 	if unrec is Dictionary and not (unrec as Dictionary).is_empty():
 		var failed_names: Array = []
 		var deferred_names: Array = []
-		for k in (unrec as Dictionary).keys():
-			var entry = (unrec as Dictionary)[k]
-			var tname = str(entry.get("tool", k)) if entry is Dictionary else str(k)
+		for k: Variant in (unrec as Dictionary).keys():
+			var entry: Variant = (unrec as Dictionary)[k]
+			var tname: String = str(entry.get("tool", k)) if entry is Dictionary else str(k)
 			if entry is Dictionary and bool(entry.get("deferred", false)):
 				if not tname in deferred_names:
 					deferred_names.append(tname)
