@@ -106,14 +106,11 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 	var reload_err = script.reload()
 	
 	if reload_err != OK:
-		# Eğer hata eksik bir preload'dan kaynaklanıyorsa ve o dosya aynı batch içindeyse izin ver
-		if reload_err == 43 or reload_err == ERR_FILE_NOT_FOUND:
-			var has_batch_dep = false
-			for bp in batch_context.keys():
-				if bp in source_code:
-					has_batch_dep = true
-					break
-			if has_batch_dep:
+		# Hata, henüz diske yazılmamış bir batch dosyasına referanstan kaynaklanıyor
+		# olabilir: batch geçici bir aynaya yazılıp betik gerçekten derlenir.
+		# Böylece gerçek sözdizimi / üye hataları istisnaya saklanamaz.
+		if reload_err == ERR_PARSE_ERROR or reload_err == ERR_FILE_NOT_FOUND:
+			if _references_batch_file(source_code, file_path, batch_context) and _compile_with_batch_mirror(source_code, batch_context) == OK:
 				return {
 					"status": VerificationStatus.PASSED,
 					"success": true,
@@ -136,6 +133,69 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 		"success": true,
 		"message": "✓ GDScript sözdizimi geçerli."
 	}
+
+## Batch aynası: derleme sırasında batch dosyalarının geçici kopyaları (proje dışı).
+const BATCH_MIRROR_ROOT = "user://ai_sidebar_verify"
+static var _mirror_seq: int = 0
+
+## Kaynak, kendisi dışındaki bir batch dosyasını tırnaklı yol olarak anıyor mu?
+static func _references_batch_file(source_code: String, file_path: String, batch_context: Dictionary) -> bool:
+	for bp in batch_context.keys():
+		var p = str(bp)
+		if p == file_path:
+			continue
+		if ("\"" + p + "\"") in source_code or ("'" + p + "'") in source_code:
+			return true
+	return false
+
+## Batch dosyalarını geçici aynaya yazar, batch yollarını aynaya çevirip betiği
+## derler, aynayı siler. Dönen değer derleme sonucudur.
+static func _compile_with_batch_mirror(source_code: String, batch_context: Dictionary) -> int:
+	_mirror_seq += 1
+	var root = BATCH_MIRROR_ROOT + "/%d_%d" % [Time.get_ticks_usec(), _mirror_seq]
+	var written: Array = []
+	var err: int = OK
+	for bp in batch_context.keys():
+		var p = str(bp)
+		if not p.begins_with("res://"):
+			continue
+		var target = root + "/" + p.trim_prefix("res://")
+		DirAccess.make_dir_recursive_absolute(target.get_base_dir())
+		var f = FileAccess.open(target, FileAccess.WRITE)
+		if f == null:
+			err = ERR_CANT_CREATE
+			break
+		f.store_string(_rewrite_batch_paths(str(batch_context[bp]), batch_context, root))
+		f.close()
+		written.append(target)
+	if err == OK:
+		var mirrored = GDScript.new()
+		mirrored.source_code = _rewrite_batch_paths(source_code, batch_context, root)
+		err = mirrored.reload()
+	for w in written:
+		DirAccess.remove_absolute(w)
+	_remove_empty_dirs(root)
+	_remove_empty_dirs(BATCH_MIRROR_ROOT)
+	return err
+
+static func _rewrite_batch_paths(text: String, batch_context: Dictionary, root: String) -> String:
+	var out = text
+	for bp in batch_context.keys():
+		var p = str(bp)
+		if not p.begins_with("res://"):
+			continue
+		var mp = root + "/" + p.trim_prefix("res://")
+		out = out.replace("\"" + p + "\"", "\"" + mp + "\"").replace("'" + p + "'", "'" + mp + "'")
+	return out
+
+## Yalnızca boş klasörleri siler (alttan üste); dosya içeren klasöre dokunmaz.
+static func _remove_empty_dirs(path: String) -> void:
+	if not DirAccess.dir_exists_absolute(path):
+		return
+	for d in DirAccess.get_directories_at(path):
+		_remove_empty_dirs(path.path_join(d))
+	if DirAccess.get_directories_at(path).is_empty() and DirAccess.get_files_at(path).is_empty():
+		DirAccess.remove_absolute(path)
 
 ## 2. Disk Dosyası Sözdizimi Doğrulaması (Syntax Verification)
 static func verify_script(file_path: String) -> Dictionary:

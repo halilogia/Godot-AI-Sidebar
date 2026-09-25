@@ -89,7 +89,34 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test E Başarısız: 3-file dependency graph batch başarısız oldu: " + str(res_e))
-		
+
+	# Test F (bulgu #21): batch içi .gd bağımlılığı istisnası gerçek sözdizimi /
+	# üye hatalarını gizlememeli; geçerli bağımlılık yine geçmeli.
+	var fa = "res://tests/temp_dep_f_a.gd"
+	var fb = "res://tests/temp_dep_f_b.gd"
+	var fb_src = "extends Node\nstatic func hi():\n\treturn 1\n"
+	var f_cases = [
+		["valid_dep", "extends Node\nconst B = preload(\"%s\")\nfunc f():\n\treturn B.hi()\n" % fb, true],
+		["valid_extends_dep", "extends \"%s\"\nfunc g():\n\treturn hi()\n" % fb, true],
+		["syntax_error_with_dep", "extends Node\nconst B = preload(\"%s\")\nfunc f(:\n\treturn B.hi()\n" % fb, false],
+		["missing_member_on_dep", "extends Node\nconst B = preload(\"%s\")\nfunc f():\n\treturn B.nope()\n" % fb, false],
+		["syntax_error_self_mention", "extends Node\n# %s\nfunc f(:\n\tpass\n" % fa, false],
+	]
+	var f_bad: Array = []
+	for fc in f_cases:
+		var fres = AISidebarVerificationPipeline.validate_batch_files([
+			{"file_path": fa, "content": fc[1]},
+			{"file_path": fb, "content": fb_src}
+		])
+		if bool(fres.get("success", false)) != bool(fc[2]):
+			f_bad.append(str(fc[0]) + " success=" + str(fres.get("success", false)))
+	var mirror_left = DirAccess.dir_exists_absolute("user://ai_sidebar_verify") and not DirAccess.get_directories_at("user://ai_sidebar_verify").is_empty()
+	if f_bad.is_empty() and not FileAccess.file_exists(fa) and not FileAccess.file_exists(fb) and not mirror_left:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test F Başarısız: batch bağımlılık istisnası: " + str(f_bad) + " mirror_left=" + str(mirror_left))
+
 	# Temizlik
 	for p in [path_a_gd, path_b_tscn, path_c_tscn, path_bad_gd]:
 		if FileAccess.file_exists(p):

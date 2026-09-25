@@ -66,6 +66,12 @@ Bu dosya, Godot 4.7 motor özellikleri, GDScript 2.0 kuralları, 9Router/LLM pro
 
 ---
 
+## GDScript Derleme ve Önbellek Davranışı (4.7.2, 26.09)
+
+* `GDScript.reload()` hem parser hatasında hem de eksik `preload` / `extends "yol"` çözümlemesinde `ERR_PARSE_ERROR` (43) döner; dönüş koduyla ikisi ayırt edilemez. Parser hatası (ör. `Expected parameter name`) varsa preload çözümlemesine hiç geçilmez.
+* `preload` ve `extends "res://…"` betiği `GDScriptCache` üzerinden **diskten** okur. Bellek içi bir `GDScript`'i `take_over_path()` ile o yola kaydetmek yetmez ("Could not find script"). Henüz yazılmamış bir dosyaya bağımlı betiği gerçekten derlemek için bağımlılık diske (proje dışı `user://` aynası) yazılmalıdır (`VerificationPipeline` batch aynası).
+* Aynı betik içindeki `Callable(Script, "static_func")` ve iki betik arasında döngüsel `preload` (`verification_pipeline.gd` ↔ `tscn_validator.gd`) headless'ta sorunsuz çalışır.
+
 ## İkon Sistemi (Lucide) ve Emoji Yasağı
 
 * UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.

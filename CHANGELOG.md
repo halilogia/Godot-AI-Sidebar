@@ -37,6 +37,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Ajanı durdurmak (Stop) artık kullanıcının F5 ile açtığı oyunu kapatmıyor; yalnızca ajanın kendi başlattığı oyun durduruluyor.
 * Telemetri kartı ve export'taki dosya süresi (`file_time`) artık cerrahi düzenleme (`replace_file_content`) ve dosya silme (`delete_file`) sürelerini de içeriyor.
 * History replay'de yanıtlanmış `ask_user` kartı akışı durdurmuyor; uzun başlıklar header butonlarını taşırmıyor.
+* `write_files` ile aynı pakette birbirini kullanan betikler yazılırken sözdizimi hatalı bir betik artık "doğrulandı" sayılıp diske yazılmıyor; paket içi bağımlılık gerçekten derlenerek kontrol ediliyor.
 
 ### Eklenenler
 * Asistan cevaplarında ve plan kartında Markdown (başlık, kalın, italik, kod, liste, alıntı).
