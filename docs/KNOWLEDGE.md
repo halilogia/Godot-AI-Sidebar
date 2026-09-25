@@ -73,3 +73,13 @@ Bu dosya, Godot 4.7 motor özellikleri, GDScript 2.0 kuralları, 9Router/LLM pro
 * Durum glifleri (`✓ ✕ ▶ ! ☐ – •`) veri modelinde (activity, checklist, transcript, export) aynen kalır. Görünümde `AISidebarStatusIcon` bunları ikona çevirir; tanınmayan glif metin olarak görünür.
 * `tests/test_icon_system.gd` T5, `ui/` ve `core/commands/` kaynaklarında emoji bulursa kırmızıya döner. Eski veri için girdi takma adları (❌, ✅, ⚠️) kaynakta `\u` kaçış dizisiyle yazılır.
 * Kapsam dışı (bilinçli): `ChatExporter` Markdown çıktısı ve LLM'e giden prompt/araç metinleri. Kullanıcı arayüzü değil, belge/model girdisidirler.
+
+---
+
+## HTTPClient Döngü Tuzakları (canlı test, 25.09)
+
+* `HTTPClient.get_status()` ile elle yazılan döngülerde **her** terminal durum ele alınmalı: `STATUS_CANT_RESOLVE`, `STATUS_CANT_CONNECT`, `STATUS_TLS_HANDSHAKE_ERROR`, `STATUS_CONNECTION_ERROR`, `STATUS_DISCONNECTED`. `CANT_CONNECT` (4) varsayılan dala düşerse sunucu kapalıyken döngü sonsuza kadar bekler.
+* İstek gönderildikten sonra durum `STATUS_CONNECTED`'a dönerse yanıt bitmiştir (keep-alive); bu da döngüden çıkış koşuludur.
+* Her döngüye zaman aşımı konur; ağ testleri başarıyı ancak HTTP 200 + boş olmayan içerikle kanıtlar ve açık bir başarı satırı yazar (`LIVE TEST PASSED`). `verify.ps1 -Live` hem çıkış kodunu hem bu satırı arar.
+* Canlı test 9Router olmadan doğrulanabilir: `127.0.0.1:20128` üzerinde küçük bir sahte sunucu (chunked SSE + JSON, ayrıca HTTP 500) ile başarı ve başarısızlık yolları denenir.
+

@@ -47,11 +47,17 @@ Write-Host "$($summary.Line) ($suites suites)" -ForegroundColor Green
 # 3. Canlı entegrasyon (yalnızca -Live ile; 127.0.0.1:20128 üzerinde 9Router gerekir)
 if ($Live) {
     Write-Step "Live 9Router integration"
-    & $GodotBin --headless --path $ProjectPath -s "res://tests/integration/test_real_9router_live.gd" 2>&1 | ForEach-Object { "$_" }
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "[VERIFY FAIL] Canli entegrasyon testi basarisiz." -ForegroundColor Red
+    # Fail-closed: exit 0 yetmez, script'in "LIVE TEST PASSED" satiri da gorulmeli
+    # (cokme / erken quit yesil sayilmaz). Cikti ekrana da akar.
+    $liveOut = & $GodotBin --headless --path $ProjectPath -s "res://tests/integration/test_real_9router_live.gd" 2>&1 | ForEach-Object { "$_" }
+    $liveExit = $LASTEXITCODE
+    $liveOut | ForEach-Object { Write-Host $_ }
+    $livePassed = $liveOut | Select-String -SimpleMatch "LIVE TEST PASSED" | Select-Object -Last 1
+    if ($liveExit -ne 0 -or -not $livePassed) {
+        Write-Host "[VERIFY FAIL] Canli entegrasyon testi basarisiz (exit=$liveExit, sentinel=$([bool]$livePassed))." -ForegroundColor Red
         exit 1
     }
+    Write-Host $livePassed.Line -ForegroundColor Green
 }
 
 Write-Host ""
