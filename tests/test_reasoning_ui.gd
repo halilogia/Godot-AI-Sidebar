@@ -18,10 +18,10 @@ static func _dock():
 	dock._auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
-	dock._current_assistant_bubble = null
-	dock._current_reasoning_card = null
+	dock._stream.assistant_bubble = null
+	dock._stream.reasoning_card = null
 	dock._current_activity_group = null
-	dock._reset_stream_buffer()
+	dock._stream.reset_stream_buffer()
 	return dock
 
 static func _reasoning_cards(dock) -> Array:
@@ -67,10 +67,10 @@ static func run() -> Dictionary:
 
 	# 2. ham reasoning UI'a sızmıyor (chunk + final + bubble + export metni)
 	var dock2 = _dock()
-	dock2._on_agent_chunk_received("", SECRET_MARKER + " bir plan düşünüyorum")
-	dock2._on_agent_thinking_received(SECRET_MARKER + " tam gerekçe")
+	dock2._stream.on_chunk_received("", SECRET_MARKER + " bir plan düşünüyorum")
+	dock2._stream.on_thinking_received(SECRET_MARKER + " tam gerekçe")
 	dock2._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
-	dock2._on_agent_chunk_received("Görünen cevap.", "")
+	dock2._stream.on_chunk_received("Görünen cevap.", "")
 	if not SECRET_MARKER in _stream_text(dock2):
 		passed += 1
 	else:
@@ -82,9 +82,9 @@ static func run() -> Dictionary:
 	var dock3 = _dock()
 	dock3._on_agent_tool_executing("analyze_project", {})
 	dock3._on_agent_tool_completed("analyze_project", {"success": true, "data": {}, "message": "ok"})
-	dock3._on_agent_chunk_received("Analiz bitti.", "")
+	dock3._stream.on_chunk_received("Analiz bitti.", "")
 	var cards3 = _reasoning_cards(dock3)
-	var bubble3 = dock3._current_assistant_bubble.text_content if dock3._current_assistant_bubble else ""
+	var bubble3 = dock3._stream.assistant_bubble.text_content if dock3._stream.assistant_bubble else ""
 	if cards3.size() == 1 and bubble3 == "Analiz bitti.":
 		passed += 1
 	else:
@@ -108,7 +108,7 @@ static func run() -> Dictionary:
 	# 5. final response ayrı kalır
 	var dock5 = _dock()
 	dock5._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
-	dock5._on_agent_text_received("assistant", "Dosya okundu ve hazır.")
+	dock5._stream.on_text_received("assistant", "Dosya okundu ve hazır.")
 	var bubble5 = ""
 	for child in dock5.message_stream.get_children():
 		if "text_content" in child and not (child is AISidebarReasoningCard):
@@ -136,8 +136,8 @@ static func run() -> Dictionary:
 	# 7. AGY tarzı akış: thinking yok, tool yoksa kart yok
 	var dock7 = _dock()
 	for i in range(3):
-		dock7._on_agent_chunk_received("parça ", "")
-	dock7._on_agent_thinking_received("")
+		dock7._stream.on_chunk_received("parça ", "")
+	dock7._stream.on_thinking_received("")
 	if _reasoning_cards(dock7).is_empty() and _thinking_cards(dock7).is_empty():
 		passed += 1
 	else:
@@ -147,7 +147,7 @@ static func run() -> Dictionary:
 
 	# 8. Thinking kartı: chunk ile oluşur, collapsed başlar, action kartından ayrı
 	var dock8 = _dock()
-	dock8._on_agent_chunk_received("", "Düşünce parçası.")
+	dock8._stream.on_chunk_received("", "Düşünce parçası.")
 	var tcards8 = _thinking_cards(dock8)
 	for c in tcards8:
 		c._ready()
@@ -160,9 +160,9 @@ static func run() -> Dictionary:
 
 	# 9. Thinking birikimi + final duplicate yok
 	var dock9 = _dock()
-	dock9._on_agent_chunk_received("", "A. ")
-	dock9._on_agent_chunk_received("", "B.")
-	dock9._on_agent_thinking_received("A. B.")
+	dock9._stream.on_chunk_received("", "A. ")
+	dock9._stream.on_chunk_received("", "B.")
+	dock9._stream.on_thinking_received("A. B.")
 	var tcards9 = _thinking_cards(dock9)
 	if tcards9.size() == 1 and tcards9[0].get_text() == "A. B.":
 		passed += 1
@@ -173,8 +173,8 @@ static func run() -> Dictionary:
 
 	# 10. Thinking cap + boş thinking kart açmaz
 	var dock10 = _dock()
-	dock10._on_agent_chunk_received("", "")
-	dock10._on_agent_thinking_received("   ")
+	dock10._stream.on_chunk_received("", "")
+	dock10._stream.on_thinking_received("   ")
 	var card10 = AISidebarThinkingCard.new()
 	card10._ready()
 	card10.append_thinking("y".repeat(5000))
@@ -189,10 +189,10 @@ static func run() -> Dictionary:
 	# 11. Yeni LLM turu: sahte "Düşünülüyor" balonu açılmaz; bekleme yalnızca rozette.
 	# Gerçek thinking kartı cevabın ÜSTÜNDE kalır (önce düşünce, sonra cevap).
 	var dock11 = _dock()
-	dock11._on_agent_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	dock11._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
 	var placeholder_after_planning = dock11.message_stream.get_child_count()
-	dock11._on_agent_chunk_received("", "Kullanıcı selam veriyor.")
-	dock11._on_agent_chunk_received("Merhaba!", "")
+	dock11._stream.on_chunk_received("", "Kullanıcı selam veriyor.")
+	dock11._stream.on_chunk_received("Merhaba!", "")
 	var t_idx = -1
 	var b_idx = -1
 	for child in dock11.message_stream.get_children():
@@ -205,12 +205,12 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T11 (thinking above answer, no placeholder) failed: planning_children=%d thinking=%d bubble=%d" % [placeholder_after_planning, t_idx, b_idx])
-	dock11._stop_thinking_timer()
+	dock11._stream.stop_thinking_timer()
 	dock11.free()
 
 	# 12. Metinsiz tool turu: akışta asılı kalan bekleme balonu yok
 	var dock12 = _dock()
-	dock12._on_agent_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	dock12._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
 	dock12._on_agent_tool_executing("read_script", {"path": "res://a.gd"})
 	var stale = 0
 	for child in dock12.message_stream.get_children():
@@ -221,7 +221,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T12 (no stale waiting bubble) failed: bubbles=%d" % stale)
-	dock12._stop_thinking_timer()
+	dock12._stream.stop_thinking_timer()
 	dock12.free()
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}

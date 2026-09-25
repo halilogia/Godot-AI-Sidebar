@@ -30,8 +30,6 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
 const AISidebarScreenshotCard = preload("res://addons/godot_sidebar_ai/ui/components/screenshot_card.gd")
-const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
-const AISidebarThinkingCard = preload("res://addons/godot_sidebar_ai/ui/components/thinking_card.gd")
 const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
@@ -50,6 +48,7 @@ const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/com
 const AISidebarChatExportActions = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_export_actions.gd")
 const AISidebarChatSessionStore = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_session_store.gd")
 const AISidebarSessionReplayRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/session_replay_renderer.gd")
+const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -104,13 +103,10 @@ var _is_user_stopped: bool = false
 var _last_sent_vision_input: AISidebarVisionInput = null
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
 var _composer: AISidebarInputComposer = null
-var _current_user_vision_inputs: Array = []
+## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
+var _stream: AISidebarAgentStreamPresenter = null
 
 var _current_activity_group: AISidebarActivityGroup = null
-var _current_reasoning_card: AISidebarReasoningCard = null
-var _current_thinking_card: AISidebarThinkingCard = null
-## Bu LLM turunda gerçek thinking verisi görüldü mü? (badge dürüstlüğü için)
-var _thinking_seen_this_turn: bool = false
 ## Onaylı plan checklist'inin tool olaylarıyla ilerletilmesi.
 var _checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
 ## Running satırının indeksi (tool_completed geldiğinde yerinde güncellenir, satır çoğalmaz).
@@ -120,25 +116,11 @@ var _activity_tool_start_msec: int = 0
 var _current_runtime_card: AISidebarRuntimeCard = null
 var _current_approval_card: AISidebarApprovalCard = null
 var _current_plan_card: AISidebarPlanCard = null
-var _current_assistant_bubble: AISidebarMessageBubble = null
-## Streaming sırasında biriken ham metin (tool-call zarfı tespiti için tampon).
-var _stream_buffer: String = ""
-## Bu akış turunun saf tool-call zarfı olduğu kesinleşti mi? (balon hiç oluşturulmaz)
-var _stream_is_envelope: bool = false
 var _auto_scroll_enabled: bool = true
 var _welcome_card: AISidebarWelcomeCard = null
-var _thinking_timer: Timer = null
-var _thinking_elapsed_sec: int = 0
-## AGY alt sureci 'init' handshake'ini tamamlayana kadar true kalir.
-## Yalnizca status rozeti metnini bilgilendirici yapar; thinking timer'i BOZMAZ.
-var _agy_preparing: bool = false
 
 
 func _exit_tree() -> void:
-	_stop_thinking_timer()
-	if _thinking_timer and is_instance_valid(_thinking_timer):
-		_thinking_timer.queue_free()
-		_thinking_timer = null
 	if provider and provider.has_method("stop_process"):
 		provider.stop_process()
 
@@ -159,7 +141,8 @@ func _setup_provider() -> void:
 		if provider.has_signal("readiness_changed") and provider.readiness_changed.is_connected(_on_provider_readiness_changed):
 			provider.readiness_changed.disconnect(_on_provider_readiness_changed)
 		
-	_agy_preparing = false
+	if _stream:
+		_stream.agy_preparing = false
 			
 	if prov_type == "openai_compatible":
 		if not network_manager:
@@ -184,6 +167,13 @@ func _ready() -> void:
 	_export_actions.export_btn = export_btn
 	_export_actions.copy_task_btn = copy_task_btn
 	add_child(_export_actions)
+	_stream = AISidebarAgentStreamPresenter.new()
+	_stream.add_component = _add_stream_component
+	_stream.on_meta_clicked = _on_meta_clicked
+	_stream.set_status = set_status_badge
+	_stream.scroll_if_following = _scroll_if_following
+	_stream.answer_text_started.connect(_close_activity_group)
+	add_child(_stream)
 	_setup_history_panel()
 	_setup_queue_ui()
 	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
@@ -207,9 +197,9 @@ func _ready() -> void:
 	
 	# Sinyal Bağlantıları
 	agent_runner.state_changed.connect(_on_agent_state_changed)
-	agent_runner.thinking_received.connect(_on_agent_thinking_received)
-	agent_runner.chunk_received.connect(_on_agent_chunk_received)
-	agent_runner.text_received.connect(_on_agent_text_received)
+	agent_runner.thinking_received.connect(_stream.on_thinking_received)
+	agent_runner.chunk_received.connect(_stream.on_chunk_received)
+	agent_runner.text_received.connect(_stream.on_text_received)
 	agent_runner.tool_executing.connect(_on_agent_tool_executing)
 	agent_runner.tool_completed.connect(_on_agent_tool_completed)
 	agent_runner.approval_requested.connect(_on_agent_approval_requested)
@@ -531,9 +521,6 @@ func _clear_ui_stream() -> void:
 		for child in message_stream.get_children():
 			child.queue_free()
 	_current_activity_group = null
-	_current_reasoning_card = null
-	_current_thinking_card = null
-	_thinking_seen_this_turn = false
 	_checklist_tracker.reset()
 	_activity_running_idx = -1
 	_activity_running_tool = ""
@@ -541,9 +528,8 @@ func _clear_ui_stream() -> void:
 	_current_runtime_card = null
 	_current_approval_card = null
 	_current_plan_card = null
-	_current_assistant_bubble = null
+	_stream.reset()
 	_welcome_card = null
-	_reset_stream_buffer()
 
 func _show_welcome_card_if_empty() -> void:
 	if _sessions.current == null or _sessions.current.messages.is_empty():
@@ -563,43 +549,13 @@ func _on_welcome_prompt_selected(prompt_text: String) -> void:
 		input_field.grab_focus()
 		input_field.set_caret_column(prompt_text.length())
 
-func _setup_thinking_timer() -> void:
-	if _thinking_timer != null:
-		return
-	_thinking_timer = Timer.new()
-	_thinking_timer.wait_time = 1.0
-	_thinking_timer.one_shot = false
-	_thinking_timer.timeout.connect(_on_thinking_tick)
-	add_child(_thinking_timer)
-
-func _start_thinking_timer() -> void:
-	_setup_thinking_timer()
-	_thinking_elapsed_sec = 0
-	_thinking_timer.start()
-
-func _stop_thinking_timer() -> void:
-	if _thinking_timer and is_instance_valid(_thinking_timer):
-		_thinking_timer.stop()
-	_thinking_elapsed_sec = 0
-
-func _on_thinking_tick() -> void:
-	_thinking_elapsed_sec += 1
-	# AGY 'init' handshake'i surerken durum rozetinde hazirlik bilgisi gosterilir.
-	# Thinking timer DURDURULMAZ; yalnizca rozet metni degisir.
-	if _agy_preparing:
-		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
-	elif _thinking_seen_this_turn:
-		set_status_badge("Thinking (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
-	else:
-		set_status_badge("Waiting... (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
-
 ## AGY provider hazirlik durumu degisti (STARTING / INITIALIZING / READY).
 ## Yalnizca bilgilendirici rozet metni guncellenir; ajan durumu DEGISTIRILMEZ.
 func _on_provider_readiness_changed(state: int, _message: String) -> void:
 	if not provider or not provider.has_method("is_ready"):
 		return
-	_agy_preparing = not provider.is_ready()
-	if _agy_preparing:
+	_stream.agy_preparing = not provider.is_ready()
+	if _stream.agy_preparing:
 		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
 	elif agent_runner and agent_runner.is_running():
 		# Ajan calisiyor: thinking rozetine geri don (timer zaten isliyor).
@@ -707,7 +663,7 @@ func _resume_paused_task(user_text: String) -> void:
 	_hide_welcome_card()
 	_last_sent_vision_input = null
 	_is_user_stopped = false
-	_current_user_vision_inputs.clear()
+	_stream.user_vision_inputs.clear()
 	var msg = AISidebarTaskCheckpoint.build_resume_message(cp)
 	if agent_runner and agent_runner.resume_task(cp, msg, user_text):
 		return
@@ -766,13 +722,12 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
 	last_user_prompt = final_display
 	_current_activity_group = null
-	_current_reasoning_card = null
-	_current_thinking_card = null
+	_stream.begin_task()
 	_checklist_tracker.reset()
 	_current_runtime_card = null
 	_current_approval_card = null
 	_is_user_stopped = false
-	_current_user_vision_inputs = vision_inputs.duplicate()
+	_stream.user_vision_inputs = vision_inputs.duplicate()
 	
 	# Yeni task eskisini geçersiz kılar (devam yolu buradan geçmez).
 	_sessions.begin_new_task()
@@ -803,7 +758,7 @@ func _check_and_dispatch_next_queue() -> void:
 
 func _on_clear_pressed() -> void:
 	_composer.clear_attached_image()
-	_current_user_vision_inputs.clear()
+	_stream.user_vision_inputs.clear()
 	_composer.hide_popup()
 	if agent_runner and agent_runner.is_running():
 		_is_user_stopped = true
@@ -829,6 +784,11 @@ func _on_scroll_value_changed(val: float) -> void:
 	_auto_scroll_enabled = is_near_bottom
 	if jump_to_bottom_btn:
 		jump_to_bottom_btn.visible = not is_near_bottom
+
+## Kullanıcı en alttaysa (otomatik kaydırma açık) akışı aşağı kaydırır.
+func _scroll_if_following() -> void:
+	if _auto_scroll_enabled:
+		_scroll_to_bottom()
 
 func _scroll_to_bottom() -> void:
 	if not chat_scroll:
@@ -861,143 +821,13 @@ func _move_checklist_to_bottom() -> void:
 
 func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	update_ui_language()
-	match new_state:
-		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
-			_stop_thinking_timer()
-			var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
-			set_status_badge(state_desc + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
-		AISidebarAgentRunner.AgentState.PLANNING:
-			# Yeni LLM turu: thinking kartı sıfırlanır (sonraki thinking yeni kart açar),
-			# rozet yanıt gelene kadar "Waiting" gösterir (thinking varsayılmaz).
-			# Akışa yer tutucu balon eklenmez: gerçek thinking kartı cevabın üstünde kalmalı.
-			_thinking_seen_this_turn = false
-			_current_thinking_card = null
-			_start_thinking_timer()
-			set_status_badge("Waiting...", AISidebarTheme.COLOR_WARNING)
-		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
-			_stop_thinking_timer()
-			set_status_badge("Waiting Approval", AISidebarTheme.COLOR_WARNING)
-		AISidebarAgentRunner.AgentState.WAITING_FOR_PLAN_APPROVAL:
-			_stop_thinking_timer()
-			set_status_badge(AISidebarI18n.get_text("status_waiting_plan"), AISidebarTheme.COLOR_WARNING)
-		AISidebarAgentRunner.AgentState.RUNNING_GAME:
-			_stop_thinking_timer()
-			set_status_badge("Running Game", AISidebarTheme.COLOR_ACCENT)
-		AISidebarAgentRunner.AgentState.DEBUGGING:
-			_stop_thinking_timer()
-			set_status_badge("Debugging", AISidebarTheme.COLOR_ERROR)
-		AISidebarAgentRunner.AgentState.ERROR:
-			_stop_thinking_timer()
-			set_status_badge(state_desc, AISidebarTheme.COLOR_ERROR)
-		_:
-			set_status_badge(state_desc, AISidebarTheme.COLOR_WARNING)
+	_stream.on_state_changed(new_state, state_desc)
 
-## Canlı reasoning kartı (task başına tek; thinking yoksa oluşmaz).
-func _ensure_reasoning_card() -> AISidebarReasoningCard:
-	if _current_reasoning_card == null or not is_instance_valid(_current_reasoning_card):
-		_current_reasoning_card = AISidebarReasoningCard.new()
-		_current_reasoning_card.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(_current_reasoning_card)
-	return _current_reasoning_card
-
-## Eylem özeti yaz (ham reasoning asla karta girmez).
-func _set_action_summary(line: String) -> void:
-	if line == null or line.strip_edges().is_empty():
-		return
-	_ensure_reasoning_card().set_action(line.strip_edges().left(300))
-
-## İsteğe bağlı thinking kartı (LLM turu başına bir; thinking yoksa oluşmaz).
-func _ensure_thinking_card() -> AISidebarThinkingCard:
-	if _current_thinking_card == null or not is_instance_valid(_current_thinking_card):
-		_current_thinking_card = AISidebarThinkingCard.new()
-		_current_thinking_card.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(_current_thinking_card)
-	return _current_thinking_card
-
-func _on_agent_thinking_received(thinking: String) -> void:
-	if thinking == null or thinking.strip_edges().is_empty():
-		return
-	_thinking_seen_this_turn = true
-	set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
-	# Stream dışı final thinking: kart boşsa doldur (delta'larla duplicate olmaz).
-	_ensure_thinking_card().set_thinking_final(thinking)
-
-func _on_agent_chunk_received(text_delta: String, thinking_delta: String) -> void:
-	_stop_thinking_timer()
-	if thinking_delta != null and not thinking_delta.strip_edges().is_empty():
-		_thinking_seen_this_turn = true
-		set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
-		_ensure_thinking_card().append_thinking(thinking_delta)
-	if text_delta.is_empty():
-		return
-		
+## Cevap metni başladı: açık activity grubu tamamlanır (sonraki tool yeni grup açar).
+func _close_activity_group() -> void:
 	if _current_activity_group:
 		_current_activity_group.complete_group()
 		_current_activity_group = null
-		
-	_stream_buffer += text_delta
-	_render_stream_buffer()
-
-## Tampondaki metinden tool-call zarflarini cikarip gorunur kismi balona yazar.
-## Gorunur metin yoksa (saf zarf veya henuz yarim JSON) balon hic gosterilmez.
-func _render_stream_buffer() -> void:
-	var visible := AISidebarMessageBubble.strip_tool_call_envelopes(_stream_buffer, true).strip_edges()
-	if visible.is_empty():
-		# Saf zarf / yarim JSON: kullaniciya hicbir sey gosterme.
-		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
-			_current_assistant_bubble.queue_free()
-			_current_assistant_bubble = null
-		return
-	if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
-		_current_assistant_bubble.set_message("assistant", visible)
-	else:
-		_current_assistant_bubble = AISidebarMessageBubble.new("assistant", visible)
-		_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(_current_assistant_bubble)
-	set_status_badge("AI Typing...", AISidebarTheme.COLOR_WARNING)
-	if _auto_scroll_enabled:
-		_scroll_to_bottom()
-
-## Akış tamponunu sıfırla (yeni metin turu / temizleme).
-func _reset_stream_buffer() -> void:
-	_stream_buffer = ""
-	_stream_is_envelope = false
-
-func _on_agent_text_received(role: String, text: String) -> void:
-	if _current_activity_group:
-		_current_activity_group.complete_group()
-		_current_activity_group = null
-		
-	if role == "assistant":
-		# Ham tool-call zarflari metinden cikarilir; kullanici yalnizca gercek
-		# asistan metnini gorur. Zarf hic yoksa metin aynen korunur.
-		var clean_text := AISidebarMessageBubble.strip_tool_call_envelopes(text, false).strip_edges()
-		if clean_text.is_empty():
-			# Metnin tamami zarf (veya yarim JSON): hicbir sey gosterme.
-			if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
-				_current_assistant_bubble.queue_free()
-			_current_assistant_bubble = null
-			_reset_stream_buffer()
-			return
-		if _current_assistant_bubble != null and is_instance_valid(_current_assistant_bubble):
-			_current_assistant_bubble.finalize_stream(clean_text)
-			_current_assistant_bubble = null
-		else:
-			var bubble = AISidebarMessageBubble.new(role, clean_text)
-			bubble.meta_clicked.connect(_on_meta_clicked)
-			_add_stream_component(bubble)
-		_reset_stream_buffer()
-	else:
-		_current_assistant_bubble = null
-		_reset_stream_buffer()
-		var bubble_role = role
-		if bubble_role == "user" and text.begins_with("/"):
-			bubble_role = "command"
-		var vi_for_bubble = _current_user_vision_inputs.duplicate() if bubble_role == "user" else []
-		_current_user_vision_inputs.clear()
-		var bubble = AISidebarMessageBubble.new(bubble_role, text, vi_for_bubble)
-		bubble.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(bubble)
 
 func _ensure_activity_group() -> AISidebarActivityGroup:
 	if not _current_activity_group or not is_instance_valid(_current_activity_group) or not _current_activity_group.is_active:
@@ -1009,7 +839,7 @@ func _ensure_activity_group() -> AISidebarActivityGroup:
 	return _current_activity_group
 
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
-	_current_assistant_bubble = null
+	_stream.detach_bubble()
 	# ask_user / propose_plan kart olarak gösterilir; activity satırı şişirmesin.
 	if tool_name == "ask_user" or tool_name == "propose_plan":
 		return
@@ -1023,7 +853,7 @@ func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_activity_tool_start_msec = Time.get_ticks_msec()
 	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
 	_checklist_tracker.on_tool_start(tool_name, args)
-	_set_action_summary(human_title)
+	_stream.set_action_summary(human_title)
 	if agent_context:
 		agent_context.get_transcript().record("tool_executing", {"tool": tool_name, "title": human_title.left(200), "args": AISidebarActivityGroup.redact_secrets(JSON.stringify(args)).left(800)})
 		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Running " + human_title.left(200)})
@@ -1059,7 +889,7 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	var action_line = icon + " " + action_base
 	if not msg.is_empty() and msg != action_base:
 		action_line += " — " + str(msg.split("\n")[0]).left(120)
-	_set_action_summary(action_line)
+	_stream.set_action_summary(action_line)
 	# Ertelenen çağrı hiç çalışmadı: checklist'i kirletme, sadece activity'de göster.
 	if not is_deferred:
 		_checklist_tracker.on_tool_done(tool_name, is_ok, err_summary)
@@ -1105,14 +935,14 @@ func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
 	_add_stream_component(card)
 
 func _on_agent_clarification_requested(question: String, options: Array, clarification_id: String) -> void:
-	_current_assistant_bubble = null
+	_stream.detach_bubble()
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	if _current_activity_group:
 		_current_activity_group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
 		_current_activity_group.complete_group()
 		_current_activity_group = null
-	_set_action_summary("Question: " + question.left(120))
+	_stream.set_action_summary("Question: " + question.left(120))
 	if agent_context:
 		agent_context.get_transcript().record("clarification_requested", {"question": question.left(500), "options": options.duplicate(), "id": clarification_id})
 
@@ -1171,7 +1001,7 @@ func _on_reject_pressed() -> void:
 ## Ajandan uygulama planı geldi. Execution HENÜZ başlamadı;
 ## kullanıcı onayı bekleniyor.
 func _on_agent_plan_proposed(plan) -> void:
-	_current_assistant_bubble = null
+	_stream.detach_bubble()
 	if _current_activity_group:
 		_current_activity_group.complete_group()
 		_current_activity_group = null
@@ -1192,7 +1022,7 @@ func _on_agent_plan_proposed(plan) -> void:
 		elif plan.get("title") != null:
 			p_goal = str(plan.get("title"))
 		agent_context.get_transcript().record("plan_proposed", {"steps": p_steps, "files": p_files, "goal": p_goal.left(300)})
-	_set_action_summary("Plan proposed — onay bekleniyor")
+	_stream.set_action_summary("Plan proposed — onay bekleniyor")
 	_current_plan_card = AISidebarPlanCard.new(plan)
 	_current_plan_card.plan_applied.connect(_on_plan_applied)
 	_current_plan_card.plan_cancelled.connect(_on_plan_cancelled)
@@ -1259,7 +1089,7 @@ func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
 func _on_agent_verification_started(tool_name: String) -> void:
 	var grp = _ensure_activity_group()
 	grp.add_activity("•", "Verifying " + tool_name + "...", -1)
-	_set_action_summary("Verifying " + tool_name)
+	_stream.set_action_summary("Verifying " + tool_name)
 	if agent_context:
 		agent_context.get_transcript().record("verification_started", {"tool": tool_name})
 		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Verifying " + tool_name})
@@ -1268,7 +1098,7 @@ func _on_agent_verification_completed(tool_name: String, is_valid: bool, msg: St
 	var grp = _ensure_activity_group()
 	var icon = "✓" if is_valid else "!"
 	grp.add_activity(icon, "Verification: " + msg, 50)
-	_set_action_summary((icon + " Verification: " + msg).split("\n")[0])
+	_stream.set_action_summary((icon + " Verification: " + msg).split("\n")[0])
 	if agent_context:
 		agent_context.get_transcript().record("verification_completed", {"tool": tool_name, "valid": is_valid, "message": msg.left(500)})
 		agent_context.get_transcript().record("activity", {"icon": icon, "title": ("Verification: " + msg).left(300)})
@@ -1298,9 +1128,7 @@ func _on_agent_step_progress(current_step: int, max_steps: int) -> void:
 		_current_activity_group.set_step_progress(current_step, max_steps)
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
-	_current_assistant_bubble = null
-	_current_reasoning_card = null
-	_current_thinking_card = null
+	_stream.end_task()
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	var t_ok = bool(metrics.get("success", false))
@@ -1352,9 +1180,7 @@ func report_task_stop(stop_reason: String, keep_open: bool = true) -> void:
 		_current_activity_group = null
 
 func _on_agent_error(err_msg: String) -> void:
-	_current_assistant_bubble = null
-	_current_reasoning_card = null
-	_current_thinking_card = null
+	_stream.end_task()
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	_checklist_tracker.finish(false, err_msg)

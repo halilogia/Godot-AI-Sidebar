@@ -25,10 +25,10 @@ static func _hard_clear(dock) -> void:
 	if dock.message_stream:
 		for child in dock.message_stream.get_children():
 			child.free()
-	dock._current_assistant_bubble = null
+	dock._stream.assistant_bubble = null
 	dock._current_activity_group = null
 	dock._welcome_card = null
-	dock._reset_stream_buffer()
+	dock._stream.reset_stream_buffer()
 
 
 ## MessageStream icinde ham JSON tasiyan bir balon var mi?
@@ -61,7 +61,7 @@ static func _feed_chunks(dock, chunks: Array) -> Dictionary:
 	var leaked := false
 	var leaked_steps := 0
 	for ch in chunks:
-		dock._on_agent_chunk_received(str(ch), "")
+		dock._stream.on_chunk_received(str(ch), "")
 		if _has_raw_json_bubble(dock):
 			leaked = true
 			leaked_steps += 1
@@ -154,7 +154,7 @@ static func run() -> Dictionary:
 
 	# --- Test 1: Saf ask_user JSON -> chat bubble GORUNMEZ ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", ENVELOPE_ASK_USER)
+	dock._stream.on_text_received("assistant", ENVELOPE_ASK_USER)
 	var t1 = not _has_raw_json_bubble(dock) and _visible_text(dock).strip_edges().is_empty()
 	if t1:
 		passed += 1
@@ -164,7 +164,7 @@ static func run() -> Dictionary:
 
 	# --- Test 2: Saf baska tool-call JSON -> chat bubble GORUNMEZ ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", ENVELOPE_OTHER_TOOL)
+	dock._stream.on_text_received("assistant", ENVELOPE_OTHER_TOOL)
 	if not _has_raw_json_bubble(dock) and _visible_text(dock).strip_edges().is_empty():
 		passed += 1
 	else:
@@ -173,7 +173,7 @@ static func run() -> Dictionary:
 
 	# --- Test 3: Normal assistant text -> GORUNUR ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", PROSE_TEXT)
+	dock._stream.on_text_received("assistant", PROSE_TEXT)
 	if PROSE_TEXT in _visible_text(dock):
 		passed += 1
 	else:
@@ -182,7 +182,7 @@ static func run() -> Dictionary:
 
 	# --- Test 4: text + tool-call -> text GORUNUR, ham JSON gorunmez ---
 	_hard_clear(dock)
-	dock._on_agent_text_received("assistant", PROSE_WITH_ENVELOPE)
+	dock._stream.on_text_received("assistant", PROSE_WITH_ENVELOPE)
 	var vis4 = _visible_text(dock)
 	if PROSE_TEXT in vis4 and not _has_raw_json_bubble(dock):
 		passed += 1
@@ -204,7 +204,7 @@ static func run() -> Dictionary:
 		chunks_ask.append(s_ask.substr(i, 8))
 		i += 8
 	var r_ask = _feed_chunks(dock, chunks_ask)
-	dock._on_agent_text_received("assistant", ENVELOPE_ASK_USER)
+	dock._stream.on_text_received("assistant", ENVELOPE_ASK_USER)
 	if r_ask["leaked"] or _has_raw_json_bubble(dock):
 		leaked_any = true
 		detail += "ask_user(8ch) "
@@ -223,7 +223,7 @@ static func run() -> Dictionary:
 		chunks_tool.append(s_tool.substr(j, 5))
 		j += 5
 	var r_tool = _feed_chunks(dock, chunks_tool)
-	dock._on_agent_text_received("assistant", ENVELOPE_OTHER_TOOL)
+	dock._stream.on_text_received("assistant", ENVELOPE_OTHER_TOOL)
 	if r_tool["leaked"] or _has_raw_json_bubble(dock):
 		failed += 1
 		errors.append("Test 5b (fragmented tool JSON never leaks) failed: leaked_steps=" + str(r_tool["steps"]))
@@ -266,7 +266,7 @@ static func run() -> Dictionary:
 	# --- Test 6: ask_user -> ClarificationCard hala olusur ---
 	_hard_clear(dock)
 	# Once zarf akisi (kullaniciya gorunmemeli), ardindan clarification sinyali.
-	dock._on_agent_text_received("assistant", ENVELOPE_ASK_USER)
+	dock._stream.on_text_received("assistant", ENVELOPE_ASK_USER)
 	dock._on_agent_clarification_requested("GDScript mi C# mi?", ["GDScript", "C#"], "cid_test")
 
 	var clarif_count = 0
@@ -282,11 +282,11 @@ static func run() -> Dictionary:
 	# --- Test 7: Kullanici turu sonrasi tampon sizmamali (bayat metin tasinmaz) ---
 	_hard_clear(dock)
 	# Yarim bir zarf akisi (yeni turda iptal edilmis gibi)
-	dock._on_agent_chunk_received("{\"tool_calls\": [{\"name\": \"ask_", "")
+	dock._stream.on_chunk_received("{\"tool_calls\": [{\"name\": \"ask_", "")
 	# Kullanici mesaji gelir -> yeni tur, tampon temizlenir
-	dock._on_agent_text_received("user", "Yeni bir istek gonderiyorum")
+	dock._stream.on_text_received("user", "Yeni bir istek gonderiyorum")
 	# Asistan normal metinle cevap verir
-	dock._on_agent_text_received("assistant", PROSE_TEXT)
+	dock._stream.on_text_received("assistant", PROSE_TEXT)
 	var vis7 = _visible_text(dock)
 	if (not _has_raw_json_bubble(dock)) and (not "tool_calls" in vis7) and (PROSE_TEXT in vis7):
 		passed += 1
