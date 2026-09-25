@@ -63,6 +63,17 @@ Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur
 
 `chat_exporter.gd` (806), `editor_tools.gd` (653), `scene_tools.gd` (652), `verification_pipeline.gd` (576). Satır sayısı tek başına sorun değildir; yalnızca birden fazla sorumluluk varsa bölünür. Her biri için kısa karar notu yazılır.
 
+## Faz 3.5 — Test denetimi (Faz 1–2 bittikten sonra)
+
+Refactor sürerken test silinmez: güvenlik ağı odur. Refactor sırasında yalnızca taşınan koda ait testler yeni birime yönlendirilir ve orada rastlanan sahte testler gerçeğe çevrilir. Faz 1–2 bitince:
+
+- [ ] **Sahte testler:** Üretim kodunu çağırmayan, kendi yazdığı ifadeyi veya Array davranışını doğrulayan testler bulunur. Her biri ya gerçek koda bağlanır ya da silinir.
+- [ ] **Export kümesi (7 paket, tek modül):** `copy_chat`, `copy_task_checklist`, `task_copy_order`, `everything_export`, `chat_exporter`, `export_coverage`, `history_export`. Örneğin `export_transcript_to_markdown` 4 ayrı pakette test ediliyor. Çakışanlar birleştirilir, gerçekten farklı senaryolar korunur.
+- [ ] **Diğer olası çakışmalar:** telemetri (5 paket), streaming/SSE (4 paket), runtime/visual (8 paket) için aynı inceleme yapılır.
+- [ ] **`tests/diagnostic/` (12 probe) ve runner dışındaki `test_reality_probe.gd`:** AGY donma araştırmasından kalan tek seferlik betikler. Hâlâ gereken tutulur ve belgelenir, gerisi silinir (git geçmişinde kalır).
+- [ ] **Private üye bağımlılığı:** Testler, bileşenlerin genel API'si üzerinden yazılır. Refactor sonunda ChatDock'un iç üyelerine dokunan test kalmamalı.
+- Ölçüt: assertion sayısı düşebilir. Hedef sayı değil, **her testin gerçek bir hatayı yakalayabilmesi**; şüpheli testler mutasyonla (mantığı kasıtlı bozarak) sınanır.
+
 ## Faz 4 — Borcun geri gelmesini önleme
 
 - [ ] Satır bütçesi testi: `.gd` dosyası > 600 satırsa uyarı, > 900 ise test başarısız (istisna listesi açık yazılır).
