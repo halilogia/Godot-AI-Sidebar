@@ -21,6 +21,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Runtime kartı modele giden uzun teşhis metni yerine kısa hata satırı gösteriyor.
 * Normal kod blokları Output'a "Parse JSON failed" hatası bastırmıyor.
 * Hata kartındaki Retry, görevi normal hattan yeniden başlatıyor: slash komutlarında modele doğru istem gidiyor, yeni transcript görevi açılıyor, görsel eki korunuyor.
+* `/help` gibi yerel komutlar sohbet kaydında kalıyor ve History'den yüklenince görünüyor; modele gönderilmiyor.
 * Uzun model düşünceleri (thinking) kesilmiyor: kart 3000 yerine 20.000 karaktere kadar gösteriyor, transcript / export 1000 yerine 16.000 karaktere kadar saklıyor.
 * Kod blokları komşu satırları örtmüyor; kalın / kod metni gövdeyle aynı boyutta.
 * History replay'de yanıtlanmış `ask_user` kartı akışı durdurmuyor; uzun başlıklar header butonlarını taşırmıyor.

@@ -81,25 +81,34 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T4 (clear persists) failed: empty=%s contents=%s" % [str(reloaded_empty), str(contents)])
 
-	# 5. Yerel komut (/help). BİLİNEN BUG (REFACTOR_PLAN bulgu #7): context varken
-	# save() mesajları context'ten yeniden kurduğu için eklenen komut kaybolur.
-	# Düzeltilince bu test bilerek kırmızıya döner ve güncellenir.
+	# 5. Yerel komut (/help) oturumda doğru sırada kalır, History'den yüklenince geri gelir ve
+	# modele giden context'e hiç girmez. (Önceden save() context'ten yeniden kurarken siliyordu.)
 	var st5 = _make()
 	created_ids.append(st5.current_id())
+	st5.context.messages.append(_msg("user", "ilk soru"))
 	st5.record_local_command("/help", "Komutlar...")
-	var dropped_with_context = st5.current.messages.is_empty()
+	st5.context.messages.append(_msg("user", "ikinci soru"))
+	st5.save()
+	var saved: Array = []
+	for m in st5.current.messages:
+		saved.append(str(m.get("content", "")))
+	var ctx_clean = st5.context.messages.filter(func(m): return str(m.get("role", "")) == "command").is_empty()
 	var st5b = AISidebarChatSessionStore.new()
-	st5b.start_new()
-	created_ids.append(st5b.current_id())
-	st5b.record_local_command("/help", "Komutlar...")
-	var roles: Array = []
-	for m in st5b.current.messages:
-		roles.append(str(m.get("role", "")))
-	if dropped_with_context and roles == ["command", "assistant"]:
+	st5b.context = AISidebarAgentContext.new()
+	var loaded5 = st5b.load_by_id(st5.current_id())
+	st5b.save()
+	var reloaded: Array = []
+	for m in AISidebarChatManager.load_session(st5.current_id()).messages:
+		reloaded.append(str(m.get("content", "")))
+	var ctx_after: Array = []
+	for m in st5b.context.messages:
+		ctx_after.append(str(m.get("content", "")))
+	var expected = ["ilk soru", "/help", "Komutlar...", "ikinci soru"]
+	if saved == expected and ctx_clean and loaded5 and reloaded == expected and ctx_after == ["ilk soru", "ikinci soru"]:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T5 (local command, documented behavior) failed: dropped=%s roles=%s" % [str(dropped_with_context), str(roles)])
+		errors.append("T5 (local command persistence) failed: saved=%s reloaded=%s ctx=%s" % [str(saved), str(reloaded), str(ctx_after)])
 
 	# 6. Pause checkpoint: iptal edilen task resumable; terminal limit hatası değil; task yoksa {}
 	var st6 = _make()
