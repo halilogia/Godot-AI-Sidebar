@@ -37,6 +37,12 @@ static func _compile() -> void:
 	_re_italic_star = RegEx.create_from_string("(?<![*\\w])\\*(?=\\S)([^*\\n]+?)(?<=\\S)\\*(?![*\\w])")
 	_re_italic_under = RegEx.create_from_string("(?<![A-Za-z0-9_])_(?=\\S)([^_\\n]+?)(?<=\\S)_(?![A-Za-z0-9_])")
 
+## Markdown gösteren etikette tüm yazı stillerini aynı boyuta sabitler. Yalnızca
+## normal_font_size ayarlanırsa kalın / italik / kod tema varsayılanında (daha büyük) kalır.
+static func apply_font_sizes(label: RichTextLabel, size: int) -> void:
+	for key in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
+		label.add_theme_font_size_override(key, size)
+
 ## Köşeli parantezleri RichTextLabel kaçış etiketlerine çevirir.
 static func escape_bbcode(text: String) -> String:
 	return text.replace("[", "\u0001").replace("]", "[rb]").replace("\u0001", "[lb]")
