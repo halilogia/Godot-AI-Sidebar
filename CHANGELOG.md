@@ -20,6 +20,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Mesajdaki `[b]`, `[url=…]` gibi metinler BBCode olarak yorumlanıp silinmiyor.
 * Runtime kartı modele giden uzun teşhis metni yerine kısa hata satırı gösteriyor.
 * Normal kod blokları Output'a "Parse JSON failed" hatası bastırmıyor.
+* Uzun model düşünceleri (thinking) kesilmiyor: kart 3000 yerine 20.000 karaktere kadar gösteriyor, transcript / export 1000 yerine 16.000 karaktere kadar saklıyor.
 * Kod blokları komşu satırları örtmüyor; kalın / kod metni gövdeyle aynı boyutta.
 * History replay'de yanıtlanmış `ask_user` kartı akışı durdurmuyor; uzun başlıklar header butonlarını taşırmıyor.
 
