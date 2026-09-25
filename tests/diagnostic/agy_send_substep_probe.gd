@@ -4,7 +4,8 @@ extends SceneTree
 ## AGY GONDERI YOLU - ALT ADIM SURESI PROBU
 ##
 ## AMAC:
-##   agy_send_path_probe.gd, _start_task_prompt() cagrisinin ~19003 ms
+##   Onceki send-path probu (agy_send_path_probe.gd; 22.09 arastirmasi, Faz 2 sonrasi
+##   silindi, git gecmisinde) _start_task_prompt() cagrisinin ~19003 ms
 ##   SENKRON olarak bloklandigini olctu. Ancak bu 19 saniyenin HANGI alt
 ##   adimda harcandigini olcmedi.
 ##
