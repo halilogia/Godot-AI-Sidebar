@@ -10,6 +10,7 @@ class_name AISidebarThinkingCard
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 ## Chat alanını ele geçirmemesi için display sınırı.
 ## Ekranda gösterilen üst sınır. Gerçek modeller tek turda birkaç bin karakter düşünebilir;
@@ -129,7 +130,7 @@ func _update_header() -> void:
 	if not _header_btn:
 		return
 	var arrow = "▾" if is_expanded else "▸"
-	_header_btn.text = arrow + " Thinking"
+	_header_btn.text = arrow + AISidebarI18n.get_text("thinking_header")
 
 func _render() -> void:
 	_update_header()

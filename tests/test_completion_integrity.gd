@@ -11,6 +11,7 @@ const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarCompletionPolicy = preload("res://addons/godot_sidebar_ai/core/agent/completion_policy.gd")
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 class MockGateProvider extends AISidebarAIProvider:
 	var responses: Array = []
@@ -93,7 +94,7 @@ static func run() -> Dictionary:
 	var pol_e = AISidebarCompletionPolicy.evaluate({"limit_hit": true, "steps_summary": "21 / 20", "unrecovered": {}, "plan_approved": false, "mutations_done": false})
 	var card_e = AISidebarTelemetryCard.new({"success": false, "completion": "incomplete", "completion_reason": "x", "elapsed_seconds": 5.0, "used_steps": 3, "max_steps": 20, "tool_calls": 1})
 	card_e._ready()
-	if str(pol_e.get("verdict", "")) == "failed" and "Needs review" in card_e._header_btn.text and not "✅" in card_e._header_btn.text:
+	if str(pol_e.get("verdict", "")) == "failed" and card_e._header_btn.text.begins_with(AISidebarI18n.get_text("telemetry_needs_review", {"elapsed": "5.0s", "summary": ""})) and not "✅" in card_e._header_btn.text:
 		passed += 1
 	else:
 		failed += 1

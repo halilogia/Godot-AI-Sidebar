@@ -11,6 +11,7 @@ const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_c
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var agent_context: AISidebarAgentContext = null
 ## Aktif ChatSession'ı döndürür (oturum değiştikçe güncel kalsın diye callable).
@@ -67,7 +68,7 @@ func export_chat() -> void:
 
 	if status_badge:
 		var prev = status_badge.text
-		status_badge.text = "Exported"
+		status_badge.text = AISidebarI18n.get_text("export_done")
 		status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 		var t = get_tree()
 		if t:
@@ -91,7 +92,7 @@ func copy_chat() -> void:
 	var md = AISidebarChatExporter.export_full_chat_chronological(tasks)
 	DisplayServer.clipboard_set(md)
 	if copy_task_btn:
-		copy_task_btn.text = "Copied"
+		copy_task_btn.text = AISidebarI18n.get_text("copy_done")
 		var t = get_tree()
 		if t:
 			var timer = t.create_timer(1.5)

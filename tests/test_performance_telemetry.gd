@@ -9,6 +9,7 @@ const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/a
 const AISidebarAgentTelemetry = preload("res://addons/godot_sidebar_ai/core/agent/agent_telemetry.gd")
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 static func _runner():
 	return AISidebarAgentRunner.new()
@@ -123,7 +124,7 @@ static func run() -> Dictionary:
 	# 9. TelemetryCard yeni alanları gösteriyor (header formatı aynı)
 	var card = AISidebarTelemetryCard.new({"success": true, "elapsed_seconds": 73.0, "used_steps": 17, "max_steps": 20, "tool_calls": 12, "tools_sent": 28, "total_tools": 44, "file_ops": 2, "read_ops": 17, "search_ops": 12, "write_ops": 2, "failed_tools": 1, "retry_count": 2, "limit_hit": true, "files_read_count": 9, "files_written_count": 2, "research_time_s": 30.5, "research_overhead_ratio": 0.42})
 	card._ready()
-	var header_ok = "Completed in 73.0s" in card._header_btn.text
+	var header_ok = card._header_btn.text.begins_with(AISidebarI18n.get_text("telemetry_completed", {"elapsed": "73.0s", "summary": ""}))
 	var details_txt = card._details_lbl.text
 	if header_ok and "Research" in details_txt and "42%" in details_txt and "R:17/S:12/W:2" in details_txt and "LIMIT" in details_txt and "Failed: 1" in details_txt:
 		passed += 1
@@ -137,7 +138,7 @@ static func run() -> Dictionary:
 	var card10 = AISidebarTelemetryCard.new(old_metrics)
 	card10._ready()
 	var md10 = AISidebarChatExporter.export_transcript_to_markdown([], [], old_metrics)
-	if "Completed in 2.5s" in card10._header_btn.text and "n/a" in card10._details_lbl.text and md10.length() > 0:
+	if card10._header_btn.text.begins_with(AISidebarI18n.get_text("telemetry_completed", {"elapsed": "2.5s", "summary": ""})) and "n/a" in card10._details_lbl.text and md10.length() > 0:
 		passed += 1
 	else:
 		failed += 1

@@ -11,6 +11,7 @@ const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
 const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
 const AISidebarSessionReplayRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/session_replay_renderer.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const ENVELOPE = "{\"tool_calls\": [{\"name\": \"read_script\", \"arguments\": {\"file_path\": \"res://p.gd\"}}]}"
 
 static func _kinds(stream: Node) -> Array:
@@ -54,7 +55,7 @@ static func run() -> Dictionary:
 	if card:
 		card._ready()
 		if card.is_answered and card.get_child_count() == 1 and not card._input_row.visible \
-				and card._status_lbl.visible and card._status_lbl.text == "Answered: 3D":
+				and card._status_lbl.visible and card._status_lbl.text == AISidebarI18n.get_text("clarification_answered", {"answer": "3D"}):
 			passed += 1
 		else:
 			failed += 1

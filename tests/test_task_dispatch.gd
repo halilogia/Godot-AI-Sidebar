@@ -13,6 +13,7 @@ const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 ## Geçerli 4x4 PNG (sahte veri önizlemede görsel çözme hatası basar).
 const PNG_4X4 = "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGP4z8AARwzEcQCukw/x0F8jngAAAABJRU5ErkJggg=="
@@ -73,7 +74,7 @@ static func run() -> Dictionary:
 	_send(d1, "Sonra hasar sistemi")
 	var queued = d1.queue_panel.count() == 1 and d1.tasks.last_user_prompt == "Oyuncuya zıplama ekle"
 	_send(d1, "")
-	var stopped = not r1.is_running() and d1.tasks.is_user_stopped and d1.status_badge.text.begins_with("Paused") and d1.queue_panel.count() == 1
+	var stopped = not r1.is_running() and d1.tasks.is_user_stopped and d1.status_badge.text.begins_with(AISidebarI18n.get_text("status_paused").split("{")[0]) and d1.queue_panel.count() == 1
 	_send(d1, "devam et")
 	var resumed_id = str(s1["ctx"].get_transcript().get_current_task().get("id", ""))
 	var resumed = r1.is_running() and not task_id.is_empty() and resumed_id == task_id and not d1.tasks.is_user_stopped

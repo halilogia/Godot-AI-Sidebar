@@ -6,6 +6,7 @@ class_name AISidebarChangeSetDialog
 ## Viewport kısıtları (%85x%80) ve dahili kaydırma (Scroll) ile ideal boyutta açılır.
 
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 signal action_approved()
 signal action_rejected()
@@ -75,7 +76,7 @@ func show_change_set(tool_name: String, args: Dictionary, cs: AISidebarChangeSet
 	# 2. İçerik ve Diff Doldurma
 	if cs:
 		var deltas = cs.get_file_deltas()
-		header_label.text = "[b][color=#88c0d0]Changes (" + str(deltas.size()) + " files)[/color][/b]"
+		header_label.text = "[b][color=#88c0d0]" + AISidebarI18n.get_text("changes_header", {"count": deltas.size()}) + "[/color][/b]"
 		
 		var sum_lines: PackedStringArray = []
 		for d in deltas:
@@ -84,9 +85,9 @@ func show_change_set(tool_name: String, args: Dictionary, cs: AISidebarChangeSet
 		
 		diff_rich_text.text = cs.get_bbcode_diff()
 	else:
-		header_label.text = "[b][color=#d08770]İşlem Onayı: " + tool_name + "[/color][/b]"
-		summary_label.text = "Parametreler: " + JSON.stringify(args)
-		diff_rich_text.text = "[color=#9399b2]Bu işlem sahne veya dosya üzerinde kalıcı değişiklik yapacaktır.[/color]"
+		header_label.text = "[b][color=#d08770]" + AISidebarI18n.get_text("dialog_approval_header", {"tool": tool_name}) + "[/color][/b]"
+		summary_label.text = AISidebarI18n.get_text("dialog_params", {"args": JSON.stringify(args)})
+		diff_rich_text.text = "[color=#9399b2]" + AISidebarI18n.get_text("dialog_permanent_warning") + "[/color]"
 		
 	popup_centered(Vector2i(target_w, target_h))
 

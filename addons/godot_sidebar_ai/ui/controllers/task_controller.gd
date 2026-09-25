@@ -25,6 +25,7 @@ const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_a
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 # --- ChatDock'tan gelen bağımlılıklar ---
 var input_field: TextEdit = null
@@ -151,8 +152,8 @@ func refresh_pause_checkpoint() -> void:
 func show_paused_badge(cur: int, mx: int) -> void:
 	if not status_badge:
 		return
-	status_badge.text = "Paused — Step %d/%d" % [cur, mx]
-	status_badge.tooltip_text = "Devam etmek için 'devam et' yazın. Başka bir mesaj yeni task başlatır."
+	status_badge.text = AISidebarI18n.get_text("status_paused", {"step": cur, "max": mx})
+	status_badge.tooltip_text = AISidebarI18n.get_text("tooltip_paused")
 	status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 
 func _resume_paused_task(user_text: String) -> void:

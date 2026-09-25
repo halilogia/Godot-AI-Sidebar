@@ -10,6 +10,7 @@ const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/component
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -102,7 +103,7 @@ static func run() -> Dictionary:
 	})
 	t_card._ready()
 	var is_t_selectable = t_card._details_lbl.selection_enabled and t_card._details_lbl.context_menu_enabled
-	if "Completed in 2.5s" in t_card._header_btn.text and is_t_selectable:
+	if t_card._header_btn.text.begins_with(AISidebarI18n.get_text("telemetry_completed", {"elapsed": "2.5s", "summary": ""})) and is_t_selectable:
 		passed += 1
 	else:
 		failed += 1

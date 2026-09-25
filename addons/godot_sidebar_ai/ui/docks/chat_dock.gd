@@ -291,16 +291,19 @@ func _setup_queue_ui() -> void:
 func update_ui_language() -> void:
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
-		export_btn.tooltip_text = "Sohbeti Dışa Aktar / Kopyala (Export Chat)"
+		export_btn.tooltip_text = AISidebarI18n.get_text("tooltip_export_chat")
 	if copy_task_btn:
 		AISidebarIconHelper.apply_icon(copy_task_btn, "copy")
-		copy_task_btn.tooltip_text = "Tüm sohbet transcriptini kopyala (Copy Chat)"
+		copy_task_btn.tooltip_text = AISidebarI18n.get_text("tooltip_copy_chat")
 	if history_btn:
 		AISidebarIconHelper.apply_icon(history_btn, "history")
-		history_btn.text = "" if history_btn.icon else "Hist"
+		history_btn.text = "" if history_btn.icon else AISidebarI18n.get_text("history_btn_short")
 		history_btn.tooltip_text = AISidebarI18n.get_text("history_title")
 	if new_chat_btn:
+		new_chat_btn.text = AISidebarI18n.get_text("btn_new_short")
 		new_chat_btn.tooltip_text = AISidebarI18n.get_text("history_btn_new")
+	if jump_to_bottom_btn:
+		jump_to_bottom_btn.text = AISidebarI18n.get_text("btn_jump_latest")
 		
 	if title_label:
 		title_label.text = AISidebarI18n.get_text("app_title")
@@ -320,11 +323,11 @@ func update_ui_language() -> void:
 		
 	if send_btn:
 		if agent_runner and agent_runner.is_running():
-			send_btn.text = "Stop"
+			send_btn.text = AISidebarI18n.get_text("btn_stop")
 			AISidebarIconHelper.apply_icon(send_btn, "stop")
-			send_btn.tooltip_text = "Görevi Durdur"
+			send_btn.tooltip_text = AISidebarI18n.get_text("tooltip_stop_task")
 		else:
-			send_btn.text = "Send"
+			send_btn.text = AISidebarI18n.get_text("btn_send")
 			AISidebarIconHelper.apply_icon(send_btn, "send")
 			send_btn.tooltip_text = ""
 		AISidebarChatDockTheme.apply_send_button(send_btn, agent_runner != null and agent_runner.is_running())
@@ -487,11 +490,11 @@ func _update_header_title() -> void:
 	if title_label:
 		var sess = sessions.current
 		if sess and not sess.title.is_empty() and sess.title != "New Chat":
-			title_label.text = "Godot AI - " + sess.title
+			title_label.text = AISidebarI18n.get_text("dock_title_session", {"title": sess.title})
 			title_label.tooltip_text = sess.title
 		else:
-			title_label.text = "Godot AI"
-			title_label.tooltip_text = "Godot AI Assistant"
+			title_label.text = AISidebarI18n.get_text("dock_title")
+			title_label.tooltip_text = AISidebarI18n.get_text("dock_title_tooltip")
 
 func _on_clear_pressed() -> void:
 	composer.clear_attached_image()

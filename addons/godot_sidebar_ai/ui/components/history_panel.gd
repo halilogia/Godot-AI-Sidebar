@@ -236,7 +236,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	info_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
 	var title_lbl = Label.new()
-	title_lbl.text = s.get("title", "Untitled")
+	title_lbl.text = s.get("title", AISidebarI18n.get_text("history_untitled"))
 	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
 	title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY if is_active else AISidebarTheme.COLOR_TEXT_SECONDARY)
 	title_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -246,7 +246,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	var meta_lbl = Label.new()
 	var dt_str = s.get("updated_at", "")
 	dt_str = dt_str.replace("T", " ").left(16)
-	meta_lbl.text = "%s • %d msgs" % [dt_str, s.get("message_count", 0)]
+	meta_lbl.text = AISidebarI18n.get_text("history_meta", {"date": dt_str, "count": s.get("message_count", 0)})
 	meta_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	meta_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_MICRO)
 	meta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -288,7 +288,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	# Dışa Aktarma Butonu
 	var exp_btn = Button.new()
 	exp_btn.flat = true
-	exp_btn.tooltip_text = "Export chat (Markdown/JSON)"
+	exp_btn.tooltip_text = AISidebarI18n.get_text("history_tooltip_export")
 	exp_btn.focus_mode = FOCUS_NONE
 	exp_btn.custom_minimum_size = Vector2(24, 24)
 	AISidebarIconHelper.apply_icon(exp_btn, "download")

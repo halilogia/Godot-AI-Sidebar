@@ -8,6 +8,7 @@ const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 static func _checklist(steps: Array, goal: String = "3D Hex Grid"):
 	var cl = AISidebarTaskChecklist.new()
@@ -100,7 +101,7 @@ static func run() -> Dictionary:
 	cl6.set_step_state(3, AISidebarTaskChecklist.STATE_RUNNING)
 	cl6.finish_with_stop(3, "Tool-call limit reached: 20/20")
 	var h6 = cl6.get_header_text()
-	if cl6.get_states() == ["completed", "completed", "completed", "failed", "skipped"] and "stopped at 3/5" in h6 and "20/20" in h6:
+	if cl6.get_states() == ["completed", "completed", "completed", "failed", "skipped"] and h6.contains(AISidebarI18n.get_text("checklist_stopped", {"done": 3, "total": 5, "reason": ""}).strip_edges()) and "20/20" in h6:
 		passed += 1
 	else:
 		failed += 1

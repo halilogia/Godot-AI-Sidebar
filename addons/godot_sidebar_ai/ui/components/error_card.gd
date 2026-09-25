@@ -8,6 +8,7 @@ class_name AISidebarErrorCard
 signal retry_requested()
 
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var error_message: String = ""
 var is_details_expanded: bool = false
@@ -46,7 +47,7 @@ func _setup_ui() -> void:
 	add_child(_vbox)
 	
 	_title_lbl = Label.new()
-	_title_lbl.text = "Something went wrong"
+	_title_lbl.text = AISidebarI18n.get_text("error_title")
 	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	_title_lbl.add_theme_font_size_override("font_size", 12)
 	_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
@@ -73,7 +74,7 @@ func _setup_ui() -> void:
 	_vbox.add_child(actions)
 	
 	_retry_btn = Button.new()
-	_retry_btn.text = "Retry"
+	_retry_btn.text = AISidebarI18n.get_text("btn_retry")
 	AISidebarIconHelper.apply_icon(_retry_btn, "refresh")
 	_retry_btn.focus_mode = Control.FOCUS_NONE
 	_retry_btn.add_theme_font_size_override("font_size", 11)

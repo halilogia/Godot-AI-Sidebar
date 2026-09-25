@@ -12,6 +12,7 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var input_area: VBoxContainer
 var input_field: TextEdit
@@ -56,7 +57,7 @@ func setup_attachment_ui() -> void:
 	hbox.add_child(_attachment_preview)
 
 	_attachment_label = Label.new()
-	_attachment_label.text = "Pano görseli"
+	_attachment_label.text = AISidebarI18n.get_text("attach_clipboard_image")
 	_attachment_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 	_attachment_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_attachment_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -70,7 +71,7 @@ func setup_attachment_ui() -> void:
 	_attachment_remove_btn.focus_mode = Control.FOCUS_NONE
 	_attachment_remove_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 	_attachment_remove_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
-	_attachment_remove_btn.tooltip_text = "Görseli kaldır"
+	_attachment_remove_btn.tooltip_text = AISidebarI18n.get_text("attach_remove_tooltip")
 	_attachment_remove_btn.pressed.connect(clear_attached_image)
 	hbox.add_child(_attachment_remove_btn)
 
@@ -98,7 +99,7 @@ func attach_vision_input(vi: AISidebarVisionInput) -> void:
 	if _attachment_preview:
 		_attachment_preview.texture = vi.get_texture()
 	if _attachment_label:
-		_attachment_label.text = "Pano görseli (%dx%d)" % [vi.width, vi.height]
+		_attachment_label.text = AISidebarI18n.get_text("attach_clipboard_image_size", {"width": vi.width, "height": vi.height})
 	if attachment_container:
 		attachment_container.visible = true
 

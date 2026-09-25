@@ -13,6 +13,7 @@ signal view_diff_requested(change_set: AISidebarChangeSet)
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var tool_name: String = ""
 var args: Dictionary = {}
@@ -64,7 +65,7 @@ func _setup_ui() -> void:
 	_title_icon.set_icon("shield-alert", Color(1.0, 0.75, 0.3))
 	title_row.add_child(_title_icon)
 	_title_lbl = Label.new()
-	_title_lbl.text = "Approval Required"
+	_title_lbl.text = AISidebarI18n.get_text("approval_title")
 	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.3))
 	_title_lbl.add_theme_font_size_override("font_size", 12)
@@ -100,7 +101,7 @@ func _setup_ui() -> void:
 	_vbox.add_child(_buttons_bar)
 	
 	_approve_btn = Button.new()
-	_approve_btn.text = "Approve"
+	_approve_btn.text = AISidebarI18n.get_text("btn_approve")
 	AISidebarIconHelper.apply_icon(_approve_btn, "check")
 	_approve_btn.focus_mode = Control.FOCUS_NONE
 	_approve_btn.add_theme_font_size_override("font_size", 11)
@@ -108,7 +109,7 @@ func _setup_ui() -> void:
 	_buttons_bar.add_child(_approve_btn)
 	
 	_reject_btn = Button.new()
-	_reject_btn.text = "Reject"
+	_reject_btn.text = AISidebarI18n.get_text("btn_reject")
 	AISidebarIconHelper.apply_icon(_reject_btn, "x")
 	_reject_btn.focus_mode = Control.FOCUS_NONE
 	_reject_btn.add_theme_font_size_override("font_size", 11)
@@ -117,7 +118,7 @@ func _setup_ui() -> void:
 	
 	if change_set:
 		_diff_btn = Button.new()
-		_diff_btn.text = "View Diff"
+		_diff_btn.text = AISidebarI18n.get_text("btn_view_diff")
 		AISidebarIconHelper.apply_icon(_diff_btn, "diff")
 		_diff_btn.focus_mode = Control.FOCUS_NONE
 		_diff_btn.add_theme_font_size_override("font_size", 11)
@@ -127,7 +128,7 @@ func _setup_ui() -> void:
 func mark_approved() -> void:
 	is_resolved = true
 	if _title_lbl:
-		_title_lbl.text = "Approved"
+		_title_lbl.text = AISidebarI18n.get_text("approval_approved")
 		_title_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.4))
 		_title_icon.set_icon("check", Color(0.4, 0.85, 0.4))
 	if _approve_btn:
@@ -140,7 +141,7 @@ func mark_approved() -> void:
 func mark_rejected() -> void:
 	is_resolved = true
 	if _title_lbl:
-		_title_lbl.text = "Rejected"
+		_title_lbl.text = AISidebarI18n.get_text("approval_rejected")
 		_title_lbl.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
 		_title_icon.set_icon("x", Color(0.9, 0.4, 0.4))
 	if _approve_btn:

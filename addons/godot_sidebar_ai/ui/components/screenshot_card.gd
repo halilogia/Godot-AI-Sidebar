@@ -10,6 +10,7 @@ signal meta_clicked(meta: Variant)
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var source_kind: String = "runtime_viewport"
 var sent_to_model: bool = true
@@ -53,7 +54,7 @@ func _ready() -> void:
 	_thumb_btn.flat = true
 	_thumb_btn.focus_mode = Control.FOCUS_NONE
 	_thumb_btn.custom_minimum_size = Vector2(120, 68)
-	_thumb_btn.tooltip_text = "Büyütmek için tıkla"
+	_thumb_btn.tooltip_text = AISidebarI18n.get_text("tooltip_zoom")
 	_thumb_btn.pressed.connect(_on_thumb_pressed)
 	hbox.add_child(_thumb_btn)
 	if vision:

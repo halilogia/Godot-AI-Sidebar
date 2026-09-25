@@ -8,6 +8,7 @@ class_name AISidebarRuntimeCard
 signal meta_clicked(meta: Variant)
 
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var is_expanded: bool = true
 
@@ -45,7 +46,7 @@ func _setup_ui() -> void:
 	_header_btn.focus_mode = Control.FOCUS_NONE
 	_header_btn.add_theme_font_size_override("font_size", 11)
 	_header_btn.add_theme_color_override("font_color", Color(0.5, 0.75, 1.0))
-	_header_btn.text = "▾ Testing"
+	_header_btn.text = "▾ " + AISidebarI18n.get_text("runtime_testing")
 	_header_btn.pressed.connect(_on_header_pressed)
 	_vbox.add_child(_header_btn)
 	
@@ -59,7 +60,7 @@ func _on_header_pressed() -> void:
 	is_expanded = not is_expanded
 	if _status_list:
 		_status_list.visible = is_expanded
-	_header_btn.text = ("▾ " if is_expanded else "▸ ") + "Testing"
+	_header_btn.text = ("▾ " if is_expanded else "▸ ") + AISidebarI18n.get_text("runtime_testing")
 
 func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> void:
 	if not _status_list:

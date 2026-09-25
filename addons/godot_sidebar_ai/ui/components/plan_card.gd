@@ -70,7 +70,7 @@ func _setup_ui() -> void:
 	header_hbox.add_child(header_icon)
 
 	_title_lbl = Label.new()
-	_title_lbl.text = "Implementation Plan"
+	_title_lbl.text = AISidebarI18n.get_text("plan_title")
 	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	_title_lbl.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
 	_title_lbl.add_theme_font_size_override("font_size", 12)

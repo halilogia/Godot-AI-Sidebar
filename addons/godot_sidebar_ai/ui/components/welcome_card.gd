@@ -10,6 +10,7 @@ signal prompt_selected(prompt_text: String)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var _vbox: VBoxContainer
 
@@ -40,21 +41,21 @@ func _setup_ui() -> void:
 	_vbox.add_child(header)
 	
 	var title_lbl = Label.new()
-	title_lbl.text = "Godot AI Asistanı"
+	title_lbl.text = AISidebarI18n.get_text("welcome_title")
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_HEADER)
 	title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	header.add_child(title_lbl)
 	
 	var badge_lbl = Label.new()
-	badge_lbl.text = "● Hazır"
+	badge_lbl.text = AISidebarI18n.get_text("status_ready")
 	badge_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 	badge_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	header.add_child(badge_lbl)
 	
 	# Açıklama
 	var desc_lbl = Label.new()
-	desc_lbl.text = "Godot 4.7 ile tam entegre çalışır. Dosya/kod üretimi, sahne yönetimi, canlı hata ayıklama ve mimari netleştirme yapabilir.\n\nAşağıdaki hızlı başlangıç görevlerinden birini seçebilir veya alttaki kutuya doğrudan sorunuzu yazabilirsiniz:"
+	desc_lbl.text = AISidebarI18n.get_text("welcome_desc")
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 	desc_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)

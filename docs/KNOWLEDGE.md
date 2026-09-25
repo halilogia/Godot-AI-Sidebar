@@ -79,6 +79,12 @@ Bu dosya, Godot 4.7 motor özellikleri, GDScript 2.0 kuralları, 9Router/LLM pro
   * LSP (`--lsp-port`, `publishDiagnostics`) yolu denenmedi; yukarıdaki yöntem yeterli olduğu için gerek kalmadı.
 * Aynı betik içindeki `Callable(Script, "static_func")` ve iki betik arasında döngüsel `preload` (`verification_pipeline.gd` ↔ `tscn_validator.gd`) headless'ta sorunsuz çalışır.
 
+## Yerelleştirme (i18n) — Godot 4.7.2 çeviri alanları (26.09)
+
+* Eklentinin metinleri `AISidebarI18n` + `addons/godot_sidebar_ai/i18n/<dil>.json` üzerinden gelir (i18next düz JSON; `_one` / `_other`; seçili dil → EN → anahtar).
+* Godot 4.7'de `TranslationDomain` vardır: `TranslationServer.get_or_add_domain("ad")` ile ana alandan yalıtılmış bir alan açılır (oyun projesinin çevirileriyle karışmaz; probe ile doğrulandı), `set_locale_override("en")` alanın dilini editör / işletim sistemi dilinden (`TranslationServer.get_locale()`, ör. `tr_TR`) bağımsız yapar, `translate_plural` mevcuttur. Gerekirse `AISidebarI18n.translate` tek giriş noktası olduğu için geçiş oradan yapılır.
+* Headless testlerde dil config'ten okunur (`config.json` git-ignored); dil bağımsız test için beklenen metin `AISidebarI18n.get_text` / `translate` ile üretilir, sabit İngilizce metin yazılmaz.
+
 ## İkon Sistemi (Lucide) ve Emoji Yasağı
 
 * UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.

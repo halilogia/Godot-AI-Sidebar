@@ -10,6 +10,7 @@ signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 const STATE_PENDING := "pending"
 const STATE_RUNNING := "running"
@@ -184,10 +185,10 @@ func _update_header() -> void:
 	var done = completed_count()
 	var total = _steps.size()
 	if not stop_reason.is_empty():
-		_header_btn.text = arrow + " Tasks stopped at %d/%d — %s" % [done, total, stop_reason]
+		_header_btn.text = arrow + AISidebarI18n.get_text("checklist_stopped", {"done": done, "total": total, "reason": stop_reason})
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
 	elif is_finished:
-		_header_btn.text = arrow + " Tasks completed · %d/%d" % [done, total]
+		_header_btn.text = arrow + AISidebarI18n.get_text("checklist_completed", {"done": done, "total": total})
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	else:
 		var title = "Tasks"

@@ -8,6 +8,7 @@ class_name AISidebarClarificationCard
 signal response_submitted(answer: String)
 
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var question_text: String = ""
 var quick_options: Array = []
@@ -52,7 +53,7 @@ func _ready() -> void:
 	header_hbox.add_child(header_icon)
 	
 	var title_lbl = Label.new()
-	title_lbl.text = "Clarification Needed"
+	title_lbl.text = AISidebarI18n.get_text("clarification_title")
 	title_lbl.add_theme_font_size_override("font_size", 12)
 	title_lbl.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3))
 	header_hbox.add_child(title_lbl)
@@ -103,14 +104,14 @@ func _ready() -> void:
 	input_hbox.add_theme_constant_override("separation", 4)
 	
 	_input_line = LineEdit.new()
-	_input_line.placeholder_text = "Type your response or details..."
+	_input_line.placeholder_text = AISidebarI18n.get_text("clarification_placeholder")
 	_input_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_input_line.add_theme_font_size_override("font_size", 11)
 	_input_line.text_submitted.connect(_on_text_submitted)
 	input_hbox.add_child(_input_line)
 	
 	_send_btn = Button.new()
-	_send_btn.text = "Send"
+	_send_btn.text = AISidebarI18n.get_text("btn_send")
 	_send_btn.add_theme_font_size_override("font_size", 11)
 	_send_btn.pressed.connect(func(): _on_text_submitted(_input_line.text))
 	input_hbox.add_child(_send_btn)
@@ -149,7 +150,7 @@ func _apply_answered_view() -> void:
 		_options_container.visible = false
 	if _input_row:
 		_input_row.visible = false
-	_show_status("Answered: " + _replayed_answer)
+	_show_status(AISidebarI18n.get_text("clarification_answered", {"answer": _replayed_answer}))
 
 func _show_status(txt: String) -> void:
 	_status_lbl.text = txt
@@ -181,6 +182,6 @@ func _submit_answer(answer: String) -> void:
 		_send_btn.disabled = true
 		
 	if _status_lbl:
-		_show_status("Answered: " + answer)
+		_show_status(AISidebarI18n.get_text("clarification_answered", {"answer": answer}))
 		
 	response_submitted.emit(answer)

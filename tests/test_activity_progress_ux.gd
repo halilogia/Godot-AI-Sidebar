@@ -10,6 +10,7 @@ const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
 const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -55,7 +56,7 @@ static func run() -> Dictionary:
 		errors.append("T4 (limit stop reason visible) failed: '" + grp.get_header_text() + "'")
 
 	# 5. Activity count doğru
-	if grp.get_item_count() == 2 and "2 steps" in grp.get_header_text():
+	if grp.get_item_count() == 2 and grp.get_header_text().contains(AISidebarI18n.get_text("activity_steps", {"count": 2})):
 		passed += 1
 	else:
 		failed += 1

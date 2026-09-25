@@ -9,6 +9,7 @@ const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/v
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 class MockQueueProvider extends AISidebarAIProvider:
 	var responses: Array = []
@@ -82,7 +83,7 @@ static func run() -> Dictionary:
 	var popped_second = qp.pop_next()
 	if popped_first.get("prompt") == "Task 1" and popped_first.has("vision_inputs") \
 			and popped_second.get("display_prompt") == "Task 2 (display)" and not popped_second.has("vision_inputs") \
-			and qp.count() == 1 and qp.visible and qp.get_title_text() == "Queued Messages (1)":
+			and qp.count() == 1 and qp.visible and qp.get_title_text() == AISidebarI18n.get_text("queue_title", {"count": 1}):
 		passed += 1
 	else:
 		failed += 1

@@ -9,6 +9,7 @@ const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 static func _ordered_task() -> Dictionary:
 	var tr = AISidebarTaskTranscript.new()
@@ -167,7 +168,7 @@ static func run() -> Dictionary:
 	cl9.set_step_state(0, AISidebarTaskChecklist.STATE_COMPLETED)
 	cl9.set_step_state(1, AISidebarTaskChecklist.STATE_RUNNING)
 	cl9.finish_with_stop(1, "Tool-call limit reached: 20/20")
-	if cl9.get_states() == ["completed", "failed"] and "stopped at 1/2" in cl9.get_header_text() and "20/20" in cl9.get_header_text():
+	if cl9.get_states() == ["completed", "failed"] and cl9.get_header_text().contains(AISidebarI18n.get_text("checklist_stopped", {"done": 1, "total": 2, "reason": ""}).strip_edges()) and "20/20" in cl9.get_header_text():
 		passed += 1
 	else:
 		failed += 1

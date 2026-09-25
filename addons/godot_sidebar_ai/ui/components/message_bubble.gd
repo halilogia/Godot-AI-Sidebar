@@ -12,6 +12,7 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var role: String = "assistant"
 var text_content: String = ""
@@ -237,13 +238,13 @@ func _setup_ui() -> void:
 	_role_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 	
 	if role == "user":
-		_role_label.text = "You"
+		_role_label.text = AISidebarI18n.get_text("sender_user")
 		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_ACCENT)
 	elif role == "command" or role == "slash_command":
-		_role_label.text = "Slash Command"
+		_role_label.text = AISidebarI18n.get_text("sender_slash")
 		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_ROLE_COMMAND)
 	else:
-		_role_label.text = "Godot AI"
+		_role_label.text = AISidebarI18n.get_text("sender_assistant")
 		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 		
 	_header_bar.add_child(_role_label)
@@ -251,7 +252,7 @@ func _setup_ui() -> void:
 	_copy_btn = Button.new()
 	_copy_btn.flat = true
 	_copy_btn.focus_mode = Control.FOCUS_NONE
-	_copy_btn.tooltip_text = "Metni Kopyala"
+	_copy_btn.tooltip_text = AISidebarI18n.get_text("tooltip_copy_text")
 	_copy_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
 	_copy_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
 	AISidebarIconHelper.apply_icon(_copy_btn, "copy")

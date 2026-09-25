@@ -9,6 +9,7 @@ signal copy_task_requested(task_id: String)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var metrics: Dictionary = {}
 var is_expanded: bool = false
@@ -67,9 +68,9 @@ func _setup_ui() -> void:
 	_copy_btn = Button.new()
 	_copy_btn.flat = true
 	_copy_btn.focus_mode = Control.FOCUS_NONE
-	_copy_btn.tooltip_text = "Copy this task transcript"
+	_copy_btn.tooltip_text = AISidebarI18n.get_text("telemetry_copy_tooltip")
 	_copy_btn.add_theme_font_size_override("font_size", 10)
-	_copy_btn.text = "Copy"
+	_copy_btn.text = AISidebarI18n.get_text("btn_copy")
 	_copy_btn.visible = not task_id.strip_edges().is_empty()
 	_copy_btn.pressed.connect(func(): copy_task_requested.emit(task_id))
 	_header_bar.add_child(_copy_btn)
@@ -108,13 +109,13 @@ func render_metrics(m: Dictionary) -> void:
 	var completion = str(m.get("completion", "success" if is_ok else "failed"))
 	var summary = "Steps: " + str(used_steps) + "/" + str(max_steps) + " · Tools: " + tools_sent + "/" + total_tools + " active (" + tools_executed + " used) · " + files + " files"
 	if is_ok and completion == "success":
-		_header_btn.text = "Completed in " + elapsed + " · " + summary
+		_header_btn.text = AISidebarI18n.get_text("telemetry_completed", {"elapsed": elapsed, "summary": summary})
 		AISidebarIconHelper.apply_tinted_icon(_header_btn, "check", AISidebarTheme.COLOR_SUCCESS, 12)
 	elif completion == "incomplete":
-		_header_btn.text = "Needs review (" + elapsed + ") · " + summary
+		_header_btn.text = AISidebarI18n.get_text("telemetry_needs_review", {"elapsed": elapsed, "summary": summary})
 		AISidebarIconHelper.apply_tinted_icon(_header_btn, "triangle-alert", AISidebarTheme.COLOR_WARNING, 12)
 	else:
-		_header_btn.text = "Failed in " + elapsed + " · " + summary
+		_header_btn.text = AISidebarI18n.get_text("telemetry_failed", {"elapsed": elapsed, "summary": summary})
 		AISidebarIconHelper.apply_tinted_icon(_header_btn, "x", AISidebarTheme.COLOR_ERROR, 12)
 	_header_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
 	
@@ -131,7 +132,7 @@ func render_metrics(m: Dictionary) -> void:
 	var files_txt = "%s read / %s written" % [str(m.get("files_read_count", 0)), str(m.get("files_written_count", 0))]
 	var limit_txt = " · LIMIT" if bool(m.get("limit_hit", false)) else ""
 
-	_details_lbl.text = "[color=#717c91]• Steps: " + str(used_steps) + " used / " + str(max_steps) + " safety limit" + limit_txt + " | Active Tools: " + tools_sent + " sent / " + total_tools + " total | LLM: " + llm_s + " | Tools: " + tool_s + " (File: " + file_s + ") | Waiting: " + wait_s + "[/color]\n[color=#717c91]• Research: " + research_s + " (overhead " + overhead_txt + ") | Ops " + rsw + " | Failed: " + failed_txt + " | Retries: " + retry_txt + " | Files: " + files_txt + "[/color]"
+	_details_lbl.text = "[color=#717c91]• Steps: " + str(used_steps) + " used / " + str(max_steps) + " safety limit" + limit_txt + " | Active Tools: " + tools_sent + " sent / " + total_tools + " total | LLM: " + llm_s + " | Tools: " + tool_s + " (File: " + file_s + ") | Waiting: " + wait_s + "[/color]\n[color=#717c91]• Research: " + research_s + " (overhead " + overhead_txt + ") | Ops " + rsw + " | Failed: " + failed_txt + " | Retries: " + retry_txt + " | Files: " + files_txt + "[/color]"  # i18n-ignore: teknik metrik dökümü; adlar export / build_metrics anahtarlarıyla aynı, iki dilde İngilizce kalır
 
 func _on_header_pressed() -> void:
 	is_expanded = not is_expanded

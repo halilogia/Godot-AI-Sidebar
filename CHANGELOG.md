@@ -17,6 +17,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Bekleyen kullanıcı kararları (tool onayı, netleştirme sorusu, plan) `PendingInteraction` (`core/agent/pending_interaction.gd`) birimine taşındı; karar fonksiyonlarının koruma koşulları ve temizlik kuralları test altında.
 * Model yanıtını işleyen 201 satırlık `_on_provider_response` adımlara bölündü (boş yanıt, tool dağıtımı, çağrı başına korumalar, icra, tamamlama kapısı); her dal önce 13 senaryoluk birebir iz testiyle sabitlendi.
 * Aynı süreçte iki bağımsız `AgentRunner` / `AgentHost` testi: context, telemetri, bekleyen kararlar, tekrar koruması, açılan araçlar ve Stop birbirine karışmıyor (alt ajanlar ve CLI / MCP köprüsü için önkoşul).
+* Arayüz metinleri koddan `addons/godot_sidebar_ai/i18n/tr.json` ve `en.json` dosyalarına taşındı (i18next biçimi, `_one` / `_other` çoğul ekleri, seçili dil → İngilizce → anahtar yedek zinciri); yeni `ui/` kodunda sabit görünür metin testle engelleniyor.
 * TSCN/TRES yapısal doğrulayıcısı `VerificationPipeline`'dan ayrı bir birime (`core/verification/tscn_validator.gd`) taşındı; her hata kodu ve sonuç metni önce sabitleme testiyle kilitlendi. `chat_exporter.gd`, `editor_tools.gd` ve `scene_tools.gd` değerlendirildi ve gerekçesiyle bölünmedi.
 
 ### Düzeltilenler
@@ -43,6 +44,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * `create_scene` / `add_node` Node olmayan bir tipte (`Resource` gibi) sessizce boş sonuç döndürmek yerine anlaşılır bir `INVALID_CLASS` hatası veriyor.
 * Tam `.tscn` içeriğiyle oluşturulan sahnede sonuç mesajı artık varsayılan "Root (Node2D)" değil, sahnenin gerçek kök düğümünü gösteriyor.
 * Sohbet export'unda mesaj alanı boş (`null`) olan bir tool sonucu, Markdown'daki tool bölümünü yarıda kesmiyor.
+* Türkçe arayüzde kalan İngilizce metinler çevrildi: onay / netleştirme / plan / hata kartları, değişiklik kartı, kuyruk paneli, telemetri başlığı, etkinlik grubu, görev listesi, History paneli, ayar ipuçları ve üst çubuk. İngilizce arayüz aynı kaldı; yalnızca daha önce İngilizce modda da Türkçe görünen karşılama kartı, ek görseli, ipuçları ve onay diyaloğu artık İngilizce. "Changes (1 files)" gibi tekil/çoğul hataları düzeldi. README görselleri güncellendi.
 
 ### Eklenenler
 * Asistan cevaplarında ve plan kartında Markdown (başlık, kalın, italik, kod, liste, alıntı).

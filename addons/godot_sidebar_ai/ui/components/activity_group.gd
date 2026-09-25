@@ -10,6 +10,7 @@ signal meta_clicked(meta: Variant)
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var is_expanded: bool = false
 var is_active: bool = true
@@ -169,8 +170,8 @@ func _update_header() -> void:
 	if not _header_btn:
 		return
 	var arrow = "▾" if is_expanded else "▸"
-	var state_txt = "Working" if is_active else "Activity"
-	var count_txt = " · " + str(_items.size()) + " steps" if _items.size() > 0 else ""
+	var state_txt = AISidebarI18n.get_text("activity_working") if is_active else AISidebarI18n.get_text("activity_title")
+	var count_txt = AISidebarI18n.get_text("activity_steps", {"count": _items.size()}) if _items.size() > 0 else ""
 	var txt = arrow + " " + state_txt + count_txt
 	if not _stop_reason.is_empty():
 		txt += " — " + _stop_reason
@@ -280,7 +281,7 @@ func _refresh_item(idx: int) -> void:
 	else:
 		(entry["details_btn"] as Button).visible = true
 		var arrow = "▾" if expanded else "▸"
-		(entry["details_btn"] as Button).text = arrow + " Technical details"
+		(entry["details_btn"] as Button).text = arrow + AISidebarI18n.get_text("activity_tech_details")
 		(entry["details_lbl"] as RichTextLabel).visible = expanded
 		if expanded:
 			(entry["details_lbl"] as RichTextLabel).text = details.left(2000)

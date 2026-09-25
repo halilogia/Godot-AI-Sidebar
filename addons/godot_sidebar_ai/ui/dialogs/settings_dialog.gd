@@ -193,29 +193,29 @@ func update_labels() -> void:
 		
 	var nav_title = find_child("NavTitle", true, false)
 	if nav_title:
-		nav_title.text = "Kategoriler" if AISidebarI18n.get_current_language() == "tr" else "Categories"
+		nav_title.text = AISidebarI18n.get_text("settings_categories")
 		
 	var temp_hint = find_child("TempHintLabel", true, false)
 	if temp_hint:
-		temp_hint.text = "Modelin rastlantısallığını belirler. Düşük değerler daha deterministik ve tutarlı kod üretir. Kazara değişimi önlemek için fare tekerleği devre dışıdır." if AISidebarI18n.get_current_language() == "tr" else "Controls model randomness. Lower values produce more consistent code. Mouse wheel is disabled to prevent accidental changes."
+		temp_hint.text = AISidebarI18n.get_text("hint_temperature")
 		temp_hint.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 		temp_hint.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 		
 	var max_hint = find_child("MaxIterHint", true, false)
 	if max_hint:
-		max_hint.text = "Modelin tek bir komut için peş peşe çağırabileceği maksimum araç adım sayısıdır." if AISidebarI18n.get_current_language() == "tr" else "Maximum number of autonomous tool steps allowed per user request."
+		max_hint.text = AISidebarI18n.get_text("hint_max_steps")
 		max_hint.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 		max_hint.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 		
 	var lang_hint = find_child("LangHint", true, false)
 	if lang_hint:
-		lang_hint.text = "Eklenti arayüzünde, onay kartlarında ve sistem bildirimlerinde kullanılan dil." if AISidebarI18n.get_current_language() == "tr" else "Language used across sidebar UI, approval dialogs, and notices."
+		lang_hint.text = AISidebarI18n.get_text("hint_language")
 		lang_hint.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 		lang_hint.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 		
 	var app_hint = find_child("ApprovalHint", true, false)
 	if app_hint:
-		app_hint.text = "Dosya yazma ve silme işlemlerinde onay kapısının nasıl davranacağını belirler." if AISidebarI18n.get_current_language() == "tr" else "Controls approval gate behavior for file mutation and deletion."
+		app_hint.text = AISidebarI18n.get_text("hint_approval_mode")
 		app_hint.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 		app_hint.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 		
@@ -228,7 +228,7 @@ func update_labels() -> void:
 	if reset_prompt_btn:
 		reset_prompt_btn.text = AISidebarI18n.get_text("btn_reset_prompt")
 	if reset_temp_btn:
-		reset_temp_btn.text = "0.20'ye Sıfırla" if AISidebarI18n.get_current_language() == "tr" else "Reset to 0.20"
+		reset_temp_btn.text = AISidebarI18n.get_text("btn_reset_temp_to")
 
 func open_settings() -> void:
 	_setup_nav()
@@ -287,7 +287,7 @@ func _apply_provider_ui_state(idx: int) -> void:
 		if api_key_line:
 			api_key_line.editable = false
 		if provider_hint_label:
-			provider_hint_label.text = "Google Antigravity CLI doğrudan yerel oturumu kullanır. 3. taraf proxy/MITM içermez; API Key veya Base URL gerekmez."
+			provider_hint_label.text = AISidebarI18n.get_text("hint_provider_agy")
 			provider_hint_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	else:
 		if endpoint_card:
@@ -297,17 +297,17 @@ func _apply_provider_ui_state(idx: int) -> void:
 		if api_key_line:
 			api_key_line.editable = true
 		if provider_hint_label:
-			provider_hint_label.text = "OpenAI uyumlu yerel veya bulut API endpointi (9Router, Ollama, OpenRouter vb.)."
+			provider_hint_label.text = AISidebarI18n.get_text("hint_provider_openai")
 			provider_hint_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 
 func _on_temp_changed(val: float) -> void:
 	if temp_val_label:
 		var snapped_val = snappedf(val, 0.05)
 		if is_equal_approx(snapped_val, 0.20):
-			temp_val_label.text = "%0.2f (Varsayılan)" % snapped_val
+			temp_val_label.text = AISidebarI18n.get_text("temp_value_default", {"value": "%0.2f" % snapped_val})
 			temp_val_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 		elif snapped_val > 0.60:
-			temp_val_label.text = "%0.2f (Yüksek Rastlantısallık)" % snapped_val
+			temp_val_label.text = AISidebarI18n.get_text("temp_value_high", {"value": "%0.2f" % snapped_val})
 			temp_val_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 		else:
 			temp_val_label.text = "%0.2f" % snapped_val

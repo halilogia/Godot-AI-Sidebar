@@ -13,6 +13,7 @@ signal file_clicked(file_path: String)
 
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 var change_set: AISidebarChangeSet
 var is_expanded: bool = true
@@ -79,7 +80,7 @@ func _setup_ui() -> void:
 	_vbox.add_child(_actions_bar)
 	
 	_diff_btn = Button.new()
-	_diff_btn.text = "View Diff"
+	_diff_btn.text = AISidebarI18n.get_text("btn_view_diff")
 	AISidebarIconHelper.apply_icon(_diff_btn, "diff")
 	_diff_btn.focus_mode = Control.FOCUS_NONE
 	_diff_btn.add_theme_font_size_override("font_size", 11)
@@ -87,7 +88,7 @@ func _setup_ui() -> void:
 	_actions_bar.add_child(_diff_btn)
 	
 	_undo_btn = Button.new()
-	_undo_btn.text = "Undo"
+	_undo_btn.text = AISidebarI18n.get_text("btn_undo")
 	AISidebarIconHelper.apply_icon(_undo_btn, "undo")
 	_undo_btn.focus_mode = Control.FOCUS_NONE
 	_undo_btn.add_theme_font_size_override("font_size", 11)
@@ -105,7 +106,7 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 	var deltas = cs.get_file_deltas()
 	var total_files = deltas.size()
 	
-	_header_lbl.text = "[color=#88c0d0][b]▾ Changes (" + str(total_files) + " " + ("file" if total_files == 1 else "files") + ")[/b][/color]"
+	_header_lbl.text = "[color=#88c0d0][b]▾ " + AISidebarI18n.get_text("changes_header", {"count": total_files}) + "[/b][/color]"
 	
 	for d in deltas:
 		var row = HBoxContainer.new()
@@ -156,5 +157,5 @@ func _on_diff_pressed() -> void:
 
 func _on_undo_pressed() -> void:
 	_undo_btn.disabled = true
-	_undo_btn.text = "Undone"
+	_undo_btn.text = AISidebarI18n.get_text("changes_undone")
 	undo_requested.emit(change_set)

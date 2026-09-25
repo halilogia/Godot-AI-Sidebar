@@ -9,6 +9,14 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const ROOT = "res://addons/godot_sidebar_ai"
 const LANGS = ["tr", "en"]
 
+## 5.4 sabit metin kuralı (eslint i18next/no-literal-string karşılığı): ui/ altında
+## `.text` / `.tooltip_text` / `.placeholder_text` sabit atamaları i18n'den geçmelidir.
+## Sayılmayanlar: BBCode etiketleri, biçim belirteçleri (%d, %.1f…) ve {param} ayıklandıktan
+## sonra iki harfli dizi içermeyen metinler (glifler, süreler). Bilinçli istisna, satırın
+## sonuna gerekçesiyle `# i18n-ignore: <neden>` yazılarak açıkça işaretlenir (eslint-disable-line
+## karşılığı); işaretli satırlar raporda sayılır.
+const IGNORE_MARK = "# i18n-ignore:"
+
 static func _collect(path: String, out: Array) -> void:
 	var dir = DirAccess.open(path)
 	if dir == null:
@@ -27,6 +35,31 @@ static func _placeholders(text: String) -> Array:
 	out.sort()
 	return out
 
+## ui/ kaynaklarındaki kural ihlalleri: ["dosya|sabit", …] (saf; testte ve raporda kullanılır).
+static func literal_violations(sources: Dictionary) -> Array:
+	var assign_re = RegEx.create_from_string("\\.(?:text|tooltip_text|placeholder_text)\\s*=\\s*(.*)$")
+	var lit_re = RegEx.create_from_string("\"((?:[^\"\\\\]|\\\\.)*)\"")
+	var strip_re = RegEx.create_from_string("\\[[^\\]]*\\]|\\[/?[a-z_]+=?[^\\]]*$|%[-+0-9.]*[a-zA-Z]|\\{[a-z_]+\\}|https?://\\S+")
+	var word_re = RegEx.create_from_string("[A-Za-zÇĞİÖŞÜçğıöşü]{2,}")
+	# Metin olmayan sabitler: i18n anahtarı, sözlük alanı, karşılaştırma, metin sorguları.
+	var non_text_re = RegEx.create_from_string("(?:get_text|translate)\\((?:\"[a-z]{2}\"\\s*,\\s*)?\"[^\"]*\"|\\.(?:get|has|begins_with|ends_with|contains)\\(\"[^\"]*\"|\\[\"[^\"]*\"\\]|\"[^\"]*\"\\s*:|[=!]=\\s*\"[^\"]*\"|\"[^\"]*\"\\s*[=!]=")
+	var out: Array = []
+	for file in sources.keys():
+		for line in str(sources[file]).split("\n"):
+			var code = line.strip_edges()
+			if code.begins_with("#") or code.contains(IGNORE_MARK):
+				continue
+			var m = assign_re.search(code)
+			if m == null:
+				continue
+			for lit in lit_re.search_all(non_text_re.sub(m.get_string(1), "", true)):
+				var bare = strip_re.sub(lit.get_string(1), "", true)
+				if word_re.search(bare) != null:
+					var id = str(file).get_file() + "|" + lit.get_string(1)
+					if not out.has(id):
+						out.append(id)
+	return out
+
 static func run() -> Dictionary:
 	var passed = 0
 	var failed = 0
@@ -41,7 +74,7 @@ static func run() -> Dictionary:
 	trace.append(["en", "__missing__", AISidebarI18n.translate("en", "__missing__")])
 	trace.append(["tr", "status_executing", AISidebarI18n.translate("tr", "status_executing", {"step": 2, "max": 5})])
 	var digest = JSON.stringify(trace).md5_text()
-	var golden = "1d22c80b6e65f61a2ac59e413b7ec0e6"
+	var golden = "9782c8d9e1831265a69622fc58a38fed"
 	if trace.size() > 100 and digest == golden:
 		passed += 1
 	else:
@@ -72,7 +105,8 @@ static func run() -> Dictionary:
 		all_src += src + "\n"
 		for m in used_re.search_all(src):
 			var k = m.get_string(1)
-			if not tr_keys.has(k) and not undefined.has(k):
+			var plural_ok = tr_keys.has(k + "_one") and tr_keys.has(k + "_other")
+			if not tr_keys.has(k) and not plural_ok and not undefined.has(k):
 				undefined.append(str(f).get_file() + ":" + k)
 	if undefined.is_empty():
 		passed += 1
@@ -95,7 +129,8 @@ static func run() -> Dictionary:
 	# anahtarlar yazdırılır (dinamik anahtarlar da tırnaklı geçtiği için sayılır). Başarısız saymaz.
 	var unused: Array = []
 	for key in tr_keys:
-		if not all_src.contains("\"" + str(key) + "\""):
+		var base_key = str(key).trim_suffix("_one").trim_suffix("_other")
+		if not all_src.contains("\"" + str(key) + "\"") and not all_src.contains("\"" + base_key + "\""):
 			unused.append(key)
 	if not unused.is_empty():
 		print("  [I18N] Kodda geçmeyen %d anahtar: %s" % [unused.size(), ", ".join(PackedStringArray(unused))])
@@ -115,5 +150,28 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T6 (plural + fallback) failed: one=%s many=%s zero=%s tr=%s de=%s" % [one, many, zero, tr_many, unsupported])
+
+	# 7. Sabit metin kuralı (5.4): ui/ altında i18n'den geçmeyen görünür metin yok.
+	var ui_files: Array = []
+	_collect(ROOT + "/ui", ui_files)
+	var ui_sources: Dictionary = {}
+	for f in ui_files:
+		ui_sources[f] = FileAccess.get_file_as_string(f)
+	var violations = literal_violations(ui_sources)
+	var rule_sample = "\n".join([
+		"\tlbl.text = \"Approve\"",
+		"\tlbl.text = \"[color=#fff]\" + t + \"[/color]\"",
+		"\tlbl.text = \"%.1fs\" % d",
+		"\t# lbl.text = \"Yorum\"",
+		"\tlbl.text = \"Metric: \" + v  # i18n-ignore: test",
+		"\tlbl.text = t(\"x\", {\"count\": n})",
+		"\tlbl.text = AISidebarI18n.get_text(\"x\")",
+	])
+	var rule_self = literal_violations({"x.gd": rule_sample}) == ["x.gd|Approve"]
+	if ui_files.size() > 20 and rule_self and violations.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T7 (literal UI strings) failed: self=%s count=%d %s" % [str(rule_self), violations.size(), str(violations)])
 
 	return {"name": "I18nTests", "passed": passed, "failed": failed, "errors": errors}
