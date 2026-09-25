@@ -85,6 +85,29 @@ Refactor sürerken test silinmez: güvenlik ağı odur. Refactor sırasında yal
 - [ ] Satır bütçesi testi: `.gd` dosyası > 600 satırsa uyarı, > 900 ise test başarısız (istisna listesi açık yazılır).
 - [ ] `ARCHITECTURE.md` yeni UI katmanlarını (components / presenters / controllers) anlatacak şekilde güncellenir.
 
+### Faz 4.A — Sıkı GDScript kontrolü (`tsc --noEmit` benzeri)
+
+Bugünkü `tools/typecheck.gd` her script'i derleyip sahneleri yükler: sözdizimi, eksik preload ve tipli değişkenlerde olmayan üye kullanımını yakalar. Yakalayamadıkları (25.09'da görüldü): tipsiz değişken üzerinden silinmiş metot çağrısı (`tests/diagnostic/` betikleri), sinyal–handler argüman sayısı, metin anahtarları, `tools/` klasörü. Hedef: TypeScript'teki `strict` + `noEmit` + CI akışının GDScript karşılığı.
+
+- [ ] **4.A.1 Kapsam:** `tools/` taramaya eklenir. `scripts/` (demo) kapsam dışı kalır ve bu açıkça yazılır.
+- [ ] **4.A.2 Araştırma (önce kanıt):** Godot 4.7'de (a) `debug/gdscript/warnings/*` uyarıları headless `reload()` sırasında çıktıya basılıyor mu, (b) eklenti klasörü için uyarıları kapatan ayar (4.x'te `exclude_addons`; adı 4.7'de doğrulanacak) nasıl kapatılır, (c) basılmıyorsa `--lsp-port` üzerinden LSP `publishDiagnostics` ile toplanabilir mi. Sonuç `docs/KNOWLEDGE.md`'ye yazılır.
+- [ ] **4.A.3 Uyarı raporu:** `untyped_declaration`, `unsafe_method_access`, `unsafe_property_access`, `unsafe_call_argument`, `unsafe_cast` yalnızca `addons/godot_sidebar_ai` için açılır. Typecheck dosya başına uyarı sayısını raporlar; başarısız saymaz.
+- [ ] **4.A.4 Cırcır (ratchet):** Dosya başına sayılar `tools/typecheck_baseline.json`'a yazılır. Bir dosyada sayı artarsa typecheck başarısız olur, azalırsa baseline güncellenir (TypeScript'e kademeli geçişteki yöntem).
+- [ ] **4.A.5 Tip ekleme:** Önce yeni birimler (presenters / controllers) ve `core/agent`; `var runner = null` gibi alanlar tiplenir, `Callable` yerine mümkünse sinyal kullanılır.
+- [ ] **4.A.6 Sıfırda sertleşme:** Bir dosya sıfıra inince uyarılar o dosya için hata seviyesine çekilir; sonunda tüm eklentide.
+- [ ] **4.A.7 Tipin göremediğini test görür:** Sinyal bağlantı testleri (`DockAgentWiringTests` modeli) diğer bileşenlere yayılır; `preload` yollarının varlığı ve i18n anahtarları (Faz 5) statik taramayla kontrol edilir.
+- [ ] **4.A.8 CI:** GitHub Actions'ta her PR'da Linux headless Godot ile typecheck + test_runner (`verify.ps1` eşdeğeri). `tsc --noEmit`'in CI'daki rolü.
+
+## Faz 5 — i18n (i18next benzeri)
+
+Durum (25.09 ölçümü): `AISidebarI18n` sözlüğü kod içinde; TR ve EN'de 69'ar anahtar, ikisi birebir eşit. Kod 43 anahtar kullanıyor, tanımsız anahtar yok, 28 anahtar kullanılmıyor. `ui/` içinde i18n'den geçmeyen yaklaşık 55 sabit `.text` / `.tooltip_text` ataması var ("Clarification Needed", "Activity", "Send"...); Türkçe arayüzdeki İngilizce metinlerin kaynağı bunlar. Varsayılan dil `tr`, eksik anahtarda TR'ye düşülür.
+
+- [ ] **5.1 Kaynak dosyalar:** Metinler koddan `addons/godot_sidebar_ai/i18n/tr.json` ve `en.json` dosyalarına taşınır (i18next resource dosyaları gibi). İsteğe bağlı ad alanları (`chat.*`, `settings.*`, `cards.*`). `AISidebarI18n.get_text(key, params)` API'si korunur; çağıranlar değişmez.
+- [ ] **5.2 Çoğul ve bağlam:** i18next'teki `_one` / `_other` son ekleri: `get_text("steps", {"count": n})` → `steps_one` / `steps_other`. Yedek zinciri: seçili dil → EN → anahtarın kendisi (eksik metin sessiz kalmaz).
+- [ ] **5.3 Denetim testleri:** (a) TR/EN anahtar eşitliği, (b) kodda `get_text("x")` ile çağrılan her anahtarın tanımlı olması, (c) kullanılmayan anahtar raporu, (d) `{param}` yer tutucularının iki dilde aynı olması.
+- [ ] **5.4 Sabit metin kuralı:** `ui/` içinde `.text = "..."` / `.tooltip_text = "..."` sabit atamalarını yakalayan test (eslint `i18next/no-literal-string` karşılığı), açık istisna listesiyle. Mevcut ~55 satır bu kurala göre taşınır.
+- [ ] **5.5 Alternatif (değerlendirilecek):** Godot'nun yerleşik `TranslationServer` + CSV/PO (gettext) sistemi ve `tr()` / `tr_n()`. Artısı araç desteği (Poedit, Weblate); dikkat: editör eklentisi çevirileri oyun projesinin çevirileriyle karışmamalı. Godot 4.x'teki çeviri alanı (translation domain) desteği 4.7'de doğrulanıp karar notu yazılır.
+
 ## Okurken bulunanlar (ayrı commit, önce doğrulanacak)
 
 0. ✅ **Düzeltildi (`d5efc41`) — Test runner açığı:** çalışma anında çöken bir paket `[PASS] Unknown (0/0)` sayılıyor, koşu yeşil kalıyordu. Artık FAIL. 1af07d3 bazında gizli çökme yoktu (doğrulandı).
