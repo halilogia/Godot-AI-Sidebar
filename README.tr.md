@@ -103,12 +103,14 @@ addons/godot_sidebar_ai/
 │       ├── primitive/                # İlkel Araçlar (scene, script, editor, ui_telemetry)
 │       ├── intent/                   # Yüksek Seviyeli Araçlar (game_intent)
 │       └── tool_manager.gd           # Progressive Discovery & Intent Routing
+├── assets/icons/                     # Lucide SVG İkonları (ISC lisansı klasörde)
 ├── ui/
 │   ├── theme/sidebar_theme.gd        # Merkezi AISidebarTheme Tasarım Sistemi
-│   ├── icons/                        # Lucide SVG Vektör Seti
-│   ├── components/                   # Modüler UI Kartları (Bubble, Approval, Clarification, Activity, History, Welcome)
+│   ├── components/                   # Görünüm Bileşenleri (Balon, Kartlar, ActivityGroup, TaskChecklist, InputComposer, StatusIcon)
+│   ├── presenters/                   # AgentRunner Sinyalleri → Görünüm (Akış, Activity, Etkileşim Kartları, Markdown)
+│   ├── controllers/                  # Görev Akışı, Model Çubuğu, Oturum Deposu, Export Eylemleri
 │   ├── dialogs/                      # Ayarlar ve ChangeSet Pencereleri
-│   └── docks/chat_dock.*             # UI Sohbet, Streaming & @Mention Dock'u
+│   └── docks/chat_dock.*             # Sahne Bağlantısı ve Birimlerin Kompozisyonu
 ├── tools/typecheck.gd                # Headless Statik GDScript Derleyici
 ├── typecheck.ps1                     # PowerShell Statik Tip Denetleyici
 ├── verify.ps1                        # Tek komut: typecheck + tüm testler (-Live ile canlı test)

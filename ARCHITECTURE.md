@@ -24,9 +24,11 @@ Bu belge, **Godot AI Core (Godot AI Sidebar)** eklentisinin yazılım mimarisini
 ```mermaid
 graph TD
     subgraph UI ["🎨 Presentation (ui/)"]
-        ChatDock["chat_dock.gd / .tscn (Streaming, @Mention & Queue UI)"]
+        ChatDock["chat_dock.gd / .tscn (Sahne bağlantısı + birimlerin kompozisyonu)"]
+        Controllers["controllers/ (TaskController, ModelBarController, ChatSessionStore, ChatExportActions)"]
+        Presenters["presenters/ (AgentStream / AgentActivity / AgentInteraction, MarkdownRenderer, ToolPresentation, SessionReplayRenderer, PlanChecklistTracker)"]
+        UIComponents["components/ (MessageBubble, kartlar, ActivityGroup, TaskChecklist, InputComposer, MessageQueuePanel, StatusIcon, PendingIndicator)"]
         SettingsDialog["settings_dialog.gd / .tscn"]
-        UIComponents["MessageBubble / ApprovalCard / ClarificationCard / ActivityGroup / WelcomeCard / RuntimeCard"]
         HistoryPanel["history_panel.gd (Session Drawer)"]
         Theme["sidebar_theme.gd (AISidebarTheme Design System)"]
     end
@@ -71,13 +73,17 @@ graph TD
         EditorSnapshot["editor_state_snapshot.gd / context_collector.gd (Grounding)"]
     end
 
-    ChatDock --> AgentRunner
-    ChatDock --> MentionManager
-    ChatDock --> ChatManager
-    ChatDock --> SlashCommands
-    ChatDock --> UIComponents
+    ChatDock --> Controllers
+    ChatDock --> Presenters
     ChatDock --> HistoryPanel
-    ChatDock -.->|"AISidebarTheme tokens"| Theme
+    AgentRunner -.->|"sinyaller"| Presenters
+    AgentRunner -.->|"task_completed / error_occurred"| Controllers
+    Controllers --> AgentRunner
+    Controllers --> SlashCommands
+    Controllers --> MentionManager
+    Controllers --> ChatManager
+    Presenters --> UIComponents
+    UIComponents -.->|"AISidebarTheme tokens"| Theme
     SettingsDialog --> Config
     AgentRunner --> AgentContext
     AgentRunner --> ToolManager
@@ -107,16 +113,57 @@ graph TD
 
 ## 🧩 Katmanlar ve Sorumlulukları
 
+Giriş noktası: [`plugin.gd`](addons/godot_sidebar_ai/plugin.gd) eklentiyi etkinleştirir, dock'u editöre yerleştirir ve runtime debugger köprüsünü kaydeder.
+
 ### 1. 🎨 Presentation Katmanı (`ui/`)
-* **[`chat_dock.gd`](addons/godot_sidebar_ai/ui/docks/chat_dock.gd):** Sol/sağ dock paneline yerleşen ana sohbet arayüzüdür. Canlı SSE token akışını sohbet baloncuğuna iletir, `@mention` açılır penceresini, mesaj kuyruğunu ve görsel önizleme çipini yönetir.
-* **[`sidebar_theme.gd`](addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd):** Merkezi tema motoru (`AISidebarTheme`). Semantik renk tokenları, tipografi ve tutarlı StyleBox tanımlarını barındırır.
-* **[`message_bubble.gd`](addons/godot_sidebar_ai/ui/components/message_bubble.gd):** Metin seçimi (`selection_enabled`), `Ctrl+C` kısayolu ve akıcı BBCode link formatı sunan modüler mesaj baloncuğu.
-* **[`approval_card.gd`](addons/godot_sidebar_ai/ui/components/approval_card.gd):** Dosya yazma/silme gibi kritik işlemlerde kullanıcıdan onay isteyen tek yüzeyli interaktif kart.
-* **[`clarification_card.gd`](addons/godot_sidebar_ai/ui/components/clarification_card.gd):** Ajan kritik bir belirsizlikte durduğunda (`WAITING_FOR_CLARIFICATION`) gösterilen soru kartı; tek tık seçenek butonları ve serbest metin girişi sunar.
-* **[`plan_card.gd`](addons/godot_sidebar_ai/ui/components/plan_card.gd):** Ajan bir implementation planı sunduğunda (`WAITING_FOR_PLAN_APPROVAL`) gösterilen kart. Planı `ImplementationPlan.to_markdown()` çıktısı olarak render eder ve `[Planı Uygula]` / `[İptal]` kararını toplar. `ApprovalCard` ile aynı yaşam döngüsünü izler (modal açmaz, kendini `resolved` işaretler).
-* **[`activity_group.gd`](addons/godot_sidebar_ai/ui/components/activity_group.gd):** Ajanın arka plan araç çağrılarını ve doğrulama adımlarını katlanabilir grupta toplayan bileşen.
-* **[`history_panel.gd`](addons/godot_sidebar_ai/ui/components/history_panel.gd):** Geçmiş sohbet oturumlarını listeleme, arama ve yükleme paneli.
-* **[`welcome_card.gd`](addons/godot_sidebar_ai/ui/components/welcome_card.gd):** Boş sohbet durumunda hızlı başlangıç önerileri sunan karşılama kartı.
+
+AgentRunner sinyallerini presenter'lar dinler; görev akışını controller'lar yönetir; ChatDock yalnızca sahne düğümlerini bağlar ve birimleri birbirine kompoze eder. Bileşenler (`components/`) veri bilmez, yalnızca görünümdür. Faz 1 refactor'ının gerekçesi: `docs/REFACTOR_PLAN.md`.
+
+**Dock (kompozisyon)**
+* **[`chat_dock.gd`](addons/godot_sidebar_ai/ui/docks/chat_dock.gd):** Sahne referansları, birimlerin kurulumu ve bağlanması (`_connect_agent_runner`), provider seçimi, dil/ikon yenileme ve sohbet gezinmesi (New, History yükleme, Clear, karşılama kartı).
+* **[`chat_dock_theme.gd`](addons/godot_sidebar_ai/ui/docks/chat_dock_theme.gd):** ChatDock sahne düğümlerine tema ve stil uygular; mantık içermez.
+
+**Controllers (akış ve durum)**
+* **[`task_controller.gd`](addons/godot_sidebar_ai/ui/controllers/task_controller.gd):** Girişten gönderme (slash komut / kuyruk / "devam et" / yeni task), task başlatma ve devam ettirme, kuyruk dağıtımı, pause checkpoint + Paused rozeti, task bitişi ve hata orkestrasyonu.
+* **[`model_bar_controller.gd`](addons/godot_sidebar_ai/ui/controllers/model_bar_controller.gd):** Model listesi (önbellek + provider), seçili modelin kaydı, onay modu butonu (MANUAL → AUTO → FULL_AUTO).
+* **[`chat_session_store.gd`](addons/godot_sidebar_ai/ui/controllers/chat_session_store.gd):** Aktif oturumun kalıcı durumu (UI yok): kaydet/yükle, temizle, pause checkpoint.
+* **[`chat_export_actions.gd`](addons/godot_sidebar_ai/ui/controllers/chat_export_actions.gd):** Export (md + json), Copy Chat, task başına kopyalama ve History panelinden eski oturum export'u.
+
+**Presenters (AgentRunner sinyalleri → görünüm)**
+* **[`agent_stream_presenter.gd`](addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd):** Streaming asistan balonu, tool-call zarfı süzme, thinking / eylem özeti kartları, bekleme sayacı, bekleme göstergesi ve durum rozeti.
+* **[`agent_activity_presenter.gd`](addons/godot_sidebar_ai/ui/presenters/agent_activity_presenter.gd):** Activity grubu, tool çalıştırma/tamamlama satırları, doğrulama, runtime gözlemi, otomatik teşhis, adım ilerlemesi, AI ekran görüntüsü önizlemesi.
+* **[`agent_interaction_presenter.gd`](addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd):** Kullanıcı kararı isteyen kartlar: netleştirme, tool onayı, plan (onay → checklist), değişiklikler, diff ve undo.
+* **[`markdown_renderer.gd`](addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd):** Saf Markdown → BBCode dönüştürücü; köşeli parantezleri kaçırır (metin BBCode enjekte edemez), kod blokları tek kutu + eş genişlikli yazı tipi.
+* **[`tool_presentation.gd`](addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd):** Tool adları için insan okunur başlıklar, teknik detay metni, hata özeti, runtime hata özeti.
+* **[`session_replay_renderer.gd`](addons/godot_sidebar_ai/ui/presenters/session_replay_renderer.gd):** History'den yüklenen oturumu kart akışı olarak yeniden kurar.
+* **[`plan_checklist_tracker.gd`](addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd):** Onaylı planın adımlarını tool olaylarıyla deterministik olarak eşleyip ilerletir.
+
+**Components (görünüm)**
+* **[`message_bubble.gd`](addons/godot_sidebar_ai/ui/components/message_bubble.gd):** Rol bazlı mesaj balonu; seçilebilir metin, kopyalama, Markdown ve `res://` bağlantıları.
+* **[`approval_card.gd`](addons/godot_sidebar_ai/ui/components/approval_card.gd):** Dosya yazma/silme gibi riskli işlemlerde kullanıcıdan onay isteyen kart.
+* **[`clarification_card.gd`](addons/godot_sidebar_ai/ui/components/clarification_card.gd):** Ajan kritik bir belirsizlikte durduğunda (`WAITING_FOR_CLARIFICATION`) gösterilen soru kartı; seçenek butonları ve serbest metin.
+* **[`plan_card.gd`](addons/godot_sidebar_ai/ui/components/plan_card.gd):** Implementation planını (`WAITING_FOR_PLAN_APPROVAL`) gösterir; `[Planı Uygula]` / `[İptal]` kararını toplar.
+* **[`task_checklist.gd`](addons/godot_sidebar_ai/ui/components/task_checklist.gd):** Onaylı planın yüksek seviye adım listesi (ActivityGroup'tan ayrı).
+* **[`activity_group.gd`](addons/godot_sidebar_ai/ui/components/activity_group.gd):** Tool çağrılarını ve doğrulama adımlarını katlanabilir grupta toplar.
+* **[`changes_card.gd`](addons/godot_sidebar_ai/ui/components/changes_card.gd):** Uygulanan değişiklikleri (+/- satır) gösterir; `[View Diff]` ve `[Undo]`.
+* **[`runtime_card.gd`](addons/godot_sidebar_ai/ui/components/runtime_card.gd):** Oyun çalıştırma ve runtime hata sonuçları.
+* **[`telemetry_card.gd`](addons/godot_sidebar_ai/ui/components/telemetry_card.gd):** Task sonu tek satır özet; tıklayınca süre dökümü, task kopyalama.
+* **[`error_card.gd`](addons/godot_sidebar_ai/ui/components/error_card.gd):** Hata kartı ve Retry butonu.
+* **[`reasoning_card.gd`](addons/godot_sidebar_ai/ui/components/reasoning_card.gd):** Eylem özeti paneli ("Model ne yapıyor?"); ham reasoning göstermez.
+* **[`thinking_card.gd`](addons/godot_sidebar_ai/ui/components/thinking_card.gd):** Provider'ın gönderdiği thinking metni; varsayılan kapalı.
+* **[`screenshot_card.gd`](addons/godot_sidebar_ai/ui/components/screenshot_card.gd):** AI ekran görüntüsü önizlemesi (thumbnail, kaynak, görsel gönderim durumu).
+* **[`welcome_card.gd`](addons/godot_sidebar_ai/ui/components/welcome_card.gd):** Boş sohbette hızlı başlangıç önerileri.
+* **[`pending_indicator.gd`](addons/godot_sidebar_ai/ui/components/pending_indicator.gd):** İlk model yanıtı beklenirken akışın sonundaki canlı gösterge (aşama + süre, iptal ipucu).
+* **[`input_composer.gd`](addons/godot_sidebar_ai/ui/components/input_composer.gd):** Giriş alanı davranışı: Enter / Shift+Enter / Ctrl+V, `@` ve `/` autocomplete, pano görseli eki.
+* **[`message_queue_panel.gd`](addons/godot_sidebar_ai/ui/components/message_queue_panel.gd):** Ajan çalışırken gönderilen mesajların FIFO kuyruğu ve paneli.
+* **[`history_panel.gd`](addons/godot_sidebar_ai/ui/components/history_panel.gd):** Geçmiş oturumları listeleme, arama, yeniden adlandırma, silme, export.
+* **[`status_icon.gd`](addons/godot_sidebar_ai/ui/components/status_icon.gd):** Durum glifini (✓ ✕ ▶ ! ☐) boyalı Lucide ikonuna çevirir; glif veride aynen kalır.
+* **[`icon_helper.gd`](addons/godot_sidebar_ai/ui/components/icon_helper.gd):** Lucide SVG yükleme ve renge boyama (`get_tinted_icon`); import sistemine bağlı değildir.
+
+**Dialogs ve tema**
+* **[`settings_dialog.gd`](addons/godot_sidebar_ai/ui/dialogs/settings_dialog.gd):** Provider, API, model, dil ve güvenlik ayarları.
+* **[`change_set_dialog.gd`](addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd):** Değişiklik ve diff görüntüleme / onay penceresi.
+* **[`sidebar_theme.gd`](addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd):** Merkezi tema (`AISidebarTheme`): semantik renk tokenları, tipografi, StyleBox fabrikaları.
 
 ### 2. 🤖 Application Katmanı (`core/agent/`, `core/chat/`, `core/commands/`)
 * **[`agent_runner.gd`](addons/godot_sidebar_ai/core/agent/agent_runner.gd):** Ajan durum makinesini (State Machine) yönetir (`IDLE ➔ PLANNING ➔ EXECUTING ➔ OBSERVING ➔ VERIFYING ➔ COMPLETED`, ayrıca `WAITING_FOR_APPROVAL`, `WAITING_FOR_CLARIFICATION` ve `WAITING_FOR_PLAN_APPROVAL`).
@@ -125,6 +172,11 @@ graph TD
 * **[`chat_manager.gd`](addons/godot_sidebar_ai/core/chat/chat_manager.gd) / [`chat_session.gd`](addons/godot_sidebar_ai/core/chat/chat_session.gd):** Oturum kalıcılığı. Konuşmalar projeye bağlı `user://sidebar_ai_chats/` dizininde izole JSON dosyaları olarak saklanır; API anahtarı veya token asla diske yazılmaz.
 * **[`mention_manager.gd`](addons/godot_sidebar_ai/core/chat/mention_manager.gd):** `@` yazıldığında dosya ve sahne düğümlerini tarayıp güvenli context limitiyle prompta enjekte eder.
 * **[`slash_command_manager.gd`](addons/godot_sidebar_ai/core/commands/slash_command_manager.gd):** `/` ile başlayan hızlı komutları çözümler.
+* **[`completion_policy.gd`](addons/godot_sidebar_ai/core/agent/completion_policy.gd):** Tamamlanma bütünlüğü kapısı (saf/deterministik): model "bitti" dedi diye task başarılı sayılmaz; runtime kanıtı gerekir, yoksa `needs review`.
+* **[`task_transcript.gd`](addons/godot_sidebar_ai/core/chat/task_transcript.gd):** Görev bazlı tam transcript deposu; `agent_context.messages` compact edilse de bu depo ASLA budanmaz ve export'un tek kaynağıdır.
+* **[`task_checkpoint.gd`](addons/godot_sidebar_ai/core/chat/task_checkpoint.gd):** Pause / resume checkpoint modeli; transcript'ten türetilir, "devam et" aynı task'ı kaldığı adımdan sürdürür.
+* **[`chat_exporter.gd`](addons/godot_sidebar_ai/core/chat/chat_exporter.gd):** Konuşmayı, tool çağrılarını, diff'leri, runtime hatalarını ve telemetriyi Markdown + JSON olarak dışa aktarır.
+* **[`i18n.gd`](addons/godot_sidebar_ai/core/i18n/i18n.gd):** TR / EN sözlüğü ve `get_text(key, params)`.
 
 ### 3. 🛠️ Domain Katmanı (`core/tools/`, `core/mutations/`, `core/security/`, `core/verification/`)
 * **[`script_tools.gd`](addons/godot_sidebar_ai/core/tools/primitive/script_tools.gd):** Cerrahi kod düzenleme (`replace_file_content`), toplu dosya yazma (`write_files`) ve silme (`delete_file`).
@@ -153,7 +205,16 @@ graph LR
 * **Plan/Execution ayrımı:** Plan fazında yalnızca salt-okuma araçları şemada sunulur ve `is_mutation_blocked` guard'ı değiştirici çağrıları deterministik olarak reddeder. Plan reddedilirse hiçbir mutation yapılmamış olur.
 * **Onay anlamı:** Plan onayı **niyet** onayıdır; riskli araçlar execution sırasında yine tek tek `ApprovalCard` ile onaylanır.
 
+### 3.2 🧱 Ortak Tipler ve Temel Sınıflar (`core/types/`, `core/tools/tool_base.gd`)
+* **[`tool_base.gd`](addons/godot_sidebar_ai/core/tools/tool_base.gd):** Tüm araç modüllerinin soyut temel sınıfı.
+* **[`tool_result.gd`](addons/godot_sidebar_ai/core/types/tool_result.gd):** Standart araç sonucu (başarı / hata) modeli.
+* **[`type_parser.gd`](addons/godot_sidebar_ai/core/types/type_parser.gd):** Metin olarak gelen değerleri (`Vector2(100, 200)`, `#ff0000`, `true`) Godot Variant tiplerine çevirir.
+* **[`runtime_observation.gd`](addons/godot_sidebar_ai/core/types/runtime_observation.gd):** Oyun sürecinden toplanan hata, uyarı ve stack trace verisinin modeli; epistemik durum ayrımı (ERROR_DETECTED, CRASHED, VERIFIED_CLEAN...).
+* **[`vision_input.gd`](addons/godot_sidebar_ai/core/types/vision_input.gd):** Multimodal modellere gönderilen görsel (Base64 / PNG) modeli.
+* **[`visual_observation.gd`](addons/godot_sidebar_ai/core/types/visual_observation.gd):** Görsel teşhis sonucu, tespit edilen sorunlar ve güven skoru modeli.
+
 ### 4. 🐞 Runtime Inspection Katmanı (`core/runtime/`)
+* **[`runtime_debugger.gd`](addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd):** Oyunu başlatır/durdurur, artımlı logları izler ve `RuntimeObservation` üretir.
 * **[`debugger_plugin.gd`](addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd):** `EditorDebuggerPlugin` tabanlı köprü; editör ile çalışan oyun arasında mesaj kanalı kurar.
 * **[`runtime_bridge.gd`](addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd):** Oyun tarafına autoload olarak eklenen karşı taraf; canlı sahne ağacı ve düğüm özelliklerini sorgulanabilir kılar (`inspect_runtime_tree`, `inspect_runtime_node`).
 * **[`runtime_observer.gd`](addons/godot_sidebar_ai/core/runtime/runtime_observer.gd):** Çalışma zamanı hatalarını gözlemler ve `RuntimeObservation` modeline dönüştürür.
@@ -163,6 +224,7 @@ graph LR
 * **[`network_manager.gd`](addons/godot_sidebar_ai/core/network/network_manager.gd):** Canlı SSE akışı ve soket kapanışı (`Status: 8`) kurtarma motoru. Windows loopback için `localhost` $\rightarrow$ `127.0.0.1` normalizasyonu ve `Connection: close` yönetimi.
 * **[`openai_compatible_provider.gd`](addons/godot_sidebar_ai/core/providers/openai_compatible_provider.gd):** 9Router, OpenRouter, yerel Ollama ve LM Studio ile iletişim kuran sağlayıcı. Vision yeteneği, diskten bağımsız çalışan saf `model_supports_vision()` fonksiyonu ile belirlenir ve `vision_capable` ayarıyla geçersiz kılınabilir.
 * **[`agy_cli_provider.gd`](addons/godot_sidebar_ai/core/providers/agy_cli_provider.gd):** Resmi Google Antigravity CLI'ını (`agy`) kalıcı alt süreç olarak çalıştırır; çift yönlü NDJSON akışıyla HTTP katmanı olmadan doğrudan oturum açar. Görsel (Vision) girdisini desteklemez.
+* **[`diagnosis_context.gd`](addons/godot_sidebar_ai/core/state/diagnosis_context.gd):** Editör durumu, runtime logları, görsel gözlem ve son değişiklikleri birleştirerek teşhis bağlamı kurar.
 * **[`editor_state_snapshot.gd`](addons/godot_sidebar_ai/core/state/editor_state_snapshot.gd) / [`context_collector.gd`](addons/godot_sidebar_ai/core/state/context_collector.gd):** Aktif sahne, seçili düğüm ve açık script gibi editör durumunu toplayıp prompt bağlamına (grounding) ekler.
 
 ---
