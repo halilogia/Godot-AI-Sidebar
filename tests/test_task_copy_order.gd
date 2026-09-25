@@ -32,8 +32,8 @@ static func _clear_stream(dock) -> void:
 	if dock.message_stream:
 		for child in dock.message_stream.get_children():
 			child.free()
-	dock._activity.group = null
-	dock._checklist_tracker.checklist = null
+	dock.activity.group = null
+	dock.checklist_tracker.checklist = null
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -93,12 +93,12 @@ static func run() -> Dictionary:
 		errors.append("T5/T6 dock instantiate failed.")
 		return {"name": "TaskCopyOrderTests", "passed": passed, "failed": failed, "errors": errors}
 	dock._ready()
-	dock._auto_scroll_enabled = false
+	dock.auto_scroll_enabled = false
 	_clear_stream(dock)
 	var cl = AISidebarTaskChecklist.new()
 	cl.setup(["Create Main.tscn"], "Sahne kur")
 	cl._ready()
-	dock._checklist_tracker.checklist = cl
+	dock.checklist_tracker.checklist = cl
 	dock._add_stream_component(cl)
 	var bubble = AISidebarMessageBubble.new("assistant", "Not metni")
 	dock._add_stream_component(bubble)

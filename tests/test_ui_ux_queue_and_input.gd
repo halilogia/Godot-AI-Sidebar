@@ -202,10 +202,10 @@ static func run() -> Dictionary:
 	var dock_scene = load("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 	var dock = dock_scene.instantiate()
 	dock._ready()
-	dock._composer.attach_image_from_clipboard(test_img)
-	var has_attached = (dock._composer.attached_vision_input != null and dock._composer.attachment_container.visible == true)
-	dock._composer.clear_attached_image()
-	var has_cleared = (dock._composer.attached_vision_input == null and dock._composer.attachment_container.visible == false)
+	dock.composer.attach_image_from_clipboard(test_img)
+	var has_attached = (dock.composer.attached_vision_input != null and dock.composer.attachment_container.visible == true)
+	dock.composer.clear_attached_image()
+	var has_cleared = (dock.composer.attached_vision_input == null and dock.composer.attachment_container.visible == false)
 	dock.queue_free()
 	if has_attached and has_cleared:
 		passed += 1
@@ -216,13 +216,13 @@ static func run() -> Dictionary:
 	# Test 12: Attachment Preservation on Error (P2 UX Regression Test)
 	var dock2 = dock_scene.instantiate()
 	dock2._ready()
-	dock2._composer.attach_image_from_clipboard(test_img)
-	var vi_ref = dock2._composer.attached_vision_input
-	dock2._tasks.last_sent_vision_input = vi_ref
-	dock2._composer.clear_attached_image()
+	dock2.composer.attach_image_from_clipboard(test_img)
+	var vi_ref = dock2.composer.attached_vision_input
+	dock2.tasks.last_sent_vision_input = vi_ref
+	dock2.composer.clear_attached_image()
 	# Simüle edilen sağlayıcı hatası (örn. AGY vision reddi)
-	dock2._tasks.on_error("Antigravity CLI görsel girdisini desteklemiyor")
-	var restored_ok = (dock2._composer.attached_vision_input != null and dock2._composer.attachment_container.visible == true)
+	dock2.tasks.on_error("Antigravity CLI görsel girdisini desteklemiyor")
+	var restored_ok = (dock2.composer.attached_vision_input != null and dock2.composer.attachment_container.visible == true)
 	dock2.queue_free()
 	if restored_ok:
 		passed += 1

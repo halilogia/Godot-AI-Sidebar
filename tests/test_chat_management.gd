@@ -131,7 +131,7 @@ static func run() -> Dictionary:
 	# Gerçek dock + runner (editör yolundaki bağlama; dock ağaçta değil).
 	var dock = ChatDockScene.instantiate()
 	dock._ready()
-	dock._auto_scroll_enabled = false
+	dock.auto_scroll_enabled = false
 	var host = AISidebarAgentHost.new()
 	var prov = ScriptedProvider.new()
 	host.set_provider(prov)
@@ -139,14 +139,14 @@ static func run() -> Dictionary:
 	var runner = host.runner
 
 	# Test 9: queue_isolated_between_chats — New Chat ve History'den yükleme kuyruğu boşaltır
-	dock._queue_panel.enqueue("Sıradaki prompt 1", "Sıradaki prompt 1")
-	dock._queue_panel.enqueue("Sıradaki prompt 2", "Sıradaki prompt 2")
+	dock.queue_panel.enqueue("Sıradaki prompt 1", "Sıradaki prompt 1")
+	dock.queue_panel.enqueue("Sıradaki prompt 2", "Sıradaki prompt 2")
 	dock.history_panel.new_chat_requested.emit()
-	var after_new = dock._queue_panel.count()
-	dock._queue_panel.enqueue("Sıradaki prompt 3", "Sıradaki prompt 3")
+	var after_new = dock.queue_panel.count()
+	dock.queue_panel.enqueue("Sıradaki prompt 3", "Sıradaki prompt 3")
 	dock.history_panel.session_selected.emit(session1.id)
-	var after_load = dock._queue_panel.count()
-	if after_new == 0 and after_load == 0 and dock._sessions.is_current(session1.id):
+	var after_load = dock.queue_panel.count()
+	if after_new == 0 and after_load == 0 and dock.sessions.is_current(session1.id):
 		passed += 1
 	else:
 		failed += 1
@@ -156,7 +156,7 @@ static func run() -> Dictionary:
 	dock.history_panel.new_chat_requested.emit()
 	prov.responses = [{"content": "", "thinking": "", "tool_calls": [{"name": "delete_node", "arguments": {"node_path": "TempNode"}}]}]
 	dock.input_field.text = "Delete TempNode"
-	dock._tasks.submit_input()
+	dock.tasks.submit_input()
 	var was_waiting = runner.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL and runner.pending.has_approval()
 	dock.history_panel.session_selected.emit(session1.id)
 	if was_waiting and not runner.pending.has_approval() and runner.current_state != AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL and not runner.is_running():
@@ -168,7 +168,7 @@ static func run() -> Dictionary:
 	# Test 11: clarification_state_not_replayed — soru beklerken yeni sohbet bekleyen soruyu düşürür
 	prov.responses = [{"content": "", "thinking": "", "tool_calls": [{"name": "ask_user", "arguments": {"question": "Hangisi?", "options": ["A", "B"]}}]}]
 	dock.input_field.text = "Belirsiz istek"
-	dock._tasks.submit_input()
+	dock.tasks.submit_input()
 	var was_asking = runner.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION and runner.pending.has_clarification()
 	dock.history_panel.new_chat_requested.emit()
 	if was_asking and not runner.pending.has_clarification() and runner.current_state != AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION and not runner.is_running():

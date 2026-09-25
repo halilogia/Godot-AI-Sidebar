@@ -44,7 +44,7 @@ class PlainProvider extends AISidebarAIProvider:
 static func _make_dock() -> Dictionary:
 	var dock = ChatDockScene.instantiate()
 	dock._ready()
-	dock._auto_scroll_enabled = false
+	dock.auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
 	var host = AISidebarAgentHost.new()
@@ -60,7 +60,7 @@ static func _dispose(dock) -> void:
 	var host = dock.agent_host
 	if dock.agent_runner.is_running():
 		dock.agent_runner.stop()
-	dock._stream.stop_thinking_timer()
+	dock.stream.stop_thinking_timer()
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.free()
@@ -98,16 +98,16 @@ static func run() -> Dictionary:
 	# 2. Ayar kaydı: yeni provider kurulur, aynı NetworkManager kullanılır, eski provider'ın
 	# hiçbir sinyali runner'a veya model çubuğuna ulaşmaz; yenisinin model listesi ulaşır.
 	# Eski provider'dan kalan "AGY hazırlanıyor" durumu sıfırlanır.
-	dock._stream.agy_preparing = true
+	dock.stream.agy_preparing = true
 	# Ayar kaydı sırasında görev çalışıyor ve eski provider'ın isteği sürüyor: görev kullanıcı
 	# adına durdurulur (Paused, "devam et" ile sürer) ve eski istek iptal edilir; aksi halde eski
 	# yanıt yeni provider'a gelir ya da (AGY'ye geçişte) runner sonsuza kadar bekler.
 	runner.current_state = AISidebarAgentRunner.AgentState.EXECUTING
 	nm._is_request_active = true
 	dock._rebuild_provider()
-	var inflight_closed = not runner.is_running() and not nm._is_request_active and dock._tasks.is_user_stopped
+	var inflight_closed = not runner.is_running() and not nm._is_request_active and dock.tasks.is_user_stopped
 	var p2 = host.provider
-	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2 and not dock._stream.agy_preparing
+	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2 and not dock.stream.agy_preparing
 	var same_nm = host.network_manager == nm and p2.network_manager == nm
 	# Emekli provider hâlâ bir yerde tutulsa bile ortak NetworkManager'ı dinlemez (tek alıcı)
 	var nm_single = nm.request_completed.get_connections().size() == 1 and nm.response_chunk_received.get_connections().size() == 1 and nm.request_failed.get_connections().size() == 1
@@ -127,10 +127,10 @@ static func run() -> Dictionary:
 	var fake = FakeAgyProvider.new()
 	_use_provider(dock, fake)
 	fake.readiness_changed.emit(1, "")
-	var preparing = dock._stream.agy_preparing and dock.status_badge.text == AISidebarI18n.get_text("status_agy_preparing")
+	var preparing = dock.stream.agy_preparing and dock.status_badge.text == AISidebarI18n.get_text("status_agy_preparing")
 	fake.ready_flag = true
 	fake.readiness_changed.emit(2, "")
-	var ready_idle = not dock._stream.agy_preparing and dock.status_badge.text == AISidebarI18n.get_text("status_ready")
+	var ready_idle = not dock.stream.agy_preparing and dock.status_badge.text == AISidebarI18n.get_text("status_ready")
 	# Çalışan ajan: durum doğrudan yazılır (start_task'ın UI zamanlayıcısı bu testin konusu değil)
 	runner.current_state = AISidebarAgentRunner.AgentState.EXECUTING
 	fake.readiness_changed.emit(2, "")
@@ -138,11 +138,11 @@ static func run() -> Dictionary:
 	runner.current_state = AISidebarAgentRunner.AgentState.IDLE
 	var plain = PlainProvider.new()
 	_use_provider(dock, plain)
-	dock._stream.agy_preparing = true
+	dock.stream.agy_preparing = true
 	dock.status_badge.text = "badge"
 	dock._on_provider_readiness_changed(2, "")
-	var plain_ignored = dock._stream.agy_preparing and dock.status_badge.text == "badge"
-	dock._stream.agy_preparing = false
+	var plain_ignored = dock.stream.agy_preparing and dock.status_badge.text == "badge"
+	dock.stream.agy_preparing = false
 	if preparing and ready_idle and ready_running and plain_ignored:
 		passed += 1
 	else:
@@ -152,11 +152,11 @@ static func run() -> Dictionary:
 	# 4. Görsel desteği aktif provider'a sorulur; provider yoksa false
 	_use_provider(dock, fake)
 	fake.vision = true
-	var vision_on = dock._activity.supports_vision.call() == true
+	var vision_on = dock.activity.supports_vision.call() == true
 	fake.vision = false
-	var vision_off = dock._activity.supports_vision.call() == false
+	var vision_off = dock.activity.supports_vision.call() == false
 	_use_provider(dock, null)
-	var vision_none = dock._activity.supports_vision.call() == false
+	var vision_none = dock.activity.supports_vision.call() == false
 	if vision_on and vision_off and vision_none:
 		passed += 1
 	else:

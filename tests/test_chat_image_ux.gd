@@ -78,17 +78,17 @@ static func run() -> Dictionary:
 		errors.append("T5 dock instantiate failed.")
 	else:
 		dock._ready()
-		dock._auto_scroll_enabled = false
+		dock.auto_scroll_enabled = false
 		for child in dock.message_stream.get_children():
 			child.free()
-		dock._activity.on_tool_completed("take_runtime_screenshot", _shot_result())
+		dock.activity.on_tool_completed("take_runtime_screenshot", _shot_result())
 		var found_card = null
 		for child in dock.message_stream.get_children():
 			if child is AISidebarScreenshotCard:
 				found_card = child
 		var n_before = dock.message_stream.get_child_count()
-		dock._activity.on_tool_completed("read_script", {"success": true, "data": {}, "message": "ok"})
-		dock._activity.on_tool_completed("take_runtime_screenshot", {"success": false, "error": {"code": "X", "message": "bad"}, "data": {}})
+		dock.activity.on_tool_completed("read_script", {"success": true, "data": {}, "message": "ok"})
+		dock.activity.on_tool_completed("take_runtime_screenshot", {"success": false, "error": {"code": "X", "message": "bad"}, "data": {}})
 		var n_after = dock.message_stream.get_child_count()
 		if found_card != null and "Runtime" in found_card.source_label(found_card.source_kind) and not found_card.sent_to_model and n_after == n_before:
 			passed += 1
@@ -110,10 +110,10 @@ static func run() -> Dictionary:
 		errors.append("T6 dock instantiate failed.")
 	else:
 		dock6._ready()
-		dock6._auto_scroll_enabled = false
+		dock6.auto_scroll_enabled = false
 		for child in dock6.message_stream.get_children():
 			child.free()
-		dock6._activity.on_tool_completed("take_editor_screenshot", {"success": true, "data": {"path": ed_path}, "message": "ok"})
+		dock6.activity.on_tool_completed("take_editor_screenshot", {"success": true, "data": {"path": ed_path}, "message": "ok"})
 		var found6 = null
 		for child in dock6.message_stream.get_children():
 			if child is AISidebarScreenshotCard:

@@ -62,33 +62,33 @@ var agent_context: AISidebarAgentContext
 var agent_runner: AISidebarAgentRunner
 
 ## Model listesi / seçimi ve onay modu butonu.
-var _model_bar: AISidebarModelBarController = AISidebarModelBarController.new()
+var model_bar_controller: AISidebarModelBarController = AISidebarModelBarController.new()
 
 # Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
 ## Aktif oturumun kalıcı durumu (kaydet/yükle/temizle/checkpoint).
-var _sessions: AISidebarChatSessionStore = AISidebarChatSessionStore.new()
+var sessions: AISidebarChatSessionStore = AISidebarChatSessionStore.new()
 var history_panel: AISidebarHistoryPanel = null
 ## Export / Copy Chat / per-task copy / history export eylemleri.
 var _export_actions: AISidebarChatExportActions = null
 
 # Kuyruktaki Mesajlar (FIFO Message Queue)
-var _queue_panel: AISidebarMessageQueuePanel = AISidebarMessageQueuePanel.new()
+var queue_panel: AISidebarMessageQueuePanel = AISidebarMessageQueuePanel.new()
 
 ## Görev akışı: gönder, slash, kuyruk, devam et, task bitişi/hata; _ready'de kurulur.
-var _tasks: AISidebarTaskController = null
+var tasks: AISidebarTaskController = null
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
-var _composer: AISidebarInputComposer = null
+var composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
-var _stream: AISidebarAgentStreamPresenter = null
+var stream: AISidebarAgentStreamPresenter = null
 
 ## Activity grubu, tool satırları, doğrulama/runtime/debug ve screenshot önizlemesi.
-var _activity: AISidebarAgentActivityPresenter = AISidebarAgentActivityPresenter.new()
+var activity: AISidebarAgentActivityPresenter = AISidebarAgentActivityPresenter.new()
 ## Onaylı plan checklist'inin tool olaylarıyla ilerletilmesi.
-var _checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
+var checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
 ## Soru, onay, plan ve değişiklik kartları (kararlar AgentRunner'a iletilir).
-var _interaction: AISidebarAgentInteractionPresenter = AISidebarAgentInteractionPresenter.new()
-var _auto_scroll_enabled: bool = true
-var _welcome_card: AISidebarWelcomeCard = null
+var interaction: AISidebarAgentInteractionPresenter = AISidebarAgentInteractionPresenter.new()
+var auto_scroll_enabled: bool = true
+var welcome_card: AISidebarWelcomeCard = null
 
 
 func _exit_tree() -> void:
@@ -97,75 +97,75 @@ func _exit_tree() -> void:
 
 func _notification(what: int) -> void:
 	# InputArea yoksa kuyruk paneli ağaca hiç eklenmez; sahipsiz kalmasın.
-	if what == NOTIFICATION_PREDELETE and is_instance_valid(_queue_panel) and _queue_panel.get_parent() == null:
-		_queue_panel.free()
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(queue_panel) and queue_panel.get_parent() == null:
+		queue_panel.free()
 
 ## Provider'ı config'e göre yeniden kurdurur; eski provider'dan kalan hazırlık durumu sıfırlanır.
 ## Çalışan görev önce kullanıcı adına durdurulur (Paused; "devam et" ile yeni provider'da sürer):
 ## eski provider'ın isteğine yanıt verecek kimse kalmayabilir.
 func _rebuild_provider() -> void:
-	if _tasks:
-		_tasks.stop_by_user()
-	if _stream:
-		_stream.agy_preparing = false
+	if tasks:
+		tasks.stop_by_user()
+	if stream:
+		stream.agy_preparing = false
 	if agent_host:
 		agent_host.rebuild_provider()
 
 func _ready() -> void:
 	_export_actions = AISidebarChatExportActions.new()
-	_export_actions.get_session = func(): return _sessions.current
+	_export_actions.get_session = func(): return sessions.current
 	_export_actions.status_badge = status_badge
 	_export_actions.export_btn = export_btn
 	_export_actions.copy_task_btn = copy_task_btn
 	add_child(_export_actions)
-	_stream = AISidebarAgentStreamPresenter.new()
-	_stream.add_component = _add_stream_component
-	_stream.on_meta_clicked = _on_meta_clicked
-	_stream.set_status = set_status_badge
-	_stream.scroll_if_following = _scroll_if_following
-	_stream.answer_text_started.connect(_activity.close_group)
-	add_child(_stream)
-	_activity.add_component = _add_stream_component
-	_activity.on_meta_clicked = _on_meta_clicked
-	_activity.set_status = set_status_badge
-	_activity.supports_vision = func(): return agent_host != null and agent_host.supports_vision()
-	_activity.stream = _stream
-	_activity.checklist_tracker = _checklist_tracker
-	_interaction.add_component = _add_stream_component
-	_interaction.on_meta_clicked = _on_meta_clicked
-	_interaction.scroll_if_following = _scroll_if_following
-	_interaction.refresh_ui = update_ui_language
-	_interaction.stream = _stream
-	_interaction.activity = _activity
-	_interaction.checklist_tracker = _checklist_tracker
-	_interaction.change_set_dialog = change_set_dialog
-	_model_bar.model_selector = model_selector
-	_model_bar.approve_mode_btn = approve_mode_btn
-	_model_bar.set_status = set_status_badge
+	stream = AISidebarAgentStreamPresenter.new()
+	stream.add_component = _add_stream_component
+	stream.on_meta_clicked = _on_meta_clicked
+	stream.set_status = set_status_badge
+	stream.scroll_if_following = _scroll_if_following
+	stream.answer_text_started.connect(activity.close_group)
+	add_child(stream)
+	activity.add_component = _add_stream_component
+	activity.on_meta_clicked = _on_meta_clicked
+	activity.set_status = set_status_badge
+	activity.supports_vision = func(): return agent_host != null and agent_host.supports_vision()
+	activity.stream = stream
+	activity.checklist_tracker = checklist_tracker
+	interaction.add_component = _add_stream_component
+	interaction.on_meta_clicked = _on_meta_clicked
+	interaction.scroll_if_following = _scroll_if_following
+	interaction.refresh_ui = update_ui_language
+	interaction.stream = stream
+	interaction.activity = activity
+	interaction.checklist_tracker = checklist_tracker
+	interaction.change_set_dialog = change_set_dialog
+	model_bar_controller.model_selector = model_selector
+	model_bar_controller.approve_mode_btn = approve_mode_btn
+	model_bar_controller.set_status = set_status_badge
 	_setup_history_panel()
 	_setup_queue_ui()
-	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
-	_composer.setup_attachment_ui()
-	_tasks = AISidebarTaskController.new()
-	_tasks.input_field = input_field
-	_tasks.status_badge = status_badge
-	_tasks.composer = _composer
-	_tasks.queue_panel = _queue_panel
-	_tasks.sessions = _sessions
-	_tasks.export_actions = _export_actions
-	_tasks.history_panel = history_panel
-	_tasks.stream = _stream
-	_tasks.activity = _activity
-	_tasks.interaction = _interaction
-	_tasks.checklist_tracker = _checklist_tracker
-	_tasks.add_component = _add_stream_component
-	_tasks.on_meta_clicked = _on_meta_clicked
-	_tasks.refresh_ui = update_ui_language
-	_tasks.hide_welcome = _hide_welcome_card
-	_tasks.update_header = _update_header_title
-	_tasks.save_session = _save_current_session
-	_tasks.clear_chat = _on_clear_pressed
-	add_child(_tasks)
+	composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
+	composer.setup_attachment_ui()
+	tasks = AISidebarTaskController.new()
+	tasks.input_field = input_field
+	tasks.status_badge = status_badge
+	tasks.composer = composer
+	tasks.queue_panel = queue_panel
+	tasks.sessions = sessions
+	tasks.export_actions = _export_actions
+	tasks.history_panel = history_panel
+	tasks.stream = stream
+	tasks.activity = activity
+	tasks.interaction = interaction
+	tasks.checklist_tracker = checklist_tracker
+	tasks.add_component = _add_stream_component
+	tasks.on_meta_clicked = _on_meta_clicked
+	tasks.refresh_ui = update_ui_language
+	tasks.hide_welcome = _hide_welcome_card
+	tasks.update_header = _update_header_title
+	tasks.save_session = _save_current_session
+	tasks.clear_chat = _on_clear_pressed
+	add_child(tasks)
 	AISidebarChatDockTheme.apply(self)
 	if not Engine.is_editor_hint():
 		return
@@ -186,24 +186,24 @@ func _ready() -> void:
 	if clear_btn:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
-		send_btn.pressed.connect(_tasks.submit_input)
+		send_btn.pressed.connect(tasks.submit_input)
 	if settings_btn:
 		settings_btn.pressed.connect(_on_settings_pressed)
 	if approve_mode_btn:
-		approve_mode_btn.pressed.connect(_model_bar.on_approve_mode_pressed)
+		approve_mode_btn.pressed.connect(model_bar_controller.on_approve_mode_pressed)
 	if refresh_models_btn:
 		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
 	if export_btn:
 		export_btn.pressed.connect(_export_actions.export_chat)
 	if copy_task_btn:
 		copy_task_btn.pressed.connect(_export_actions.copy_chat)
-	_composer.connect_input_signals()
-	_composer.send_requested.connect(_tasks.submit_input)
+	composer.connect_input_signals()
+	composer.send_requested.connect(tasks.submit_input)
 
 	# 4. Oturumu Başlat (Her açılışta daima temiz ve yeni bir sohbet başlat)
 	_start_new_chat_session()
 	if model_selector:
-		model_selector.item_selected.connect(_model_bar.on_model_selected)
+		model_selector.item_selected.connect(model_bar_controller.on_model_selected)
 	if settings_dialog:
 		settings_dialog.settings_saved.connect(_on_settings_saved)
 	if jump_to_bottom_btn:
@@ -223,7 +223,7 @@ func _ready() -> void:
 
 	# 5. Başlangıç Yüklemesi
 	update_ui_language()
-	_model_bar.load_cached_models()
+	model_bar_controller.load_cached_models()
 	if agent_host and agent_host.has_provider():
 		agent_host.fetch_models()
 
@@ -232,38 +232,38 @@ func _ready() -> void:
 func attach_agent_host(host: AISidebarAgentHost) -> void:
 	agent_host = host
 	agent_context = host.context
-	_sessions.context = agent_context
+	sessions.context = agent_context
 	_export_actions.agent_context = agent_context
-	_checklist_tracker.context = agent_context
-	_activity.context = agent_context
-	_interaction.context = agent_context
-	_tasks.context = agent_context
-	host.models_fetched.connect(_model_bar.on_models_fetched)
+	checklist_tracker.context = agent_context
+	activity.context = agent_context
+	interaction.context = agent_context
+	tasks.context = agent_context
+	host.models_fetched.connect(model_bar_controller.on_models_fetched)
 	host.readiness_changed.connect(_on_provider_readiness_changed)
 	agent_runner = host.runner
-	_interaction.runner = agent_runner
-	_tasks.runner = agent_runner
+	interaction.runner = agent_runner
+	tasks.runner = agent_runner
 	_connect_agent_runner()
 
 ## AgentRunner sinyallerini presenter'lara ve ChatDock orkestrasyonuna bağlar.
 func _connect_agent_runner() -> void:
 	agent_runner.state_changed.connect(_on_agent_state_changed)
-	agent_runner.thinking_received.connect(_stream.on_thinking_received)
-	agent_runner.chunk_received.connect(_stream.on_chunk_received)
-	agent_runner.text_received.connect(_stream.on_text_received)
-	agent_runner.tool_executing.connect(_activity.on_tool_executing)
-	agent_runner.tool_completed.connect(_activity.on_tool_completed)
-	agent_runner.approval_requested.connect(_interaction.on_approval_requested)
-	agent_runner.clarification_requested.connect(_interaction.on_clarification_requested)
-	agent_runner.plan_proposed.connect(_interaction.on_plan_proposed)
-	agent_runner.changes_applied.connect(_interaction.on_changes_applied)
-	agent_runner.verification_started.connect(_activity.on_verification_started)
-	agent_runner.verification_completed.connect(_activity.on_verification_completed)
-	agent_runner.runtime_observation_received.connect(_activity.on_runtime_observation)
-	agent_runner.debugging_started.connect(_activity.on_debugging_started)
-	agent_runner.error_occurred.connect(_tasks.on_error)
-	agent_runner.task_completed.connect(_tasks.on_task_completed)
-	agent_runner.step_progress.connect(_activity.on_step_progress)
+	agent_runner.thinking_received.connect(stream.on_thinking_received)
+	agent_runner.chunk_received.connect(stream.on_chunk_received)
+	agent_runner.text_received.connect(stream.on_text_received)
+	agent_runner.tool_executing.connect(activity.on_tool_executing)
+	agent_runner.tool_completed.connect(activity.on_tool_completed)
+	agent_runner.approval_requested.connect(interaction.on_approval_requested)
+	agent_runner.clarification_requested.connect(interaction.on_clarification_requested)
+	agent_runner.plan_proposed.connect(interaction.on_plan_proposed)
+	agent_runner.changes_applied.connect(interaction.on_changes_applied)
+	agent_runner.verification_started.connect(activity.on_verification_started)
+	agent_runner.verification_completed.connect(activity.on_verification_completed)
+	agent_runner.runtime_observation_received.connect(activity.on_runtime_observation)
+	agent_runner.debugging_started.connect(activity.on_debugging_started)
+	agent_runner.error_occurred.connect(tasks.on_error)
+	agent_runner.task_completed.connect(tasks.on_task_completed)
+	agent_runner.step_progress.connect(activity.on_step_progress)
 
 func _setup_history_panel() -> void:
 	if history_panel or not has_node("MainLayout"):
@@ -285,8 +285,8 @@ func _setup_queue_ui() -> void:
 	if not has_node("MainLayout/InputArea"):
 		return
 	var input_area = $MainLayout/InputArea
-	input_area.add_child(_queue_panel)
-	input_area.move_child(_queue_panel, 0)
+	input_area.add_child(queue_panel)
+	input_area.move_child(queue_panel, 0)
 
 func update_ui_language() -> void:
 	if export_btn:
@@ -329,7 +329,7 @@ func update_ui_language() -> void:
 			send_btn.tooltip_text = ""
 		AISidebarChatDockTheme.apply_send_button(send_btn, agent_runner != null and agent_runner.is_running())
 			
-	_model_bar.update_approve_mode_ui()
+	model_bar_controller.update_approve_mode_ui()
 
 func _on_refresh_models_pressed() -> void:
 	if agent_host and agent_host.has_provider():
@@ -352,7 +352,7 @@ func set_history_view_visible(is_visible: bool) -> void:
 	if history_panel:
 		history_panel.visible = is_visible
 		if is_visible:
-			history_panel.set_active_session(_sessions.current_id())
+			history_panel.set_active_session(sessions.current_id())
 			history_panel.refresh_list()
 	if chat_scroll:
 		chat_scroll.visible = not is_visible
@@ -372,66 +372,66 @@ func _on_toggle_history_pressed() -> void:
 
 func _on_history_session_selected(session_id: String) -> void:
 	set_history_view_visible(false)
-	if _sessions.is_current(session_id):
+	if sessions.is_current(session_id):
 		return
 	_load_session_by_id(session_id)
 
 func _on_history_session_deleted(session_id: String) -> void:
-	if _sessions.is_current(session_id):
+	if sessions.is_current(session_id):
 		_start_new_chat_session()
 
 func _on_history_session_renamed(session_id: String, new_title: String) -> void:
-	if _sessions.rename_if_current(session_id, new_title):
+	if sessions.rename_if_current(session_id, new_title):
 		_update_header_title()
 
 func _on_history_close_requested() -> void:
 	set_history_view_visible(false)
 
 func _start_new_chat_session() -> void:
-	_tasks.stop_by_user()
+	tasks.stop_by_user()
 		
-	if _sessions.has_live_messages():
+	if sessions.has_live_messages():
 		_save_current_session()
 		
-	_sessions.start_new()
+	sessions.start_new()
 		
-	_queue_panel.clear_all()
+	queue_panel.clear_all()
 	_clear_ui_stream()
 	_show_welcome_card_if_empty()
 	_update_header_title()
 	if history_panel:
-		history_panel.set_active_session(_sessions.current_id())
+		history_panel.set_active_session(sessions.current_id())
 	set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
 
 ## Kaydet + başlığı yenile (kayıt başlığı ilk mesajdan üretebilir).
 func _save_current_session() -> void:
-	_sessions.save()
+	sessions.save()
 	_update_header_title()
 
 func _load_session_by_id(session_id: String) -> void:
-	if not _sessions.is_current(session_id) and _sessions.has_live_messages():
+	if not sessions.is_current(session_id) and sessions.has_live_messages():
 		_save_current_session()
 		
-	_tasks.stop_by_user()
+	tasks.stop_by_user()
 		
-	if not _sessions.load_by_id(session_id):
+	if not sessions.load_by_id(session_id):
 		_start_new_chat_session()
 		return
-	var loaded = _sessions.current
+	var loaded = sessions.current
 		
-	_queue_panel.clear_all()
+	queue_panel.clear_all()
 	_clear_ui_stream()
 	_rebuild_ui_stream_from_session(loaded)
 	_show_welcome_card_if_empty()
-	if _sessions.has_resumable_checkpoint():
-		_tasks.show_paused_badge(int(loaded.checkpoint.get("current_step", 0)), int(loaded.checkpoint.get("max_steps", 20)))
+	if sessions.has_resumable_checkpoint():
+		tasks.show_paused_badge(int(loaded.checkpoint.get("current_step", 0)), int(loaded.checkpoint.get("max_steps", 20)))
 	_update_header_title()
 	if history_panel:
 		history_panel.set_active_session(loaded.id)
 		if history_panel.visible:
 			history_panel.refresh_list()
 	set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
-	if _auto_scroll_enabled:
+	if auto_scroll_enabled:
 		_scroll_to_bottom()
 
 func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
@@ -444,23 +444,23 @@ func _clear_ui_stream() -> void:
 	if message_stream:
 		for child in message_stream.get_children():
 			child.queue_free()
-	_activity.reset()
-	_checklist_tracker.reset()
-	_interaction.reset()
-	_stream.reset()
-	_welcome_card = null
+	activity.reset()
+	checklist_tracker.reset()
+	interaction.reset()
+	stream.reset()
+	welcome_card = null
 
 func _show_welcome_card_if_empty() -> void:
-	if _sessions.current == null or _sessions.current.messages.is_empty():
-		if _welcome_card == null or not is_instance_valid(_welcome_card):
-			_welcome_card = AISidebarWelcomeCard.new()
-			_welcome_card.prompt_selected.connect(_on_welcome_prompt_selected)
-			_add_stream_component(_welcome_card)
+	if sessions.current == null or sessions.current.messages.is_empty():
+		if welcome_card == null or not is_instance_valid(welcome_card):
+			welcome_card = AISidebarWelcomeCard.new()
+			welcome_card.prompt_selected.connect(_on_welcome_prompt_selected)
+			_add_stream_component(welcome_card)
 
 func _hide_welcome_card() -> void:
-	if _welcome_card and is_instance_valid(_welcome_card):
-		_welcome_card.queue_free()
-		_welcome_card = null
+	if welcome_card and is_instance_valid(welcome_card):
+		welcome_card.queue_free()
+		welcome_card = null
 
 func _on_welcome_prompt_selected(prompt_text: String) -> void:
 	if input_field:
@@ -473,8 +473,8 @@ func _on_welcome_prompt_selected(prompt_text: String) -> void:
 func _on_provider_readiness_changed(state: int, _message: String) -> void:
 	if not agent_host or not agent_host.has_readiness_state():
 		return
-	_stream.agy_preparing = not agent_host.is_provider_ready()
-	if _stream.agy_preparing:
+	stream.agy_preparing = not agent_host.is_provider_ready()
+	if stream.agy_preparing:
 		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
 	elif agent_runner and agent_runner.is_running():
 		# Ajan calisiyor: thinking rozetine geri don (timer zaten isliyor).
@@ -485,7 +485,7 @@ func _on_provider_readiness_changed(state: int, _message: String) -> void:
 
 func _update_header_title() -> void:
 	if title_label:
-		var sess = _sessions.current
+		var sess = sessions.current
 		if sess and not sess.title.is_empty() and sess.title != "New Chat":
 			title_label.text = "Godot AI - " + sess.title
 			title_label.tooltip_text = sess.title
@@ -494,12 +494,12 @@ func _update_header_title() -> void:
 			title_label.tooltip_text = "Godot AI Assistant"
 
 func _on_clear_pressed() -> void:
-	_composer.clear_attached_image()
-	_stream.user_vision_inputs.clear()
-	_composer.hide_popup()
-	_tasks.stop_by_user()
-	_sessions.clear_contents()
-	_queue_panel.clear_all()
+	composer.clear_attached_image()
+	stream.user_vision_inputs.clear()
+	composer.hide_popup()
+	tasks.stop_by_user()
+	sessions.clear_contents()
+	queue_panel.clear_all()
 	_clear_ui_stream()
 	_update_header_title()
 
@@ -516,13 +516,13 @@ func _on_scroll_value_changed(val: float) -> void:
 		return
 	var max_val = v_bar.max_value - v_bar.page
 	var is_near_bottom = (max_val - val) < 40.0
-	_auto_scroll_enabled = is_near_bottom
+	auto_scroll_enabled = is_near_bottom
 	if jump_to_bottom_btn:
 		jump_to_bottom_btn.visible = not is_near_bottom
 
 ## Kullanıcı en alttaysa (otomatik kaydırma açık) akışı aşağı kaydırır.
 func _scroll_if_following() -> void:
-	if _auto_scroll_enabled:
+	if auto_scroll_enabled:
 		_scroll_to_bottom()
 
 func _scroll_to_bottom() -> void:
@@ -534,37 +534,37 @@ func _add_stream_component(comp: Control) -> void:
 	if not message_stream:
 		return
 	message_stream.add_child(comp)
-	if _stream:
-		_stream.on_component_added(comp)
+	if stream:
+		stream.on_component_added(comp)
 	# Task Checklist her zaman stream'in en altında kalır (aynı instance taşınır).
-	if comp != _checklist_tracker.checklist:
+	if comp != checklist_tracker.checklist:
 		_move_checklist_to_bottom()
-	if _auto_scroll_enabled:
+	if auto_scroll_enabled:
 		_scroll_to_bottom()
 
 ## Checklist'i message stream'in en sonuna taşır; yoksa/boşsa no-op.
 func _move_checklist_to_bottom() -> void:
-	if _checklist_tracker.checklist == null or not is_instance_valid(_checklist_tracker.checklist):
+	if checklist_tracker.checklist == null or not is_instance_valid(checklist_tracker.checklist):
 		return
 	if message_stream == null:
 		return
-	if _checklist_tracker.checklist.get_parent() != message_stream:
+	if checklist_tracker.checklist.get_parent() != message_stream:
 		return
-	if _checklist_tracker.checklist.step_count() <= 0:
+	if checklist_tracker.checklist.step_count() <= 0:
 		return
-	message_stream.move_child(_checklist_tracker.checklist, -1)
+	message_stream.move_child(checklist_tracker.checklist, -1)
 
 # --- Ajan Sinyal Dinleyicileri (Presentation) ---
 
 func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	update_ui_language()
-	_stream.on_state_changed(new_state, state_desc)
+	stream.on_state_changed(new_state, state_desc)
 	# Durdurulan task devam ettirilebilir durumdaysa boşta rozeti "Hazır" değil "Paused" kalır
 	# (runner stop sonrası IDLE'a geçer; aksi halde Paused rozeti hemen ezilirdi).
 	if new_state == AISidebarAgentRunner.AgentState.IDLE or new_state == AISidebarAgentRunner.AgentState.COMPLETED:
-		if _sessions.has_resumable_checkpoint():
-			var cp = _sessions.current.checkpoint
-			_tasks.show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
+		if sessions.has_resumable_checkpoint():
+			var cp = sessions.current.checkpoint
+			tasks.show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
 
 func _on_meta_clicked(meta: Variant) -> void:
 	var m_str = str(meta)

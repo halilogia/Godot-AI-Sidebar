@@ -26,7 +26,7 @@ static func run() -> Dictionary:
 
 	var dock = ChatDockScene.instantiate()
 	dock._ready()
-	dock._auto_scroll_enabled = false
+	dock.auto_scroll_enabled = false
 	for c in dock.message_stream.get_children():
 		c.free()
 

@@ -181,25 +181,25 @@ static func run() -> Dictionary:
 	# context ve oturum içeriği boşalır.
 	var dock = ChatDockScene.instantiate()
 	dock._ready()
-	dock._auto_scroll_enabled = false
-	dock._sessions.context = AISidebarAgentContext.new()
-	dock._sessions.start_new()
-	var dock_sid = dock._sessions.current_id()
-	dock._sessions.context.add_user_message("Eski mesaj")
-	dock._sessions.save()
+	dock.auto_scroll_enabled = false
+	dock.sessions.context = AISidebarAgentContext.new()
+	dock.sessions.start_new()
+	var dock_sid = dock.sessions.current_id()
+	dock.sessions.context.add_user_message("Eski mesaj")
+	dock.sessions.save()
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.message_stream.add_child(Label.new())
-	dock._tasks.handle_slash_command(AISidebarSlashCommandManager.parse("/clear"), "/clear")
+	dock.tasks.handle_slash_command(AISidebarSlashCommandManager.parse("/clear"), "/clear")
 	var stream_cleared = true
 	for child in dock.message_stream.get_children():
 		if not child.is_queued_for_deletion():
 			stream_cleared = false
-	if stream_cleared and dock._sessions.context.messages.is_empty() and dock._sessions.current.messages.is_empty():
+	if stream_cleared and dock.sessions.context.messages.is_empty() and dock.sessions.current.messages.is_empty():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 9b: /clear sohbeti temizlemedi (akış=%s, context=%d, oturum=%d)." % [str(stream_cleared), dock._sessions.context.messages.size(), dock._sessions.current.messages.size()])
+		errors.append("Test 9b: /clear sohbeti temizlemedi (akış=%s, context=%d, oturum=%d)." % [str(stream_cleared), dock.sessions.context.messages.size(), dock.sessions.current.messages.size()])
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.free()

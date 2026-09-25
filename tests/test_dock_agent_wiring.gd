@@ -41,7 +41,7 @@ static func run() -> Dictionary:
 
 	var dock = ChatDockScene.instantiate()
 	dock._ready()
-	dock._auto_scroll_enabled = false
+	dock.auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
 	# _ready'nin editör yolundaki bağlama ile aynı (host plugin.gd yerine burada kurulur)
@@ -84,7 +84,7 @@ static func run() -> Dictionary:
 	runner.changes_applied.emit(AISidebarChangeSet.new("res://y.gd"))
 	runner.task_completed.emit({"success": true, "elapsed_seconds": 1.0})
 	runner.error_occurred.emit("Bağlantı hatası")
-	dock._stream.stop_thinking_timer()
+	dock.stream.stop_thinking_timer()
 
 	var counts = {
 		"thinking": _count(dock, AISidebarThinkingCard), "bubble": _count(dock, AISidebarMessageBubble),
@@ -105,17 +105,17 @@ static func run() -> Dictionary:
 
 	# 3. Onay ve plan kararları karttan transcript'e ve checklist'e ulaşır
 	ctx.begin_task("Karar testi", "")
-	dock._interaction._on_approve_pressed()
-	dock._interaction._on_plan_applied()
+	dock.interaction._on_approve_pressed()
+	dock.interaction._on_plan_applied()
 	var types: Array = []
 	for e in ctx.get_transcript().get_current_task().get("events", []):
 		types.append(str(e.get("t", "")))
-	var approved = dock._interaction.approval_card.is_resolved
-	if "approval_granted" in types and "plan_approved" in types and approved and dock._checklist_tracker.has_checklist():
+	var approved = dock.interaction.approval_card.is_resolved
+	if "approval_granted" in types and "plan_approved" in types and approved and dock.checklist_tracker.has_checklist():
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T3 (decisions) failed: events=%s approved=%s checklist=%s" % [str(types), str(approved), str(dock._checklist_tracker.has_checklist())])
+		errors.append("T3 (decisions) failed: events=%s approved=%s checklist=%s" % [str(types), str(approved), str(dock.checklist_tracker.has_checklist())])
 
 	for child in dock.message_stream.get_children():
 		child.free()

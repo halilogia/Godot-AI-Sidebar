@@ -25,18 +25,18 @@ class SilentProvider extends AISidebarAIProvider:
 static func _make_dock() -> Dictionary:
 	var dock = ChatDockScene.instantiate()
 	dock._ready()
-	dock._auto_scroll_enabled = false
+	dock.auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
 	var host = AISidebarAgentHost.new()
 	host.set_provider(SilentProvider.new())
 	dock.attach_agent_host(host)
-	dock._sessions.start_new()
+	dock.sessions.start_new()
 	return {"dock": dock, "ctx": host.context, "runner": host.runner}
 
 static func _send(dock, text: String) -> void:
 	dock.input_field.text = text
-	dock._tasks.submit_input()
+	dock.tasks.submit_input()
 
 static func _user_bubbles(dock) -> Array:
 	var out: Array = []
@@ -49,8 +49,8 @@ static func _dispose(dock, created: Array) -> void:
 	var host = dock.agent_host
 	if dock.agent_runner.is_running():
 		dock.agent_runner.stop()
-	dock._stream.stop_thinking_timer()
-	created.append(dock._sessions.current_id())
+	dock.stream.stop_thinking_timer()
+	created.append(dock.sessions.current_id())
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.free()
@@ -68,15 +68,15 @@ static func run() -> Dictionary:
 	var d1 = s1["dock"]
 	var r1 = s1["runner"]
 	_send(d1, "Oyuncuya zıplama ekle")
-	var started = r1.is_running() and d1.input_field.text == "" and d1._tasks.last_user_prompt == "Oyuncuya zıplama ekle" and _user_bubbles(d1) == ["Oyuncuya zıplama ekle"]
+	var started = r1.is_running() and d1.input_field.text == "" and d1.tasks.last_user_prompt == "Oyuncuya zıplama ekle" and _user_bubbles(d1) == ["Oyuncuya zıplama ekle"]
 	var task_id = str(s1["ctx"].get_transcript().get_current_task().get("id", ""))
 	_send(d1, "Sonra hasar sistemi")
-	var queued = d1._queue_panel.count() == 1 and d1._tasks.last_user_prompt == "Oyuncuya zıplama ekle"
+	var queued = d1.queue_panel.count() == 1 and d1.tasks.last_user_prompt == "Oyuncuya zıplama ekle"
 	_send(d1, "")
-	var stopped = not r1.is_running() and d1._tasks.is_user_stopped and d1.status_badge.text.begins_with("Paused") and d1._queue_panel.count() == 1
+	var stopped = not r1.is_running() and d1.tasks.is_user_stopped and d1.status_badge.text.begins_with("Paused") and d1.queue_panel.count() == 1
 	_send(d1, "devam et")
 	var resumed_id = str(s1["ctx"].get_transcript().get_current_task().get("id", ""))
-	var resumed = r1.is_running() and not task_id.is_empty() and resumed_id == task_id and not d1._tasks.is_user_stopped
+	var resumed = r1.is_running() and not task_id.is_empty() and resumed_id == task_id and not d1.tasks.is_user_stopped
 	if started and queued and stopped and resumed:
 		passed += 1
 	else:
@@ -88,13 +88,13 @@ static func run() -> Dictionary:
 	var s2 = _make_dock()
 	var d2 = s2["dock"]
 	var vi = AISidebarVisionInput.new("user://img.png", "aGVsbG8=", 4, 4)
-	d2._composer.attach_vision_input(vi)
+	d2.composer.attach_vision_input(vi)
 	_send(d2, "")
-	if s2["runner"].is_running() and d2._tasks.last_user_prompt == "Bu görseli incele ve yardımcı ol." and d2._tasks.last_sent_vision_input == vi and d2._composer.attached_vision_input == null:
+	if s2["runner"].is_running() and d2.tasks.last_user_prompt == "Bu görseli incele ve yardımcı ol." and d2.tasks.last_sent_vision_input == vi and d2.composer.attached_vision_input == null:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T2 (image-only send) failed: prompt='%s'" % d2._tasks.last_user_prompt)
+		errors.append("T2 (image-only send) failed: prompt='%s'" % d2.tasks.last_user_prompt)
 	_dispose(d2, created)
 
 	# 3. Slash yolları: bilinmeyen komut hata balonu; /help yerel yanıt; /analyze boşta task,
@@ -104,21 +104,21 @@ static func run() -> Dictionary:
 	var s3 = _make_dock()
 	var d3 = s3["dock"]
 	var img3 = AISidebarVisionInput.new("user://slash.png", PNG_4X4, 4, 4)
-	d3._composer.attach_vision_input(img3)
+	d3.composer.attach_vision_input(img3)
 	_send(d3, "/bilinmeyen")
 	var unknown_ok = not s3["runner"].is_running() and d3.message_stream.get_child_count() == 2
 	_send(d3, "/help")
 	var help_ok = not s3["runner"].is_running() and d3.message_stream.get_child_count() == 4
-	var local_keeps_image = d3._composer.attached_vision_input == img3
+	var local_keeps_image = d3.composer.attached_vision_input == img3
 	_send(d3, "/analyze")
-	var analyze_ok = s3["runner"].is_running() and d3._tasks.last_user_prompt == "/analyze"
+	var analyze_ok = s3["runner"].is_running() and d3.tasks.last_user_prompt == "/analyze"
 	var sent_msgs = s3["ctx"].messages.filter(func(m): return str(m.get("role", "")) == "user" and str(m.get("display_text", "")) == "/analyze")
-	var image_sent = sent_msgs.size() == 1 and sent_msgs[0].has("vision_inputs") and d3._composer.attached_vision_input == null and d3._tasks.last_sent_vision_input == img3
+	var image_sent = sent_msgs.size() == 1 and sent_msgs[0].has("vision_inputs") and d3.composer.attached_vision_input == null and d3.tasks.last_sent_vision_input == img3
 	var img3b = AISidebarVisionInput.new("user://slash2.png", PNG_4X4, 4, 4)
-	d3._composer.attach_vision_input(img3b)
+	d3.composer.attach_vision_input(img3b)
 	_send(d3, "/analyze Player")
-	var queued_ok = d3._queue_panel.count() == 1
-	var queued_image = queued_ok and d3._queue_panel.get_items()[0].get("vision_inputs", []) == [img3b] and d3._composer.attached_vision_input == null
+	var queued_ok = d3.queue_panel.count() == 1
+	var queued_image = queued_ok and d3.queue_panel.get_items()[0].get("vision_inputs", []) == [img3b] and d3.composer.attached_vision_input == null
 	if unknown_ok and help_ok and analyze_ok and queued_ok and local_keeps_image and image_sent and queued_image:
 		passed += 1
 	else:
@@ -129,13 +129,13 @@ static func run() -> Dictionary:
 	# 4. Kuyruk dağıtımı: kullanıcı durdurduysa bekler; aksi halde sıradakini başlatır
 	var s4 = _make_dock()
 	var d4 = s4["dock"]
-	d4._queue_panel.enqueue("Kuyruktaki istek", "Kuyruktaki istek")
-	d4._tasks.is_user_stopped = true
-	d4._tasks.dispatch_next_queued()
-	var held = d4._queue_panel.count() == 1 and not s4["runner"].is_running()
-	d4._tasks.is_user_stopped = false
-	d4._tasks.dispatch_next_queued()
-	var dispatched = d4._queue_panel.count() == 0 and s4["runner"].is_running() and d4._tasks.last_user_prompt == "Kuyruktaki istek"
+	d4.queue_panel.enqueue("Kuyruktaki istek", "Kuyruktaki istek")
+	d4.tasks.is_user_stopped = true
+	d4.tasks.dispatch_next_queued()
+	var held = d4.queue_panel.count() == 1 and not s4["runner"].is_running()
+	d4.tasks.is_user_stopped = false
+	d4.tasks.dispatch_next_queued()
+	var dispatched = d4.queue_panel.count() == 0 and s4["runner"].is_running() and d4.tasks.last_user_prompt == "Kuyruktaki istek"
 	if held and dispatched:
 		passed += 1
 	else:
@@ -171,10 +171,10 @@ static func run() -> Dictionary:
 	var new_task = not first_task.is_empty() and retry_task != first_task and ctx5.get_transcript().has_running_task()
 	# Görsel eki: normal mesaj + görsel → hata → Retry görseli yeniden gönderir.
 	r5.stop()
-	d5._composer.attach_vision_input(AISidebarVisionInput.new("user://shot.png", "aGVsbG8=", 4, 4))
+	d5.composer.attach_vision_input(AISidebarVisionInput.new("user://shot.png", "aGVsbG8=", 4, 4))
 	_send(d5, "Bu ekrana bak")
 	r5.stop()
-	d5._tasks.retry_last_task()
+	d5.tasks.retry_last_task()
 	var img_msgs = ctx5.messages.filter(func(m): return str(m.get("role", "")) == "user" and str(m.get("content", "")) == "Bu ekrana bak")
 	var image_kept = img_msgs.size() == 2 and img_msgs[1].has("vision_inputs") and r5.is_running()
 	if retried and same_prompt and new_task and image_kept:
@@ -191,21 +191,21 @@ static func run() -> Dictionary:
 	var d6 = s6["dock"]
 	var r6 = s6["runner"]
 	var ctx6 = s6["ctx"]
-	d6._queue_panel.enqueue("Q1", "Q1")
-	d6._queue_panel.enqueue("Q2", "Q2")
-	d6._tasks.dispatch_next_queued()
-	d6._tasks.dispatch_next_queued()
-	var double_ok = r6.is_running() and d6._queue_panel.count() == 1 and str(ctx6.get_transcript().get_current_task().get("display_prompt", "")) == "Q1" and str(ctx6.get_transcript().get_current_task().get("status", "")) == "running"
-	d6._tasks.stop_by_user()
-	d6._tasks.retry_last_task()
+	d6.queue_panel.enqueue("Q1", "Q1")
+	d6.queue_panel.enqueue("Q2", "Q2")
+	d6.tasks.dispatch_next_queued()
+	d6.tasks.dispatch_next_queued()
+	var double_ok = r6.is_running() and d6.queue_panel.count() == 1 and str(ctx6.get_transcript().get_current_task().get("display_prompt", "")) == "Q1" and str(ctx6.get_transcript().get_current_task().get("status", "")) == "running"
+	d6.tasks.stop_by_user()
+	d6.tasks.retry_last_task()
 	var retry_task6 = str(ctx6.get_transcript().get_current_task().get("id", ""))
-	d6._tasks.dispatch_next_queued()
-	var retry_ok = r6.is_running() and d6._queue_panel.count() == 1 and str(ctx6.get_transcript().get_current_task().get("id", "")) == retry_task6 and str(ctx6.get_transcript().get_current_task().get("status", "")) == "running"
+	d6.tasks.dispatch_next_queued()
+	var retry_ok = r6.is_running() and d6.queue_panel.count() == 1 and str(ctx6.get_transcript().get_current_task().get("id", "")) == retry_task6 and str(ctx6.get_transcript().get_current_task().get("status", "")) == "running"
 	if double_ok and retry_ok:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T6 (dispatch after another start) failed: double=%s retry=%s queue=%d task=%s" % [str(double_ok), str(retry_ok), d6._queue_panel.count(), str(ctx6.get_transcript().get_current_task().get("display_prompt", ""))])
+		errors.append("T6 (dispatch after another start) failed: double=%s retry=%s queue=%d task=%s" % [str(double_ok), str(retry_ok), d6.queue_panel.count(), str(ctx6.get_transcript().get_current_task().get("display_prompt", ""))])
 	_dispose(d6, created)
 
 	for id in created:

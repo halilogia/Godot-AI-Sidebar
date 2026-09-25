@@ -85,12 +85,12 @@ func _shot(name: String, height: int, full: bool, scenario: Callable) -> void:
 	dock.attach_agent_host(host)
 	var ctx = host.context
 	var runner = host.runner
-	dock._sessions.start_new()
-	dock._model_bar.populate_model_selector(["deepseek/deepseek-v4-flash"])
+	dock.sessions.start_new()
+	dock.model_bar_controller.populate_model_selector(["deepseek/deepseek-v4-flash"])
 	dock.update_ui_language()
 	ctx.begin_task("", "")
 	scenario.call(dock, runner)
-	dock._stream.stop_thinking_timer()
+	dock.stream.stop_thinking_timer()
 	for i in 12:
 		await process_frame
 	var img = root.get_texture().get_image()
@@ -104,7 +104,7 @@ func _shot(name: String, height: int, full: bool, scenario: Callable) -> void:
 	var path = ProjectSettings.globalize_path("res://" + _out_dir.path_join(name + "_" + _lang + ".png"))
 	img.save_png(path)
 	print("saved ", path)
-	_sessions.append(dock._sessions.current_id())
+	_sessions.append(dock.sessions.current_id())
 	dock.free()
 	host.free()
 
@@ -141,7 +141,7 @@ func _scenario_approval(dock, r) -> void:
 	r.text_received.emit("user", _t("Add jumping to the player", "Oyuncuya zıplama ekle"))
 	var cs = AISidebarChangeSet.new("res://player/player.gd", AISidebarChangeSet.ChangeType.MODIFY_FILE, new_src, old_src, _t("Add jump", "Zıplama ekle"))
 	r.approval_requested.emit("replace_file_content", {"file_path": "res://player/player.gd"}, cs)
-	dock._interaction._on_approve_pressed()
+	dock.interaction._on_approve_pressed()
 	r.changes_applied.emit(cs)
 	r.approval_requested.emit("delete_file", {"file_path": "res://player/old_controller.gd"}, null)
 
@@ -175,7 +175,7 @@ func _expand_activity(dock) -> void:
 ## Tool çalıştırma / tamamlama; süre (ms) önizleme için geriye tarihlenir.
 func _tool(dock, r, tool: String, args: Dictionary, message: String, ms: int) -> void:
 	r.tool_executing.emit(tool, args)
-	dock._activity._tool_start_msec = Time.get_ticks_msec() - ms
+	dock.activity._tool_start_msec = Time.get_ticks_msec() - ms
 	r.tool_completed.emit(tool, {"success": true, "data": {}, "message": message})
 
 func _answer_last_clarification(dock, answer: String) -> void:
