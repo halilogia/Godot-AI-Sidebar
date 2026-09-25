@@ -49,6 +49,7 @@ const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/
 const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
 const AISidebarChatExportActions = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_export_actions.gd")
 const AISidebarChatSessionStore = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_session_store.gd")
+const AISidebarSessionReplayRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/session_replay_renderer.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -522,78 +523,8 @@ func _load_session_by_id(session_id: String) -> void:
 func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 	if not message_stream or not sess:
 		return
-		
-	for m in sess.messages:
-		if not m is Dictionary:
-			continue
-		var role = str(m.get("role", ""))
-		var content = m.get("content", "")
-		
-		if role == "user" or role == "command" or role == "slash_command":
-			var txt = ""
-			var vision_inputs: Array = []
-			if m.has("display_text") and not str(m["display_text"]).is_empty():
-				txt = str(m["display_text"])
-			elif content is String:
-				txt = content
-			elif content is Array:
-				for part in content:
-					if part is Dictionary:
-						if part.get("type") == "text":
-							txt = str(part.get("text", ""))
-						elif part.get("type") == "image_url":
-							vision_inputs.append(part)
-			if m.has("vision_inputs") and m["vision_inputs"] is Array:
-				for vi in m["vision_inputs"]:
-					if not vision_inputs.has(vi):
-						vision_inputs.append(vi)
-			if txt.contains("\n\n==="):
-				var parts_prompt = txt.split("\n\n===")
-				txt = parts_prompt[0]
-			var bubble_role = role
-			if bubble_role == "user" and txt.begins_with("/"):
-				bubble_role = "command"
-			var bubble = AISidebarMessageBubble.new(bubble_role, txt, vision_inputs)
-			bubble.meta_clicked.connect(_on_meta_clicked)
-			_add_stream_component(bubble)
-			
-		elif role == "assistant":
-			var txt = str(content) if content != null else ""
-			# Gecmis oturumlarda kayitli ham tool-call zarflari da gosterilmez.
-			txt = AISidebarMessageBubble.strip_tool_call_envelopes(txt, false).strip_edges()
-			if not txt.is_empty():
-				var bubble = AISidebarMessageBubble.new("assistant", txt)
-				bubble.meta_clicked.connect(_on_meta_clicked)
-				_add_stream_component(bubble)
-				
-			if m.has("tool_calls") and m["tool_calls"] is Array:
-				var tcs = m["tool_calls"]
-				if tcs.size() > 0:
-					var grp = AISidebarActivityGroup.new(false)
-					grp.meta_clicked.connect(_on_meta_clicked)
-					for tc in tcs:
-						if tc is Dictionary:
-							var fn = tc.get("name", "")
-							var args = tc.get("arguments", {})
-							grp.add_activity("✓", AISidebarToolPresentation.human_title(fn, args), 100, JSON.stringify(args))
-					grp.complete_group()
-					_add_stream_component(grp)
-					
-		elif role == "tool":
-			var fn_name = str(m.get("name", ""))
-			var raw_content = m.get("content", "{}")
-			var parsed = JSON.parse_string(str(raw_content))
-			if fn_name == "ask_user" and parsed is Dictionary and parsed.has("data"):
-				var d = parsed["data"]
-				var q = str(d.get("question", ""))
-				var a = str(d.get("user_answer", ""))
-				var card = AISidebarClarificationCard.new(q, [])
-				card.show_as_answered(a)
-				_add_stream_component(card)
-				
-	if not sess.telemetry.is_empty():
-		var tc = AISidebarTelemetryCard.new(sess.telemetry)
-		_add_stream_component(tc)
+	for comp in AISidebarSessionReplayRenderer.build(sess, _on_meta_clicked):
+		_add_stream_component(comp)
 
 func _clear_ui_stream() -> void:
 	if message_stream:
