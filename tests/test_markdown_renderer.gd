@@ -82,4 +82,23 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T6 (plan card) failed: " + plan_txt)
 
+	# 7. Kalın / italik / kod gövde metniyle aynı boyutta (tema varsayılanına düşmez)
+	var bb = AISidebarMessageBubble.new("assistant", "**a** `b`")
+	bb._ready()
+	var lbl = bb._content_label
+	var same = true
+	for key in ["bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
+		if not lbl.has_theme_font_size_override(key) or lbl.get_theme_font_size(key) != lbl.get_theme_font_size("normal_font_size"):
+			same = false
+	bb.free()
+	var card7 = AISidebarPlanCard.new(AISidebarImplementationPlan.new({"goal": "G", "steps": ["s"], "verification": ["v"]}))
+	card7._ready()
+	var same_plan = card7._plan_lbl.get_theme_font_size("bold_font_size") == card7._plan_lbl.get_theme_font_size("normal_font_size")
+	card7.free()
+	if same and same_plan:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T7 (font sizes) failed: bubble=%s plan=%s" % [str(same), str(same_plan)])
+
 	return {"name": "MarkdownRendererTests", "passed": passed, "failed": failed, "errors": errors}

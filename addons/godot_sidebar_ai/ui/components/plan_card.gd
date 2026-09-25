@@ -87,7 +87,7 @@ func _setup_ui() -> void:
 	_plan_lbl.focus_mode = Control.FOCUS_CLICK
 	_plan_lbl.deselect_on_focus_loss_enabled = false
 	_plan_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	_plan_lbl.add_theme_font_size_override("normal_font_size", 11)
+	AISidebarMarkdownRenderer.apply_font_sizes(_plan_lbl, 11)
 	_plan_lbl.add_theme_color_override("default_color", Color(0.88, 0.92, 0.96))
 	_plan_lbl.text = AISidebarMarkdownRenderer.to_bbcode(_build_display_text())
 	_vbox.add_child(_plan_lbl)

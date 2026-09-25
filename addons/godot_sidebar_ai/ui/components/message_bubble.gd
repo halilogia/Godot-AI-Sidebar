@@ -269,7 +269,7 @@ func _setup_ui() -> void:
 	_content_label.focus_mode = Control.FOCUS_CLICK
 	_content_label.deselect_on_focus_loss_enabled = false
 	_content_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	_content_label.add_theme_font_size_override("normal_font_size", AISidebarTheme.FONT_SIZE_BODY)
+	AISidebarMarkdownRenderer.apply_font_sizes(_content_label, AISidebarTheme.FONT_SIZE_BODY)
 	_content_label.add_theme_color_override("default_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_content_label.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_label)
