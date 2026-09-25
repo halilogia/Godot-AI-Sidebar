@@ -46,6 +46,7 @@ const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/v
 const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/components/welcome_card.gd")
 const AISidebarChatDockTheme = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock_theme.gd")
 const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
+const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -113,9 +114,8 @@ var _current_reasoning_card: AISidebarReasoningCard = null
 var _current_thinking_card: AISidebarThinkingCard = null
 ## Bu LLM turunda gerçek thinking verisi görüldü mü? (badge dürüstlüğü için)
 var _thinking_seen_this_turn: bool = false
-var _current_checklist: AISidebarTaskChecklist = null
-## Son görülen tool argümanları (checklist dosya-eşleşmesi için).
-var _last_tool_args: Dictionary = {}
+## Onaylı plan checklist'inin tool olaylarıyla ilerletilmesi.
+var _checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
 ## Running satırının indeksi (tool_completed geldiğinde yerinde güncellenir, satır çoğalmaz).
 var _activity_running_idx: int = -1
 var _activity_running_tool: String = ""
@@ -195,6 +195,7 @@ func _ready() -> void:
 	add_child(network_manager)
 	
 	agent_context = AISidebarAgentContext.new()
+	_checklist_tracker.context = agent_context
 	_setup_provider()
 	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
 	
@@ -1060,8 +1061,7 @@ func _clear_ui_stream() -> void:
 	_current_reasoning_card = null
 	_current_thinking_card = null
 	_thinking_seen_this_turn = false
-	_current_checklist = null
-	_last_tool_args.clear()
+	_checklist_tracker.reset()
 	_activity_running_idx = -1
 	_activity_running_tool = ""
 	_activity_tool_start_msec = 0
@@ -1332,8 +1332,7 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	_current_activity_group = null
 	_current_reasoning_card = null
 	_current_thinking_card = null
-	_current_checklist = null
-	_last_tool_args.clear()
+	_checklist_tracker.reset()
 	_current_runtime_card = null
 	_current_approval_card = null
 	_is_user_stopped = false
@@ -1476,22 +1475,22 @@ func _add_stream_component(comp: Control) -> void:
 		return
 	message_stream.add_child(comp)
 	# Task Checklist her zaman stream'in en altında kalır (aynı instance taşınır).
-	if comp != _current_checklist:
+	if comp != _checklist_tracker.checklist:
 		_move_checklist_to_bottom()
 	if _auto_scroll_enabled:
 		_scroll_to_bottom()
 
 ## Checklist'i message stream'in en sonuna taşır; yoksa/boşsa no-op.
 func _move_checklist_to_bottom() -> void:
-	if _current_checklist == null or not is_instance_valid(_current_checklist):
+	if _checklist_tracker.checklist == null or not is_instance_valid(_checklist_tracker.checklist):
 		return
 	if message_stream == null:
 		return
-	if _current_checklist.get_parent() != message_stream:
+	if _checklist_tracker.checklist.get_parent() != message_stream:
 		return
-	if _current_checklist.step_count() <= 0:
+	if _checklist_tracker.checklist.step_count() <= 0:
 		return
-	message_stream.move_child(_current_checklist, -1)
+	message_stream.move_child(_checklist_tracker.checklist, -1)
 
 # --- Ajan Sinyal Dinleyicileri (Presentation) ---
 
@@ -1647,95 +1646,6 @@ func _ensure_activity_group() -> AISidebarActivityGroup:
 		_activity_running_tool = ""
 	return _current_activity_group
 
-const CHECKLIST_MUTATING_TOOLS = ["create_or_update_script", "replace_file_content", "write_files", "create_scene", "save_scene", "delete_file", "delete_node", "add_node"]
-const CHECKLIST_VERIFYING_TOOLS = ["validate_script", "play_game", "get_runtime_errors"]
-
-## Plan step'i <-> tool execution deterministik eşleşmesi (dosya adı üzerinden).
-func _checklist_file_targets(args: Dictionary) -> Array:
-	var out: Array = []
-	for k in ["file_path", "scene_path"]:
-		var v = str(args.get(k, "")).strip_edges()
-		if not v.is_empty():
-			out.append(v.get_file().to_lower())
-	var files = args.get("files", [])
-	if files is Array:
-		for f in files:
-			if f is Dictionary:
-				var fp = str((f as Dictionary).get("file_path", (f as Dictionary).get("path", ""))).strip_edges()
-				if not fp.is_empty():
-					out.append(fp.get_file().to_lower())
-	return out
-
-func _checklist_match_index(tool_name: String, args: Dictionary, only_states: Array) -> int:
-	if _current_checklist == null or not is_instance_valid(_current_checklist) or _current_checklist.is_finished:
-		return -1
-	var targets = _checklist_file_targets(args)
-	var verify_keywords = ["valid", "test", "verif", "doğrul", "kontrol", "check"]
-	for pass_idx in range(2):
-		for i in range(_current_checklist.step_count()):
-			var st = _current_checklist.get_step(i)
-			if not str(st.get("state", "")) in only_states:
-				continue
-			var title_l = str(st.get("title", "")).to_lower()
-			if tool_name == "validate_script" and pass_idx == 0:
-				for kw in verify_keywords:
-					if kw in title_l:
-						return i
-				continue
-			if pass_idx == 1:
-				for t in targets:
-					if not (t as String).is_empty() and (t as String) in title_l:
-						return i
-	return -1
-
-func _checklist_on_tool_start(tool_name: String, args: Dictionary) -> void:
-	if tool_name == "ask_user" or tool_name == "propose_plan":
-		return
-	var idx = _checklist_match_index(tool_name, args, ["pending"])
-	if idx < 0:
-		return
-	_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_RUNNING)
-	_record_checklist_snapshot()
-
-func _checklist_on_tool_done(tool_name: String, success: bool, error_summary: String) -> void:
-	if tool_name == "ask_user" or tool_name == "propose_plan":
-		return
-	if not (tool_name in CHECKLIST_MUTATING_TOOLS or tool_name in CHECKLIST_VERIFYING_TOOLS):
-		return
-	var args = _last_tool_args.get(tool_name, {})
-	if not (args is Dictionary):
-		args = {}
-	var idx = _checklist_match_index(tool_name, args, ["running", "pending"])
-	if idx < 0:
-		return
-	if success:
-		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_COMPLETED, "", tool_name)
-	else:
-		_current_checklist.set_step_state(idx, AISidebarTaskChecklist.STATE_FAILED, error_summary, tool_name)
-	_record_checklist_snapshot()
-
-func _finish_checklist(success: bool, stop_reason: String) -> void:
-	if _current_checklist == null or not is_instance_valid(_current_checklist):
-		return
-	if _current_checklist.is_finished:
-		return
-	if success:
-		_current_checklist.set_finished_success()
-	else:
-		var ridx = _current_checklist.get_states().find("running")
-		_current_checklist.finish_with_stop(ridx, stop_reason)
-	_record_checklist_snapshot()
-
-func _record_checklist_snapshot() -> void:
-	if agent_context == null or _current_checklist == null or not is_instance_valid(_current_checklist):
-		return
-	agent_context.get_transcript().record("checklist_snapshot", {
-		"goal": _current_checklist.goal.left(200),
-		"steps": _current_checklist.to_snapshot(),
-		"finished": _current_checklist.is_finished,
-		"stop_reason": _current_checklist.stop_reason.left(200),
-	})
-
 func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_current_assistant_bubble = null
 	# ask_user / propose_plan kart olarak gösterilir; activity satırı şişirmesin.
@@ -1750,8 +1660,7 @@ func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_activity_running_tool = tool_name
 	_activity_tool_start_msec = Time.get_ticks_msec()
 	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
-	_last_tool_args[tool_name] = args.duplicate(true)
-	_checklist_on_tool_start(tool_name, args)
+	_checklist_tracker.on_tool_start(tool_name, args)
 	_set_action_summary("▶ " + human_title)
 	if agent_context:
 		agent_context.get_transcript().record("tool_executing", {"tool": tool_name, "title": human_title.left(200), "args": AISidebarActivityGroup.redact_secrets(JSON.stringify(args)).left(800)})
@@ -1791,7 +1700,7 @@ func _on_agent_tool_completed(tool_name: String, result: Dictionary) -> void:
 	_set_action_summary(action_line)
 	# Ertelenen çağrı hiç çalışmadı: checklist'i kirletme, sadece activity'de göster.
 	if not is_deferred:
-		_checklist_on_tool_done(tool_name, is_ok, err_summary)
+		_checklist_tracker.on_tool_done(tool_name, is_ok, err_summary)
 	if agent_context:
 		var completed_data = {"tool": tool_name, "title": human_title.left(200), "success": is_ok, "error": err_summary.left(500), "duration_ms": elapsed}
 		var shot_path = AISidebarToolPresentation.screenshot_image_path(tool_name, result)
@@ -1943,11 +1852,12 @@ func _on_plan_applied() -> void:
 		agent_context.get_transcript().record("plan_approved", {})
 		agent_context.get_transcript().record("activity", {"icon": "✓", "title": "Plan approved by user"})
 	if _current_plan_card and is_instance_valid(_current_plan_card) and _current_plan_card.plan:
-		_current_checklist = AISidebarTaskChecklist.new()
-		_current_checklist.setup(_current_plan_card.plan.steps, _current_plan_card.plan.goal)
-		_current_checklist.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(_current_checklist)
-		_record_checklist_snapshot()
+		var checklist = AISidebarTaskChecklist.new()
+		checklist.setup(_current_plan_card.plan.steps, _current_plan_card.plan.goal)
+		checklist.meta_clicked.connect(_on_meta_clicked)
+		_checklist_tracker.checklist = checklist
+		_add_stream_component(checklist)
+		_checklist_tracker.attach(checklist)
 	if agent_runner:
 		agent_runner.approve_plan()
 
@@ -2035,8 +1945,8 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	var completion = str(metrics.get("completion", "success" if t_ok else "failed"))
 	var show_ok = t_ok and completion == "success"
 	var done_reason = str(metrics.get("completion_reason", metrics.get("stop_reason", "")))
-	_finish_checklist(show_ok, done_reason)
-	_last_tool_args.clear()
+	_checklist_tracker.finish(show_ok, done_reason)
+	_checklist_tracker.clear_tool_args()
 	if agent_context and agent_context.get_transcript().has_running_task():
 		var t_status = "completed" if show_ok else ("incomplete" if completion == "incomplete" else "failed")
 		agent_context.end_task(t_status, done_reason, metrics)
@@ -2085,8 +1995,8 @@ func _on_agent_error(err_msg: String) -> void:
 	_current_thinking_card = null
 	_activity_running_idx = -1
 	_activity_running_tool = ""
-	_finish_checklist(false, err_msg)
-	_last_tool_args.clear()
+	_checklist_tracker.finish(false, err_msg)
+	_checklist_tracker.clear_tool_args()
 	if agent_context and agent_context.get_transcript().has_running_task():
 		var e_status = "cancelled" if _is_user_stopped else "failed"
 		agent_context.end_task(e_status, err_msg)
