@@ -115,6 +115,22 @@ Faz 2, ROADMAP'teki ürün Faz 10'un (Alt Ajanlar) ve Faz 7'deki editör köprü
 
 `chat_exporter.gd` (806), `editor_tools.gd` (653), `scene_tools.gd` (652), `verification_pipeline.gd` (576). Satır sayısı tek başına sorun değildir; yalnızca birden fazla sorumluluk varsa bölünür. Her biri için kısa karar notu yazılır.
 
+**Başlangıç ölçümü (2026-09-26, `bb29ef4`):** typecheck 195/195 + 4/4 sahne, test_runner 92 paket yeşil. 500 satırı geçen diğer dosyalar `agent_runner.gd` (871; Faz 2 kapanışında 853, fark #14 / #20 düzeltmeleri) ve `chat_dock.gd` (585; Faz 1'de bilinçli bırakıldı) Faz 1–2'de karara bağlandı, yeniden açılmadı.
+
+| Dosya | Karar | Gerekçe |
+|---|---|---|
+| `core/chat/chat_exporter.gd` (806, 41 fn) | Olduğu gibi kalır | Tek iş: sohbet verisini export biçimine çevirmek. Gruplar (eski history Markdown'u, transcript Markdown'u gruplu/kronolojik, JSON + redaction, oturum adaptörleri) `_rx`, `_append_history_entry`, `_append_completion_section` gibi private yardımcıları paylaşır; bölmek dosyalar arası private bağ ve §7 `_` fallback'ini iki yere dağıtırdı. En büyük fonksiyon (`_append_transcript_event`, 122) event türleri üzerinde tek `match`'tir. Asıl borç export testlerindeki çakışmadır (Faz 3.5). |
+| `core/tools/primitive/editor_tools.gd` (653, 23 fn) | Olduğu gibi kalır | "Bir araç ailesi = bir modül" düzeni (scene/script/ui_telemetry de böyle); %33'ü bildirimsel şema. Bölmek `tool_manager` yönlendirmesini ve LLM'e giden şema sırasını değiştirirdi. Tekrarlanan `is_playing` / debugger kontrolleri DRY konusudur ve mesaj metinleri birebir aynı değildir. |
+| `core/tools/primitive/scene_tools.gd` (652, 22 fn) | Olduğu gibi kalır | Düğüm araçları `MutationService`'e ince sarmalayıcı; sahne dosyası yardımcılarını (`validate_scene_parse`, `confirm_active_scene`, `refresh_open_scenes`) ayırmanın tek kazancı `script_tools → scene_tools` bağını koparmak olurdu (~130 satır, 2 test dosyası). Asıl sorun boyut değil bulgulardı (#23–#25). |
+| `core/verification/verification_pipeline.gd` (576, 18 fn) | **Bölündü** → 305 + `tscn_validator.gd` 282 | `validate_tscn_source` tek fonksiyonda 272 satır (%47): kendi bölüm durum makinesi ve regex'leriyle ayrı bir iş, kayıt defterine takılan bir doğrulayıcı. Kalan sorumluluklar (kayıt defteri, GDScript, batch sırası, düğüm/görsel doğrulama) "doğrulama boru hattı" kimliğinde. |
+
+| Adım | Yeni birim | İçerik | Durum |
+|---|---|---|---|
+| 3.1 | — | TSCN sabitleme: 17 vaka (erişilebilir her hata kodu + geçen durumlar), tüm sonuç sözlüklerinin altın md5 izi (`TSCNVerificationTests` T7). Mutasyon: `[node]` sıra kontrolü gevşetilince ve bir mesaj değişince kırmızı | ✅ `7bdf87d` |
+| 3.2 | `core/verification/tscn_validator.gd` | `validate_tscn_source` → `AISidebarTscnValidator.validate`; pipeline `tscn` / `tres` için yeni birimi kaydeder. Test yeni birime yönlendirildi, delege yok | ✅ |
+
+**3.2 notu:** Gövde birebir taşındı; hata sözlükleri `fail_result()`'a çevrilmedi (o yardımcı `suggestion` / `line` anahtarlarını ekler, çıktı değişirdi). `VerificationStatus` enum'u pipeline'da kaldı; doğrulayıcı onu `const VerificationStatus = AISidebarVerificationPipeline.VerificationStatus` ile kullanır. Pipeline ↔ doğrulayıcı döngüsel preload'u Godot 4.7.2'de sorunsuz: altın iz taşıma sonrası birebir aynı. Motor hata/uyarı profili baz ile aynı.
+
 ## Faz 3.5 — Test denetimi (Faz 1–2 bittikten sonra)
 
 Refactor sürerken test silinmez: güvenlik ağı odur. Refactor sırasında yalnızca taşınan koda ait testler yeni birime yönlendirilir ve orada rastlanan sahte testler gerçeğe çevrilir. Faz 1–2 bitince:

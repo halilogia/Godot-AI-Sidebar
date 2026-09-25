@@ -3,6 +3,7 @@ extends RefCounted
 
 const AISidebarScriptTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/script_tools.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
+const AISidebarTscnValidator = preload("res://addons/godot_sidebar_ai/core/verification/tscn_validator.gd")
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -37,7 +38,7 @@ shape = SubResource("sub_1")
 script = ExtResource("1_test")
 """ % [dummy_script_path]
 
-	var res_1 = AISidebarVerificationPipeline.validate_tscn_source(valid_tscn_content, valid_tscn_path)
+	var res_1 = AISidebarTscnValidator.validate(valid_tscn_content, valid_tscn_path)
 	if res_1.get("success", false) and res_1.get("status") == AISidebarVerificationPipeline.VerificationStatus.PASSED:
 		passed += 1
 	else:
@@ -54,7 +55,7 @@ size = Vector3(1, 1, 1)
 [node name="TestRoot" type="Node3D"]
 """ % [dummy_script_path]
 
-	var res_2 = AISidebarVerificationPipeline.validate_tscn_source(displaced_ext_content, invalid_tscn_path)
+	var res_2 = AISidebarTscnValidator.validate(displaced_ext_content, invalid_tscn_path)
 	if not res_2.get("success", false) and res_2.get("error", {}).get("code") == "TSCN_DISPLACED_EXT_RESOURCE":
 		passed += 1
 	else:
@@ -70,7 +71,7 @@ size = Vector3(1, 1, 1)
 [node name="TestRoot" type="Node3D"]
 """ % [dummy_script_path, dummy_script_path]
 
-	var res_3 = AISidebarVerificationPipeline.validate_tscn_source(duplicate_id_content, invalid_tscn_path)
+	var res_3 = AISidebarTscnValidator.validate(duplicate_id_content, invalid_tscn_path)
 	if not res_3.get("success", false) and res_3.get("error", {}).get("code") == "TSCN_DUPLICATE_RESOURCE_ID":
 		passed += 1
 	else:
@@ -86,7 +87,7 @@ size = Vector3(1, 1, 1)
 script = ExtResource("999_none")
 """ % [dummy_script_path]
 
-	var res_4 = AISidebarVerificationPipeline.validate_tscn_source(broken_ref_content, invalid_tscn_path)
+	var res_4 = AISidebarTscnValidator.validate(broken_ref_content, invalid_tscn_path)
 	if not res_4.get("success", false) and res_4.get("error", {}).get("code") == "TSCN_UNDEFINED_RESOURCE_REFERENCE":
 		passed += 1
 	else:
@@ -185,7 +186,7 @@ script = ExtResource("good_x")
 	var trace: Array = []
 	var case_fail: Array = []
 	for c in cases:
-		var r = AISidebarVerificationPipeline.validate_tscn_source(c[1], c[2], c[3])
+		var r = AISidebarTscnValidator.validate(c[1], c[2], c[3])
 		trace.append(r)
 		var want_code = str(c[4])
 		if want_code.is_empty():
