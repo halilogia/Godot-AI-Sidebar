@@ -104,11 +104,30 @@ static func run() -> Dictionary:
 	for m in st5b.context.messages:
 		ctx_after.append(str(m.get("content", "")))
 	var expected = ["ilk soru", "/help", "Komutlar...", "ikinci soru"]
-	if saved == expected and ctx_clean and loaded5 and reloaded == expected and ctx_after == ["ilk soru", "ikinci soru"]:
+	# Eski format (v2.7.x /clear): işaretsiz "command" + hemen arkasındaki yerel "assistant"
+	# yanıtı diskte. Yanıt da modele girmemeli; kayıt yeni formata (local: true) geçer.
+	var legacy = AISidebarChatSessionStore.new()
+	legacy.context = AISidebarAgentContext.new()
+	legacy.start_new()
+	created_ids.append(legacy.current_id())
+	legacy.current.messages = [_msg("user", "eski soru"), _msg("assistant", "eski cevap"), _msg("command", "/clear"), _msg("assistant", "Agent çalışma hafızası sıfırlandı."), _msg("user", "yeni soru")]
+	AISidebarChatManager.save_session(legacy.current)
+	var st5c = AISidebarChatSessionStore.new()
+	st5c.context = AISidebarAgentContext.new()
+	st5c.load_by_id(legacy.current_id())
+	var legacy_ctx: Array = []
+	for m in st5c.context.messages:
+		legacy_ctx.append(str(m.get("content", "")))
+	st5c.save()
+	var legacy_flags: Array = []
+	for m in AISidebarChatManager.load_session(legacy.current_id()).messages:
+		legacy_flags.append(bool(m.get("local", false)))
+	var legacy_ok = legacy_ctx == ["eski soru", "eski cevap", "yeni soru"] and legacy_flags == [false, false, true, true, false]
+	if saved == expected and ctx_clean and loaded5 and reloaded == expected and ctx_after == ["ilk soru", "ikinci soru"] and legacy_ok:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T5 (local command persistence) failed: saved=%s reloaded=%s ctx=%s" % [str(saved), str(reloaded), str(ctx_after)])
+		errors.append("T5 (local command persistence) failed: saved=%s reloaded=%s ctx=%s legacy_ctx=%s legacy_flags=%s" % [str(saved), str(reloaded), str(ctx_after), str(legacy_ctx), str(legacy_flags)])
 
 	# 6. Pause checkpoint: iptal edilen task resumable; terminal limit hatası değil; task yoksa {}
 	var st6 = _make()

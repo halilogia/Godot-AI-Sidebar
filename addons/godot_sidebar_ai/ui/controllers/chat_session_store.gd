@@ -56,10 +56,18 @@ func load_by_id(session_id: String) -> bool:
 	if context:
 		context.clear()
 		# Yerel komutlar (ve eski oturumlardaki "command" rolü) modele gitmez; ayrı tutulur.
+		# Eski format (v2.7.x): işaretsiz "command" mesajının hemen arkasındaki tool çağrısız
+		# "assistant" mesajı onun yerel yanıtıdır; ikisi de yerel sayılır ve işaretlenir.
 		var ctx_msgs: Array = []
+		var after_legacy_command := false
 		for m in loaded.messages:
-			if m is Dictionary and (bool(m.get("local", false)) or str(m.get("role", "")) == "command"):
+			var is_local = m is Dictionary and (bool(m.get("local", false)) or str(m.get("role", "")) == "command")
+			var legacy_reply = after_legacy_command and m is Dictionary and str(m.get("role", "")) == "assistant" and not m.has("tool_calls")
+			after_legacy_command = m is Dictionary and str(m.get("role", "")) == "command" and not bool(m.get("local", false))
+			if is_local or legacy_reply:
 				var e: Dictionary = m.duplicate(true)
+				if legacy_reply or after_legacy_command:
+					e["local"] = true
 				e["anchor"] = ctx_msgs.size()
 				_local_entries.append(e)
 			else:

@@ -30,6 +30,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Uzun model düşünceleri (thinking) kesilmiyor: kart 3000 yerine 20.000 karaktere kadar gösteriyor, transcript / export 1000 yerine 16.000 karaktere kadar saklıyor.
 * Kod blokları komşu satırları örtmüyor; kalın / kod metni gövdeyle aynı boyutta.
 * Onay modu ekranda iki kez yazmıyor: durum rozeti yalnızca "Hazır" gösteriyor, mod model çubuğundaki butonda.
+* Eski sürümlerde `/clear` kullanılmış oturumlar History'den yüklenince `/clear`'ın yerel yanıtı artık modele gönderilmiyor.
 * Kuyrukta birden fazla mesaj varken görev hatayla bitince (veya hatadan hemen sonra Retry'a basılınca) kuyruktaki bir mesaj kaybolmuyor ve çalışan görevin kaydı "iptal" görünmüyor.
 * Ajanı durdurmak (Stop) artık kullanıcının F5 ile açtığı oyunu kapatmıyor; yalnızca ajanın kendi başlattığı oyun durduruluyor.
 * Telemetri kartı ve export'taki dosya süresi (`file_time`) artık cerrahi düzenleme (`replace_file_content`) ve dosya silme (`delete_file`) sürelerini de içeriyor.
