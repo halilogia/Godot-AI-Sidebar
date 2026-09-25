@@ -16,6 +16,9 @@ var _options_container: HFlowContainer
 var _input_line: LineEdit
 var _send_btn: Button
 var _status_lbl: Label
+var _input_row: HBoxContainer
+## History replay'de gösterilecek geçmiş cevap (boşsa kart canlıdır).
+var _replayed_answer: String = ""
 
 func _init(p_question: String = "", p_options: Array = []) -> void:
 	question_text = p_question
@@ -110,6 +113,7 @@ func _ready() -> void:
 	input_hbox.add_child(_send_btn)
 	
 	vbox.add_child(input_hbox)
+	_input_row = input_hbox
 	
 	# 4. Yanıtlandı Durum Etiketi
 	_status_lbl = Label.new()
@@ -119,6 +123,24 @@ func _ready() -> void:
 	vbox.add_child(_status_lbl)
 	
 	add_child(vbox)
+	if not _replayed_answer.is_empty():
+		_apply_answered_view()
+
+## History replay: geçmişte yanıtlanmış soruyu salt-okunur gösterir (sinyal yok).
+## Kart ağaca eklenmeden önce çağrılabilir; görünüm _ready'de kurulur.
+func show_as_answered(answer: String) -> void:
+	is_answered = true
+	_replayed_answer = answer
+	if _status_lbl:
+		_apply_answered_view()
+
+func _apply_answered_view() -> void:
+	if _options_container:
+		_options_container.visible = false
+	if _input_row:
+		_input_row.visible = false
+	_status_lbl.text = "✓ Answered: " + _replayed_answer
+	_status_lbl.visible = true
 
 func _on_option_selected(option_value: String) -> void:
 	if is_answered:

@@ -588,15 +588,7 @@ func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
 				var q = str(d.get("question", ""))
 				var a = str(d.get("user_answer", ""))
 				var card = AISidebarClarificationCard.new(q, [])
-				card._ready()
-				card.is_answered = true
-				if card._options_container:
-					card._options_container.visible = false
-				if card._input_container:
-					card._input_container.visible = false
-				if card._status_lbl:
-					card._status_lbl.text = "✓ Answered: " + a
-					card._status_lbl.visible = true
+				card.show_as_answered(a)
 				_add_stream_component(card)
 				
 	if not sess.telemetry.is_empty():
