@@ -45,10 +45,10 @@ Sıra riske göre: saf/izole olanlar önce, sinyal akışının kalbi en son.
 | 1.7 | `ui/controllers/chat_session_store.gd` | New/load/save/clear, history panel olayları, checkpoint/pause/resume (930–1097, 1338–1389, 1558–1577) | Orta-yüksek | ✅ (+8 test, bug #7 bulundu) |
 | 1.8 | `ui/presenters/session_replay_renderer.gd` | `_rebuild_ui_stream_from_session` (1098–1180) | Orta | ✅ (+4 test; replay çökme bug'ı `826fc68` ile düzeltildi) |
 | 1.9a | `ui/presenters/agent_stream_presenter.gd` | Cevap akışı (stream tamponu, zarf süzme, asistan balonu), thinking/reasoning kartları, bekleme sayacı + durum rozeti | Yüksek | ✅ |
-| 1.9b | `ui/presenters/agent_activity_presenter.gd` | Activity grubu, tool satırları, doğrulama/runtime/debug, ekran görüntüsü önizlemesi, step progress | Yüksek | ⏳ |
+| 1.9b | `ui/presenters/agent_activity_presenter.gd` | Activity grubu, tool satırları, doğrulama/runtime/debug, ekran görüntüsü önizlemesi, step progress | Yüksek | ✅ |
 | 1.9c | `ui/presenters/agent_interaction_presenter.gd` | Soru, onay, plan, değişiklik kartları, diff ve undo | Orta | ⏳ |
 
-**İlerleme:** 2349 → 1415 satır (1.1–1.8) → 1238 (1.9a). 1.9 tek dosya yerine üç birime bölündü (tek dosya ~550 satır ve birden çok sorumluluk olurdu); task bitişi/hata orkestrasyonu (oturum, kuyruk, görsel eki) ChatDock'ta kalır ve presenter API'lerini kullanır. 1.7'de kalıcı oturum durumu UI'sız `ChatSessionStore`'a taşındı; UI orkestrasyonu (akış temizleme, rozet, history paneli) bilinçli olarak ChatDock'ta kaldı. **Hedef:** ChatDock ≤ ~500 satır; yalnızca sahne bağlantısı + birimlerin kompozisyonu.
+**İlerleme:** 2349 → 1415 satır (1.1–1.8) → 1238 (1.9a) → 1047 (1.9b). 1.9 tek dosya yerine üç birime bölündü (tek dosya ~550 satır ve birden çok sorumluluk olurdu); task bitişi/hata orkestrasyonu (oturum, kuyruk, görsel eki) ChatDock'ta kalır ve presenter API'lerini kullanır. 1.7'de kalıcı oturum durumu UI'sız `ChatSessionStore`'a taşındı; UI orkestrasyonu (akış temizleme, rozet, history paneli) bilinçli olarak ChatDock'ta kaldı. **Hedef:** ChatDock ≤ ~500 satır; yalnızca sahne bağlantısı + birimlerin kompozisyonu.
 **Ara kontrol:** 1.1–1.6 kullanıcı tarafından editörde (yeni-oyun-projesi, junction) elle test edildi, sorun yok (2026-09-25).
 **Faz sonu:** editörde elle duman testi (aşağıdaki kontrol listesi) — headless testler UI'ın gerçek hissini kanıtlamaz.
 

@@ -20,7 +20,7 @@ static func _dock():
 		child.free()
 	dock._stream.assistant_bubble = null
 	dock._stream.reasoning_card = null
-	dock._current_activity_group = null
+	dock._activity.group = null
 	dock._stream.reset_stream_buffer()
 	return dock
 
@@ -54,7 +54,7 @@ static func run() -> Dictionary:
 
 	# 1. summary gösteriliyor (tool event -> action kartı)
 	var dock1 = _dock()
-	dock1._on_agent_tool_executing("validate_script", {})
+	dock1._activity.on_tool_executing("validate_script", {})
 	var cards1 = _reasoning_cards(dock1)
 	for c in cards1:
 		c._ready()
@@ -69,7 +69,7 @@ static func run() -> Dictionary:
 	var dock2 = _dock()
 	dock2._stream.on_chunk_received("", SECRET_MARKER + " bir plan düşünüyorum")
 	dock2._stream.on_thinking_received(SECRET_MARKER + " tam gerekçe")
-	dock2._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock2._activity.on_tool_executing("read_script", {"file_path": "res://a.gd"})
 	dock2._stream.on_chunk_received("Görünen cevap.", "")
 	if not SECRET_MARKER in _stream_text(dock2):
 		passed += 1
@@ -80,8 +80,8 @@ static func run() -> Dictionary:
 
 	# 3. no-reasoning provider normal çalışıyor (tool özeti + cevap akışı)
 	var dock3 = _dock()
-	dock3._on_agent_tool_executing("analyze_project", {})
-	dock3._on_agent_tool_completed("analyze_project", {"success": true, "data": {}, "message": "ok"})
+	dock3._activity.on_tool_executing("analyze_project", {})
+	dock3._activity.on_tool_completed("analyze_project", {"success": true, "data": {}, "message": "ok"})
 	dock3._stream.on_chunk_received("Analiz bitti.", "")
 	var cards3 = _reasoning_cards(dock3)
 	var bubble3 = dock3._stream.assistant_bubble.text_content if dock3._stream.assistant_bubble else ""
@@ -94,9 +94,9 @@ static func run() -> Dictionary:
 
 	# 4. streaming sırasında UI bozulmuyor (tek kart, son action)
 	var dock4 = _dock()
-	dock4._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
-	dock4._on_agent_tool_executing("validate_script", {})
-	dock4._on_agent_tool_completed("validate_script", {"success": true, "data": {}, "message": "ok"})
+	dock4._activity.on_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock4._activity.on_tool_executing("validate_script", {})
+	dock4._activity.on_tool_completed("validate_script", {"success": true, "data": {}, "message": "ok"})
 	var cards4 = _reasoning_cards(dock4)
 	if cards4.size() == 1 and "Validat" in cards4[0].get_text():
 		passed += 1
@@ -107,7 +107,7 @@ static func run() -> Dictionary:
 
 	# 5. final response ayrı kalır
 	var dock5 = _dock()
-	dock5._on_agent_tool_executing("read_script", {"file_path": "res://a.gd"})
+	dock5._activity.on_tool_executing("read_script", {"file_path": "res://a.gd"})
 	dock5._stream.on_text_received("assistant", "Dosya okundu ve hazır.")
 	var bubble5 = ""
 	for child in dock5.message_stream.get_children():
@@ -211,7 +211,7 @@ static func run() -> Dictionary:
 	# 12. Metinsiz tool turu: akışta asılı kalan bekleme balonu yok
 	var dock12 = _dock()
 	dock12._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
-	dock12._on_agent_tool_executing("read_script", {"path": "res://a.gd"})
+	dock12._activity.on_tool_executing("read_script", {"path": "res://a.gd"})
 	var stale = 0
 	for child in dock12.message_stream.get_children():
 		if child is AISidebarMessageBubble:
