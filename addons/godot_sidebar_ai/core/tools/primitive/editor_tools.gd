@@ -428,9 +428,19 @@ static func _get_runtime_errors(args: Dictionary) -> Dictionary:
 	var obs = debugger.observe_runtime(checkpoint_ms)
 	return AISidebarToolResult.ok(obs.to_dict(), obs.get_observation_verdict())
 
+## Ekran görüntüsü kayıt yolu: boşsa varsayılan, sonra PathPolicy yazma kontrolü.
+## Dönen sözlük `is_safe_to_write` biçimindedir ({safe, path} / {safe, reason}).
+static func resolve_screenshot_path(raw_path: Variant, default_path: String) -> Dictionary:
+	var raw = str(raw_path).strip_edges() if raw_path != null else ""
+	if raw.is_empty():
+		raw = default_path
+	return AISidebarPathPolicy.is_safe_to_write(raw)
+
 static func _take_editor_screenshot(args: Dictionary) -> Dictionary:
-	var path = args.get("save_path", "user://ai_editor_snapshot.png")
-	return AISidebarRuntimeDebugger.take_editor_screenshot(path)
+	var path_check = resolve_screenshot_path(args.get("save_path", ""), "user://ai_editor_snapshot.png")
+	if not path_check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", path_check["reason"])
+	return AISidebarRuntimeDebugger.take_editor_screenshot(path_check["path"])
 
 static func _take_runtime_screenshot(args: Dictionary) -> Dictionary:
 	return AISidebarToolResult.err(
@@ -440,7 +450,10 @@ static func _take_runtime_screenshot(args: Dictionary) -> Dictionary:
 
 ## Çalışan OYUNUN viewport görüntüsü (RuntimeBridge -> base64 -> vision payload).
 static func _take_runtime_screenshot_async(args: Dictionary) -> Dictionary:
-	var path = AISidebarPathPolicy.normalize_path(args.get("save_path", "user://ai_runtime_snapshot.png"))
+	var path_check = resolve_screenshot_path(args.get("save_path", ""), "user://ai_runtime_snapshot.png")
+	if not path_check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", path_check["reason"])
+	var path = path_check["path"]
 	var max_dim = clampi(int(args.get("max_dimension", 960)), 64, 2048)
 
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
@@ -476,11 +489,13 @@ static func _take_runtime_screenshot_async(args: Dictionary) -> Dictionary:
 	return AISidebarRuntimeDebugger.build_runtime_payload(path, img)
 
 static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
-	var save_path = args.get("save_path", "user://ai_viewport_snapshot.png")
+	var path_check = resolve_screenshot_path(args.get("save_path", ""), "user://ai_viewport_snapshot.png")
+	if not path_check["safe"]:
+		return AISidebarToolResult.err("PERMISSION_DENIED", path_check["reason"])
 	var requested_type = args.get("viewport_type", "auto").to_lower()
 	var vp_index = int(args.get("viewport_index", 0))
 	var max_dim = int(args.get("max_dimension", 1280))
-	
+
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
 		return AISidebarToolResult.err("EDITOR_REQUIRED", "Viewport ekran görüntüsü için editör GUI gereklidir.")
 		
@@ -538,7 +553,7 @@ static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 			new_w = maxi(1, int(float(max_dim) * ratio))
 		img.resize(new_w, new_h, Image.INTERPOLATE_BILINEAR)
 		
-	var norm_path = AISidebarPathPolicy.normalize_path(save_path)
+	var norm_path = path_check["path"]
 	var err = img.save_png(norm_path)
 	if err != OK:
 		return AISidebarToolResult.err("SAVE_FAILED", "Ekran görüntüsü diske kaydedilemedi: " + norm_path)

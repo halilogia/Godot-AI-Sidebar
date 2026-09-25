@@ -94,5 +94,31 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 6 (Headless safe execution check) failed: " + str(exec_res))
-		
+
+	# Test 7 (bulgu #22): save_path korumalı yollara yazamaz (PathPolicy); READ_ONLY
+	# araç olduğu için onay kapısı yoktur, kontrol editör gerekliliğinden önce yapılır.
+	var bad_paths = ["res://project.godot", "res://addons/godot_sidebar_ai/plugin.cfg", "res://scenes/../.git/x.png"]
+	var t7_bad: Array = []
+	for tool_name in ["take_viewport_screenshot", "take_editor_screenshot"]:
+		for bp in bad_paths:
+			var r = editor_tools.execute(tool_name, {"save_path": bp})
+			if r.get("success", false) or str(r.get("error", {}).get("code", "")) != "PERMISSION_DENIED":
+				t7_bad.append(tool_name + " " + bp + " -> " + str(r.get("error", {}).get("code", r.get("success"))))
+		var ok_default = editor_tools.execute(tool_name, {})
+		if str(ok_default.get("error", {}).get("code", "")) != "EDITOR_REQUIRED":
+			t7_bad.append(tool_name + " default -> " + str(ok_default))
+	for bp in bad_paths:
+		if editor_tools.resolve_screenshot_path(bp, "user://x.png").get("safe", true):
+			t7_bad.append("resolve " + bp)
+	var abs_res = editor_tools.resolve_screenshot_path("C:/Windows/x.png", "user://x.png")
+	if not abs_res.get("safe", false) or not str(abs_res.get("path", "")).begins_with("res://"):
+		t7_bad.append("resolve absolute -> " + str(abs_res))
+	if str(editor_tools.resolve_screenshot_path("", "user://d.png").get("path", "")) != "user://d.png":
+		t7_bad.append("resolve default")
+	if t7_bad.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 7 (screenshot save_path PathPolicy) failed: " + str(t7_bad))
+
 	return {"name": "ViewportScreenshotTests", "passed": passed, "failed": failed, "errors": errors}
