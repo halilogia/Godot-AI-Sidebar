@@ -193,8 +193,9 @@ static func _format_tool_message(entry: Dictionary, content_raw: Variant, lines:
 	if parsed_data is Dictionary:
 		var is_success = parsed_data.get("success", true)
 		var status_badge = "✅ **Status:** Success" if is_success else "❌ **Status:** Failed"
-		var msg = parsed_data.get("message", "")
-		
+		var msg_raw = parsed_data.get("message", "")
+		var msg = "" if msg_raw == null else str(msg_raw)
+
 		lines.append(status_badge + ((" — *" + _rx(msg) + "*") if not msg.is_empty() else ""))
 		lines.append("")
 

@@ -22,7 +22,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 1 (export_user_message) failed: " + md1)
-		
+
 	# Test 2: Assistant message with reasoning & tool calls
 	var assistant_history = [
 		{
@@ -46,7 +46,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 2 (export_assistant_message & tool_call) failed: " + md2)
-		
+
 	# Test 3: Tool Result export (Success & File target)
 	var tool_history = [
 		{
@@ -62,7 +62,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 3 (export_tool_result) failed: " + md3)
-		
+
 	# Test 4: Runtime Error observation in tool result
 	var error_tool_history = [
 		{
@@ -78,7 +78,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 4 (export_runtime_error) failed: " + md4)
-		
+
 	# Test 5: Session Telemetry & Metadata export
 	var meta = {
 		"model": "ag/gemini-3.7-flash-low",
@@ -96,7 +96,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 5 (export_telemetry) failed: " + md5)
-		
+
 	# Test 6: Null-Safety with corrupted/empty entries
 	var corrupted_history = [
 		null,
@@ -111,7 +111,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 6 (export_null_safe) failed: " + md6)
-		
+
 	# Test 7: JSON Export format
 	var json_export = AISidebarChatExporter.export_to_json(user_history, meta)
 	var parsed = JSON.parse_string(json_export)
@@ -120,7 +120,7 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 7 (export_to_json) failed: " + str(parsed))
-		
+
 	# Test 8: Save to file
 	var save_res = AISidebarChatExporter.save_to_file(md1, "md")
 	if save_res.get("success", false) and FileAccess.file_exists(save_res.get("path", "")):
@@ -129,5 +129,14 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 8 (save_to_file) failed: " + str(save_res))
-		
+
+	# Test 9 (bulgu #26): tool sonucundaki metin olmayan `message` bölümü kesmemeli
+	var md_null = AISidebarChatExporter.export_to_markdown([{"role": "tool", "name": "t", "content": "{\"success\": true, \"message\": null}"}])
+	var md_num = AISidebarChatExporter.export_to_markdown([{"role": "tool", "name": "t", "content": "{\"success\": true, \"message\": 42}"}])
+	if md_null.contains("✅ **Status:** Success\n") and md_null.contains("**Raw Result Data:**") and md_num.contains("✅ **Status:** Success — *42.0*") and md_num.contains("**Raw Result Data:**"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 9 (non-string tool message) failed: null_len=%d num_len=%d" % [md_null.length(), md_num.length()])
+
 	return {"name": "ChatExporterTests", "passed": passed, "failed": failed, "errors": errors}
