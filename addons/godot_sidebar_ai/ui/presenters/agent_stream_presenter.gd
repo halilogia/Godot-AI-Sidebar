@@ -13,6 +13,7 @@ const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/se
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
 const AISidebarThinkingCard = preload("res://addons/godot_sidebar_ai/ui/components/thinking_card.gd")
+const AISidebarPendingIndicator = preload("res://addons/godot_sidebar_ai/ui/components/pending_indicator.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 
 ## func(comp: Control) — bileşeni message stream'e ekler.
@@ -27,6 +28,8 @@ var scroll_if_following: Callable = func(): pass
 var assistant_bubble: AISidebarMessageBubble = null
 var reasoning_card: AISidebarReasoningCard = null
 var thinking_card: AISidebarThinkingCard = null
+## Model yanıtı beklenirken akışın sonundaki canlı gösterge (ilk hayat belirtisinde kalkar).
+var pending_indicator: AISidebarPendingIndicator = null
 ## Bir sonraki user balonuna eklenecek görseller (task başlatılırken doldurulur).
 var user_vision_inputs: Array = []
 ## AGY alt sureci 'init' handshake'ini tamamlayana kadar true kalir.
@@ -63,6 +66,7 @@ func on_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: St
 			thinking_card = null
 			start_thinking_timer()
 			set_status.call("Waiting...", AISidebarTheme.COLOR_WARNING)
+			_show_pending()
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
 			stop_thinking_timer()
 			set_status.call("Waiting Approval", AISidebarTheme.COLOR_WARNING)
@@ -78,7 +82,13 @@ func on_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: St
 		AISidebarAgentRunner.AgentState.ERROR:
 			stop_thinking_timer()
 			set_status.call(state_desc, AISidebarTheme.COLOR_ERROR)
+		AISidebarAgentRunner.AgentState.RECOVERING:
+			# Yeniden deneme: bekleyiş sürüyor, gösterge nedeni yazar.
+			set_status.call(state_desc, AISidebarTheme.COLOR_WARNING)
+			if _has_pending():
+				pending_indicator.set_phase(state_desc, _thinking_elapsed_sec)
 		_:
+			_hide_pending()
 			set_status.call(state_desc, AISidebarTheme.COLOR_WARNING)
 
 func _setup_thinking_timer() -> void:
@@ -99,6 +109,7 @@ func stop_thinking_timer() -> void:
 	if _thinking_timer and is_instance_valid(_thinking_timer):
 		_thinking_timer.stop()
 	_thinking_elapsed_sec = 0
+	_hide_pending()
 
 func _on_thinking_tick() -> void:
 	_thinking_elapsed_sec += 1
@@ -110,6 +121,32 @@ func _on_thinking_tick() -> void:
 		set_status.call("Thinking (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
 	else:
 		set_status.call("Waiting... (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
+	if _has_pending():
+		var phase_key = "pending_agy_preparing" if agy_preparing else "pending_waiting"
+		pending_indicator.set_phase(AISidebarI18n.get_text(phase_key), _thinking_elapsed_sec)
+
+# --- Bekleme göstergesi ---
+
+func _has_pending() -> bool:
+	return pending_indicator != null and is_instance_valid(pending_indicator)
+
+func _show_pending() -> void:
+	if _has_pending():
+		return
+	pending_indicator = AISidebarPendingIndicator.new()
+	if agy_preparing:
+		pending_indicator.set_phase(AISidebarI18n.get_text("pending_agy_preparing"), 0)
+	add_component.call(pending_indicator)
+
+func _hide_pending() -> void:
+	if _has_pending():
+		pending_indicator.queue_free()
+	pending_indicator = null
+
+## Akışa başka bir bileşen eklendi (thinking, cevap, activity, kart): bekleyiş bitti.
+func on_component_added(comp: Control) -> void:
+	if comp != pending_indicator:
+		_hide_pending()
 
 # --- Reasoning (eylem özeti) ve thinking kartları ---
 
@@ -138,6 +175,7 @@ func ensure_thinking_card() -> AISidebarThinkingCard:
 func on_thinking_received(thinking: String) -> void:
 	if thinking == null or thinking.strip_edges().is_empty():
 		return
+	_hide_pending()
 	_thinking_seen_this_turn = true
 	set_status.call("Thinking...", AISidebarTheme.COLOR_WARNING)
 	# Stream dışı final thinking: kart boşsa doldur (delta'larla duplicate olmaz).
@@ -183,6 +221,7 @@ func reset_stream_buffer() -> void:
 	_stream_buffer = ""
 
 func on_text_received(role: String, text: String) -> void:
+	_hide_pending()
 	answer_text_started.emit()
 
 	if role == "assistant":
@@ -221,6 +260,7 @@ func on_text_received(role: String, text: String) -> void:
 ## Tool / kart araya girdi: sonraki metin yeni balon açar.
 func detach_bubble() -> void:
 	assistant_bubble = null
+	_hide_pending()
 
 ## Yeni task: eylem özeti ve thinking kartı yeniden oluşturulur.
 func begin_task() -> void:
@@ -232,6 +272,7 @@ func end_task() -> void:
 	assistant_bubble = null
 	reasoning_card = null
 	thinking_card = null
+	_hide_pending()
 
 ## Akış temizlendi: tüm canlı durum sıfırlanır.
 func reset() -> void:
