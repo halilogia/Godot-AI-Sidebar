@@ -752,6 +752,12 @@ func _move_checklist_to_bottom() -> void:
 func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	update_ui_language()
 	_stream.on_state_changed(new_state, state_desc)
+	# Durdurulan task devam ettirilebilir durumdaysa boşta rozeti "Hazır" değil "Paused" kalır
+	# (runner stop sonrası IDLE'a geçer; aksi halde Paused rozeti hemen ezilirdi).
+	if new_state == AISidebarAgentRunner.AgentState.IDLE or new_state == AISidebarAgentRunner.AgentState.COMPLETED:
+		if _sessions.has_resumable_checkpoint():
+			var cp = _sessions.current.checkpoint
+			_show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_stream.end_task()
