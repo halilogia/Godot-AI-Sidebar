@@ -182,6 +182,18 @@ static func run() -> Dictionary:
 		else:
 			failed += 1
 			errors.append("Test 10 (ChatDockTheme.apply) failed.")
+
+		# Test 10b: Uzun sohbet başlığı header'ı genişletmez (regresyon: kırpılmayan TitleLabel
+		# dock'un min genişliğini büyütüp sağdaki Export/Copy butonlarını ekran dışına itiyordu)
+		# (Ağaç dışında header'ın min-size önbelleği yenilenmez; etiketin kendi min genişliği ölçülür.
+		# Eski sahnede bu metinle ~1700 px idi, kırpılan etikette ~1 px.)
+		dock.title_label.text = "Godot AI - " + "çok uzun bir sohbet başlığı @res://benchmark/PlanApprovalTest.gd ".repeat(4)
+		var title_min = dock.title_label.get_minimum_size().x
+		if title_min < 50.0:
+			passed += 1
+		else:
+			failed += 1
+			errors.append("Test 10b (long title widens header) failed: title min width %.0f px" % title_min)
 		dock.queue_free()
 	else:
 		failed += 1
