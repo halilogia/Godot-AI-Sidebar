@@ -94,6 +94,7 @@ const TestRuntimeOwnership = preload("res://tests/test_runtime_ownership.gd")
 const TestMarkdownRenderer = preload("res://tests/test_markdown_renderer.gd")
 const TestDocsCoverage = preload("res://tests/test_docs_coverage.gd")
 const TestLineBudget = preload("res://tests/test_line_budget.gd")
+const TestStaticReferences = preload("res://tests/test_static_references.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -190,6 +191,7 @@ func _init() -> void:
 		TestMarkdownRenderer,
 		TestDocsCoverage,
 		TestLineBudget,
+		TestStaticReferences,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,
