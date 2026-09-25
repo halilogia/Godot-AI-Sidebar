@@ -170,7 +170,7 @@ static func run() -> Dictionary:
 	u_bubble.queue_free()
 	a_bubble.queue_free()
 
-	# Test 10: ChatDock Gerçek Sahne Tema Uygulaması (_apply_theme)
+	# Test 10: ChatDock Gerçek Sahne Tema Uygulaması (ChatDockTheme.apply)
 	var dock_scene = load("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 	if dock_scene:
 		var dock = dock_scene.instantiate()
@@ -181,7 +181,7 @@ static func run() -> Dictionary:
 			passed += 1
 		else:
 			failed += 1
-			errors.append("Test 10 (ChatDock _apply_theme) failed.")
+			errors.append("Test 10 (ChatDockTheme.apply) failed.")
 		dock.queue_free()
 	else:
 		failed += 1
