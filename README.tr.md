@@ -7,6 +7,11 @@
 
 [English](README.md) · **Türkçe**
 
+<p align="center">
+  <img src="docs/media/hero_tr.png" width="460" alt="Godot içindeki kenar çubuğu: ajan hangi hexagon haritasının kastedildiğini sordu, ardından sahneyi oluşturdu, scripti yazıp doğruladı, oyunu çalıştırdı ve sonucu raporladı">
+</p>
+<p align="center"><sub>Ekran görüntüleri eklentinin gerçek arayüz bileşenlerinden <code>tools/readme_shots.gd</code> ile üretilir. İçlerindeki konuşma senaryoludur; kaydedilmiş bir model oturumu değildir.</sub></p>
+
 ---
 
 > **Not:** Bu dosya projenin Türkçe dokümantasyonudur. Uluslararası keşfedilebilirlik
@@ -35,6 +40,16 @@
 * 📚 **Sohbet Kalıcılığı & Geçmiş:** `user://sidebar_ai_chats/` altında JSON oturum deposu; arama, yeniden adlandırma ve silme. API anahtarı asla diske yazılmaz.
 * 🌐 **Gerçek 9Router, OpenAI & Antigravity CLI Uyumluluğu:** 9Router (`127.0.0.1:20128`), OpenRouter, yerel Ollama, LM Studio ve resmi Google Antigravity CLI ile doğrudan oturum desteği.
 * 🇹🇷 🇬🇧 **Çift Dil Desteği:** Tek tıkla Türkçe ve İngilizce arayüz geçişi.
+
+---
+
+## Ekran Görüntüleri
+
+| Tahmin etmek yerine sorar | Büyük işlerden önce plan yapar |
+|---|---|
+| <img src="docs/media/clarification_tr.png" width="420" alt="Üç seçenekli netleştirme kartı"> | <img src="docs/media/plan_tr.png" width="420" alt="Hedef, dosyalar, adımlar ve doğrulama içeren plan kartı; Planı Uygula / İptal"> |
+| **Onaylı, geri alınabilir değişiklikler** | **Çalışan oyunu inceler** |
+| <img src="docs/media/approval_tr.png" width="420" alt="Onaylanmış cerrahi düzenleme, Diff ve Geri Al butonları, onay bekleyen silme işlemi"> | <img src="docs/media/runtime_tr.png" width="420" alt="Canlı sahne ağacı ve düğüm incelemesi, player.gd satır 14'teki runtime hatası ve açıklaması"> |
 
 ---
 
