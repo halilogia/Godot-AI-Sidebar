@@ -69,10 +69,7 @@ static func run() -> Dictionary:
 	var s3 = AISidebarChatSession.new()
 	s3.messages = [
 		{"role": "user", "content": "ham prompt", "display_text": "Görünen"},
-		{"role": "user", "content": "Player'ı düzelt
-
-=== @Player.gd ===
-kod..."},
+		{"role": "user", "content": "Player'ı düzelt\n\n=== @Player.gd ===\nkod..."},
 		{"role": "user", "content": "/help"},
 	]
 	var c3 = AISidebarSessionReplayRenderer.build(s3, func(_m): pass)
