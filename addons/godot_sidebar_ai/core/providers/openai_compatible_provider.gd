@@ -77,6 +77,16 @@ func cancel() -> void:
 	if network_manager:
 		network_manager.cancel_all()
 
+## Ortak NetworkManager'a _init'te kurulan bağlantıları koparır (emekli provider yanıt almaz).
+func dispose() -> void:
+	if network_manager:
+		if network_manager.request_completed.is_connected(_on_network_completed):
+			network_manager.request_completed.disconnect(_on_network_completed)
+		if network_manager.response_chunk_received.is_connected(_on_network_chunk):
+			network_manager.response_chunk_received.disconnect(_on_network_chunk)
+		if network_manager.request_failed.is_connected(_on_network_failed):
+			network_manager.request_failed.disconnect(_on_network_failed)
+
 func get_clean_base_url(url: String) -> String:
 	return url.strip_edges().trim_suffix("/")
 

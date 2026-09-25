@@ -49,9 +49,11 @@ func rebuild_provider() -> void:
 func set_provider(p_provider: AISidebarAIProvider) -> void:
 	_bind_provider(p_provider, false)
 
-## Eski provider'ın aktarım bağlarını koparır, yenisininkileri kurar. Isıtma, runner yeni
+## Eski provider'ı emekliye ayırır (dispose) ve aktarım bağlarını koparır, yenisininkileri kurar. Isıtma, runner yeni
 ## provider'a geçmeden önce yapılır (ısıtma sırasındaki provider hatası runner'a gitmez).
 func _bind_provider(p_provider: AISidebarAIProvider, warm: bool) -> void:
+	if provider and provider != p_provider:
+		provider.dispose()
 	if provider:
 		if provider.models_fetched.is_connected(_relay_models_fetched):
 			provider.models_fetched.disconnect(_relay_models_fetched)

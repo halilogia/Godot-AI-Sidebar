@@ -103,16 +103,18 @@ static func run() -> Dictionary:
 	var p2 = host.provider
 	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2 and not dock._stream.agy_preparing
 	var same_nm = host.network_manager == nm and p2.network_manager == nm
+	# Emekli provider hâlâ bir yerde tutulsa bile ortak NetworkManager'ı dinlemez (tek alıcı)
+	var nm_single = nm.request_completed.get_connections().size() == 1 and nm.response_chunk_received.get_connections().size() == 1 and nm.request_failed.get_connections().size() == 1
 	var old_detached = p1.response_received.get_connections().is_empty() and p1.chunk_received.get_connections().is_empty() and p1.error_occurred.get_connections().is_empty() and p1.models_fetched.get_connections().is_empty()
 	p1.models_fetched.emit(["stale-a", "stale-b", "stale-c"])
 	var stale_ignored = dock.model_selector.item_count != 3
 	p2.models_fetched.emit(["m1", "m2"])
 	var fresh_shown = dock.model_selector.item_count == 2 and dock.model_selector.get_item_text(0) == "m1"
-	if switched and same_nm and old_detached and stale_ignored and fresh_shown:
+	if switched and same_nm and nm_single and old_detached and stale_ignored and fresh_shown:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T2 (provider switch) failed: switched=%s nm=%s detached=%s stale=%s fresh=%s" % [str(switched), str(same_nm), str(old_detached), str(stale_ignored), str(fresh_shown)])
+		errors.append("T2 (provider switch) failed: switched=%s nm=%s nm_single=%s detached=%s stale=%s fresh=%s" % [str(switched), str(same_nm), str(nm_single), str(old_detached), str(stale_ignored), str(fresh_shown)])
 
 	# 3. AGY hazırlık rozeti: hazır değil -> "hazırlanıyor"; hazır + boşta -> "Hazır";
 	# hazır + ajan çalışıyor -> "Thinking..."; hazırlık durumu olmayan provider rozete dokunmaz.

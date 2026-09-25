@@ -34,3 +34,8 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 
 func cancel() -> void:
 	pass
+
+## Provider emekliye ayrılırken çağrılır: paylaşılan kaynaklara (ör. NetworkManager) kurduğu
+## bağlantıları koparır. Nesne başka bir yerde tutulsa bile artık olay almaz.
+func dispose() -> void:
+	pass
