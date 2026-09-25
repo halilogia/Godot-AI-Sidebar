@@ -39,6 +39,7 @@ const AISidebarSessionReplayRenderer = preload("res://addons/godot_sidebar_ai/ui
 const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd")
 const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_activity_presenter.gd")
 const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd")
+const AISidebarModelBarController = preload("res://addons/godot_sidebar_ai/ui/controllers/model_bar_controller.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -71,7 +72,8 @@ var provider: AISidebarAIProvider
 var agent_context: AISidebarAgentContext
 var agent_runner: AISidebarAgentRunner
 
-var current_model_list: Array = []
+## Model listesi / seçimi ve onay modu butonu.
+var _model_bar: AISidebarModelBarController = AISidebarModelBarController.new()
 var last_user_prompt: String = ""
 
 # Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
@@ -118,8 +120,8 @@ func _setup_provider() -> void:
 	if provider:
 		if provider.has_method("stop_process"):
 			provider.stop_process()
-		if provider.models_fetched.is_connected(_on_models_fetched):
-			provider.models_fetched.disconnect(_on_models_fetched)
+		if provider.models_fetched.is_connected(_model_bar.on_models_fetched):
+			provider.models_fetched.disconnect(_model_bar.on_models_fetched)
 		if provider.has_signal("readiness_changed") and provider.readiness_changed.is_connected(_on_provider_readiness_changed):
 			provider.readiness_changed.disconnect(_on_provider_readiness_changed)
 		
@@ -134,7 +136,7 @@ func _setup_provider() -> void:
 	else:
 		provider = AISidebarAGYProvider.new()
 		
-	provider.models_fetched.connect(_on_models_fetched)
+	provider.models_fetched.connect(_model_bar.on_models_fetched)
 	if provider.has_signal("readiness_changed"):
 		provider.readiness_changed.connect(_on_provider_readiness_changed)
 	if provider.has_method("pre_warm"):
@@ -170,6 +172,10 @@ func _ready() -> void:
 	_interaction.activity = _activity
 	_interaction.checklist_tracker = _checklist_tracker
 	_interaction.change_set_dialog = change_set_dialog
+	_model_bar.model_selector = model_selector
+	_model_bar.approve_mode_btn = approve_mode_btn
+	_model_bar.set_status = set_status_badge
+	_model_bar.is_agent_idle = func(): return agent_runner != null and not agent_runner.is_running()
 	_setup_history_panel()
 	_setup_queue_ui()
 	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
@@ -208,7 +214,7 @@ func _ready() -> void:
 	if settings_btn:
 		settings_btn.pressed.connect(_on_settings_pressed)
 	if approve_mode_btn:
-		approve_mode_btn.pressed.connect(_on_approve_mode_pressed)
+		approve_mode_btn.pressed.connect(_model_bar.on_approve_mode_pressed)
 	if refresh_models_btn:
 		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
 	if export_btn:
@@ -221,7 +227,7 @@ func _ready() -> void:
 	# 4. Oturumu Başlat (Her açılışta daima temiz ve yeni bir sohbet başlat)
 	_start_new_chat_session()
 	if model_selector:
-		model_selector.item_selected.connect(_on_model_selected)
+		model_selector.item_selected.connect(_model_bar.on_model_selected)
 	if settings_dialog:
 		settings_dialog.settings_saved.connect(_on_settings_saved)
 	if jump_to_bottom_btn:
@@ -241,7 +247,7 @@ func _ready() -> void:
 
 	# 5. Başlangıç Yüklemesi
 	update_ui_language()
-	_load_cached_models()
+	_model_bar.load_cached_models()
 	if provider:
 		provider.fetch_models()
 
@@ -329,74 +335,7 @@ func update_ui_language() -> void:
 			send_btn.tooltip_text = ""
 		AISidebarChatDockTheme.apply_send_button(send_btn, agent_runner != null and agent_runner.is_running())
 			
-	_update_approve_mode_ui()
-
-func _update_approve_mode_ui() -> void:
-	if not approve_mode_btn:
-		return
-	var mode = AISidebarPermissionPolicy.get_auto_approve_mode()
-	match mode:
-		AISidebarPermissionPolicy.AutoApproveMode.MANUAL:
-			approve_mode_btn.text = AISidebarI18n.get_text("mode_manual")
-			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_manual") + " (Her riskli işlemde onay sorulur)"
-			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
-		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
-			approve_mode_btn.text = AISidebarI18n.get_text("mode_auto")
-			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_auto") + " (Güvenli kod/dosya yazımları otomatik, silme onaylı)"
-			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
-		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
-			approve_mode_btn.text = AISidebarI18n.get_text("mode_full_auto")
-			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_full_auto") + " (Tüm araçlar otomatik onaylanır, PathPolicy kalkanı devrededir)"
-			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_MODE_FULL_AUTO)
-
-func _on_approve_mode_pressed() -> void:
-	var current_mode = AISidebarPermissionPolicy.get_auto_approve_mode()
-	var next_mode = AISidebarPermissionPolicy.AutoApproveMode.MANUAL
-	match current_mode:
-		AISidebarPermissionPolicy.AutoApproveMode.MANUAL:
-			next_mode = AISidebarPermissionPolicy.AutoApproveMode.AUTO
-		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
-			next_mode = AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO
-		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
-			next_mode = AISidebarPermissionPolicy.AutoApproveMode.MANUAL
-	AISidebarPermissionPolicy.set_auto_approve_mode(next_mode)
-	_update_approve_mode_ui()
-	if agent_runner and not agent_runner.is_running():
-		var mode_txt = AISidebarPermissionPolicy.get_mode_name(next_mode)
-		set_status_badge(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
-
-func _load_cached_models() -> void:
-	var cfg = AISidebarConfig.load_config()
-	var cached: Array = cfg.get("cached_models", ["all", "free"])
-	_populate_model_selector(cached)
-
-func _populate_model_selector(models: Array) -> void:
-	if not model_selector:
-		return
-		
-	current_model_list = models
-	model_selector.clear()
-	
-	var cfg = AISidebarConfig.load_config()
-	var selected_model = cfg.get("selected_model", "all")
-	var selected_idx = 0
-	
-	for i in range(models.size()):
-		var m_name = str(models[i])
-		model_selector.add_item(m_name, i)
-		if m_name == selected_model:
-			selected_idx = i
-			
-	if model_selector.item_count > 0:
-		model_selector.selected = selected_idx
-
-func _on_models_fetched(models: Array) -> void:
-	var cfg = AISidebarConfig.load_config()
-	cfg["cached_models"] = models
-	AISidebarConfig.save_config(cfg)
-	
-	_populate_model_selector(models)
-	set_status_badge("Ready", AISidebarTheme.COLOR_SUCCESS)
+	_model_bar.update_approve_mode_ui()
 
 func _on_refresh_models_pressed() -> void:
 	if provider:
@@ -412,13 +351,6 @@ func _on_settings_saved() -> void:
 	_setup_provider()
 	if provider:
 		provider.fetch_models()
-
-func _on_model_selected(index: int) -> void:
-	if index >= 0 and index < current_model_list.size():
-		var chosen = current_model_list[index]
-		var cfg = AISidebarConfig.load_config()
-		cfg["selected_model"] = chosen
-		AISidebarConfig.save_config(cfg)
 
 # --- Chat Management Olayları ve Yardımcıları ---
 

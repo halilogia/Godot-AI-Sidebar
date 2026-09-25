@@ -83,6 +83,7 @@ const TestChatSessionStore = preload("res://tests/test_chat_session_store.gd")
 const TestSessionReplay = preload("res://tests/test_session_replay.gd")
 const TestIconSystem = preload("res://tests/test_icon_system.gd")
 const TestDockAgentWiring = preload("res://tests/test_dock_agent_wiring.gd")
+const TestModelBarController = preload("res://tests/test_model_bar_controller.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -168,6 +169,7 @@ func _init() -> void:
 		TestSessionReplay,
 		TestIconSystem,
 		TestDockAgentWiring,
+		TestModelBarController,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,
