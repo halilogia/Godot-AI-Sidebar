@@ -47,6 +47,7 @@ Sıra riske göre: saf/izole olanlar önce, sinyal akışının kalbi en son.
 | 1.9 | `ui/presenters/agent_event_presenter.gd` | Ajan sinyal dinleyicileri, stream tamponu, activity/reasoning/thinking kartları (1623–2331) | **Yüksek** — en son | ⏳ |
 
 **İlerleme:** 2349 → 1539 satır (1.1–1.6). **Hedef:** ChatDock ≤ ~500 satır; yalnızca sahne bağlantısı + birimlerin kompozisyonu.
+**Ara kontrol:** 1.1–1.6 kullanıcı tarafından editörde (yeni-oyun-projesi, junction) elle test edildi, sorun yok (2026-09-25).
 **Faz sonu:** editörde elle duman testi (aşağıdaki kontrol listesi) — headless testler UI'ın gerçek hissini kanıtlamaz.
 
 ## Faz 2 — AgentRunner
