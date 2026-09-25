@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-## Bekleyen kullanıcı kararları (Refactor Faz 2.2 sabitleme testleri): onay / netleştirme / plan
+## Bekleyen kullanıcı kararları (PendingInteraction + AgentRunner, Refactor Faz 2.2): onay / netleştirme / plan
 ## isteğinin saklanması, karar fonksiyonlarının koruma koşulları (yanlış durumda etkisiz),
 ## kararın context'e tool sonucu olarak yazılması, yeni task / stop / task sonu temizliği.
 ## Provider elle yanıtlar; ağ ve editör kullanılmaz.

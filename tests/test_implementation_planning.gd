@@ -167,7 +167,7 @@ static func run() -> Dictionary:
 	# --- SENARYO 6: Plan approval sonrasi mevcut execution loop calisir ---
 	runner1.approve_plan()
 	var is_completed = (runner1.current_state == AISidebarAgentRunner.AgentState.IDLE or runner1.current_state == AISidebarAgentRunner.AgentState.COMPLETED)
-	if is_completed and not runner1._plan_phase_active and runner1._pending_plan == null:
+	if is_completed and not runner1._plan_phase_active and runner1.pending.plan == null:
 		passed += 1
 	else:
 		failed += 1
@@ -434,7 +434,7 @@ static func run() -> Dictionary:
 	mock21.response_queue = [{"tool_calls": [{"id": "p21", "name": "propose_plan", "arguments": _valid_plan_args()}]}]
 	runner21.start_task("Bir save/load sistemi ekle")
 	runner21.stop()
-	if runner21.current_state == AISidebarAgentRunner.AgentState.IDLE and runner21._pending_plan == null and not runner21._plan_phase_active:
+	if runner21.current_state == AISidebarAgentRunner.AgentState.IDLE and runner21.pending.plan == null and not runner21._plan_phase_active:
 		passed += 1
 	else:
 		failed += 1

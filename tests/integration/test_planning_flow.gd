@@ -229,13 +229,13 @@ func _init() -> void:
 	]
 	runner.approve_plan()
 
-	if approved_events.size() == 1 and not runner._plan_phase_active and runner._pending_plan == null:
+	if approved_events.size() == 1 and not runner._plan_phase_active and runner.pending.plan == null:
 		passed += 1
 		print("      -> plan onaylandi, plan fazi kapandi")
 	else:
 		failed += 1
 		errors.append("[5] approval: approved=" + str(approved_events.size())
-			+ " phase=" + str(runner._plan_phase_active) + " pending=" + str(runner._pending_plan != null))
+			+ " phase=" + str(runner._plan_phase_active) + " pending=" + str(runner.pending.plan != null))
 
 	if FileAccess.file_exists(PROBE_PATH) and "create_or_update_script" in executed_tools:
 		passed += 1

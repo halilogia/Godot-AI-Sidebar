@@ -19,6 +19,7 @@ const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agen
 const AISidebarCompletionPolicy = preload("res://addons/godot_sidebar_ai/core/agent/completion_policy.gd")
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
 const AISidebarAgentTelemetry = preload("res://addons/godot_sidebar_ai/core/agent/agent_telemetry.gd")
+const AISidebarPendingInteraction = preload("res://addons/godot_sidebar_ai/core/agent/pending_interaction.gd")
 
 enum AgentState {
 	IDLE,
@@ -87,22 +88,14 @@ var unrecovered_failures: Dictionary = {}
 ## Son completion hükmü (metrics'e yazılır; success/incomplete/failed/cancelled).
 var last_completion: Dictionary = {"verdict": "success", "reason": "Task completed."}
 
-# Bekleyen Onay & Clarification Verisi
-var _pending_tool_name: String = ""
-var _pending_tool_id: String = ""
-var _pending_tool_args: Dictionary = {}
-var _pending_change_set: AISidebarChangeSet = null
-var _pending_clarification_id: String = ""
-var _pending_clarification_question: String = ""
-var _pending_clarification_options: Array = []
+## Bekleyen kullanıcı kararları: tool onayı, netleştirme sorusu, plan.
+var pending: AISidebarPendingInteraction = AISidebarPendingInteraction.new()
 
 ## Uygulama Planlama Katmanı.
 ## false yapilirsa planlama kapisi tamamen devre disi kalir ve eski hizli
 ## execution davranisi birebir korunur (mevcut yurutme testleri bunu kullanir).
 var enable_planning_gate: bool = true
 var _plan_phase_active: bool = false
-var _pending_plan: AISidebarImplementationPlan = null
-var _pending_plan_id: String = ""
 var runtime_debugger: AISidebarRuntimeDebugger = null
 
 static func get_ts() -> String:
@@ -160,15 +153,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	_last_error_signature = ""
 	_last_tool_signature = ""
 	_stagnation_count = 0
-	_pending_tool_name = ""
-	_pending_tool_id = ""
-	_pending_tool_args = {}
-	_pending_change_set = null
-	_pending_clarification_id = ""
-	_pending_clarification_question = ""
-	_pending_clarification_options.clear()
-	_pending_plan = null
-	_pending_plan_id = ""
+	pending.clear_all()
 	_pending_vision_inputs.clear()
 	if initial_vision_inputs.size() > 0:
 		_pending_vision_inputs.append_array(initial_vision_inputs)
@@ -234,16 +219,8 @@ func stop() -> void:
 	if runtime_debugger:
 		runtime_debugger.stop()
 		
-	_pending_clarification_id = ""
-	_pending_clarification_question = ""
-	_pending_clarification_options.clear()
-	_pending_plan = null
-	_pending_plan_id = ""
+	pending.clear_all()
 	_plan_phase_active = false
-	_pending_tool_name = ""
-	_pending_tool_id = ""
-	_pending_tool_args = {}
-	_pending_change_set = null
 		
 	_set_state(AgentState.CANCELLED, AISidebarI18n.get_text("agent_stopped"))
 	error_occurred.emit(AISidebarI18n.get_text("agent_stopped"))
@@ -258,27 +235,21 @@ func _finish_task(success: bool) -> void:
 	task_completed.emit(metrics)
 	loop_finished.emit()
 	_pending_vision_inputs.clear()
-	_pending_clarification_id = ""
-	_pending_clarification_question = ""
-	_pending_clarification_options.clear()
+	pending.clear_clarification()
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
 ## Kullanıcı bekleyen işlemi onayladı (Approve)
 func approve_pending_action() -> void:
-	if current_state != AgentState.WAITING_FOR_APPROVAL or _pending_tool_name.is_empty():
+	if current_state != AgentState.WAITING_FOR_APPROVAL or not pending.has_approval():
 		return
 		
 	telemetry.end_waiting()
 		
-	var fn_name = _pending_tool_name
-	var tc_id = _pending_tool_id
-	var args = _pending_tool_args
-	var cs = _pending_change_set
-	
-	_pending_tool_name = ""
-	_pending_tool_id = ""
-	_pending_tool_args = {}
-	_pending_change_set = null
+	var req = pending.take_approval()
+	var fn_name = req["name"]
+	var tc_id = req["id"]
+	var args = req["args"]
+	var cs = req["change_set"]
 	
 	_set_state(AgentState.EXECUTING, "Onaylanan işlem çalıştırılıyor: " + fn_name)
 	print("[TIMING] %s | TOOL_START (APPROVED) | tool=%s" % [get_ts(), fn_name])
@@ -304,17 +275,14 @@ func approve_pending_action() -> void:
 
 ## Kullanıcı bekleyen işlemi reddetti (Reject)
 func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") -> void:
-	if current_state != AgentState.WAITING_FOR_APPROVAL or _pending_tool_name.is_empty():
+	if current_state != AgentState.WAITING_FOR_APPROVAL or not pending.has_approval():
 		return
 		
 	telemetry.end_waiting()
 		
-	var fn_name = _pending_tool_name
-	var tc_id = _pending_tool_id
-	_pending_tool_name = ""
-	_pending_tool_id = ""
-	_pending_tool_args = {}
-	_pending_change_set = null
+	var req = pending.take_approval()
+	var fn_name = req["name"]
+	var tc_id = req["id"]
 	
 	_set_state(AgentState.RECOVERING, "İşlem reddedildi, ajana bildiriliyor...")
 	print("[TIMING] %s | TOOL_REJECTED | tool=%s" % [get_ts(), fn_name])
@@ -326,16 +294,14 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 
 ## Kullanıcı clarification sorusuna yanıt verdiğinde aynı görevi devam ettirir
 func submit_clarification_response(answer: String) -> void:
-	if current_state != AgentState.WAITING_FOR_CLARIFICATION or _pending_clarification_id.is_empty():
+	if current_state != AgentState.WAITING_FOR_CLARIFICATION or not pending.has_clarification():
 		return
 		
 	telemetry.end_waiting()
 		
-	var tc_id = _pending_clarification_id
-	var question = _pending_clarification_question
-	_pending_clarification_id = ""
-	_pending_clarification_question = ""
-	_pending_clarification_options.clear()
+	var req = pending.take_clarification()
+	var tc_id = req["id"]
+	var question = req["question"]
 	
 	print("[TIMING] %s | CLARIFICATION_ANSWERED | answer=%s" % [get_ts(), answer])
 	
@@ -361,10 +327,9 @@ func approve_plan() -> void:
 
 	telemetry.end_waiting()
 
-	var plan = _pending_plan
-	var plan_id = _pending_plan_id
-	_pending_plan = null
-	_pending_plan_id = ""
+	var req = pending.take_plan()
+	var plan = req["plan"]
+	var plan_id = req["id"]
 	_plan_phase_active = false
 	plan_was_approved = true
 
@@ -390,10 +355,9 @@ func reject_plan(reason: String = "Kullanıcı planı reddetti.") -> void:
 
 	telemetry.end_waiting()
 
-	var plan = _pending_plan
-	var plan_id = _pending_plan_id
-	_pending_plan = null
-	_pending_plan_id = ""
+	var req = pending.take_plan()
+	var plan = req["plan"]
+	var plan_id = req["id"]
 	_plan_phase_active = false
 
 	if context and not plan_id.is_empty():
@@ -579,9 +543,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 					for opt in options_raw:
 						options.append(str(opt))
 						
-				_pending_clarification_id = tc_id
-				_pending_clarification_question = question
-				_pending_clarification_options = options
+				pending.request_clarification(tc_id, question, options)
 				telemetry.begin_waiting()
 				
 				_set_state(AgentState.WAITING_FOR_CLARIFICATION, "Kullanıcıdan yanıt bekleniyor...")
@@ -594,8 +556,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			# ask_user gibi: araç ÇALIŞTIRILMAZ, plan kullanıcıya sunulur ve onay beklenir.
 			if fn_name == "propose_plan":
 				var plan = AISidebarImplementationPlan.new(args)
-				_pending_plan = plan
-				_pending_plan_id = tc_id
+				pending.propose_plan(plan, tc_id)
 				telemetry.begin_waiting()
 
 				_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")
@@ -655,10 +616,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			
 			# Onay gerekiyorsa durakla
 			if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
-				_pending_tool_name = fn_name
-				_pending_tool_id = tc_id
-				_pending_tool_args = args
-				_pending_change_set = cs
+				pending.request_approval(fn_name, tc_id, args, cs)
 				telemetry.begin_waiting()
 				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
 				print("[TIMING] %s | APPROVAL_REQUESTED | tool=%s" % [get_ts(), fn_name])
