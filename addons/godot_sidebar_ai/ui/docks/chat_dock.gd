@@ -103,7 +103,7 @@ func _notification(what: int) -> void:
 ## Provider'ı config'e göre yeniden kurdurur; eski provider'dan kalan hazırlık durumu sıfırlanır.
 ## Çalışan görev önce kullanıcı adına durdurulur (Paused; "devam et" ile yeni provider'da sürer):
 ## eski provider'ın isteğine yanıt verecek kimse kalmayabilir.
-func _rebuild_provider() -> void:
+func rebuild_provider() -> void:
 	if tasks:
 		tasks.stop_by_user()
 	if stream:
@@ -119,19 +119,19 @@ func _ready() -> void:
 	_export_actions.copy_task_btn = copy_task_btn
 	add_child(_export_actions)
 	stream = AISidebarAgentStreamPresenter.new()
-	stream.add_component = _add_stream_component
+	stream.add_component = add_stream_component
 	stream.on_meta_clicked = _on_meta_clicked
 	stream.set_status = set_status_badge
 	stream.scroll_if_following = _scroll_if_following
 	stream.answer_text_started.connect(activity.close_group)
 	add_child(stream)
-	activity.add_component = _add_stream_component
+	activity.add_component = add_stream_component
 	activity.on_meta_clicked = _on_meta_clicked
 	activity.set_status = set_status_badge
 	activity.supports_vision = func(): return agent_host != null and agent_host.supports_vision()
 	activity.stream = stream
 	activity.checklist_tracker = checklist_tracker
-	interaction.add_component = _add_stream_component
+	interaction.add_component = add_stream_component
 	interaction.on_meta_clicked = _on_meta_clicked
 	interaction.scroll_if_following = _scroll_if_following
 	interaction.refresh_ui = update_ui_language
@@ -158,7 +158,7 @@ func _ready() -> void:
 	tasks.activity = activity
 	tasks.interaction = interaction
 	tasks.checklist_tracker = checklist_tracker
-	tasks.add_component = _add_stream_component
+	tasks.add_component = add_stream_component
 	tasks.on_meta_clicked = _on_meta_clicked
 	tasks.refresh_ui = update_ui_language
 	tasks.hide_welcome = _hide_welcome_card
@@ -176,7 +176,7 @@ func _ready() -> void:
 	# sonra provider kurulur; böylece pre_warm'ın hazırlık olayı rozete ulaşır.
 	if agent_host:
 		attach_agent_host(agent_host)
-		_rebuild_provider()
+		rebuild_provider()
 
 	# 2. UI Olayları
 	if new_chat_btn:
@@ -192,7 +192,7 @@ func _ready() -> void:
 	if approve_mode_btn:
 		approve_mode_btn.pressed.connect(model_bar_controller.on_approve_mode_pressed)
 	if refresh_models_btn:
-		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
+		refresh_models_btn.pressed.connect(refresh_models)
 	if export_btn:
 		export_btn.pressed.connect(_export_actions.export_chat)
 	if copy_task_btn:
@@ -331,7 +331,7 @@ func update_ui_language() -> void:
 			
 	model_bar_controller.update_approve_mode_ui()
 
-func _on_refresh_models_pressed() -> void:
+func refresh_models() -> void:
 	if agent_host and agent_host.has_provider():
 		set_status_badge("Refreshing...", AISidebarTheme.COLOR_WARNING)
 		agent_host.fetch_models()
@@ -342,7 +342,7 @@ func _on_settings_pressed() -> void:
 
 func _on_settings_saved() -> void:
 	update_ui_language()
-	_rebuild_provider()
+	rebuild_provider()
 	if agent_host and agent_host.has_provider():
 		agent_host.fetch_models()
 
@@ -421,7 +421,7 @@ func _load_session_by_id(session_id: String) -> void:
 		
 	queue_panel.clear_all()
 	_clear_ui_stream()
-	_rebuild_ui_stream_from_session(loaded)
+	rebuild_stream_from_session(loaded)
 	_show_welcome_card_if_empty()
 	if sessions.has_resumable_checkpoint():
 		tasks.show_paused_badge(int(loaded.checkpoint.get("current_step", 0)), int(loaded.checkpoint.get("max_steps", 20)))
@@ -434,11 +434,11 @@ func _load_session_by_id(session_id: String) -> void:
 	if auto_scroll_enabled:
 		_scroll_to_bottom()
 
-func _rebuild_ui_stream_from_session(sess: AISidebarChatSession) -> void:
+func rebuild_stream_from_session(sess: AISidebarChatSession) -> void:
 	if not message_stream or not sess:
 		return
 	for comp in AISidebarSessionReplayRenderer.build(sess, _on_meta_clicked):
-		_add_stream_component(comp)
+		add_stream_component(comp)
 
 func _clear_ui_stream() -> void:
 	if message_stream:
@@ -455,7 +455,7 @@ func _show_welcome_card_if_empty() -> void:
 		if welcome_card == null or not is_instance_valid(welcome_card):
 			welcome_card = AISidebarWelcomeCard.new()
 			welcome_card.prompt_selected.connect(_on_welcome_prompt_selected)
-			_add_stream_component(welcome_card)
+			add_stream_component(welcome_card)
 
 func _hide_welcome_card() -> void:
 	if welcome_card and is_instance_valid(welcome_card):
@@ -530,7 +530,7 @@ func _scroll_to_bottom() -> void:
 		return
 	chat_scroll.set_deferred("scroll_vertical", 999999)
 
-func _add_stream_component(comp: Control) -> void:
+func add_stream_component(comp: Control) -> void:
 	if not message_stream:
 		return
 	message_stream.add_child(comp)

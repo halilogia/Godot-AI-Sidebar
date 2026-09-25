@@ -36,7 +36,7 @@ static func run() -> Dictionary:
 		{"role": "tool", "name": "ask_user", "content": JSON.stringify({"data": {"question": "2D mi 3D mi?", "user_answer": "3D"}})},
 		{"role": "assistant", "content": "Tamam, 3D kuruyorum."},
 	]
-	dock._rebuild_ui_stream_from_session(sess)
+	dock.rebuild_stream_from_session(sess)
 
 	# 1. ask_user replay'i kesmez: kart ve sonraki asistan mesajı da çizilir
 	var kinds = _kinds(dock.message_stream)

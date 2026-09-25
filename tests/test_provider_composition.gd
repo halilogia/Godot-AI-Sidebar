@@ -83,7 +83,7 @@ static func run() -> Dictionary:
 	var runner = made["runner"]
 
 	# 1. openai_compatible: OpenAI provider host'un NetworkManager'ı ile kurulur, runner ona geçer
-	dock._rebuild_provider()
+	dock.rebuild_provider()
 	var p1 = host.provider
 	var nm = host.network_manager
 	var is_openai = p1 is AISidebarOpenAICompatibleProvider
@@ -104,7 +104,7 @@ static func run() -> Dictionary:
 	# yanıt yeni provider'a gelir ya da (AGY'ye geçişte) runner sonsuza kadar bekler.
 	runner.current_state = AISidebarAgentRunner.AgentState.EXECUTING
 	nm._is_request_active = true
-	dock._rebuild_provider()
+	dock.rebuild_provider()
 	var inflight_closed = not runner.is_running() and not nm._is_request_active and dock.tasks.is_user_stopped
 	var p2 = host.provider
 	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2 and not dock.stream.agy_preparing
@@ -140,7 +140,7 @@ static func run() -> Dictionary:
 	_use_provider(dock, plain)
 	dock.stream.agy_preparing = true
 	dock.status_badge.text = "badge"
-	dock._on_provider_readiness_changed(2, "")
+	dock.agent_host.readiness_changed.emit(2, "")
 	var plain_ignored = dock.stream.agy_preparing and dock.status_badge.text == "badge"
 	dock.stream.agy_preparing = false
 	if preparing and ready_idle and ready_running and plain_ignored:
@@ -165,11 +165,11 @@ static func run() -> Dictionary:
 
 	# 5. Refresh: provider varsa rozet + fetch_models; yoksa hiçbir şey olmaz
 	_use_provider(dock, fake)
-	dock._on_refresh_models_pressed()
+	dock.refresh_models()
 	var refreshed = fake.fetch_calls == 1 and dock.status_badge.text == "Refreshing..."
 	_use_provider(dock, null)
 	dock.status_badge.text = "badge"
-	dock._on_refresh_models_pressed()
+	dock.refresh_models()
 	var refresh_noop = fake.fetch_calls == 1 and dock.status_badge.text == "badge"
 	if refreshed and refresh_noop:
 		passed += 1

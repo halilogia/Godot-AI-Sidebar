@@ -99,9 +99,9 @@ static func run() -> Dictionary:
 	cl.setup(["Create Main.tscn"], "Sahne kur")
 	cl._ready()
 	dock.checklist_tracker.checklist = cl
-	dock._add_stream_component(cl)
+	dock.add_stream_component(cl)
 	var bubble = AISidebarMessageBubble.new("assistant", "Not metni")
-	dock._add_stream_component(bubble)
+	dock.add_stream_component(bubble)
 	var last5 = dock.message_stream.get_child(dock.message_stream.get_child_count() - 1)
 	if last5 == cl:
 		passed += 1
@@ -110,9 +110,9 @@ static func run() -> Dictionary:
 		errors.append("T5 (checklist bottom) failed.")
 	var grp = AISidebarActivityGroup.new(true)
 	grp._ready()
-	dock._add_stream_component(grp)
+	dock.add_stream_component(grp)
 	var bubble2 = AISidebarMessageBubble.new("assistant", "İkinci not")
-	dock._add_stream_component(bubble2)
+	dock.add_stream_component(bubble2)
 	var last6 = dock.message_stream.get_child(dock.message_stream.get_child_count() - 1)
 	if last6 == cl:
 		passed += 1
