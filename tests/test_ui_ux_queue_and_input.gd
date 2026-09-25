@@ -7,6 +7,7 @@ const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/provider
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
+const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
 
 class MockQueueProvider extends AISidebarAIProvider:
 	var responses: Array = []
@@ -49,69 +50,55 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 1 (enter_sends_message & shift_enter_newline) failed.")
 		
-	# Test 2: FIFO Message Queueing
-	var queue: Array[Dictionary] = []
-	var queue_item_1 = {"id": "q1", "prompt": "Task 1", "created_at": 100}
-	var queue_item_2 = {"id": "q2", "prompt": "Task 2", "created_at": 200}
-	var queue_item_3 = {"id": "q3", "prompt": "Task 3", "created_at": 300}
-	
-	queue.append(queue_item_1)
-	queue.append(queue_item_2)
-	queue.append(queue_item_3)
-	
-	var popped_first = queue.pop_front()
-	var popped_second = queue.pop_front()
-	
-	if popped_first["id"] == "q1" and popped_second["id"] == "q2" and queue.size() == 1:
+	# Test 2: FIFO Message Queueing (gerçek MessageQueuePanel)
+	var qp = AISidebarMessageQueuePanel.new()
+	qp.enqueue("Task 1", "Task 1", [])
+	qp.enqueue("Task 2", "Task 2 (display)")
+	qp.enqueue("Task 3", "Task 3", [])
+	var popped_first = qp.pop_next()
+	var popped_second = qp.pop_next()
+	if popped_first.get("prompt") == "Task 1" and popped_first.has("vision_inputs") 			and popped_second.get("display_prompt") == "Task 2 (display)" and not popped_second.has("vision_inputs") 			and qp.count() == 1 and qp.visible and qp.get_title_text() == "Queued Messages (1)":
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 2 (queued_messages_fifo) failed: " + str(queue))
-		
-	# Test 3: Queued Message Cancellation by ID
-	var cancel_queue: Array[Dictionary] = [
-		{"id": "a", "prompt": "Prompt A"},
-		{"id": "b", "prompt": "Prompt B"},
-		{"id": "c", "prompt": "Prompt C"}
-	]
-	var cancel_target_id = "b"
-	for i in range(cancel_queue.size()):
-		if cancel_queue[i]["id"] == cancel_target_id:
-			cancel_queue.remove_at(i)
-			break
-			
-	if cancel_queue.size() == 2 and cancel_queue[0]["id"] == "a" and cancel_queue[1]["id"] == "c":
+		errors.append("Test 2 (queued_messages_fifo) failed: " + str(qp.get_items()))
+
+	# Test 3: Queued Message Cancellation by ID (ortadaki item iptal, sıra korunur)
+	var cp = AISidebarMessageQueuePanel.new()
+	cp.enqueue("Prompt A", "Prompt A")
+	cp.enqueue("Prompt B", "Prompt B")
+	cp.enqueue("Prompt C", "Prompt C")
+	var ids: Array = []
+	for it in cp.get_items():
+		ids.append(it["id"])
+	cp.cancel(ids[1])
+	var left = cp.get_items()
+	if left.size() == 2 and left[0]["prompt"] == "Prompt A" and left[1]["prompt"] == "Prompt C":
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 3 (queued_message_cancel) failed: " + str(cancel_queue))
-		
-	# Test 4: Queue Execution Deduping (No Duplicate Execution)
+		errors.append("Test 3 (queued_message_cancel) failed: " + str(left))
+
+	# Test 4: Boş kuyruk: pop {} döner, panel gizlenir, çift çalıştırma yok; Clear All
 	var executed_tasks: Array = []
-	var sim_queue: Array[Dictionary] = [
-		{"id": "job1", "prompt": "Do Job 1"},
-		{"id": "job2", "prompt": "Do Job 2"}
-	]
-	
-	# Run first task
-	if sim_queue.size() > 0:
-		var item = sim_queue.pop_front()
-		executed_tasks.append(item["id"])
-	# Run second task
-	if sim_queue.size() > 0:
-		var item = sim_queue.pop_front()
-		executed_tasks.append(item["id"])
-	# Attempt third pop on empty queue
-	if sim_queue.size() > 0:
-		var item = sim_queue.pop_front()
-		executed_tasks.append(item["id"])
-		
-	if executed_tasks == ["job1", "job2"] and sim_queue.is_empty():
+	var sp = AISidebarMessageQueuePanel.new()
+	sp.enqueue("Do Job 1", "Do Job 1")
+	sp.enqueue("Do Job 2", "Do Job 2")
+	for _i in range(3):
+		var item = sp.pop_next()
+		if not item.is_empty():
+			executed_tasks.append(item["prompt"])
+	var hidden_when_empty = not sp.visible
+	sp.enqueue("Do Job 3", "Do Job 3")
+	sp.clear_all()
+	if executed_tasks == ["Do Job 1", "Do Job 2"] and hidden_when_empty and sp.count() == 0 and not sp.visible:
 		passed += 1
 	else:
 		failed += 1
 		errors.append("Test 4 (queue_no_duplicate_execution) failed: " + str(executed_tasks))
-		
+	for panel in [qp, cp, sp]:
+		panel.free()
+
 	# Test 5: Queue with Approval State Machine
 	var mock_p = MockQueueProvider.new()
 	var ctx = AISidebarAgentContext.new()

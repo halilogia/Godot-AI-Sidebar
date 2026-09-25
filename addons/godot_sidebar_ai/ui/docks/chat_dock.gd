@@ -47,6 +47,7 @@ const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/component
 const AISidebarChatDockTheme = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock_theme.gd")
 const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
+const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -93,12 +94,8 @@ var _export_file_dialog: FileDialog = null
 var _pending_history_export: Dictionary = {}
 
 # Kuyruktaki Mesajlar (FIFO Message Queue)
-var _message_queue: Array[Dictionary] = []
+var _queue_panel: AISidebarMessageQueuePanel = AISidebarMessageQueuePanel.new()
 var _is_user_stopped: bool = false
-var _queue_container: PanelContainer = null
-var _queue_title_label: Label = null
-var _queue_items_vbox: VBoxContainer = null
-var _queue_clear_btn: Button = null
 
 # Pano Görseli Eki (Clipboard Image Attachment)
 var _attached_vision_input: AISidebarVisionInput = null
@@ -149,6 +146,11 @@ func _exit_tree() -> void:
 		_thinking_timer = null
 	if provider and provider.has_method("stop_process"):
 		provider.stop_process()
+
+func _notification(what: int) -> void:
+	# InputArea yoksa kuyruk paneli ağaca hiç eklenmez; sahipsiz kalmasın.
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_queue_panel) and _queue_panel.get_parent() == null:
+		_queue_panel.free()
 
 func _setup_provider() -> void:
 	var cfg = AISidebarConfig.load_config()
@@ -290,45 +292,8 @@ func _setup_queue_ui() -> void:
 	if not has_node("MainLayout/InputArea"):
 		return
 	var input_area = $MainLayout/InputArea
-	
-	_queue_container = PanelContainer.new()
-	_queue_container.name = "QueueContainer"
-	_queue_container.visible = false
-	_queue_container.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
-	
-	var header = HBoxContainer.new()
-	_queue_title_label = Label.new()
-	_queue_title_label.text = "Queued Messages (0)"
-	_queue_title_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
-	_queue_title_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
-	header.add_child(_queue_title_label)
-	
-	var spacer = Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(spacer)
-	
-	_queue_clear_btn = Button.new()
-	_queue_clear_btn.text = "Clear All"
-	_queue_clear_btn.flat = true
-	_queue_clear_btn.focus_mode = Control.FOCUS_NONE
-	_queue_clear_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
-	_queue_clear_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
-	_queue_clear_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
-	_queue_clear_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
-	_queue_clear_btn.pressed.connect(_clear_all_queue)
-	header.add_child(_queue_clear_btn)
-	vbox.add_child(header)
-	
-	_queue_items_vbox = VBoxContainer.new()
-	_queue_items_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
-	vbox.add_child(_queue_items_vbox)
-	
-	_queue_container.add_child(vbox)
-	input_area.add_child(_queue_container)
-	input_area.move_child(_queue_container, 0)
+	input_area.add_child(_queue_panel)
+	input_area.move_child(_queue_panel, 0)
 
 func _setup_attachment_ui() -> void:
 	if not input_area or not input_field:
@@ -915,7 +880,7 @@ func _start_new_chat_session() -> void:
 	if agent_context:
 		agent_context.clear()
 		
-	_clear_all_queue()
+	_queue_panel.clear_all()
 	_clear_ui_stream()
 	_show_welcome_card_if_empty()
 	_update_header_title()
@@ -954,7 +919,7 @@ func _load_session_by_id(session_id: String) -> void:
 		agent_context.messages = loaded.messages.duplicate(true)
 		agent_context.get_transcript().load_data(loaded.transcript_tasks)
 		
-	_clear_all_queue()
+	_queue_panel.clear_all()
 	_clear_ui_stream()
 	_rebuild_ui_stream_from_session(loaded)
 	_show_welcome_card_if_empty()
@@ -1188,15 +1153,7 @@ func _on_send_pressed() -> void:
 			
 	# 2. Normal Mesaj Akışı: Eğer ajan şu anda başka bir görev çalıştırıyorsa -> Mesajı Kuyruğa Al
 	if agent_runner.is_running():
-		var queue_item = {
-			"id": "q_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
-			"prompt": user_text,
-			"display_prompt": user_text,
-			"created_at": Time.get_unix_time_from_system(),
-			"vision_inputs": vision_inputs
-		}
-		_message_queue.append(queue_item)
-		_update_queue_ui()
+		_queue_panel.enqueue(user_text, user_text, vision_inputs)
 		return
 		
 	# 3. Continuation: boştayken resume komutu + resumable checkpoint varsa devam et
@@ -1313,14 +1270,7 @@ func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -
 		var display_prompt = result.get("display_prompt", raw_text)
 		
 		if agent_runner.is_running():
-			var queue_item = {
-				"id": "q_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 1000),
-				"prompt": prompt,
-				"display_prompt": display_prompt,
-				"created_at": Time.get_unix_time_from_system()
-			}
-			_message_queue.append(queue_item)
-			_update_queue_ui()
+			_queue_panel.enqueue(prompt, display_prompt)
 			return
 			
 		_start_task_prompt(prompt, display_prompt)
@@ -1349,72 +1299,12 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 		agent_context.begin_task(prompt_text, final_display)
 	agent_runner.start_task(resolved_ctx["augmented_prompt"], final_display, vision_inputs)
 
-func _update_queue_ui() -> void:
-	if not _queue_container or not _queue_items_vbox:
-		return
-		
-	for child in _queue_items_vbox.get_children():
-		child.queue_free()
-		
-	if _message_queue.is_empty():
-		_queue_container.visible = false
-		return
-		
-	_queue_container.visible = true
-	if _queue_title_label:
-		_queue_title_label.text = "Queued Messages (%d)" % _message_queue.size()
-		
-	for i in range(_message_queue.size()):
-		var item = _message_queue[i]
-		var item_row = HBoxContainer.new()
-		item_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		
-		var num_label = Label.new()
-		num_label.text = str(i + 1) + "."
-		num_label.add_theme_font_size_override("font_size", 10)
-		num_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-		item_row.add_child(num_label)
-		
-		var prompt_label = Label.new()
-		var label_text = str(item.get("display_prompt", item.get("prompt", ""))).replace("\n", " ")
-		prompt_label.text = label_text
-		prompt_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		prompt_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		prompt_label.clip_text = true
-		prompt_label.add_theme_font_size_override("font_size", 10)
-		item_row.add_child(prompt_label)
-		
-		var cancel_btn = Button.new()
-		cancel_btn.text = "✕"
-		cancel_btn.flat = true
-		cancel_btn.focus_mode = Control.FOCUS_NONE
-		cancel_btn.add_theme_font_size_override("font_size", 10)
-		cancel_btn.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
-		cancel_btn.tooltip_text = "Bu sıradaki mesajı iptal et"
-		var item_id = item.get("id", "")
-		cancel_btn.pressed.connect(func(): _cancel_queued_message(item_id))
-		item_row.add_child(cancel_btn)
-		
-		_queue_items_vbox.add_child(item_row)
-
-func _cancel_queued_message(item_id: String) -> void:
-	for i in range(_message_queue.size()):
-		if _message_queue[i].get("id", "") == item_id:
-			_message_queue.remove_at(i)
-			break
-	_update_queue_ui()
-
-func _clear_all_queue() -> void:
-	_message_queue.clear()
-	_update_queue_ui()
-
 func _check_and_dispatch_next_queue() -> void:
 	if _is_user_stopped:
 		return
 		
-	if _message_queue.size() > 0:
-		var next_item = _message_queue.pop_front()
-		_update_queue_ui()
+	if _queue_panel.count() > 0:
+		var next_item = _queue_panel.pop_next()
 		if next_item is Dictionary and next_item.has("prompt"):
 			var next_prompt = str(next_item["prompt"])
 			var next_disp = str(next_item.get("display_prompt", next_prompt))
@@ -1444,7 +1334,7 @@ func _on_clear_pressed() -> void:
 		current_session.transcript_tasks.clear()
 		current_session.checkpoint = {}
 		_save_current_session()
-	_clear_all_queue()
+	_queue_panel.clear_all()
 	_clear_ui_stream()
 	_update_header_title()
 
