@@ -78,6 +78,7 @@ const TestTypecheckGuard = preload("res://tests/test_typecheck_guard.gd")
 const TestCompletionIntegrity = preload("res://tests/test_completion_integrity.gd")
 const TestDebuggerLink = preload("res://tests/test_debugger_link.gd")
 const TestPlanChecklistTracker = preload("res://tests/test_plan_checklist_tracker.gd")
+const TestChatExportActions = preload("res://tests/test_chat_export_actions.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -158,6 +159,7 @@ func _init() -> void:
 		TestHistoryExport,
 		TestDebuggerLink,
 		TestPlanChecklistTracker,
+		TestChatExportActions,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

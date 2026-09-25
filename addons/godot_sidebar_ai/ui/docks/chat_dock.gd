@@ -27,7 +27,6 @@ const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/
 const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
 const AISidebarPlanCard = preload("res://addons/godot_sidebar_ai/ui/components/plan_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
-const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
 const AISidebarScreenshotCard = preload("res://addons/godot_sidebar_ai/ui/components/screenshot_card.gd")
@@ -49,6 +48,7 @@ const AISidebarChatDockTheme = preload("res://addons/godot_sidebar_ai/ui/docks/c
 const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
+const AISidebarChatExportActions = preload("res://addons/godot_sidebar_ai/ui/controllers/chat_export_actions.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -91,8 +91,8 @@ var last_user_prompt: String = ""
 # Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
 var current_session: AISidebarChatSession = null
 var history_panel: AISidebarHistoryPanel = null
-var _export_file_dialog: FileDialog = null
-var _pending_history_export: Dictionary = {}
+## Export / Copy Chat / per-task copy / history export eylemleri.
+var _export_actions: AISidebarChatExportActions = null
 
 # Kuyruktaki Mesajlar (FIFO Message Queue)
 var _queue_panel: AISidebarMessageQueuePanel = AISidebarMessageQueuePanel.new()
@@ -177,6 +177,12 @@ func _setup_provider() -> void:
 		agent_runner.set_provider(provider)
 
 func _ready() -> void:
+	_export_actions = AISidebarChatExportActions.new()
+	_export_actions.get_session = func(): return current_session
+	_export_actions.status_badge = status_badge
+	_export_actions.export_btn = export_btn
+	_export_actions.copy_task_btn = copy_task_btn
+	add_child(_export_actions)
 	_setup_history_panel()
 	_setup_queue_ui()
 	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
@@ -192,6 +198,7 @@ func _ready() -> void:
 	add_child(network_manager)
 	
 	agent_context = AISidebarAgentContext.new()
+	_export_actions.agent_context = agent_context
 	_checklist_tracker.context = agent_context
 	_setup_provider()
 	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
@@ -231,9 +238,9 @@ func _ready() -> void:
 	if refresh_models_btn:
 		refresh_models_btn.pressed.connect(_on_refresh_models_pressed)
 	if export_btn:
-		export_btn.pressed.connect(_on_export_pressed)
+		export_btn.pressed.connect(_export_actions.export_chat)
 	if copy_task_btn:
-		copy_task_btn.pressed.connect(_on_copy_chat_pressed)
+		copy_task_btn.pressed.connect(_export_actions.copy_chat)
 	_composer.connect_input_signals()
 	_composer.send_requested.connect(_on_send_pressed)
 
@@ -277,7 +284,7 @@ func _setup_history_panel() -> void:
 	history_panel.new_chat_requested.connect(_on_new_chat_pressed)
 	history_panel.session_deleted.connect(_on_history_session_deleted)
 	history_panel.session_renamed.connect(_on_history_session_renamed)
-	history_panel.session_export_requested.connect(_on_history_export_requested)
+	history_panel.session_export_requested.connect(_export_actions.export_history_session)
 	history_panel.close_requested.connect(_on_history_close_requested)
 
 func _setup_queue_ui() -> void:
@@ -363,90 +370,6 @@ func _on_approve_mode_pressed() -> void:
 	if agent_runner and not agent_runner.is_running():
 		var mode_txt = AISidebarPermissionPolicy.get_mode_name(next_mode)
 		set_status_badge(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
-
-func _on_export_pressed() -> void:
-	var msgs: Array = []
-	var transcript_tasks: Array = []
-	if agent_context:
-		msgs = agent_context.messages
-		transcript_tasks = agent_context.get_transcript().to_data()
-	if current_session and not current_session.transcript_tasks.is_empty() and transcript_tasks.is_empty():
-		transcript_tasks = current_session.transcript_tasks.duplicate(true)
-
-	if msgs.is_empty() and transcript_tasks.is_empty():
-		return
-
-	var cfg = AISidebarConfig.load_config()
-	var session_meta = {
-		"model": cfg.get("selected_model", "all"),
-		"exported_at": Time.get_datetime_string_from_system()
-	}
-	if current_session and not current_session.telemetry.is_empty():
-		session_meta.merge(current_session.telemetry)
-	var md = AISidebarChatExporter.export_transcript_to_markdown(transcript_tasks, msgs, session_meta)
-	DisplayServer.clipboard_set(md)
-	var save_res = AISidebarChatExporter.save_to_file(md, "md")
-	var js = AISidebarChatExporter.export_transcript_to_json(transcript_tasks, msgs, session_meta)
-	AISidebarChatExporter.save_to_file(js, "json")
-
-	if export_btn:
-		AISidebarIconHelper.apply_icon(export_btn, "check")
-		var t = get_tree()
-		if t:
-			var timer = t.create_timer(1.5)
-			timer.timeout.connect(func():
-				if is_instance_valid(export_btn):
-					AISidebarIconHelper.apply_icon(export_btn, "download")
-			)
-			
-	if status_badge:
-		var prev = status_badge.text
-		status_badge.text = "Exported"
-		status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
-		var t = get_tree()
-		if t:
-			var timer = t.create_timer(2.0)
-			timer.timeout.connect(func():
-				if is_instance_valid(status_badge):
-					status_badge.text = prev
-			)
-
-## Copy Chat: tüm taskların kronolojik transcriptini panoya kopyalar.
-func _on_copy_chat_pressed() -> void:
-	if not agent_context:
-		return
-	var tasks = agent_context.get_transcript().to_data()
-	if tasks.is_empty() and current_session and not current_session.transcript_tasks.is_empty():
-		tasks = current_session.transcript_tasks.duplicate(true)
-	if tasks.is_empty():
-		_flash_status_text("No chat yet")
-		return
-	var md = AISidebarChatExporter.export_full_chat_chronological(tasks)
-	DisplayServer.clipboard_set(md)
-	if copy_task_btn:
-		copy_task_btn.text = "Copied"
-		var t = get_tree()
-		if t:
-			var timer = t.create_timer(1.5)
-			timer.timeout.connect(func():
-				if is_instance_valid(copy_task_btn):
-					copy_task_btn.text = ""
-			)
-	_flash_status_text("Chat copied")
-
-func _flash_status_text(txt: String) -> void:
-	if not status_badge:
-		return
-	var prev = status_badge.text
-	status_badge.text = txt
-	status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
-	var t = get_tree()
-	if t:
-		var timer = t.create_timer(2.0)
-		timer.timeout.connect(func():
-			if is_instance_valid(status_badge):
-				status_badge.text = prev
-		)
 
 func _load_cached_models() -> void:
 	var cfg = AISidebarConfig.load_config()
@@ -544,65 +467,6 @@ func _on_history_session_renamed(session_id: String, new_title: String) -> void:
 
 func _on_history_close_requested() -> void:
 	set_history_view_visible(false)
-
-## History panelinden eski session exportu: yükle -> içerik kur -> FileDialog.
-func _on_history_export_requested(session_id: String, format: String) -> void:
-	_pending_history_export.clear()
-	var sess = AISidebarChatManager.load_session(session_id)
-	if sess == null:
-		_flash_status_text("Export failed: session not found")
-		return
-	var built = AISidebarChatExporter.build_history_export(sess, format)
-	if not bool(built.get("ok", false)):
-		_flash_status_text("Export failed: " + str(built.get("error", "unknown")))
-		return
-	_pending_history_export = built
-	_ensure_export_file_dialog()
-	_export_file_dialog.current_file = str(built.get("filename", "chat_export.md"))
-	var flt = "*.json" if str(built.get("format", "md")) == "json" else "*.md"
-	_export_file_dialog.filters = PackedStringArray([flt])
-	_export_file_dialog.popup_centered()
-
-## Per-task Copy: telemetry kartındaki task_id canlı transcriptten çözülür.
-## Running task'ta kart yoktur (canlı mutasyon); bitmiş/durmuş tasklar kopyalanır.
-func _on_copy_single_task(task_id: String) -> void:
-	if not agent_context:
-		return
-	var task = agent_context.get_transcript().get_task_by_id(task_id)
-	if task.is_empty():
-		_flash_status_text("Task not found")
-		return
-	var md = AISidebarChatExporter.export_single_task_chronological(task)
-	DisplayServer.clipboard_set(md)
-	_flash_status_text("Task copied")
-
-func _ensure_export_file_dialog() -> void:
-	if _export_file_dialog and is_instance_valid(_export_file_dialog):
-		return
-	_export_file_dialog = FileDialog.new()
-	_export_file_dialog.title = "Export Chat"
-	_export_file_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	_export_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	_export_file_dialog.file_selected.connect(_on_export_file_chosen)
-	_export_file_dialog.canceled.connect(_on_export_file_canceled)
-	add_child(_export_file_dialog)
-
-func _on_export_file_chosen(path: String) -> void:
-	var content = str(_pending_history_export.get("content", ""))
-	_pending_history_export.clear()
-	if content.is_empty():
-		_flash_status_text("Export failed: empty content")
-		return
-	var f = FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		_flash_status_text("Export failed: cannot write file")
-		return
-	f.store_string(content)
-	f.close()
-	_flash_status_text("Chat exported: " + path.get_file())
-
-func _on_export_file_canceled() -> void:
-	_pending_history_export.clear()
 
 func _start_new_chat_session() -> void:
 	if agent_runner and agent_runner.is_running():
@@ -1585,7 +1449,7 @@ func _on_agent_task_completed(metrics: Dictionary) -> void:
 	var telemetry_comp = AISidebarTelemetryCard.new(metrics)
 	if agent_context:
 		telemetry_comp.task_id = str(agent_context.get_transcript().get_current_task().get("id", ""))
-	telemetry_comp.copy_task_requested.connect(_on_copy_single_task)
+	telemetry_comp.copy_task_requested.connect(_export_actions.copy_single_task)
 	_add_stream_component(telemetry_comp)
 	update_ui_language()
 	
