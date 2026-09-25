@@ -107,7 +107,7 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 Ana ajan, bir alt görevi kendi bağlamı, adım bütçesi ve kısıtlı araç seti olan bir alt ajana devreder; alt ajan ana ajana yalnızca kısa bir özet döner.
 
-**Önkoşul:** Refactor Faz 2 — `AgentRunner` birden çok kez, birbirinden bağımsız oluşturulabilmeli (telemetri, bekleyen onay durumu ve yanıt işleme ayrılmış olmalı). Durum: kodda karşılandı (`AgentTelemetry`, `PendingInteraction`, `AgentHost`, `RunnerIndependenceTests`); `main`'e birleştirildi (PR #3); canlı 9Router doğrulaması yerelde bekliyor. Açık konu: runner Stop'u oyunu her durumda kapatıyor ve runtime izleme durumu ortak (`docs/REFACTOR_PLAN.md` bulgu #14); alt ajanlara runtime araçları verilmeden önce karara bağlanmalı.
+**Önkoşul:** Refactor Faz 2 — `AgentRunner` birden çok kez, birbirinden bağımsız oluşturulabilmeli (telemetri, bekleyen onay durumu ve yanıt işleme ayrılmış olmalı). Durum: kodda karşılandı (`AgentTelemetry`, `PendingInteraction`, `AgentHost`, `RunnerIndependenceTests`); `main`'e birleştirildi (PR #3); canlı 9Router doğrulaması yerelde bekliyor. Runtime sahipliği runner başına: Stop yalnızca o runner'ın başlattığı oyunu durdurur (`docs/REFACTOR_PLAN.md` bulgu #14). Runtime izleme durumu (tek oyun) hâlâ ortaktır.
 
 - [ ] **`delegate_task` aracı:** Ana ajan alt görevi, hedef ve araç setiyle başlatır; sonuç tool result olarak döner (ham çıktı ana bağlama girmez).
 - [ ] **Salt okuma ile başlangıç:** İlk sürümde alt ajanlar yalnızca okuma / arama / inceleme araçları kullanır. Sahne ve dosya yazımı ana ajanda kalır (Undo/Redo tek sıradan geçer; eşzamanlı yazıcı yok).

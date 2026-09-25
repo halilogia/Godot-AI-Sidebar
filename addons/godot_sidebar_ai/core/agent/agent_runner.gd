@@ -101,6 +101,9 @@ var pending: AISidebarPendingInteraction = AISidebarPendingInteraction.new()
 var enable_planning_gate: bool = true
 var _plan_phase_active: bool = false
 var runtime_debugger: AISidebarRuntimeDebugger = null
+## Oyunu bu runner mı başlattı? Stop yalnızca kendi başlattığı oyunu durdurur (bulgu #14);
+## kullanıcının F5 ile açtığı veya başka runner'ın başlattığı oyun kapanmaz.
+var _owns_runtime: bool = false
 
 static func get_ts() -> String:
 	var dt = Time.get_time_dict_from_system()
@@ -157,6 +160,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	_last_error_signature = ""
 	_last_tool_signature = ""
 	_stagnation_count = 0
+	_owns_runtime = false
 	pending.clear_all()
 	_pending_vision_inputs.clear()
 	if initial_vision_inputs.size() > 0:
@@ -220,8 +224,9 @@ func stop() -> void:
 		return
 	if provider:
 		provider.cancel()
-	if runtime_debugger:
+	if runtime_debugger and _owns_runtime:
 		runtime_debugger.stop()
+	_owns_runtime = false
 		
 	pending.clear_all()
 	_plan_phase_active = false
@@ -265,6 +270,7 @@ func approve_pending_action() -> void:
 	telemetry.tool_time_msec += t_delta
 	telemetry.record_category_time(fn_name, t_delta)
 	telemetry.record_tool(fn_name, args, t_delta, result)
+	_note_runtime_ownership(fn_name, result)
 	
 	print("[TIMING] %s | TOOL_DONE (APPROVED) | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
 	if not fn_name in _unlocked_tools:
@@ -643,6 +649,7 @@ func _execute_tool_call(fn_name: String, tc_id: String, args: Dictionary, remain
 	telemetry.tool_time_msec += t_delta
 	telemetry.record_category_time(fn_name, t_delta)
 	telemetry.record_tool(fn_name, args, t_delta, result)
+	_note_runtime_ownership(fn_name, result)
 	
 	# search_tools ile keşfedilen araçları dynamic context'e ekle
 	if fn_name == "search_tools" and result.get("success", false):
@@ -747,6 +754,17 @@ func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarCh
 
 func old_content_after(s: String, idx: int, len_target: int) -> String:
 	return s.substr(idx + len_target)
+
+## Runtime sahipliği yalnızca BAŞARILI icrayla değişir: play_game / restart_game verir,
+## stop_game alır. Çağrının yapılmış olması yetmez.
+func _note_runtime_ownership(fn_name: String, result: Dictionary) -> void:
+	if not bool(result.get("success", false)):
+		return
+	match fn_name:
+		"play_game", "restart_game":
+			_owns_runtime = true
+		"stop_game":
+			_owns_runtime = false
 
 ## Kalan kuyruk çağrılarını erteler: her birine açık DEFERRED sonucu yazılır
 ## (sessiz kayıp yok) ve tool_completed yayılır; körlemesine icra yapılmaz.
