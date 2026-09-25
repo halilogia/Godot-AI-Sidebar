@@ -95,6 +95,7 @@ const TestMarkdownRenderer = preload("res://tests/test_markdown_renderer.gd")
 const TestDocsCoverage = preload("res://tests/test_docs_coverage.gd")
 const TestLineBudget = preload("res://tests/test_line_budget.gd")
 const TestStaticReferences = preload("res://tests/test_static_references.gd")
+const TestI18n = preload("res://tests/test_i18n.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -192,6 +193,7 @@ func _init() -> void:
 		TestDocsCoverage,
 		TestLineBudget,
 		TestStaticReferences,
+		TestI18n,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

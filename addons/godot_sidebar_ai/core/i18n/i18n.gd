@@ -175,7 +175,10 @@ static func toggle_language() -> String:
 	return next_lang
 
 static func get_text(key: String, params: Dictionary = {}) -> String:
-	var lang = get_current_language()
+	return translate(get_current_language(), key, params)
+
+## Verilen dilde çeviri (config okumaz/yazmaz; testler ve dil önizlemesi için).
+static func translate(lang: String, key: String, params: Dictionary = {}) -> String:
 	var dict = STRINGS.get(lang, STRINGS["tr"])
 	var val: String = dict.get(key, STRINGS["tr"].get(key, key))
 	
@@ -183,3 +186,10 @@ static func get_text(key: String, params: Dictionary = {}) -> String:
 		val = val.replace("{" + str(p_key) + "}", str(params[p_key]))
 		
 	return val
+
+## Bir dildeki tüm anahtarlar (sıralı).
+static func get_keys(lang: String) -> Array:
+	var dict: Dictionary = STRINGS.get(lang, {})
+	var keys: Array = dict.keys()
+	keys.sort()
+	return keys
