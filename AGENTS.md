@@ -114,6 +114,8 @@ Doküman, onu eskiten değişiklikle **aynı iş kapsamında** güncellenir; son
 |---|---|
 | `addons/` altına yeni / taşınan / silinen `.gd` | `ARCHITECTURE.md` (test zorunlu kılar: `tests/test_docs_coverage.gd`) |
 | Kullanıcının göreceği özellik veya düzeltme | `CHANGELOG.md` → `[Unreleased]` |
+| Ürün fazı tamamlandı, yeni özellik planlandı | `ROADMAP.md` (ürün fazları; refactor fazları `docs/REFACTOR_PLAN.md`'de "Refactor Faz N" olarak ayrı tutulur) |
+| Sürüm çıkarıldı | `CHANGELOG.md` `[Unreleased]` → sürüm numarası + tarih; README sürüm rozeti |
 | Refactor adımı, bulunan bug, faz durumu | `docs/REFACTOR_PLAN.md` |
 | Kalıcı teknik öğrenim (motor davranışı, protokol, tuzak) | `docs/KNOWLEDGE.md` |
 | Mimari kural değişikliği | `AGENTS.md` |

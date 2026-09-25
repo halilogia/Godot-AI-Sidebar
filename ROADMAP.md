@@ -2,6 +2,8 @@
 
 Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyonu doğrultusundaki geliştirme aşamalarını ve hedeflerini içerir.
 
+> **Numaralandırma:** Buradaki "Faz N" **ürün** aşamalarıdır. Kod sağlığı işleri (refactor, sıkı tip kontrolü, i18n altyapısı) ayrı yürür ve [`docs/REFACTOR_PLAN.md`](docs/REFACTOR_PLAN.md) içinde **"Refactor Faz N"** olarak anılır. İki numara birbirine karıştırılmaz.
+
 ---
 
 ## 📍 Faz 1: Çekirdek Mimari, Güvenlik ve Temiz Temel (Tamamlandı ✅)
@@ -78,6 +80,7 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 - [ ] **AnimationPlayer Araçları:** Kodla animasyon anahtarları ve blend tree kurulumu.
 - [ ] **Shader Composer:** Canlı `.gdshader` üretimi, hata denetimi ve görsel materyal oluşturma.
 - [ ] **Headless CI/CD Agent:** CLI üzerinden otonom oyun testi ve kod refaktörü.
+- [ ] **Editör köprüsü + CLI / MCP:** Eklenti `127.0.0.1` üzerinde token korumalı yerel bir köprü açar; ince bir CLI ve bir MCP sunucusu (Claude Code, Copilot CLI vb. için) ajan olaylarını ve araçları bu köprüden kullanır. Undo/Redo editörde kalır. Önkoşul: Refactor Faz 2 (AgentRunner).
 
 ---
 
@@ -87,3 +90,29 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 - [x] **Headless Statik Tip & Sözdizimi Derleyicisi (`typecheck.ps1` & `tools/typecheck.gd`):** Godot'yu açmadan 1.5 saniyede 129 script ve 4 sahneyi denetleme; VS Code `Ctrl+Shift+B` derleme entegrasyonu.
 - [x] **Merkezi `AISidebarTheme` Tasarım Sistemi:** Modern Dark Slate & Midnight Dark token mimarisi, dinamik aksan butonları, ghost butonlar, odak bordürleri ve minimalist durum göstergeleri.
 - [x] **55 Test Paketi / 331 Assertion:** Headless test runner ile %100 yeşil birim ve entegrasyon test güvencesi.
+
+---
+
+## 📍 Faz 9: Sidebar UX 3.0 (Tamamlandı ✅, 2026-09-25)
+
+- [x] **Markdown:** Asistan cevaplarında ve plan kartında başlık, kalın, italik, kod, liste, alıntı; kod blokları tek kutu + eş genişlikli yazı tipi; metin BBCode enjekte edemez.
+- [x] **Bekleme göstergesi:** İlk model yanıtına kadar akışta dönen ikon, bilinen aşama ve süre; uzun bekleyişte iptal ipucu.
+- [x] **İkon sistemi:** Emoji yerine tek renkli Lucide SVG ikonları (`AISidebarStatusIcon`, boyanabilir SVG'ler).
+- [x] **Durum doğruluğu:** Stop sonrası Paused rozeti kalıcı; thinking kartı cevabın üstünde ve kesilmeden; runtime kartı kısa hata satırı gösterir.
+- [x] **README vitrini:** Gerçek arayüz bileşenlerinden üretilen ekran görüntüleri (`tools/readme_shots.gd`).
+
+---
+
+## 📍 Faz 10: Alt Ajanlar (Subagents) (Planlandı 🗓️)
+
+Ana ajan, bir alt görevi kendi bağlamı, adım bütçesi ve kısıtlı araç seti olan bir alt ajana devreder; alt ajan ana ajana yalnızca kısa bir özet döner.
+
+**Önkoşul:** Refactor Faz 2 — `AgentRunner` birden çok kez, birbirinden bağımsız oluşturulabilmeli (telemetri, bekleyen onay durumu ve yanıt işleme ayrılmış olmalı).
+
+- [ ] **`delegate_task` aracı:** Ana ajan alt görevi, hedef ve araç setiyle başlatır; sonuç tool result olarak döner (ham çıktı ana bağlama girmez).
+- [ ] **Salt okuma ile başlangıç:** İlk sürümde alt ajanlar yalnızca okuma / arama / inceleme araçları kullanır. Sahne ve dosya yazımı ana ajanda kalır (Undo/Redo tek sıradan geçer; eşzamanlı yazıcı yok).
+- [ ] **Uzman profiller:** Sahne inceleyici, proje araştırmacısı, test çalıştırıcı, kod inceleyici (her biri ayrı talimat + araç seti).
+- [ ] **Bütçe ve güvenlik:** Alt ajan başına adım ve token sınırı, iptal (Stop tüm ağacı durdurur), PathPolicy ve PermissionPolicy aynen geçerli.
+- [ ] **Arayüz:** Alt ajan çalışması ana akışta iç içe, katlanabilir bir activity grubu olarak görünür; transcript ve export'ta ayrı bölüm olarak yer alır (Chat Export invariantı, AGENTS.md §7).
+- [ ] **Paralel araştırma (sonraki adım):** Birden çok salt okuma alt ajanı aynı anda.
+

@@ -4,6 +4,8 @@
 > Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
+> **Numaralandırma:** Bu belgedeki fazlar **refactor** fazlarıdır; başka belgelerde "Refactor Faz N" diye anılır. Ürün fazları (özellikler) `ROADMAP.md`'dedir ve ayrı numaralanır.
+
 ## Amaç
 
 "1 dosya = 1 iş" kuralını gerçeğe dönüştürmek. En büyük iki dosya kuralı açıkça çiğniyor:
@@ -65,6 +67,8 @@ Sıra riske göre: saf/izole olanlar önce, sinyal akışının kalbi en son.
 | 2.3 | — | `_on_provider_response` (~200 satır) iç adımlara bölünür: parse → boş yanıt/retry → tool dispatch → tamamlama kapısı | **Yüksek** |
 
 Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur.
+
+Faz 2, ROADMAP'teki ürün Faz 10'un (Alt Ajanlar) ve Faz 7'deki editör köprüsü / CLI / MCP işinin önkoşuludur: `AgentRunner` birden çok kez, birbirinden bağımsız oluşturulabilir hale gelmeli. Bu yüzden 2.1–2.3'te runner'ın global / statik duruma bağımlılığı da kaldırılır ve iki bağımsız runner'ın aynı anda çalıştığı bir test eklenir.
 
 ## Faz 3 — Diğer büyük dosyalar (önce değerlendirme)
 
