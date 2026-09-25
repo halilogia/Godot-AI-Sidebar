@@ -123,5 +123,19 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("F (save_scene intact) failed: " + str(res_f).left(200))
 
-	_clean([p_invalid, p_valid, p_second])
+	# G) (bulgu #23) Node olmayan kök tipi -> script hatası değil INVALID_CLASS, dosya yok
+	var p_g = "res://tests/temp_scene_rel_g.tscn"
+	var g_bad: Array = []
+	for rt in ["Resource", "Object", "Image"]:
+		var res_g = AISidebarSceneTools.execute("create_scene", {"scene_path": p_g, "root_type": rt})
+		var err_g = res_g.get("error", {})
+		if bool(res_g.get("success", true)) or not (err_g is Dictionary) or str(err_g.get("code", "")) != "INVALID_CLASS" or FileAccess.file_exists(p_g):
+			g_bad.append(rt + " -> " + str(res_g).left(120))
+	if g_bad.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("G (non-Node root_type) failed: " + str(g_bad))
+
+	_clean([p_invalid, p_valid, p_second, p_g])
 	return {"name": "SceneReliabilityTests", "passed": passed, "failed": failed, "errors": errors}

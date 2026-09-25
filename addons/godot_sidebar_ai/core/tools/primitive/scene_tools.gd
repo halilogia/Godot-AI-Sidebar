@@ -399,7 +399,9 @@ static func _create_scene(args: Dictionary) -> Dictionary:
 	else:
 		if not ClassDB.class_exists(root_type):
 			return AISidebarToolResult.err("INVALID_CLASS", "Geçersiz kök düğüm tipi: " + root_type)
-			
+		if not ClassDB.is_parent_class(root_type, "Node"):
+			return AISidebarToolResult.err("INVALID_CLASS", "Kök düğüm tipi bir Node sınıfı olmalı: " + root_type)
+
 		var root_node = ClassDB.instantiate(root_type)
 		root_node.name = root_name
 		
@@ -455,7 +457,9 @@ static func _add_node(args: Dictionary) -> Dictionary:
 	
 	if not ClassDB.class_exists(node_type):
 		return AISidebarToolResult.err("INVALID_CLASS", "Geçersiz Godot sınıfı: " + node_type)
-		
+	if not ClassDB.is_parent_class(node_type, "Node"):
+		return AISidebarToolResult.err("INVALID_CLASS", "Düğüm tipi bir Node sınıfı olmalı: " + node_type)
+
 	var parent: Node = root
 	if not parent_path.is_empty():
 		if root.has_node(parent_path):
