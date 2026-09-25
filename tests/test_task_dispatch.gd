@@ -13,6 +13,7 @@ const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/ch
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
+const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 
 class SilentProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
@@ -137,6 +138,47 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T4 (queue dispatch) failed: held=%s dispatched=%s" % [str(held), str(dispatched)])
 	_dispose(d4, created)
+
+	# 5. Retry normal task hattından geçer: slash komutunun ÜRETTİĞİ istem tekrar gönderilir
+	#    (ekrandaki "/analyze" değil), yeni transcript görevi açılır, görsel eki korunur.
+	var s5 = _make_dock()
+	var d5 = s5["dock"]
+	var r5 = s5["runner"]
+	var ctx5 = s5["ctx"]
+	_send(d5, "/analyze Player")
+	var first_task = str(ctx5.get_transcript().get_current_task().get("id", ""))
+	r5.stop()  # kullanıcı Stop'u değil: ağ/model hatası gibi
+	var err_card = null
+	for child in d5.message_stream.get_children():
+		if child is AISidebarErrorCard:
+			err_card = child
+	if err_card:
+		err_card.retry_requested.emit()
+	# Kullanıcı mesajları (runner ayrıca planlama talimatı ekleyebilir; onlar display_text taşımaz).
+	var sent: Array = []
+	for m in ctx5.messages:
+		if str(m.get("role", "")) == "user" and str(m.get("display_text", "")) == "/analyze Player":
+			sent.append(m)
+	var first_prompt = str(sent[0].get("content", "")) if sent.size() > 0 else ""
+	var last_user: Dictionary = sent[-1] if sent.size() > 1 else {}
+	var retry_task = str(ctx5.get_transcript().get_current_task().get("id", ""))
+	var retried = err_card != null and r5.is_running()
+	var same_prompt = str(last_user.get("content", "")) == first_prompt and first_prompt.length() > 20 and str(last_user.get("display_text", "")) == "/analyze Player"
+	var new_task = not first_task.is_empty() and retry_task != first_task and ctx5.get_transcript().has_running_task()
+	# Görsel eki: normal mesaj + görsel → hata → Retry görseli yeniden gönderir.
+	r5.stop()
+	d5._composer.attach_vision_input(AISidebarVisionInput.new("user://shot.png", "aGVsbG8=", 4, 4))
+	_send(d5, "Bu ekrana bak")
+	r5.stop()
+	d5._tasks.retry_last_task()
+	var img_msgs = ctx5.messages.filter(func(m): return str(m.get("role", "")) == "user" and str(m.get("content", "")) == "Bu ekrana bak")
+	var image_kept = img_msgs.size() == 2 and img_msgs[1].has("vision_inputs") and r5.is_running()
+	if retried and same_prompt and new_task and image_kept:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T5 (retry pipeline) failed: retried=%s same_prompt=%s ('%s') new_task=%s image=%s" % [str(retried), str(same_prompt), str(last_user.get("content", "")).left(40), str(new_task), str(image_kept)])
+	_dispose(d5, created)
 
 	for id in created:
 		if not str(id).is_empty():

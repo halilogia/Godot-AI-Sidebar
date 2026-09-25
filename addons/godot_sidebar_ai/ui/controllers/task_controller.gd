@@ -55,6 +55,9 @@ var clear_chat: Callable = func(): pass
 
 # --- Görev durumu ---
 var last_user_prompt: String = ""
+## Son başlatılan task'ın asıl isteği (retry için): {"prompt", "display", "vision"}.
+## last_user_prompt ekrandaki metindir (ör. "/analyze"); modele giden istem burada tutulur.
+var last_request: Dictionary = {}
 ## Kullanıcı Stop'a bastı: hata "cancelled" sayılır, kuyruk kendiliğinden dağıtılmaz.
 var is_user_stopped: bool = false
 # Pano Görseli Eki (Clipboard Image Attachment): hata olursa eke geri konur, retry'da tekrar gönderilir.
@@ -215,6 +218,7 @@ func start_task_prompt(prompt_text: String, display_prompt: String = "", vision_
 	hide_welcome.call()
 	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
 	last_user_prompt = final_display
+	last_request = {"prompt": prompt_text, "display": display_prompt, "vision": vision_inputs.duplicate()}
 	activity.begin_task()
 	stream.begin_task()
 	checklist_tracker.reset()
@@ -301,13 +305,15 @@ func on_error(err_msg: String) -> void:
 		composer.attach_vision_input(last_sent_vision_input)
 
 	var err_comp = AISidebarErrorCard.new(err_msg)
-	var vi_to_retry = last_sent_vision_input
-	err_comp.retry_requested.connect(func():
-		if not last_user_prompt.is_empty():
-			var vi_arr: Array = [vi_to_retry] if vi_to_retry != null else []
-			runner.start_task(last_user_prompt, "", vi_arr)
-	)
+	err_comp.retry_requested.connect(retry_last_task)
 	add_component.call(err_comp)
 	refresh_ui.call()
 	
 	dispatch_next_queued()
+
+## Hata kartındaki Retry: son isteği normal task hattından (mention çözümleme, yeni transcript
+## görevi, checkpoint sıfırlama, görsel eki) yeniden başlatır. Ajan çalışıyorsa yok sayılır.
+func retry_last_task() -> void:
+	if last_request.is_empty() or runner == null or runner.is_running():
+		return
+	start_task_prompt(str(last_request["prompt"]), str(last_request["display"]), (last_request["vision"] as Array).duplicate())
