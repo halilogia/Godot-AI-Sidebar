@@ -70,5 +70,7 @@
   "history_btn_new": "+ Yeni Sohbet",
   "history_btn_close_tooltip": "Kapat ve Sohbete Dön",
   "history_tooltip_rename": "Yeniden Adlandır",
-  "history_tooltip_delete": "Sil"
+  "history_tooltip_delete": "Sil",
+  "changes_header_one": "Değişiklikler ({count} dosya)",
+  "changes_header_other": "Değişiklikler ({count} dosya)"
 }

@@ -41,7 +41,7 @@ static func run() -> Dictionary:
 	trace.append(["en", "__missing__", AISidebarI18n.translate("en", "__missing__")])
 	trace.append(["tr", "status_executing", AISidebarI18n.translate("tr", "status_executing", {"step": 2, "max": 5})])
 	var digest = JSON.stringify(trace).md5_text()
-	var golden = "614cdecbb39a6e36f1417f1a2d63241e"
+	var golden = "1d22c80b6e65f61a2ac59e413b7ec0e6"
 	if trace.size() > 100 and digest == golden:
 		passed += 1
 	else:
@@ -100,5 +100,20 @@ static func run() -> Dictionary:
 	if not unused.is_empty():
 		print("  [I18N] Kodda geçmeyen %d anahtar: %s" % [unused.size(), ", ".join(PackedStringArray(unused))])
 	passed += 1
+
+	# 6. Çoğul son ekleri ve yedek zinciri (5.2): count == 1 → _one, diğerleri → _other;
+	# desteklenmeyen dil EN'e, EN'de de olmayan anahtar kendisine düşer.
+	var one = AISidebarI18n.translate("en", "changes_header", {"count": 1})
+	var many = AISidebarI18n.translate("en", "changes_header", {"count": 3})
+	var zero = AISidebarI18n.translate("en", "changes_header", {"count": 0})
+	var tr_many = AISidebarI18n.translate("tr", "changes_header", {"count": 3})
+	var no_count = AISidebarI18n.translate("en", "status_ready", {"count": 2})
+	var unsupported = AISidebarI18n.translate("de", "status_ready")
+	var missing = AISidebarI18n.translate("tr", "__nope__")
+	if one == "Changes (1 file)" and many == "Changes (3 files)" and zero == "Changes (0 files)" and tr_many == "Değişiklikler (3 dosya)" and no_count == AISidebarI18n.translate("en", "status_ready") and unsupported == AISidebarI18n.translate("en", "status_ready") and missing == "__nope__":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T6 (plural + fallback) failed: one=%s many=%s zero=%s tr=%s de=%s" % [one, many, zero, tr_many, unsupported])
 
 	return {"name": "I18nTests", "passed": passed, "failed": failed, "errors": errors}

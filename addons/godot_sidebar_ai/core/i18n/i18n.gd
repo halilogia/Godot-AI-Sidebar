@@ -11,6 +11,7 @@ const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_c
 const LOCALE_DIR = "res://addons/godot_sidebar_ai/i18n"
 const SUPPORTED_LANGUAGES = ["tr", "en"]
 const DEFAULT_LANGUAGE = "tr"
+const FALLBACK_LANGUAGE = "en"
 
 static var _strings_cache: Dictionary = {}
 
@@ -47,10 +48,19 @@ static func get_text(key: String, params: Dictionary = {}) -> String:
 	return translate(get_current_language(), key, params)
 
 ## Verilen dilde çeviri (config okumaz/yazmaz; testler ve dil önizlemesi için).
+## Yedek zinciri: seçili dil → EN → anahtarın kendisi (eksik metin sessiz kalmaz).
+## Çoğul: params'ta "count" varsa `<key>_one` (count == 1) / `<key>_other` seçilir
+## (i18next son ekleri; TR ve EN'in CLDR kuralı yalnızca one / other).
 static func translate(lang: String, key: String, params: Dictionary = {}) -> String:
-	var fallback: Dictionary = get_strings(DEFAULT_LANGUAGE)
-	var dict: Dictionary = get_strings(lang) if lang in SUPPORTED_LANGUAGES else fallback
-	var val: String = dict.get(key, fallback.get(key, key))
+	var dict: Dictionary = get_strings(lang)
+	var fallback: Dictionary = get_strings(FALLBACK_LANGUAGE)
+	var k: String = key
+	if params.has("count"):
+		var count: int = params["count"]
+		var plural_key: String = key + ("_one" if count == 1 else "_other")
+		if dict.has(plural_key) or fallback.has(plural_key):
+			k = plural_key
+	var val: String = dict.get(k, fallback.get(k, k))
 	
 	for p_key in params.keys():
 		val = val.replace("{" + str(p_key) + "}", str(params[p_key]))

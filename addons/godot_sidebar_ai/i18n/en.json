@@ -70,5 +70,7 @@
   "history_btn_new": "+ New Chat",
   "history_btn_close_tooltip": "Close and Return to Chat",
   "history_tooltip_rename": "Rename",
-  "history_tooltip_delete": "Delete"
+  "history_tooltip_delete": "Delete",
+  "changes_header_one": "Changes ({count} file)",
+  "changes_header_other": "Changes ({count} files)"
 }
