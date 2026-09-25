@@ -88,6 +88,7 @@ const TestTaskDispatch = preload("res://tests/test_task_dispatch.gd")
 const TestProviderComposition = preload("res://tests/test_provider_composition.gd")
 const TestAgentTelemetry = preload("res://tests/test_agent_telemetry.gd")
 const TestPendingInteraction = preload("res://tests/test_pending_interaction.gd")
+const TestProviderResponse = preload("res://tests/test_provider_response.gd")
 const TestMarkdownRenderer = preload("res://tests/test_markdown_renderer.gd")
 const TestDocsCoverage = preload("res://tests/test_docs_coverage.gd")
 
@@ -180,6 +181,7 @@ func _init() -> void:
 		TestProviderComposition,
 		TestAgentTelemetry,
 		TestPendingInteraction,
+		TestProviderResponse,
 		TestMarkdownRenderer,
 		TestDocsCoverage,
 		TestReasoningUI,
