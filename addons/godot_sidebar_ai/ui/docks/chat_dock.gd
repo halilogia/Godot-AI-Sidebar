@@ -584,9 +584,6 @@ func _stop_thinking_timer() -> void:
 
 func _on_thinking_tick() -> void:
 	_thinking_elapsed_sec += 1
-	if _current_assistant_bubble and is_instance_valid(_current_assistant_bubble):
-		if _current_assistant_bubble.text_content.begins_with("Düşünülüyor"):
-			_current_assistant_bubble.set_message("assistant", "Düşünülüyor (%ds)..." % _thinking_elapsed_sec)
 	# AGY 'init' handshake'i surerken durum rozetinde hazirlik bilgisi gosterilir.
 	# Thinking timer DURDURULMAZ; yalnizca rozet metni degisir.
 	if _agy_preparing:
@@ -872,14 +869,11 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 		AISidebarAgentRunner.AgentState.PLANNING:
 			# Yeni LLM turu: thinking kartı sıfırlanır (sonraki thinking yeni kart açar),
 			# rozet yanıt gelene kadar "Waiting" gösterir (thinking varsayılmaz).
+			# Akışa yer tutucu balon eklenmez: gerçek thinking kartı cevabın üstünde kalmalı.
 			_thinking_seen_this_turn = false
 			_current_thinking_card = null
 			_start_thinking_timer()
 			set_status_badge("Waiting...", AISidebarTheme.COLOR_WARNING)
-			if _current_assistant_bubble == null or not is_instance_valid(_current_assistant_bubble):
-				_current_assistant_bubble = AISidebarMessageBubble.new("assistant", "Düşünülüyor...")
-				_current_assistant_bubble.meta_clicked.connect(_on_meta_clicked)
-				_add_stream_component(_current_assistant_bubble)
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
 			_stop_thinking_timer()
 			set_status_badge("Waiting Approval", AISidebarTheme.COLOR_WARNING)

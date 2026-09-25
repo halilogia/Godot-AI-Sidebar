@@ -7,6 +7,8 @@ extends RefCounted
 const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
 const AISidebarThinkingCard = preload("res://addons/godot_sidebar_ai/ui/components/thinking_card.gd")
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
+const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
+const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 
 const SECRET_MARKER = "GIZLI_DUSUNCE_XYZ_123"
 
@@ -183,5 +185,43 @@ static func run() -> Dictionary:
 		errors.append("T10 (thinking cap+empty) failed.")
 	card10.queue_free()
 	dock10.queue_free()
+
+	# 11. Yeni LLM turu: sahte "Düşünülüyor" balonu açılmaz; bekleme yalnızca rozette.
+	# Gerçek thinking kartı cevabın ÜSTÜNDE kalır (önce düşünce, sonra cevap).
+	var dock11 = _dock()
+	dock11._on_agent_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	var placeholder_after_planning = dock11.message_stream.get_child_count()
+	dock11._on_agent_chunk_received("", "Kullanıcı selam veriyor.")
+	dock11._on_agent_chunk_received("Merhaba!", "")
+	var t_idx = -1
+	var b_idx = -1
+	for child in dock11.message_stream.get_children():
+		if child is AISidebarThinkingCard and t_idx < 0:
+			t_idx = child.get_index()
+		if child is AISidebarMessageBubble and b_idx < 0:
+			b_idx = child.get_index()
+	if placeholder_after_planning == 0 and t_idx >= 0 and b_idx > t_idx:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T11 (thinking above answer, no placeholder) failed: planning_children=%d thinking=%d bubble=%d" % [placeholder_after_planning, t_idx, b_idx])
+	dock11._stop_thinking_timer()
+	dock11.free()
+
+	# 12. Metinsiz tool turu: akışta asılı kalan bekleme balonu yok
+	var dock12 = _dock()
+	dock12._on_agent_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	dock12._on_agent_tool_executing("read_script", {"path": "res://a.gd"})
+	var stale = 0
+	for child in dock12.message_stream.get_children():
+		if child is AISidebarMessageBubble:
+			stale += 1
+	if stale == 0:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T12 (no stale waiting bubble) failed: bubbles=%d" % stale)
+	dock12._stop_thinking_timer()
+	dock12.free()
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}
