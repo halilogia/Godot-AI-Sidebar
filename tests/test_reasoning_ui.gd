@@ -9,6 +9,8 @@ const AISidebarThinkingCard = preload("res://addons/godot_sidebar_ai/ui/componen
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
+const AISidebarPendingIndicator = preload("res://addons/godot_sidebar_ai/ui/components/pending_indicator.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 const SECRET_MARKER = "GIZLI_DUSUNCE_XYZ_123"
 
@@ -186,21 +188,28 @@ static func run() -> Dictionary:
 	card10.queue_free()
 	dock10.queue_free()
 
-	# 11. Yeni LLM turu: sahte "Düşünülüyor" balonu açılmaz; bekleme yalnızca rozette.
+	# 11. Yeni LLM turu: sahte "Düşünülüyor" asistan balonu açılmaz (bekleme göstergesi balon değildir).
 	# Gerçek thinking kartı cevabın ÜSTÜNDE kalır (önce düşünce, sonra cevap).
 	var dock11 = _dock()
 	dock11._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
-	var placeholder_after_planning = dock11.message_stream.get_child_count()
+	var placeholder_after_planning = 0
+	for child in dock11.message_stream.get_children():
+		if child is AISidebarMessageBubble:
+			placeholder_after_planning += 1
 	dock11._stream.on_chunk_received("", "Kullanıcı selam veriyor.")
 	dock11._stream.on_chunk_received("Merhaba!", "")
 	var t_idx = -1
 	var b_idx = -1
+	var live_idx = 0
 	for child in dock11.message_stream.get_children():
+		if child.is_queued_for_deletion():
+			continue
 		if child is AISidebarThinkingCard and t_idx < 0:
-			t_idx = child.get_index()
+			t_idx = live_idx
 		if child is AISidebarMessageBubble and b_idx < 0:
-			b_idx = child.get_index()
-	if placeholder_after_planning == 0 and t_idx >= 0 and b_idx > t_idx:
+			b_idx = live_idx
+		live_idx += 1
+	if placeholder_after_planning == 0 and t_idx == 0 and b_idx > t_idx:
 		passed += 1
 	else:
 		failed += 1
@@ -223,5 +232,54 @@ static func run() -> Dictionary:
 		errors.append("T12 (no stale waiting bubble) failed: bubbles=%d" % stale)
 	dock12._stream.stop_thinking_timer()
 	dock12.free()
+
+	# 13. Bekleme göstergesi: PLANNING'de akışın sonunda görünür, süre ve uzun bekleyiş
+	# ipucu güncellenir; ilk thinking geldiğinde kaybolur ve kart onun yerine oturur.
+	var dock13 = _dock()
+	dock13._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	var ind13 = dock13._stream.pending_indicator
+	var shown = ind13 != null and ind13.get_parent() == dock13.message_stream and ind13.get_index() == dock13.message_stream.get_child_count() - 1
+	var waiting_txt = shown and ind13.get_text() == AISidebarI18n.get_text("pending_waiting")
+	for i in AISidebarPendingIndicator.SLOW_HINT_AFTER_SEC:
+		dock13._stream._on_thinking_tick()
+	var ticked = shown and ("%ds" % AISidebarPendingIndicator.SLOW_HINT_AFTER_SEC) in ind13.get_text() and ind13.is_hint_visible()
+	dock13._stream.on_chunk_received("", "Düşünüyorum.")
+	var gone = dock13._stream.pending_indicator == null and ind13.is_queued_for_deletion()
+	if shown and waiting_txt and ticked and gone and _thinking_cards(dock13).size() == 1:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T13 (pending indicator lifecycle) failed: shown=%s text=%s ticked=%s gone=%s" % [str(shown), str(waiting_txt), str(ticked), str(gone)])
+	dock13._stream.stop_thinking_timer()
+	dock13.free()
+
+	# 14. Metinsiz tool turu (grup zaten açık): tool başlayınca gösterge kalmaz
+	var dock14 = _dock()
+	dock14._activity.on_tool_executing("read_script", {"path": "res://a.gd"})
+	dock14._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	var had14 = dock14._stream.pending_indicator != null
+	dock14._activity.on_tool_executing("read_script", {"path": "res://b.gd"})
+	if had14 and dock14._stream.pending_indicator == null:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T14 (indicator cleared on tool start) failed: had=%s" % str(had14))
+	dock14._stream.stop_thinking_timer()
+	dock14.free()
+
+	# 15. Yeniden deneme (RECOVERING) göstergeyi korur ve nedenini yazar; hata kaldırır
+	var dock15 = _dock()
+	dock15._stream.on_state_changed(AISidebarAgentRunner.AgentState.PLANNING, "")
+	dock15._stream.on_state_changed(AISidebarAgentRunner.AgentState.RECOVERING, "Tekrar deneniyor")
+	var ind15 = dock15._stream.pending_indicator
+	var kept = ind15 != null and "Tekrar deneniyor" in ind15.get_text()
+	dock15._stream.on_state_changed(AISidebarAgentRunner.AgentState.ERROR, "Bağlantı hatası")
+	if kept and dock15._stream.pending_indicator == null:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T15 (recovering keeps, error clears) failed: kept=%s" % str(kept))
+	dock15._stream.stop_thinking_timer()
+	dock15.free()
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}

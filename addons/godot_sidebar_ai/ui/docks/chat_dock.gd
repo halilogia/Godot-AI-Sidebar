@@ -795,6 +795,8 @@ func _add_stream_component(comp: Control) -> void:
 	if not message_stream:
 		return
 	message_stream.add_child(comp)
+	if _stream:
+		_stream.on_component_added(comp)
 	# Task Checklist her zaman stream'in en altında kalır (aynı instance taşınır).
 	if comp != _checklist_tracker.checklist:
 		_move_checklist_to_bottom()
