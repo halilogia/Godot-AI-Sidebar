@@ -75,9 +75,9 @@ Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur
 1. **Şüpheli bug — Retry yolu:** `ErrorCard.retry_requested`, `agent_runner.start_task`'ı doğrudan çağırıyor; `_start_task_prompt` atlanıyor. Sonuç olarak `agent_context.begin_task`, mention çözümleme ve checkpoint sıfırlama yapılmıyor olabilir, yani yeniden denenen task transcript/export'ta eksik görünebilir. Test ile doğrulanacak.
 2. **Ölü değişken:** `_stream_is_envelope` hiçbir yerde `true` yapılmıyor.
 3. **Tekrarlı kontrol:** `_resume_paused_task` içinde `current_session == null` iki kez kontrol ediliyor.
+4. **Tema dışı renkler:** Kuyruk panelinde `Color(0.7, 0.7, 0.7)`, `Color(0.9, 0.4, 0.4)` gibi sabit renkler var (tema token'ı değil).
 5. **Ölü kod:** `report_task_stop` hiçbir yerden çağrılmıyor; `ToolPresentation.format_limit_stop_reason` yalnızca testte kullanılıyor.
 6. **Sahte testler (kalan):** `test_ui_ux_queue_and_input.gd` Test 10 hâlâ düz Array üzerinde çalışıyor. Benzer "kendi ifadesini test eden" testler için Faz 3'te tarama yapılacak.
-4. **Tema dışı renkler:** Kuyruk panelinde `Color(0.7, 0.7, 0.7)`, `Color(0.9, 0.4, 0.4)` gibi sabit renkler var (tema token'ı değil).
 
 ## Editör Duman Testi Kontrol Listesi (Faz 1 sonu)
 
