@@ -1,6 +1,6 @@
 # Refactor Planı — Ertelenen Borcun Ödenmesi
 
-> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) tamamlandı ve `main`'e birleştirildi (2026-09-25, PR #3)**: canlı 9Router doğrulaması (yerel) ve editör duman testi sonradan yapılacak · Başlangıç: 2026-09-25 · Baz commit: `1af07d3` · **Faz 3 (diğer büyük dosyalar) tamamlandı (2026-09-26)**: 1 bölme, 3 bilinçli bırakma, 5 bug düzeltmesi
+> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) tamamlandı ve `main`'e birleştirildi (2026-09-25, PR #3)**: canlı 9Router doğrulaması (yerel) ve editör duman testi sonradan yapılacak · Başlangıç: 2026-09-25 · Baz commit: `1af07d3` · **Faz 3 (diğer büyük dosyalar) tamamlandı (2026-09-26)**: 1 bölme, 3 bilinçli bırakma, 5 bug düzeltmesi · **Faz 3.5 (test denetimi) tamamlandı (2026-09-26)**
 > Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
@@ -138,12 +138,25 @@ Commit'ler: `7bdf87d` (3.1) · `fe8a211` (3.2) · `6185178` (#21) · `127a109` (
 
 Refactor sürerken test silinmez: güvenlik ağı odur. Refactor sırasında yalnızca taşınan koda ait testler yeni birime yönlendirilir ve orada rastlanan sahte testler gerçeğe çevrilir. Faz 1–2 bitince:
 
-- [ ] **Sahte testler:** Üretim kodunu çağırmayan, kendi yazdığı ifadeyi veya Array davranışını doğrulayan testler bulunur. Her biri ya gerçek koda bağlanır ya da silinir.
-- [ ] **Export kümesi (7 paket, tek modül):** `copy_chat`, `copy_task_checklist`, `task_copy_order`, `everything_export`, `chat_exporter`, `export_coverage`, `history_export`. Örneğin `export_transcript_to_markdown` 4 ayrı pakette test ediliyor. Çakışanlar birleştirilir, gerçekten farklı senaryolar korunur.
-- [ ] **Diğer olası çakışmalar:** telemetri (5 paket), streaming/SSE (4 paket), runtime/visual (8 paket) için aynı inceleme yapılır.
-- [ ] **`tests/diagnostic/` (12 probe) ve runner dışındaki `test_reality_probe.gd`:** AGY donma araştırmasından kalan tek seferlik betikler. Hâlâ gereken tutulur ve belgelenir, gerisi silinir (git geçmişinde kalır).
-- [ ] **Private üye bağımlılığı:** Testler, bileşenlerin genel API'si üzerinden yazılır. Refactor sonunda ChatDock'un iç üyelerine dokunan test kalmamalı.
+- [x] **Sahte testler:** Üretim kodunu çağırmayan, kendi yazdığı ifadeyi veya Array davranışını doğrulayan testler bulunur. Her biri ya gerçek koda bağlanır ya da silinir.
+- [x] **Export kümesi (7 paket, tek modül):** `copy_chat`, `copy_task_checklist`, `task_copy_order`, `everything_export`, `chat_exporter`, `export_coverage`, `history_export`. Örneğin `export_transcript_to_markdown` 4 ayrı pakette test ediliyor. Çakışanlar birleştirilir, gerçekten farklı senaryolar korunur.
+- [x] **Diğer olası çakışmalar:** telemetri (5 paket), streaming/SSE (4 paket), runtime/visual (8 paket) için aynı inceleme yapılır.
+- [x] **`tests/diagnostic/` (12 probe) ve runner dışındaki `test_reality_probe.gd`:** AGY donma araştırmasından kalan tek seferlik betikler. Hâlâ gereken tutulur ve belgelenir, gerisi silinir (git geçmişinde kalır).
+- [x] **Private üye bağımlılığı:** Testler, bileşenlerin genel API'si üzerinden yazılır. Refactor sonunda ChatDock'un iç üyelerine dokunan test kalmamalı.
 - Ölçüt: assertion sayısı düşebilir. Hedef sayı değil, **her testin gerçek bir hatayı yakalayabilmesi**; şüpheli testler mutasyonla (mantığı kasıtlı bozarak) sınanır.
+
+**Faz 3.5 kapanışı (2026-09-26):**
+
+| Madde | Sonuç |
+|---|---|
+| Sahte testler | Sezgisel tarama (üretim koduna / ondan türeyen değişkene hiç dokunmayan `passed += 1` blokları) + elle okuma. **Gerçeğe bağlandı:** `UIUXQueueAndInputTests` T10 (`MessageQueuePanel` üzerinden), `ChatManagementTests` T9–T12 (gerçek dock + runner: New Chat / History yükleme kuyruğu boşaltır, onay veya soru beklerken sohbet değişince bekleyen karar düşer), `ViewportScreenshotTests` T5 (ölçekleme algoritması testte yeniden yazılmıştı; `EditorTools.downscale_to_max`'e çıkarıldı, davranış-nötr refactor ayrı commit), `MultiChangeSetTests` T3 (testin kendi dosya temizliği yerine çok öğeli `rollback()`). **Silindi:** `UIUXQueueAndInputTests` T6 (yerel boolean'lar; aynı davranış `TaskDispatchTests` T1'de gerçek hat üzerinden). Her dönüşüm mutasyonla sınandı (kuyruk temizliği / `stop_by_user` / görsel eki / en-boy oranı / alt değişiklik rollback'i kaldırılınca kırmızı). |
+| Export kümesi | 4 tekrar kaldırıldı: CopyChat T11 (= T1 + T3), CopyChat T6 (= T7; tek benzersiz kontrolü `## Timeline` başlığı T7'ye taşındı), CopyTaskChecklist T10 (= EverythingExport T1/T3/T9), EverythingExport T11 (= ChatExporter T1–T3/T7). Kalan testlerin aynı hataları yakaladığı mutasyonla gösterildi (eski tool başlığı, timeline başlığı, transcript JSON sürümü). **Dosyalar birleştirilmedi:** yedi paket farklı giriş noktalarını test eder (Copy Chat, Copy Task, checklist UI, Everything Export, eski exporter, §7 kapsamı, History export); tek dosyada toplamak yalnızca yer değiştirirdi. |
+| Telemetri / streaming / runtime | Başlıklar ve çağrılan birimler karşılaştırıldı; katmanlar farklı (sınıflandırma formülleri vs. metrik sözlüğü vs. runner üzerinden uçtan uca; SSE parser vs. provider parçalı akış vs. UI zarf süzme; runtime gözlem modeli vs. durum makinesi vs. debugger köprüsü). Birebir tekrar bulunmadı, değişiklik yok. |
+| `tests/diagnostic/` | 10 probe kaldı (2'si #19'da silindi). Hepsi derleniyor, eriştikleri iç üyeler mevcut; yerel olan `gui_freeze_probe` ve `test_reality_probe` koşturuldu ve çalışıyor. Karar: silinmedi, `tests/diagnostic/README.md`'de her birinin ölçtüğü şey ve gereksinimi (yerel / AGY CLI / 9Router) belgelendi. |
+| Private üye bağımlılığı | Testler ChatDock'a ~230 yerde private üzerinden erişiyordu. Dock'un kompoze ettiği birimler public oldu (`tasks`, `stream`, `activity`, `interaction`, `composer`, `queue_panel`, `sessions`, `checklist_tracker`, `auto_scroll_enabled`, `welcome_card`, `model_bar_controller`); dock API'si olan `add_stream_component`, `rebuild_provider`, `rebuild_stream_from_session`, `refresh_models` alt çizgisini kaybetti; hazırlık rozeti testi host'un `readiness_changed` sinyalinden sürülür. Kalan: motor geri çağrıları `_ready` / `_exit_tree` (testlerde dock ağaçta değil, elle çağrılır) ve ChatDock dışı birimlerin private'ları (ör. `ChatExportActions._pending_history_export`, Presenter iç sayaçları); bunlar kapsam dışı bırakıldı. |
+
+Assertion sayısı 662 → 657 (5 sahte/tekrar test gitti, hiçbir dönüşüm sayıyı artırmadı). Motor profili: yalnızca "timer not inside the scene tree" ERROR sayısı 34 → 38 (ağaca eklenmeyen yeni dock testleri; tür aynı).
+Commit'ler: `4f932c5`, `bc65199`, `0c17f5a`, `5524f9c`, `210a4dd`, `7a89c9a`, `597afb0` + bu belge.
 
 ## Faz 4 — Borcun geri gelmesini önleme
 
