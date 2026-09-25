@@ -55,8 +55,7 @@ static func run() -> Dictionary:
 	composer.handle_gui_input(_key(KEY_ENTER, false))
 	var sent_on_enter = sends[0] == 1
 	composer.handle_gui_input(_key(KEY_ENTER, true))
-	var newline_on_shift = sends[0] == 1 and field.text.contains("
-")
+	var newline_on_shift = sends[0] == 1 and field.text.contains("\n")
 	field.text = "/hel"
 	field.set_caret_line(0)
 	field.set_caret_column(4)
@@ -81,7 +80,9 @@ static func run() -> Dictionary:
 	qp.enqueue("Task 3", "Task 3", [])
 	var popped_first = qp.pop_next()
 	var popped_second = qp.pop_next()
-	if popped_first.get("prompt") == "Task 1" and popped_first.has("vision_inputs") 			and popped_second.get("display_prompt") == "Task 2 (display)" and not popped_second.has("vision_inputs") 			and qp.count() == 1 and qp.visible and qp.get_title_text() == "Queued Messages (1)":
+	if popped_first.get("prompt") == "Task 1" and popped_first.has("vision_inputs") \
+			and popped_second.get("display_prompt") == "Task 2 (display)" and not popped_second.has("vision_inputs") \
+			and qp.count() == 1 and qp.visible and qp.get_title_text() == "Queued Messages (1)":
 		passed += 1
 	else:
 		failed += 1
