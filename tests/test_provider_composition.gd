@@ -105,9 +105,11 @@ static func run() -> Dictionary:
 
 	# 2. Ayar kaydı: yeni provider kurulur, aynı NetworkManager kullanılır, eski provider'ın
 	# hiçbir sinyali runner'a veya model çubuğuna ulaşmaz; yenisinin model listesi ulaşır.
+	# Eski provider'dan kalan "AGY hazırlanıyor" durumu sıfırlanır.
+	dock._stream.agy_preparing = true
 	dock._setup_provider()
 	var p2 = dock.provider
-	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2
+	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2 and not dock._stream.agy_preparing
 	var same_nm = dock.network_manager == nm and p2.network_manager == nm
 	var old_detached = p1.response_received.get_connections().is_empty() and p1.chunk_received.get_connections().is_empty() and p1.error_occurred.get_connections().is_empty() and p1.models_fetched.get_connections().is_empty()
 	p1.models_fetched.emit(["stale-a", "stale-b", "stale-c"])
