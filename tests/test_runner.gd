@@ -173,7 +173,13 @@ func _init() -> void:
 		var s_pass = res.get("passed", 0)
 		var s_fail = res.get("failed", 0)
 		var s_errs = res.get("errors", [])
-		
+		# Fail-closed: run() çalışma anında çökerse GDScript boş sonuç döndürür
+		# ("Unknown 0/0"). Sonuç yoksa veya hiç assertion koşmadıysa paket başarısızdır.
+		if not res.has("name") or s_pass + s_fail == 0:
+			s_name = str(res.get("name", suite.resource_path.get_file()))
+			s_fail = 1
+			s_errs = ["Suite crashed or ran no assertions (see SCRIPT ERROR above)."]
+
 		total_passed += s_pass
 		total_failed += s_fail
 		
