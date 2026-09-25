@@ -30,16 +30,16 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Multi-item ChangeSet apply başarısız: " + str(app_res))
 		
-	# Test 3: Cleanup / Delete test files
-	if FileAccess.file_exists(file1):
-		DirAccess.remove_absolute(file1)
-	if FileAccess.file_exists(file2):
-		DirAccess.remove_absolute(file2)
-		
-	if not FileAccess.file_exists(file1) and not FileAccess.file_exists(file2):
+	# Test 3: Multi-item rollback — ana ve alt değişiklikle oluşturulan iki dosya da geri alınır
+	var rb_res = cs.rollback()
+	var rb_ok = rb_res.get("success", false) and not FileAccess.file_exists(file1) and not FileAccess.file_exists(file2)
+	for p in [file1, file2]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(p)
+	if rb_ok:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test dosyaları temizlenemedi.")
-		
+		errors.append("Multi-item ChangeSet rollback dosyaları geri almadı: " + str(rb_res))
+
 	return {"name": "MultiChangeSetTests", "passed": passed, "failed": failed, "errors": errors}
