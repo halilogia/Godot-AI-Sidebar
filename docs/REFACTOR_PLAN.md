@@ -1,6 +1,7 @@
 # Refactor Planı — Ertelenen Borcun Ödenmesi
 
-> Durum: **Taslak / onay bekliyor** · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
+> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · Sıradaki: Faz 2 (AgentRunner) · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
+> Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
 ## Amaç
@@ -135,3 +136,5 @@ Durum (25.09 ölçümü): `AISidebarI18n` sözlüğü kod içinde; TR ve EN'de 6
 - [ ] New Chat, History (yükle, yeniden adlandır, sil, export)
 - [ ] Export, Copy Chat, telemetri kartından task kopyalama
 - [ ] Stop → Paused rozeti → "devam et" ile resume
+
+**Faz 1 kapanışı (2026-09-25):** Kullanıcı editörde (yeni-oyun-projesi, junction) genel duman testi yaptı; maddeler tek tek kayda geçmedi. Testte bulunan iki sorun ayrı commit'lerde düzeltildi (`89dd0cd` normal kod bloklarında "Parse JSON failed" logu, `e78b8f3` kod bloğunun komşu satırları örtmesi). Başka sorun bildirilmedi; kullanıcı onayıyla `main`'e birleştirildi.
