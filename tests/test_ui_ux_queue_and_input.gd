@@ -10,6 +10,7 @@ const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 
 class MockQueueProvider extends AISidebarAIProvider:
 	var responses: Array = []
@@ -230,5 +231,28 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("Test 12 (attachment_preservation_on_error) failed: Görsel eki hata anında geri yüklenmedi.")
+
+	# Test 13 (bulgu #4): kuyruk satırlarındaki renkler tema token'ıdır (sabit Color yok)
+	var theme_colors: Array = []
+	var theme_script: Script = AISidebarTheme
+	var theme_consts: Dictionary = theme_script.get_script_constant_map()
+	for c_name in theme_consts.keys():
+		var c_val = theme_consts[c_name]
+		if c_val is Color:
+			theme_colors.append(c_val)
+	var tq = AISidebarMessageQueuePanel.new()
+	tq.enqueue("Renk", "Renk")
+	var off_theme: Array = []
+	for n in tq.find_children("*", "Control", true, false):
+		if (n as Control).has_theme_color_override("font_color"):
+			var col = (n as Control).get_theme_color("font_color")
+			if not theme_colors.has(col):
+				off_theme.append(str(n.get_class()) + " " + str(col))
+	tq.free()
+	if off_theme.is_empty() and theme_colors.size() > 10:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 13 (queue colors are theme tokens) failed: " + str(off_theme))
 
 	return {"name": "UIUXQueueAndInputTests", "passed": passed, "failed": failed, "errors": errors}

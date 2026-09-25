@@ -110,7 +110,7 @@ func _refresh() -> void:
 		var num_label = Label.new()
 		num_label.text = str(i + 1) + "."
 		num_label.add_theme_font_size_override("font_size", 10)
-		num_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		num_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 		item_row.add_child(num_label)
 
 		var prompt_label = Label.new()
@@ -123,11 +123,11 @@ func _refresh() -> void:
 		item_row.add_child(prompt_label)
 
 		var cancel_btn = Button.new()
-		AISidebarIconHelper.apply_tinted_icon(cancel_btn, "x", Color(0.9, 0.4, 0.4), 12)
+		AISidebarIconHelper.apply_tinted_icon(cancel_btn, "x", AISidebarTheme.COLOR_ERROR, 12)
 		cancel_btn.flat = true
 		cancel_btn.focus_mode = Control.FOCUS_NONE
 		cancel_btn.add_theme_font_size_override("font_size", 10)
-		cancel_btn.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
+		cancel_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
 		cancel_btn.tooltip_text = AISidebarI18n.get_text("queue_cancel_tooltip")
 		var item_id = item.get("id", "")
 		cancel_btn.pressed.connect(func(): cancel(item_id))
