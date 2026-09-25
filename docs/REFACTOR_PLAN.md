@@ -1,6 +1,6 @@
 # Refactor Planı — Ertelenen Borcun Ödenmesi
 
-> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) sürüyor** (`refactor/agent-runner`) · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
+> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) kodda tamamlandı (2026-09-25, `refactor/agent-runner`)**: canlı 9Router doğrulaması (yerel) ve `main`'e birleştirme onayı bekliyor · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
 > Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
@@ -93,6 +93,21 @@ Bilinen tek fark: `chat_dock.tscn` editörde eklentisiz, tek başına açılırs
 **Paylaşılan (statik) durum envanteri:** `verification_pipeline` (`_validators`, `_engine_verifiers`), `permission_policy` (`_tool_risk_registry`), `slash_command_manager` (`_commands`) salt okunur kayıt defteri; paylaşılması sorun değil. `runtime_debugger` izleme durumu (`_is_monitoring`, log offset'leri, `_last_observation`) gerçekten paylaşılan: tek oyun örneği olduğu için anlamlı, ama alt ajanlar oyunu çalıştıramamalı (2.4'te test edilir). `ui_telemetry_tools._registered_sidebar_dock` tek dock referansı. `debugger_plugin.instance` tek `EditorDebuggerPlugin` referansı (runtime köprüsü; tek oyun örneğiyle aynı gerekçe). UI önbellekleri (`icon_helper` ikon/boya önbelleği, `markdown_renderer` regex ve yazı tipi) saf önbellektir, runner'la ilgisi yoktur.
 
 Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur.
+
+**Faz 2 kapanışı (2026-09-25):**
+
+| Ölçüm (`core/agent/agent_runner.gd`) | Başlangıç | Son |
+|---|---|---|
+| Satır | 1061 | 853 |
+| Alan (`var`) | 56 | 23 |
+| Sinyal | 20 | 20 (genel API değişmedi) |
+| Fonksiyon | 35 | 36 (büyük fonksiyonlar bölündü) |
+| `_on_provider_response` | 201 satır | 24 satır |
+| En büyük fonksiyon | `_on_provider_response` 201 | `_execute_tool_call` 53, `_build_changeset_for_tool` 45, `_run_next_step` 41, `start_task` 39 |
+
+Yeni birimler: `core/agent/agent_host.gd` (2.0), `core/agent/agent_telemetry.gd` (2.1), `core/agent/pending_interaction.gd` (2.2). Yeni testler: `ProviderCompositionTests`, `AgentTelemetryTests`, `PendingInteractionTests`, `ProviderResponseTests`, `RunnerIndependenceTests`; hepsi taşımadan önce yazıldı ve mutasyonla (kodu kasıtlı bozarak) sınandı. Her adımdan sonra typecheck + test_runner yeşil, motor hata/uyarı profili baz ile birebir aynı; editör headless açılışında (eklenti yolu) provider seçimi, runner bağı ve hazırlık rozeti baz ile aynı; `tests/integration/test_planning_flow.gd` çıktısı baz ile aynı.
+Commit'ler: `895db3f`, `e9ed3f2`, `a7528c4` (2.0) · `b34841b`, `e33e565` (2.1) · `25b4d02` (bulgu #13 düzeltmesi) · `a6491c9`, `7e327f7` (2.2) · `2520d57`, `c79fca9` (2.3) · `268e348` (2.4).
+Bekleyen: (1) `verify.ps1 -Live` yerelde; bulut oturumunda `127.0.0.1:20128`'de 9Router yoktu (bağlantı reddedildi; canlı test fail-closed olarak `exit 1` döndü). Mock testleri gerçek ağ kanıtı değildir. (2) Editörde elle kısa duman testi: gönder / onay / plan / soru / Stop → devam et / ayarlardan provider değiştirme + Refresh. (3) Açık bulgular: #14 (runner Stop'u ve ortak runtime durumu, ürün kararı), #12 (slash komutlarında görsel eki; Faz 2 kapsamı dışı, dokunulmadı).
 
 Faz 2, ROADMAP'teki ürün Faz 10'un (Alt Ajanlar) ve Faz 7'deki editör köprüsü / CLI / MCP işinin önkoşuludur: `AgentRunner` birden çok kez, birbirinden bağımsız oluşturulabilir hale gelmeli. Bu yüzden 2.1–2.3'te runner'ın global / statik duruma bağımlılığı da kaldırılır ve iki bağımsız runner'ın aynı anda çalıştığı bir test eklenir.
 
