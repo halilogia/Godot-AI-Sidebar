@@ -8,6 +8,7 @@ const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/cha
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarMessageQueuePanel = preload("res://addons/godot_sidebar_ai/ui/components/message_queue_panel.gd")
+const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
 
 class MockQueueProvider extends AISidebarAIProvider:
 	var responses: Array = []
@@ -24,32 +25,55 @@ class MockQueueProvider extends AISidebarAIProvider:
 		last_sent_messages = messages
 		last_sent_images = images
 
+static func _key(code: Key, shift: bool) -> InputEventKey:
+	var ev = InputEventKey.new()
+	ev.keycode = code
+	ev.pressed = true
+	ev.shift_pressed = shift
+	return ev
+
 static func run() -> Dictionary:
 	var passed = 0
 	var failed = 0
 	var errors: Array = []
 	
-	# Test 1: Enter Sends Message vs Shift+Enter Newline Logic
-	var text_input = "Hello Godot AI"
-	var event_enter = InputEventKey.new()
-	event_enter.keycode = KEY_ENTER
-	event_enter.pressed = true
-	event_enter.shift_pressed = false
-	
-	var event_shift_enter = InputEventKey.new()
-	event_shift_enter.keycode = KEY_ENTER
-	event_shift_enter.pressed = true
-	event_shift_enter.shift_pressed = true
-	
-	var is_send_action = (event_enter.keycode == KEY_ENTER and not event_enter.shift_pressed)
-	var is_newline_action = (event_shift_enter.keycode == KEY_ENTER and event_shift_enter.shift_pressed)
-	
-	if is_send_action and is_newline_action:
+	# Test 1: Enter gönderir, Shift+Enter yeni satır, /slash popup'ı Esc kapatır, öneri seçimi metni yazar
+	# (gerçek InputComposer; runner _init'te koştuğu için düğümler ağaç dışındadır)
+	var host = VBoxContainer.new()
+	var field = TextEdit.new()
+	var popup = PanelContainer.new()
+	var list = ItemList.new()
+	popup.add_child(list)
+	host.add_child(popup)
+	host.add_child(field)
+	var composer = AISidebarInputComposer.new(host, field, popup, list)
+	composer.connect_input_signals()
+	var sends: Array = [0]
+	composer.send_requested.connect(func(): sends[0] += 1)
+	field.text = "Hello Godot AI"
+	field.set_caret_column(field.text.length())
+	composer.handle_gui_input(_key(KEY_ENTER, false))
+	var sent_on_enter = sends[0] == 1
+	composer.handle_gui_input(_key(KEY_ENTER, true))
+	var newline_on_shift = sends[0] == 1 and field.text.contains("
+")
+	field.text = "/hel"
+	field.set_caret_line(0)
+	field.set_caret_column(4)
+	field.text_changed.emit()
+	var popup_opened = popup.visible and list.item_count > 0
+	composer.handle_gui_input(_key(KEY_ESCAPE, false))
+	var esc_closed = not popup.visible and sends[0] == 1
+	field.text_changed.emit()
+	composer.activate_suggestion(0)
+	var completed = field.text == "/help " and not popup.visible
+	host.free()
+	if sent_on_enter and newline_on_shift and popup_opened and esc_closed and completed:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 1 (enter_sends_message & shift_enter_newline) failed.")
-		
+		errors.append("Test 1 (composer keys/autocomplete) failed: enter=%s shift=%s popup=%s esc=%s done=%s text='%s'" % [str(sent_on_enter), str(newline_on_shift), str(popup_opened), str(esc_closed), str(completed), field.text])
+
 	# Test 2: FIFO Message Queueing (gerçek MessageQueuePanel)
 	var qp = AISidebarMessageQueuePanel.new()
 	qp.enqueue("Task 1", "Task 1", [])
@@ -189,10 +213,10 @@ static func run() -> Dictionary:
 	var dock_scene = load("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 	var dock = dock_scene.instantiate()
 	dock._ready()
-	dock._attach_image_from_clipboard(test_img)
-	var has_attached = (dock._attached_vision_input != null and dock._attachment_container.visible == true)
-	dock._clear_attached_image()
-	var has_cleared = (dock._attached_vision_input == null and dock._attachment_container.visible == false)
+	dock._composer.attach_image_from_clipboard(test_img)
+	var has_attached = (dock._composer.attached_vision_input != null and dock._composer.attachment_container.visible == true)
+	dock._composer.clear_attached_image()
+	var has_cleared = (dock._composer.attached_vision_input == null and dock._composer.attachment_container.visible == false)
 	dock.queue_free()
 	if has_attached and has_cleared:
 		passed += 1
@@ -203,13 +227,13 @@ static func run() -> Dictionary:
 	# Test 12: Attachment Preservation on Error (P2 UX Regression Test)
 	var dock2 = dock_scene.instantiate()
 	dock2._ready()
-	dock2._attach_image_from_clipboard(test_img)
-	var vi_ref = dock2._attached_vision_input
+	dock2._composer.attach_image_from_clipboard(test_img)
+	var vi_ref = dock2._composer.attached_vision_input
 	dock2._last_sent_vision_input = vi_ref
-	dock2._clear_attached_image()
+	dock2._composer.clear_attached_image()
 	# Simüle edilen sağlayıcı hatası (örn. AGY vision reddi)
 	dock2._on_agent_error("Antigravity CLI görsel girdisini desteklemiyor")
-	var restored_ok = (dock2._attached_vision_input != null and dock2._attachment_container.visible == true)
+	var restored_ok = (dock2._composer.attached_vision_input != null and dock2._composer.attachment_container.visible == true)
 	dock2.queue_free()
 	if restored_ok:
 		passed += 1
