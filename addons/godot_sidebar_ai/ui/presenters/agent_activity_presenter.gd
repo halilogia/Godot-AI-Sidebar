@@ -16,6 +16,7 @@ const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/pres
 const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 
 ## func(comp: Control) — bileşeni message stream'e ekler.
 var add_component: Callable = func(_c): pass
@@ -219,7 +220,7 @@ func on_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 		add_component.call(runtime_card)
 
 	if obs.has_errors():
-		runtime_card.add_status("✕", "Runtime Error: " + obs.format_diagnostic_prompt(), "#bf616a")
+		runtime_card.add_status("✕", AISidebarMarkdownRenderer.escape_bbcode(AISidebarToolPresentation.runtime_error_summary(obs)), "#bf616a")
 	else:
 		runtime_card.add_status("✓", "No runtime errors detected", "#a3be8c")
 	if context:

@@ -11,6 +11,9 @@ const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarPendingIndicator = preload("res://addons/godot_sidebar_ai/ui/components/pending_indicator.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
+const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
+const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
 
 const SECRET_MARKER = "GIZLI_DUSUNCE_XYZ_123"
 
@@ -281,5 +284,55 @@ static func run() -> Dictionary:
 		errors.append("T15 (recovering keeps, error clears) failed: kept=%s" % str(kept))
 	dock15._stream.stop_thinking_timer()
 	dock15.free()
+
+	# 16. Runtime kartı modele giden teşhis metnini değil kısa özeti gösterir
+	var obs16 = AISidebarRuntimeObservation.new()
+	obs16.add_error("Invalid access to property 'SPEED' on a base object of type 'null instance'.", "res://player/player.gd", 14, "_physics_process")
+	obs16.add_error("Second error", "res://enemy.gd", 3)
+	var sum16 = AISidebarToolPresentation.runtime_error_summary(obs16)
+	var dock16 = _dock()
+	# Dock ağaçta değil: kartın _ready'si elle çalıştırılır (editörde add_child tetikler).
+	dock16._activity.runtime_card = AISidebarRuntimeCard.new()
+	dock16._activity.runtime_card._ready()
+	dock16._activity.on_runtime_observation(obs16)
+	var card_txt = ""
+	for rt in dock16._activity.runtime_card._status_list.get_children():
+		for c in rt.get_children():
+			if c is RichTextLabel:
+				card_txt += c.get_parsed_text()
+	var crashed = AISidebarRuntimeObservation.new()
+	crashed.status = AISidebarRuntimeObservation.RuntimeStatus.CRASHED
+	if sum16 == "Runtime error: Invalid access to property 'SPEED' on a base object of type 'null instance'. — player.gd:14 (+1 more)" \
+			and card_txt == sum16 and not "===" in card_txt \
+			and AISidebarToolPresentation.runtime_error_summary(crashed).begins_with("Runtime error"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T16 (runtime summary) failed: sum='%s' card='%s'" % [sum16, card_txt])
+	dock16._activity.runtime_card.free()
+	dock16.free()
+
+	# 17. "Model ne yapıyor?" başlığı dil ayarından gelir
+	var cfg_path = "res://addons/godot_sidebar_ai/config.json"
+	var had_cfg = FileAccess.file_exists(cfg_path)
+	var raw_cfg = FileAccess.get_file_as_string(cfg_path) if had_cfg else ""
+	AISidebarI18n.set_language("en")
+	var dock17 = _dock()
+	dock17._stream.set_action_summary("Reading files")
+	var rc17 = dock17._stream.reasoning_card
+	rc17._ready()
+	var en_header = rc17.get_header_text()
+	if had_cfg:
+		var f17 = FileAccess.open(cfg_path, FileAccess.WRITE)
+		f17.store_string(raw_cfg)
+		f17.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(cfg_path))
+	if en_header.ends_with("What is the model doing?"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T17 (reasoning title i18n) failed: " + en_header)
+	dock17.free()
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}

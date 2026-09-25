@@ -89,3 +89,19 @@ static func is_task_limit_error(err_msg: String) -> bool:
 
 static func format_limit_stop_reason(current_step: int, max_steps: int) -> String:
 	return "Tool-call limit reached: " + str(current_step) + "/" + str(max_steps)
+
+## Runtime kartı için kısa özet: ilk hata mesajı + dosya:satır (+N more). Modele giden
+## uzun teşhis metni (format_diagnostic_prompt) kullanıcıya gösterilmez.
+static func runtime_error_summary(obs) -> String:
+	if obs == null or obs.errors.is_empty():
+		return "Runtime error: the game crashed or reported an error"
+	var first: Dictionary = obs.errors[0]
+	var msg = str(first.get("message", "")).strip_edges().split("\n")[0].left(200)
+	var text = "Runtime error: " + msg
+	var file = str(first.get("file", ""))
+	if not file.is_empty():
+		var line = int(first.get("line", 0))
+		text += " — " + file.get_file() + (":%d" % line if line > 0 else "")
+	if obs.errors.size() > 1:
+		text += " (+%d more)" % (obs.errors.size() - 1)
+	return text
