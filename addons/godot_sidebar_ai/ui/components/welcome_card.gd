@@ -9,6 +9,7 @@ class_name AISidebarWelcomeCard
 signal prompt_selected(prompt_text: String)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 var _vbox: VBoxContainer
 
@@ -73,7 +74,9 @@ func _setup_ui() -> void:
 	
 	for s in suggestions:
 		var btn = Button.new()
-		btn.text = "💡 " + s["title"]
+		btn.text = s["title"]
+		AISidebarIconHelper.apply_tinted_icon(btn, "arrow-up-right", AISidebarTheme.COLOR_TEXT_MUTED, 12)
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.focus_mode = Control.FOCUS_NONE

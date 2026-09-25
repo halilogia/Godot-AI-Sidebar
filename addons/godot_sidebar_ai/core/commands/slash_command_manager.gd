@@ -269,7 +269,7 @@ static func _init_default_commands() -> void:
 
 static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 	var cmds = get_commands()
-	var text = "### ⚡ Godot AI Slash Commands Rehberi\n\n"
+	var text = "### Godot AI Slash Commands Rehberi\n\n"
 	text += "Doğal dil yerine sık kullanılan ajan görevlerini tek satırda tetikleyebilirsiniz:\n\n"
 	
 	var sorted_keys = cmds.keys()
@@ -277,13 +277,13 @@ static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 	
 	for k in sorted_keys:
 		var c = cmds[k]
-		var risk_badge = "🛡️ READ_ONLY"
+		var risk_badge = "READ_ONLY"
 		if c["risk"] == AISidebarPermissionPolicy.RiskLevel.WRITE:
-			risk_badge = "✏️ WRITE"
+			risk_badge = "WRITE"
 		elif c["risk"] == AISidebarPermissionPolicy.RiskLevel.DESTRUCTIVE:
-			risk_badge = "⚠️ DESTRUCTIVE"
+			risk_badge = "DESTRUCTIVE"
 		elif c["risk"] == AISidebarPermissionPolicy.RiskLevel.EXTERNAL_SENSITIVE:
-			risk_badge = "🌐 SENSITIVE"
+			risk_badge = "SENSITIVE"
 			
 		text += "* `/" + c["name"] + "` — " + c["description"] + "\n"
 		text += "  * **Kullanım:** `" + c["usage"] + "` (" + risk_badge + ")\n"

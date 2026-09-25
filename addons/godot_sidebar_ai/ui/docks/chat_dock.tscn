@@ -159,7 +159,7 @@ visible = false
 layout_mode = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 10
-text = "↓ Latest"
+text = "Latest"
 flat = true
 
 [node name="SendBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]

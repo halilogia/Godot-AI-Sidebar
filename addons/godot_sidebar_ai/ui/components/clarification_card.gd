@@ -7,6 +7,8 @@ class_name AISidebarClarificationCard
 
 signal response_submitted(answer: String)
 
+const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
+
 var question_text: String = ""
 var quick_options: Array = []
 var is_answered: bool = false
@@ -16,6 +18,7 @@ var _options_container: HFlowContainer
 var _input_line: LineEdit
 var _send_btn: Button
 var _status_lbl: Label
+var _status_icon: AISidebarStatusIcon
 var _input_row: HBoxContainer
 ## History replay'de gösterilecek geçmiş cevap (boşsa kart canlıdır).
 var _replayed_answer: String = ""
@@ -43,10 +46,10 @@ func _ready() -> void:
 	
 	# 1. Başlık & Soru
 	var header_hbox = HBoxContainer.new()
-	var icon_lbl = Label.new()
-	icon_lbl.text = "❓"
-	icon_lbl.add_theme_font_size_override("font_size", 14)
-	header_hbox.add_child(icon_lbl)
+	header_hbox.add_theme_constant_override("separation", 6)
+	var header_icon = AISidebarStatusIcon.new(16)
+	header_icon.set_icon("message-circle-question-mark", Color(0.95, 0.75, 0.3))
+	header_hbox.add_child(header_icon)
 	
 	var title_lbl = Label.new()
 	title_lbl.text = "Clarification Needed"
@@ -116,11 +119,18 @@ func _ready() -> void:
 	_input_row = input_hbox
 	
 	# 4. Yanıtlandı Durum Etiketi
+	var status_row = HBoxContainer.new()
+	status_row.visible = false
+	status_row.add_theme_constant_override("separation", 4)
+	vbox.add_child(status_row)
+	_status_icon = AISidebarStatusIcon.new()
+	_status_icon.set_icon("check", Color(0.4, 0.85, 0.5))
+	status_row.add_child(_status_icon)
 	_status_lbl = Label.new()
 	_status_lbl.visible = false
 	_status_lbl.add_theme_font_size_override("font_size", 11)
 	_status_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.5))
-	vbox.add_child(_status_lbl)
+	status_row.add_child(_status_lbl)
 	
 	add_child(vbox)
 	if not _replayed_answer.is_empty():
@@ -139,8 +149,12 @@ func _apply_answered_view() -> void:
 		_options_container.visible = false
 	if _input_row:
 		_input_row.visible = false
-	_status_lbl.text = "✓ Answered: " + _replayed_answer
+	_show_status("Answered: " + _replayed_answer)
+
+func _show_status(txt: String) -> void:
+	_status_lbl.text = txt
 	_status_lbl.visible = true
+	_status_lbl.get_parent().visible = true
 
 func _on_option_selected(option_value: String) -> void:
 	if is_answered:
@@ -167,7 +181,6 @@ func _submit_answer(answer: String) -> void:
 		_send_btn.disabled = true
 		
 	if _status_lbl:
-		_status_lbl.text = "✓ Answered: " + answer
-		_status_lbl.visible = true
+		_show_status("Answered: " + answer)
 		
 	response_submitted.emit(answer)

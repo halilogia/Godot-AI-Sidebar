@@ -699,7 +699,7 @@ func _refresh_pause_checkpoint() -> void:
 func _show_paused_badge(cur: int, mx: int) -> void:
 	if not status_badge:
 		return
-	status_badge.text = "⏸ Paused — Step %d/%d" % [cur, mx]
+	status_badge.text = "Paused — Step %d/%d" % [cur, mx]
 	status_badge.tooltip_text = "Devam etmek için 'devam et' yazın. Başka bir mesaj yeni task başlatır."
 	status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 
@@ -1029,7 +1029,7 @@ func _on_agent_tool_executing(tool_name: String, args: Dictionary) -> void:
 	_activity_tool_start_msec = Time.get_ticks_msec()
 	_activity_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
 	_checklist_tracker.on_tool_start(tool_name, args)
-	_set_action_summary("▶ " + human_title)
+	_set_action_summary(human_title)
 	if agent_context:
 		agent_context.get_transcript().record("tool_executing", {"tool": tool_name, "title": human_title.left(200), "args": AISidebarActivityGroup.redact_secrets(JSON.stringify(args)).left(800)})
 		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Running " + human_title.left(200)})
@@ -1118,7 +1118,7 @@ func _on_agent_clarification_requested(question: String, options: Array, clarifi
 		_current_activity_group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
 		_current_activity_group.complete_group()
 		_current_activity_group = null
-	_set_action_summary("❓ " + question.left(120))
+	_set_action_summary("Question: " + question.left(120))
 	if agent_context:
 		agent_context.get_transcript().record("clarification_requested", {"question": question.left(500), "options": options.duplicate(), "id": clarification_id})
 
@@ -1198,7 +1198,7 @@ func _on_agent_plan_proposed(plan) -> void:
 		elif plan.get("title") != null:
 			p_goal = str(plan.get("title"))
 		agent_context.get_transcript().record("plan_proposed", {"steps": p_steps, "files": p_files, "goal": p_goal.left(300)})
-	_set_action_summary("📋 Plan proposed — onay bekleniyor")
+	_set_action_summary("Plan proposed — onay bekleniyor")
 	_current_plan_card = AISidebarPlanCard.new(plan)
 	_current_plan_card.plan_applied.connect(_on_plan_applied)
 	_current_plan_card.plan_cancelled.connect(_on_plan_cancelled)
@@ -1265,7 +1265,7 @@ func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
 func _on_agent_verification_started(tool_name: String) -> void:
 	var grp = _ensure_activity_group()
 	grp.add_activity("•", "Verifying " + tool_name + "...", -1)
-	_set_action_summary("▶ Verifying " + tool_name)
+	_set_action_summary("Verifying " + tool_name)
 	if agent_context:
 		agent_context.get_transcript().record("verification_started", {"tool": tool_name})
 		agent_context.get_transcript().record("activity", {"icon": "▶", "title": "Verifying " + tool_name})
