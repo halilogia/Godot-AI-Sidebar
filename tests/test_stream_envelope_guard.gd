@@ -267,7 +267,7 @@ static func run() -> Dictionary:
 	_hard_clear(dock)
 	# Once zarf akisi (kullaniciya gorunmemeli), ardindan clarification sinyali.
 	dock._stream.on_text_received("assistant", ENVELOPE_ASK_USER)
-	dock._on_agent_clarification_requested("GDScript mi C# mi?", ["GDScript", "C#"], "cid_test")
+	dock._interaction.on_clarification_requested("GDScript mi C# mi?", ["GDScript", "C#"], "cid_test")
 
 	var clarif_count = 0
 	for child in dock.message_stream.get_children():

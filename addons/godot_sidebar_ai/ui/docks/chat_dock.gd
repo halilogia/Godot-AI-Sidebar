@@ -4,7 +4,6 @@ extends Control
 ## Godot AI Sidebar - Profesyonel AI IDE Sohbet ve Orkestrasyon Paneli (SRP).
 ## Cursor / Claude Code tarzı doğal konuşma, katlanabilir aktivite kartları, diff ve geri alma sunar.
 
-const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd")
 const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/network/network_manager.gd")
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
@@ -17,16 +16,10 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 # Modüler UI Bileşenleri
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
-const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
-const AISidebarChangesCard = preload("res://addons/godot_sidebar_ai/ui/components/changes_card.gd")
-const AISidebarApprovalCard = preload("res://addons/godot_sidebar_ai/ui/components/approval_card.gd")
 const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
-const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
-const AISidebarPlanCard = preload("res://addons/godot_sidebar_ai/ui/components/plan_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
-const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
@@ -45,6 +38,7 @@ const AISidebarChatSessionStore = preload("res://addons/godot_sidebar_ai/ui/cont
 const AISidebarSessionReplayRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/session_replay_renderer.gd")
 const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd")
 const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_activity_presenter.gd")
+const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -78,10 +72,6 @@ var agent_context: AISidebarAgentContext
 var agent_runner: AISidebarAgentRunner
 
 var current_model_list: Array = []
-var pending_change_set: AISidebarChangeSet = null
-var last_applied_change_set: AISidebarChangeSet = null
-var pending_tool_name: String = ""
-var pending_tool_args: Dictionary = {}
 var last_user_prompt: String = ""
 
 # Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
@@ -106,8 +96,8 @@ var _stream: AISidebarAgentStreamPresenter = null
 var _activity: AISidebarAgentActivityPresenter = AISidebarAgentActivityPresenter.new()
 ## Onaylı plan checklist'inin tool olaylarıyla ilerletilmesi.
 var _checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
-var _current_approval_card: AISidebarApprovalCard = null
-var _current_plan_card: AISidebarPlanCard = null
+## Soru, onay, plan ve değişiklik kartları (kararlar AgentRunner'a iletilir).
+var _interaction: AISidebarAgentInteractionPresenter = AISidebarAgentInteractionPresenter.new()
 var _auto_scroll_enabled: bool = true
 var _welcome_card: AISidebarWelcomeCard = null
 
@@ -172,6 +162,14 @@ func _ready() -> void:
 	_activity.supports_vision = func(): return provider != null and provider.has_method("supports_vision") and provider.supports_vision()
 	_activity.stream = _stream
 	_activity.checklist_tracker = _checklist_tracker
+	_interaction.add_component = _add_stream_component
+	_interaction.on_meta_clicked = _on_meta_clicked
+	_interaction.scroll_if_following = _scroll_if_following
+	_interaction.refresh_ui = update_ui_language
+	_interaction.stream = _stream
+	_interaction.activity = _activity
+	_interaction.checklist_tracker = _checklist_tracker
+	_interaction.change_set_dialog = change_set_dialog
 	_setup_history_panel()
 	_setup_queue_ui()
 	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
@@ -191,27 +189,12 @@ func _ready() -> void:
 	_export_actions.agent_context = agent_context
 	_checklist_tracker.context = agent_context
 	_activity.context = agent_context
+	_interaction.context = agent_context
 	_setup_provider()
 	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
+	_interaction.runner = agent_runner
 	
-	# Sinyal Bağlantıları
-	agent_runner.state_changed.connect(_on_agent_state_changed)
-	agent_runner.thinking_received.connect(_stream.on_thinking_received)
-	agent_runner.chunk_received.connect(_stream.on_chunk_received)
-	agent_runner.text_received.connect(_stream.on_text_received)
-	agent_runner.tool_executing.connect(_activity.on_tool_executing)
-	agent_runner.tool_completed.connect(_activity.on_tool_completed)
-	agent_runner.approval_requested.connect(_on_agent_approval_requested)
-	agent_runner.clarification_requested.connect(_on_agent_clarification_requested)
-	agent_runner.plan_proposed.connect(_on_agent_plan_proposed)
-	agent_runner.changes_applied.connect(_on_agent_changes_applied)
-	agent_runner.verification_started.connect(_activity.on_verification_started)
-	agent_runner.verification_completed.connect(_activity.on_verification_completed)
-	agent_runner.runtime_observation_received.connect(_activity.on_runtime_observation)
-	agent_runner.debugging_started.connect(_activity.on_debugging_started)
-	agent_runner.error_occurred.connect(_on_agent_error)
-	agent_runner.task_completed.connect(_on_agent_task_completed)
-	agent_runner.step_progress.connect(_activity.on_step_progress)
+	_connect_agent_runner()
 
 	# 2. UI Olayları
 	if new_chat_btn:
@@ -261,6 +244,26 @@ func _ready() -> void:
 	_load_cached_models()
 	if provider:
 		provider.fetch_models()
+
+## AgentRunner sinyallerini presenter'lara ve ChatDock orkestrasyonuna bağlar.
+func _connect_agent_runner() -> void:
+	agent_runner.state_changed.connect(_on_agent_state_changed)
+	agent_runner.thinking_received.connect(_stream.on_thinking_received)
+	agent_runner.chunk_received.connect(_stream.on_chunk_received)
+	agent_runner.text_received.connect(_stream.on_text_received)
+	agent_runner.tool_executing.connect(_activity.on_tool_executing)
+	agent_runner.tool_completed.connect(_activity.on_tool_completed)
+	agent_runner.approval_requested.connect(_interaction.on_approval_requested)
+	agent_runner.clarification_requested.connect(_interaction.on_clarification_requested)
+	agent_runner.plan_proposed.connect(_interaction.on_plan_proposed)
+	agent_runner.changes_applied.connect(_interaction.on_changes_applied)
+	agent_runner.verification_started.connect(_activity.on_verification_started)
+	agent_runner.verification_completed.connect(_activity.on_verification_completed)
+	agent_runner.runtime_observation_received.connect(_activity.on_runtime_observation)
+	agent_runner.debugging_started.connect(_activity.on_debugging_started)
+	agent_runner.error_occurred.connect(_on_agent_error)
+	agent_runner.task_completed.connect(_on_agent_task_completed)
+	agent_runner.step_progress.connect(_activity.on_step_progress)
 
 func _setup_history_panel() -> void:
 	if history_panel or not has_node("MainLayout"):
@@ -521,8 +524,7 @@ func _clear_ui_stream() -> void:
 			child.queue_free()
 	_activity.reset()
 	_checklist_tracker.reset()
-	_current_approval_card = null
-	_current_plan_card = null
+	_interaction.reset()
 	_stream.reset()
 	_welcome_card = null
 
@@ -719,7 +721,7 @@ func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision
 	_activity.begin_task()
 	_stream.begin_task()
 	_checklist_tracker.reset()
-	_current_approval_card = null
+	_interaction.begin_task()
 	_is_user_stopped = false
 	_stream.user_vision_inputs = vision_inputs.duplicate()
 	
@@ -816,154 +818,6 @@ func _move_checklist_to_bottom() -> void:
 func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	update_ui_language()
 	_stream.on_state_changed(new_state, state_desc)
-
-func _on_agent_clarification_requested(question: String, options: Array, clarification_id: String) -> void:
-	_stream.detach_bubble()
-	_activity.clear_running()
-	if _activity.group:
-		_activity.group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
-		_activity.close_group()
-	_stream.set_action_summary("Question: " + question.left(120))
-	if agent_context:
-		agent_context.get_transcript().record("clarification_requested", {"question": question.left(500), "options": options.duplicate(), "id": clarification_id})
-
-	var card = AISidebarClarificationCard.new(question, options)
-	card.response_submitted.connect(func(ans: String):
-		var grp = _activity.ensure_group()
-		grp.add_activity("✓", "User selected: " + AISidebarActivityGroup.summarize_error(ans, 120), 50, "answer: " + str(ans).left(500))
-		if agent_context:
-			agent_context.get_transcript().record("clarification_answered", {"answer": str(ans).left(500)})
-			agent_context.get_transcript().record("activity", {"icon": "✓", "title": ("User selected: " + ans).left(200)})
-		if agent_runner:
-			agent_runner.submit_clarification_response(ans)
-	)
-	_add_stream_component(card)
-	if _auto_scroll_enabled:
-		_scroll_to_bottom()
-	update_ui_language()
-
-func _on_agent_approval_requested(tool_name: String, args: Dictionary, cs: AISidebarChangeSet) -> void:
-	# Duplicate approval request deduping: Aynı bekleyen işlem için ikinci kart oluşturma
-	if _current_approval_card != null and is_instance_valid(_current_approval_card) and not _current_approval_card.is_resolved:
-		if pending_tool_name == tool_name and pending_tool_args == args:
-			return
-			
-	pending_tool_name = tool_name
-	pending_tool_args = args
-	pending_change_set = cs
-	
-	_current_approval_card = AISidebarApprovalCard.new(tool_name, args, cs)
-	_current_approval_card.action_approved.connect(_on_approve_pressed)
-	_current_approval_card.action_rejected.connect(_on_reject_pressed)
-	_current_approval_card.view_diff_requested.connect(_on_view_diff_pressed)
-	_add_stream_component(_current_approval_card)
-	if agent_context:
-		agent_context.get_transcript().record("approval_requested", {"tool": tool_name})
-	# NOT: change_set_dialog otomatik AÇILMAZ; yalnızca kullanıcı karttaki [View Diff] butonuna basarsa açılır.
-
-func _on_approve_pressed() -> void:
-	if _current_approval_card and is_instance_valid(_current_approval_card):
-		_current_approval_card.mark_approved()
-	if pending_change_set:
-		last_applied_change_set = pending_change_set
-	if agent_context:
-		agent_context.get_transcript().record("approval_granted", {"tool": pending_tool_name})
-	if agent_runner:
-		agent_runner.approve_pending_action()
-
-func _on_reject_pressed() -> void:
-	if _current_approval_card and is_instance_valid(_current_approval_card):
-		_current_approval_card.mark_rejected()
-	if agent_context:
-		agent_context.get_transcript().record("approval_rejected", {"tool": pending_tool_name})
-	if agent_runner:
-		agent_runner.reject_pending_action()
-
-## Ajandan uygulama planı geldi. Execution HENÜZ başlamadı;
-## kullanıcı onayı bekleniyor.
-func _on_agent_plan_proposed(plan) -> void:
-	_stream.detach_bubble()
-	_activity.close_group()
-
-	if not guard_plan_card_integrity(plan):
-		return
-
-	if agent_context:
-		var p_steps = 0
-		var p_files = 0
-		var p_goal = ""
-		if plan.get("steps") is Array:
-			p_steps = (plan.get("steps") as Array).size()
-		if plan.get("affected_files") is Array:
-			p_files = (plan.get("affected_files") as Array).size()
-		if plan.get("goal") != null:
-			p_goal = str(plan.get("goal"))
-		elif plan.get("title") != null:
-			p_goal = str(plan.get("title"))
-		agent_context.get_transcript().record("plan_proposed", {"steps": p_steps, "files": p_files, "goal": p_goal.left(300)})
-	_stream.set_action_summary("Plan proposed — onay bekleniyor")
-	_current_plan_card = AISidebarPlanCard.new(plan)
-	_current_plan_card.plan_applied.connect(_on_plan_applied)
-	_current_plan_card.plan_cancelled.connect(_on_plan_cancelled)
-	_add_stream_component(_current_plan_card)
-	if _auto_scroll_enabled:
-		_scroll_to_bottom()
-
-## Plan verisi kullanıcıya gösterilebilecek kadar anlamlı mı?
-## (Eksik plan için boş kart göstermemek adına basit bir bütünlük kontrolü.)
-func guard_plan_card_integrity(plan) -> bool:
-	if plan == null or not plan.has_method("is_valid"):
-		return false
-	return plan.is_valid()
-
-func _on_plan_applied() -> void:
-	if _current_plan_card and is_instance_valid(_current_plan_card):
-		_current_plan_card.mark_applied()
-	if agent_context:
-		agent_context.get_transcript().record("plan_approved", {})
-		agent_context.get_transcript().record("activity", {"icon": "✓", "title": "Plan approved by user"})
-	if _current_plan_card and is_instance_valid(_current_plan_card) and _current_plan_card.plan:
-		var checklist = AISidebarTaskChecklist.new()
-		checklist.setup(_current_plan_card.plan.steps, _current_plan_card.plan.goal)
-		checklist.meta_clicked.connect(_on_meta_clicked)
-		_checklist_tracker.checklist = checklist
-		_add_stream_component(checklist)
-		_checklist_tracker.attach(checklist)
-	if agent_runner:
-		agent_runner.approve_plan()
-
-func _on_plan_cancelled() -> void:
-	if _current_plan_card and is_instance_valid(_current_plan_card):
-		_current_plan_card.mark_cancelled()
-	if agent_context:
-		agent_context.get_transcript().record("plan_rejected", {"reason": "User cancelled the plan."})
-		agent_context.get_transcript().record("activity", {"icon": "✕", "title": "Plan rejected by user"})
-	if agent_runner:
-		agent_runner.reject_plan()
-
-func _on_view_diff_pressed(cs: AISidebarChangeSet = null) -> void:
-	var cs_to_show = cs if cs else (pending_change_set if pending_change_set else last_applied_change_set)
-	if change_set_dialog:
-		change_set_dialog.show_change_set(pending_tool_name, pending_tool_args, cs_to_show)
-
-func _on_agent_changes_applied(cs: AISidebarChangeSet) -> void:
-	last_applied_change_set = cs
-	if not cs:
-		return
-	var card = AISidebarChangesCard.new(cs)
-	card.view_diff_requested.connect(func(c): _on_view_diff_pressed(c))
-	card.undo_requested.connect(func(c): _on_undo_pressed(c))
-	card.meta_clicked.connect(_on_meta_clicked)
-	_add_stream_component(card)
-
-func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
-	if cs:
-		var res = cs.rollback()
-		var grp = _activity.ensure_group()
-		if res.get("success", false):
-			grp.add_activity("✓", "Undo successful: changes reverted", 50)
-		else:
-			grp.add_activity("✕", "Undo failed: " + res.get("error", "Error"), 50)
 
 func _on_agent_task_completed(metrics: Dictionary) -> void:
 	_stream.end_task()
