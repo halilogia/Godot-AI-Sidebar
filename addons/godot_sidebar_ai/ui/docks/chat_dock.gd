@@ -15,20 +15,13 @@ const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_c
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 # Modüler UI Bileşenleri
-const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
-const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/components/telemetry_card.gd")
-const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
-const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
-const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
 const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
-const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
-const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/components/welcome_card.gd")
 const AISidebarChatDockTheme = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock_theme.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
@@ -40,6 +33,7 @@ const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/
 const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_activity_presenter.gd")
 const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd")
 const AISidebarModelBarController = preload("res://addons/godot_sidebar_ai/ui/controllers/model_bar_controller.gd")
+const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/controllers/task_controller.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -74,7 +68,6 @@ var agent_runner: AISidebarAgentRunner
 
 ## Model listesi / seçimi ve onay modu butonu.
 var _model_bar: AISidebarModelBarController = AISidebarModelBarController.new()
-var last_user_prompt: String = ""
 
 # Sohbet Oturumu ve Geçmiş Yönetimi (Chat Management)
 ## Aktif oturumun kalıcı durumu (kaydet/yükle/temizle/checkpoint).
@@ -85,10 +78,9 @@ var _export_actions: AISidebarChatExportActions = null
 
 # Kuyruktaki Mesajlar (FIFO Message Queue)
 var _queue_panel: AISidebarMessageQueuePanel = AISidebarMessageQueuePanel.new()
-var _is_user_stopped: bool = false
 
-# Pano Görseli Eki (Clipboard Image Attachment)
-var _last_sent_vision_input: AISidebarVisionInput = null
+## Görev akışı: gönder, slash, kuyruk, devam et, task bitişi/hata; _ready'de kurulur.
+var _tasks: AISidebarTaskController = null
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
 var _composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
@@ -180,6 +172,26 @@ func _ready() -> void:
 	_setup_queue_ui()
 	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
 	_composer.setup_attachment_ui()
+	_tasks = AISidebarTaskController.new()
+	_tasks.input_field = input_field
+	_tasks.status_badge = status_badge
+	_tasks.composer = _composer
+	_tasks.queue_panel = _queue_panel
+	_tasks.sessions = _sessions
+	_tasks.export_actions = _export_actions
+	_tasks.history_panel = history_panel
+	_tasks.stream = _stream
+	_tasks.activity = _activity
+	_tasks.interaction = _interaction
+	_tasks.checklist_tracker = _checklist_tracker
+	_tasks.add_component = _add_stream_component
+	_tasks.on_meta_clicked = _on_meta_clicked
+	_tasks.refresh_ui = update_ui_language
+	_tasks.hide_welcome = _hide_welcome_card
+	_tasks.update_header = _update_header_title
+	_tasks.save_session = _save_current_session
+	_tasks.clear_chat = _on_clear_pressed
+	add_child(_tasks)
 	AISidebarChatDockTheme.apply(self)
 	if not Engine.is_editor_hint():
 		return
@@ -196,9 +208,11 @@ func _ready() -> void:
 	_checklist_tracker.context = agent_context
 	_activity.context = agent_context
 	_interaction.context = agent_context
+	_tasks.context = agent_context
 	_setup_provider()
 	agent_runner = AISidebarAgentRunner.new(provider, agent_context)
 	_interaction.runner = agent_runner
+	_tasks.runner = agent_runner
 	
 	_connect_agent_runner()
 
@@ -210,7 +224,7 @@ func _ready() -> void:
 	if clear_btn:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
-		send_btn.pressed.connect(_on_send_pressed)
+		send_btn.pressed.connect(_tasks.submit_input)
 	if settings_btn:
 		settings_btn.pressed.connect(_on_settings_pressed)
 	if approve_mode_btn:
@@ -222,7 +236,7 @@ func _ready() -> void:
 	if copy_task_btn:
 		copy_task_btn.pressed.connect(_export_actions.copy_chat)
 	_composer.connect_input_signals()
-	_composer.send_requested.connect(_on_send_pressed)
+	_composer.send_requested.connect(_tasks.submit_input)
 
 	# 4. Oturumu Başlat (Her açılışta daima temiz ve yeni bir sohbet başlat)
 	_start_new_chat_session()
@@ -267,8 +281,8 @@ func _connect_agent_runner() -> void:
 	agent_runner.verification_completed.connect(_activity.on_verification_completed)
 	agent_runner.runtime_observation_received.connect(_activity.on_runtime_observation)
 	agent_runner.debugging_started.connect(_activity.on_debugging_started)
-	agent_runner.error_occurred.connect(_on_agent_error)
-	agent_runner.task_completed.connect(_on_agent_task_completed)
+	agent_runner.error_occurred.connect(_tasks.on_error)
+	agent_runner.task_completed.connect(_tasks.on_task_completed)
 	agent_runner.step_progress.connect(_activity.on_step_progress)
 
 func _setup_history_panel() -> void:
@@ -394,9 +408,7 @@ func _on_history_close_requested() -> void:
 	set_history_view_visible(false)
 
 func _start_new_chat_session() -> void:
-	if agent_runner and agent_runner.is_running():
-		_is_user_stopped = true
-		agent_runner.stop()
+	_tasks.stop_by_user()
 		
 	if _sessions.has_live_messages():
 		_save_current_session()
@@ -420,9 +432,7 @@ func _load_session_by_id(session_id: String) -> void:
 	if not _sessions.is_current(session_id) and _sessions.has_live_messages():
 		_save_current_session()
 		
-	if agent_runner and agent_runner.is_running():
-		_is_user_stopped = true
-		agent_runner.stop()
+	_tasks.stop_by_user()
 		
 	if not _sessions.load_by_id(session_id):
 		_start_new_chat_session()
@@ -434,7 +444,7 @@ func _load_session_by_id(session_id: String) -> void:
 	_rebuild_ui_stream_from_session(loaded)
 	_show_welcome_card_if_empty()
 	if _sessions.has_resumable_checkpoint():
-		_show_paused_badge(int(loaded.checkpoint.get("current_step", 0)), int(loaded.checkpoint.get("max_steps", 20)))
+		_tasks.show_paused_badge(int(loaded.checkpoint.get("current_step", 0)), int(loaded.checkpoint.get("max_steps", 20)))
 	_update_header_title()
 	if history_panel:
 		history_panel.set_active_session(loaded.id)
@@ -504,193 +514,11 @@ func _update_header_title() -> void:
 			title_label.text = "Godot AI"
 			title_label.tooltip_text = "Godot AI Assistant"
 
-func _on_send_pressed() -> void:
-	if not agent_runner:
-		return
-		
-	_composer.hide_popup()
-		
-	var user_text = input_field.text.strip_edges()
-	var attached_img = _composer.attached_vision_input
-	
-	# Eğer metin boşsa ama ekli görsel varsa varsayılan soru metni ata
-	if user_text.is_empty() and attached_img != null:
-		user_text = "Bu görseli incele ve yardımcı ol."
-	
-	# Eğer metin boşsa ve kullanıcı 'Stop' butonuna bastıysa:
-	if user_text.is_empty():
-		if agent_runner.is_running():
-			_is_user_stopped = true
-			agent_runner.stop()
-			update_ui_language()
-		return
-		
-	input_field.text = ""
-	_last_sent_vision_input = attached_img
-	_composer.clear_attached_image()
-	_is_user_stopped = false
-	
-	var vision_inputs: Array = []
-	if attached_img != null:
-		vision_inputs.append(attached_img)
-	
-	# 1. Slash Command Kontrolü (/)
-	if user_text.begins_with("/"):
-		var parsed_cmd = AISidebarSlashCommandManager.parse(user_text)
-		if parsed_cmd.get("is_command", false):
-			_handle_slash_command_execution(parsed_cmd, user_text)
-			return
-			
-	# 2. Normal Mesaj Akışı: Eğer ajan şu anda başka bir görev çalıştırıyorsa -> Mesajı Kuyruğa Al
-	if agent_runner.is_running():
-		_queue_panel.enqueue(user_text, user_text, vision_inputs)
-		return
-		
-	# 3. Continuation: boştayken resume komutu + resumable checkpoint varsa devam et
-	if not agent_runner.is_running() and AISidebarTaskCheckpoint.is_resume_command(user_text) and _sessions.has_resumable_checkpoint():
-		input_field.text = ""
-		_resume_paused_task(user_text)
-		return
-
-	# Ajan boşta ise görevi hemen başlat
-	_start_task_prompt(user_text, "", vision_inputs)
-
-func _active_scene_path_now() -> String:
-	if Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface") and EditorInterface.has_method("get_edited_scene_root"):
-		var edited = EditorInterface.get_edited_scene_root()
-		if edited:
-			return str(edited.scene_file_path)
-	return ""
-
-## Durmuş tasktan checkpoint üret, session'a yaz, Paused rozeti göster.
-func _refresh_pause_checkpoint() -> void:
-	if agent_runner == null:
-		return
-	var live = {
-		"current_step": agent_runner.current_step,
-		"max_steps": agent_runner.max_steps,
-		"elapsed_s": agent_runner.get_elapsed_s(),
-	}
-	var cp = _sessions.store_pause_checkpoint(live, _active_scene_path_now())
-	if cp.is_empty():
-		return
-	_update_header_title()
-	if bool(cp.get("resumable", false)):
-		_show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
-
-func _show_paused_badge(cur: int, mx: int) -> void:
-	if not status_badge:
-		return
-	status_badge.text = "Paused — Step %d/%d" % [cur, mx]
-	status_badge.tooltip_text = "Devam etmek için 'devam et' yazın. Başka bir mesaj yeni task başlatır."
-	status_badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
-
-func _resume_paused_task(user_text: String) -> void:
-	if _sessions.current == null:
-		return
-	var cp = _sessions.checkpoint_copy()
-	_hide_welcome_card()
-	_last_sent_vision_input = null
-	_is_user_stopped = false
-	_stream.user_vision_inputs.clear()
-	var msg = AISidebarTaskCheckpoint.build_resume_message(cp)
-	if agent_runner and agent_runner.resume_task(cp, msg, user_text):
-		return
-	# Checkpoint geçersizse güvenli düşüş: normal yeni task.
-	_start_task_prompt(user_text, "", [])
-
-func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -> void:
-	if parsed_cmd.has("error"):
-		# Bilinmeyen slash komutu
-		var cmd_bubble = AISidebarMessageBubble.new("command", raw_text)
-		cmd_bubble.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(cmd_bubble)
-		
-		var err_msg = parsed_cmd["error"] + "\n\nKullanılabilir komutları görmek için `/help` yazabilirsiniz."
-		var err_bubble = AISidebarMessageBubble.new("assistant", err_msg)
-		err_bubble.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(err_bubble)
-		return
-		
-	var cmd_name = parsed_cmd["name"]
-	var cmd_args = parsed_cmd["args"]
-	var exec_context = {"agent_context": agent_context}
-	var result = AISidebarSlashCommandManager.execute_command(cmd_name, cmd_args, exec_context)
-	var action = result.get("action", "")
-	
-	if action == "clear_chat":
-		_on_clear_pressed()
-		return
-		
-	if action == "local_response":
-		var cmd_bubble = AISidebarMessageBubble.new("command", raw_text)
-		cmd_bubble.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(cmd_bubble)
-		
-		var reply_text = result.get("message", "")
-		var assistant_bubble = AISidebarMessageBubble.new("assistant", reply_text)
-		assistant_bubble.meta_clicked.connect(_on_meta_clicked)
-		_add_stream_component(assistant_bubble)
-		
-		_sessions.record_local_command(raw_text, reply_text)
-		_update_header_title()
-		return
-		
-	elif action == "run_agent":
-		var prompt = result.get("prompt", "")
-		var display_prompt = result.get("display_prompt", raw_text)
-		
-		if agent_runner.is_running():
-			_queue_panel.enqueue(prompt, display_prompt)
-			return
-			
-		_start_task_prompt(prompt, display_prompt)
-
-func _start_task_prompt(prompt_text: String, display_prompt: String = "", vision_inputs: Array = []) -> void:
-	_hide_welcome_card()
-	var final_display = display_prompt if not display_prompt.is_empty() else prompt_text
-	last_user_prompt = final_display
-	_activity.begin_task()
-	_stream.begin_task()
-	_checklist_tracker.reset()
-	_interaction.begin_task()
-	_is_user_stopped = false
-	_stream.user_vision_inputs = vision_inputs.duplicate()
-	
-	# Yeni task eskisini geçersiz kılar (devam yolu buradan geçmez).
-	_sessions.begin_new_task()
-	_update_header_title()
-
-	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
-	if agent_context:
-		agent_context.begin_task(prompt_text, final_display)
-	agent_runner.start_task(resolved_ctx["augmented_prompt"], final_display, vision_inputs)
-
-func _check_and_dispatch_next_queue() -> void:
-	if _is_user_stopped:
-		return
-		
-	if _queue_panel.count() > 0:
-		var next_item = _queue_panel.pop_next()
-		if next_item is Dictionary and next_item.has("prompt"):
-			var next_prompt = str(next_item["prompt"])
-			var next_disp = str(next_item.get("display_prompt", next_prompt))
-			var q_vision = next_item.get("vision_inputs", [])
-			var t = get_tree()
-			if t:
-				t.create_timer(0.05).timeout.connect(func():
-					_start_task_prompt(next_prompt, next_disp, q_vision)
-				)
-			else:
-				_start_task_prompt(next_prompt, next_disp, q_vision)
-
 func _on_clear_pressed() -> void:
 	_composer.clear_attached_image()
 	_stream.user_vision_inputs.clear()
 	_composer.hide_popup()
-	if agent_runner and agent_runner.is_running():
-		_is_user_stopped = true
-		agent_runner.stop()
+	_tasks.stop_by_user()
 	_sessions.clear_contents()
 	_queue_panel.clear_all()
 	_clear_ui_stream()
@@ -757,70 +585,7 @@ func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_d
 	if new_state == AISidebarAgentRunner.AgentState.IDLE or new_state == AISidebarAgentRunner.AgentState.COMPLETED:
 		if _sessions.has_resumable_checkpoint():
 			var cp = _sessions.current.checkpoint
-			_show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
-
-func _on_agent_task_completed(metrics: Dictionary) -> void:
-	_stream.end_task()
-	_activity.clear_running()
-	var t_ok = bool(metrics.get("success", false))
-	var completion = str(metrics.get("completion", "success" if t_ok else "failed"))
-	var show_ok = t_ok and completion == "success"
-	var done_reason = str(metrics.get("completion_reason", metrics.get("stop_reason", "")))
-	_checklist_tracker.finish(show_ok, done_reason)
-	_checklist_tracker.clear_tool_args()
-	if agent_context and agent_context.get_transcript().has_running_task():
-		var t_status = "completed" if show_ok else ("incomplete" if completion == "incomplete" else "failed")
-		agent_context.end_task(t_status, done_reason, metrics)
-	_activity.finish_task(str(metrics.get("stop_reason", "")))
-		
-	var telemetry_comp = AISidebarTelemetryCard.new(metrics)
-	if agent_context:
-		telemetry_comp.task_id = str(agent_context.get_transcript().get_current_task().get("id", ""))
-	telemetry_comp.copy_task_requested.connect(_export_actions.copy_single_task)
-	_add_stream_component(telemetry_comp)
-	update_ui_language()
-	
-	if _sessions.current:
-		_sessions.current.telemetry = metrics.duplicate(true)
-		if t_ok:
-			# Başarıyla biten taskın resume ihtiyacı kalmaz.
-			_sessions.current.checkpoint = {}
-		else:
-			_refresh_pause_checkpoint()
-		_save_current_session()
-		if history_panel and history_panel.visible:
-			history_panel.refresh_list()
-			
-	_check_and_dispatch_next_queue()
-	_last_sent_vision_input = null
-
-func _on_agent_error(err_msg: String) -> void:
-	_stream.end_task()
-	_activity.clear_running()
-	_checklist_tracker.finish(false, err_msg)
-	_checklist_tracker.clear_tool_args()
-	if agent_context and agent_context.get_transcript().has_running_task():
-		var e_status = "cancelled" if _is_user_stopped else "failed"
-		agent_context.end_task(e_status, err_msg)
-	# Stop/fail sonrası kaldığı noktadan devam için checkpoint üret.
-	_refresh_pause_checkpoint()
-	_activity.stop_on_error(err_msg)
-		
-	# Hata durumunda veya model reddettiğinde görsel ekinin kaybolmasını önle (P2 UX Fix)
-	if _last_sent_vision_input != null and _composer.attached_vision_input == null:
-		_composer.attach_vision_input(_last_sent_vision_input)
-
-	var err_comp = AISidebarErrorCard.new(err_msg)
-	var vi_to_retry = _last_sent_vision_input
-	err_comp.retry_requested.connect(func():
-		if not last_user_prompt.is_empty():
-			var vi_arr: Array = [vi_to_retry] if vi_to_retry != null else []
-			agent_runner.start_task(last_user_prompt, "", vi_arr)
-	)
-	_add_stream_component(err_comp)
-	update_ui_language()
-	
-	_check_and_dispatch_next_queue()
+			_tasks.show_paused_badge(int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)))
 
 func _on_meta_clicked(meta: Variant) -> void:
 	var m_str = str(meta)

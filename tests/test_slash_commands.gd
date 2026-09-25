@@ -190,7 +190,7 @@ static func run() -> Dictionary:
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.message_stream.add_child(Label.new())
-	dock._handle_slash_command_execution(AISidebarSlashCommandManager.parse("/clear"), "/clear")
+	dock._tasks.handle_slash_command(AISidebarSlashCommandManager.parse("/clear"), "/clear")
 	var stream_cleared = true
 	for child in dock.message_stream.get_children():
 		if not child.is_queued_for_deletion():

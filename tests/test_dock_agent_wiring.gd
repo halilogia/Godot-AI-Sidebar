@@ -55,6 +55,8 @@ static func run() -> Dictionary:
 	dock._interaction.context = ctx
 	dock.agent_runner = runner
 	dock._interaction.runner = runner
+	dock._tasks.context = ctx
+	dock._tasks.runner = runner
 	dock._connect_agent_runner()
 
 	# 1. Her sinyalin bir dinleyicisi var (bağlantı listesi eksiksiz)
