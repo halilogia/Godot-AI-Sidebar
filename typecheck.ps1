@@ -6,33 +6,10 @@ param(
 # Usage: ./typecheck.ps1 [-GodotPath <path_to_godot>]
 
 $ProjectPath = $PSScriptRoot
-$GodotBin = $GodotPath
-
-if (-not $GodotBin -and $env:GODOT_BIN) {
-    $GodotBin = $env:GODOT_BIN
-}
+. (Join-Path $PSScriptRoot "tools\find_godot.ps1")
+$GodotBin = Resolve-GodotBin $GodotPath
 
 if (-not $GodotBin) {
-    $cmd = Get-Command godot.exe, godot -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($cmd) {
-        $GodotBin = $cmd.Source
-    }
-}
-
-if (-not $GodotBin) {
-    # Search Desktop dynamically without hardcoded user paths
-    $desktopPath = [System.Environment]::GetFolderPath('Desktop')
-    # Prioritize 4.7+ binary if multiple versions exist on Desktop
-    $found = Get-ChildItem -Path $desktopPath -Filter "*4.7*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $found) {
-        $found = Get-ChildItem -Path $desktopPath -Filter "Godot*.exe" -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
-    }
-    if ($found) {
-        $GodotBin = $found.FullName
-    }
-}
-
-if (-not $GodotBin -or -not (Test-Path $GodotBin)) {
     Write-Error "Godot binary bulunamadi. Lutfen PATH'e ekleyin, `$env:GODOT_BIN degiskenini tanimlayin veya -GodotPath parametresi gecin."
     exit 1
 }

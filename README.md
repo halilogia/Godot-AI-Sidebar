@@ -10,7 +10,7 @@ running*.
 [![Version](https://img.shields.io/badge/version-2.7.0-478cbf)](#)
 [![Godot](https://img.shields.io/badge/Godot-4.7%2B-478cbf)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-55%20suites%20%2F%20331%20assertions-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-76%20suites%20%2F%20553%20assertions-brightgreen)](#testing)
 
 **English** · [Türkçe](README.tr.md)
 
@@ -344,10 +344,13 @@ The plugin has a headless test suite and a static compile validator. Both run
 without opening the editor.
 
 ```bash
-# 1. Static compile & scene-load check (129 GDScript, 4 scenes)
+# 0. One command: typecheck + full test suite (add -Live for the 9Router test)
+powershell -ExecutionPolicy Bypass -File .\verify.ps1
+
+# 1. Static compile & scene-load check (addons/ + tests/)
 powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
 
-# 2. Full test suite (55 suites / 331 assertions)
+# 2. Full test suite
 godot --headless --path . -s "res://tests/test_runner.gd"
 
 # 3. Live provider integration test (requires 9Router on 127.0.0.1:20128)

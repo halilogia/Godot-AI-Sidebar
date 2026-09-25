@@ -52,19 +52,19 @@
 
 ## 🧪 5. Doğrulama ve Test Komutları
 
-Yeni bir özellik veya düzeltme yapıldığında sırasıyla şu komutlar koşulmalıdır:
+Yeni bir özellik veya düzeltme yapıldığında tek komut koşulur; herhangi bir adım kırmızıysa iş bitmiş sayılmaz:
 
 ```bash
-# 1. Headless Statik Tip ve Sözdizimi Derleme Kontrolü (129 GDScript, 4 Sahne)
-powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
+# Typecheck (addons/ + tests/) + tüm birim testleri. Godot'u kendisi bulur
+# (-GodotPath > $env:GODOT_BIN > PATH > Masaüstü). Fail-closed: hata -> exit 1.
+powershell -ExecutionPolicy Bypass -File .\verify.ps1
 
-# 2. Tüm Birim ve Mantık Testleri (55 Test Paketi / 331 Assertion)
-godot --headless --path . -s "res://tests/test_runner.gd"
-
-# 3. Canlı 9Router & Model Entegrasyon Testi (127.0.0.1:20128)
-godot --headless --path . -s "res://tests/integration/test_real_9router_live.gd"
-# (Not: 'godot' PATH üzerinde değilse $env:GODOT_BIN veya ./typecheck.ps1 yöntemini kullanın)
+# Ağ/provider davranışı değiştiyse: canlı 9Router testini de ekle (127.0.0.1:20128)
+powershell -ExecutionPolicy Bypass -File .\verify.ps1 -Live
 ```
+
+* Test/dosya sayıları dokümanlara elle yazılmaz (hızla eskir); güncel sayı `verify.ps1` çıktısındadır.
+* Adımlar ayrı ayrı gerekirse: `typecheck.ps1`, `tests/test_runner.gd`, `tests/integration/test_real_9router_live.gd`.
 
 ---
 
@@ -83,3 +83,23 @@ godot --headless --path . -s "res://tests/integration/test_real_9router_live.gd"
 * Export'a alınmayan veri (örn. Action Summary: UI-only, tool event'lerden türetilebilir) raporda gerekçesiyle belirtilir.
 * Bilinmeyen gelecek event tipleri `_` fallback ile ham görünür kalır (sessiz kayıp yok).
 * Kapsam testleri: `tests/test_export_coverage.gd`.
+
+---
+
+## 🔧 8. Refactor Kuralları
+
+Aktif plan ve ilerleme: `docs/REFACTOR_PLAN.md`.
+
+1. **Refactor commit'i davranış değiştirmez.** Kod taşınır; mantık, metin ve görünüm aynen kalır.
+2. **Yolda bulunan bug ayrı commit'te düzeltilir**, onu kanıtlayan testle birlikte.
+3. **Her adımdan sonra `verify.ps1` yeşil olmalı.** Kırmızıysa adım geri alınır, üstüne yama yapılmaz.
+4. **Testler taşınan birime yönlendirilir.** Eski private isimler için geçici delege bırakılmaz.
+5. Yeni dosyalar `preload` ile bağlanır ve `AISidebar` önekini korur (bkz. §3.3).
+
+---
+
+## 📚 9. Doküman Haritası
+
+* `AGENTS.md` — tüm ajanlar için tek giriş noktası (bu dosya).
+* `ARCHITECTURE.md` — katmanlar ve veri akışı. `ROADMAP.md` — fazlar. `CHANGELOG.md` — tarihçe (geçmiş sayılar düzeltilmez).
+* `docs/KNOWLEDGE.md` — kalıcı teknik bilgi (paylaşılan kaynak). `brain/`, `archives/` git-ignored yerel çalışma alanlarıdır; kalıcı kararlar oradan `docs/`'a taşınır.
