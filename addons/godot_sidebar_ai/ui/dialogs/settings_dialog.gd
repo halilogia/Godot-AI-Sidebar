@@ -287,7 +287,7 @@ func _apply_provider_ui_state(idx: int) -> void:
 		if api_key_line:
 			api_key_line.editable = false
 		if provider_hint_label:
-			provider_hint_label.text = "✓ Google Antigravity CLI doğrudan yerel oturumu kullanır. 3. taraf proxy/MITM içermez; API Key veya Base URL gerekmez."
+			provider_hint_label.text = "Google Antigravity CLI doğrudan yerel oturumu kullanır. 3. taraf proxy/MITM içermez; API Key veya Base URL gerekmez."
 			provider_hint_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	else:
 		if endpoint_card:
@@ -297,7 +297,7 @@ func _apply_provider_ui_state(idx: int) -> void:
 		if api_key_line:
 			api_key_line.editable = true
 		if provider_hint_label:
-			provider_hint_label.text = "ℹ️ OpenAI uyumlu yerel veya bulut API endpointi (9Router, Ollama, OpenRouter vb.)."
+			provider_hint_label.text = "OpenAI uyumlu yerel veya bulut API endpointi (9Router, Ollama, OpenRouter vb.)."
 			provider_hint_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 
 func _on_temp_changed(val: float) -> void:

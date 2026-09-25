@@ -81,6 +81,7 @@ const TestPlanChecklistTracker = preload("res://tests/test_plan_checklist_tracke
 const TestChatExportActions = preload("res://tests/test_chat_export_actions.gd")
 const TestChatSessionStore = preload("res://tests/test_chat_session_store.gd")
 const TestSessionReplay = preload("res://tests/test_session_replay.gd")
+const TestIconSystem = preload("res://tests/test_icon_system.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -164,6 +165,7 @@ func _init() -> void:
 		TestChatExportActions,
 		TestChatSessionStore,
 		TestSessionReplay,
+		TestIconSystem,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

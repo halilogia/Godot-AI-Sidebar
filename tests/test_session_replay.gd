@@ -54,7 +54,7 @@ static func run() -> Dictionary:
 	if card:
 		card._ready()
 		if card.is_answered and card.get_child_count() == 1 and not card._input_row.visible \
-				and card._status_lbl.visible and card._status_lbl.text == "✓ Answered: 3D":
+				and card._status_lbl.visible and card._status_lbl.text == "Answered: 3D":
 			passed += 1
 		else:
 			failed += 1

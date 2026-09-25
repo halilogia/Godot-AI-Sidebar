@@ -5,6 +5,7 @@ extends RefCounted
 ## Mantık içermez; ChatDock `_ready` ve durum değişimlerinde çağırır.
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 static func apply(dock: Control) -> void:
 	# 1. Root PanelContainer & Background
@@ -62,6 +63,7 @@ static func apply(dock: Control) -> void:
 		dock.jump_to_bottom_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XXS))
 		dock.jump_to_bottom_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 		dock.jump_to_bottom_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+		AISidebarIconHelper.apply_tinted_icon(dock.jump_to_bottom_btn, "arrow-down", AISidebarTheme.COLOR_TEXT_SECONDARY, 12)
 
 	apply_send_button(dock.send_btn, dock.agent_runner != null and dock.agent_runner.is_running())
 

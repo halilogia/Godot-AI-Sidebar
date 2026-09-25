@@ -18,8 +18,8 @@ var current_change_set: AISidebarChangeSet = null
 
 func _ready() -> void:
 	title = "AI Değişiklik Onayı & Diff Görünümü"
-	ok_button_text = "✓ Uygula (Approve)"
-	cancel_button_text = "✕ Reddet (Reject)"
+	ok_button_text = "Uygula (Approve)"
+	cancel_button_text = "Reddet (Reject)"
 	unresizable = false
 	
 	confirmed.connect(_on_confirmed)

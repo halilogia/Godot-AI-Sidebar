@@ -7,6 +7,8 @@ class_name AISidebarRuntimeCard
 
 signal meta_clicked(meta: Variant)
 
+const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
+
 var is_expanded: bool = true
 
 var _vbox: VBoxContainer
@@ -67,11 +69,9 @@ func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> vo
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	_status_list.add_child(row)
 	
-	var ic = Label.new()
-	ic.text = icon
-	ic.mouse_filter = Control.MOUSE_FILTER_PASS
-	ic.add_theme_font_size_override("font_size", 11)
+	var ic = AISidebarStatusIcon.new()
 	row.add_child(ic)
+	ic.set_status(icon, Color.html(color_hex))
 	
 	var lbl = RichTextLabel.new()
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL

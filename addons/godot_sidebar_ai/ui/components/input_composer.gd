@@ -8,6 +8,7 @@ extends RefCounted
 signal send_requested
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
@@ -55,7 +56,7 @@ func setup_attachment_ui() -> void:
 	hbox.add_child(_attachment_preview)
 
 	_attachment_label = Label.new()
-	_attachment_label.text = "📷 Pano Görseli"
+	_attachment_label.text = "Pano görseli"
 	_attachment_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 	_attachment_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_attachment_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -64,7 +65,7 @@ func setup_attachment_ui() -> void:
 	hbox.add_child(_attachment_label)
 
 	_attachment_remove_btn = Button.new()
-	_attachment_remove_btn.text = "✕"
+	AISidebarIconHelper.apply_tinted_icon(_attachment_remove_btn, "x", AISidebarTheme.COLOR_ERROR)
 	_attachment_remove_btn.flat = true
 	_attachment_remove_btn.focus_mode = Control.FOCUS_NONE
 	_attachment_remove_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
@@ -97,7 +98,7 @@ func attach_vision_input(vi: AISidebarVisionInput) -> void:
 	if _attachment_preview:
 		_attachment_preview.texture = vi.get_texture()
 	if _attachment_label:
-		_attachment_label.text = "📷 Pano Görseli (%dx%d)" % [vi.width, vi.height]
+		_attachment_label.text = "Pano görseli (%dx%d)" % [vi.width, vi.height]
 	if attachment_container:
 		attachment_container.visible = true
 

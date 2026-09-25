@@ -5,6 +5,7 @@ extends PanelContainer
 ## Veri ve görünüm birlikte tutulur; ne zaman dispatch edileceğine ChatDock karar verir.
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 var _items: Array[Dictionary] = []
 var _title_label: Label = null
@@ -121,7 +122,7 @@ func _refresh() -> void:
 		item_row.add_child(prompt_label)
 
 		var cancel_btn = Button.new()
-		cancel_btn.text = "✕"
+		AISidebarIconHelper.apply_tinted_icon(cancel_btn, "x", Color(0.9, 0.4, 0.4), 12)
 		cancel_btn.flat = true
 		cancel_btn.focus_mode = Control.FOCUS_NONE
 		cancel_btn.add_theme_font_size_override("font_size", 10)
