@@ -155,6 +155,56 @@ script = ExtResource("good_x")
 		failed += 1
 		errors.append("Test 6 Başarısız: Düzeltilen geçerli TSCN diske yazılamadı: " + str(tool_res_fixed))
 
+	# -------------------------------------------------------------
+	# Test 7: Sabitleme — her hata kodu + geçen durumlar (kod, satır)
+	# ve tüm sonuç sözlüklerinin altın izi (mesaj metni ve anahtarlar dahil).
+	# -------------------------------------------------------------
+	var hdr = "[gd_scene format=3]\n"
+	var node = "[node name=\"R\" type=\"Node\"]\n"
+	var dummy_ext = "[ext_resource type=\"Script\" path=\"%s\" id=\"1_a\"]\n" % [dummy_script_path]
+	var missing_res = "res://tests/__tscn_missing_ref__.gd"
+	var cases = [
+		["wrong_first_tag", node, "res://tests/x.tscn", {}, "TSCN_MISSING_HEADER", 1],
+		["no_tags", "foo = 1\n", "res://tests/x.tscn", {}, "TSCN_MISSING_HEADER", -1],
+		["empty", "", "res://tests/x.tscn", {}, "TSCN_MISSING_HEADER", -1],
+		["ext_no_id", hdr + "[ext_resource type=\"Script\" path=\"%s\"]\n" % [dummy_script_path] + node, "res://tests/x.tscn", {}, "TSCN_MALFORMED_TAG", 2],
+		["sub_no_id", hdr + "[sub_resource type=\"BoxShape3D\"]\n" + node, "res://tests/x.tscn", {}, "TSCN_MALFORMED_TAG", 2],
+		["displaced_sub", hdr + node + "[sub_resource type=\"BoxShape3D\" id=\"s\"]\n", "res://tests/x.tscn", {}, "TSCN_DISPLACED_SUB_RESOURCE", 3],
+		["displaced_node", hdr + node + "[connection signal=\"a\" from=\".\" to=\".\" method=\"b\"]\n" + node, "res://tests/x.tscn", {}, "TSCN_DISPLACED_NODE", 4],
+		["dup_sub", hdr + "[sub_resource type=\"A\" id=\"s\"]\n[sub_resource type=\"A\" id=\"s\"]\n" + node, "res://tests/x.tscn", {}, "TSCN_DUPLICATE_RESOURCE_ID", 3],
+		["no_root_node", hdr, "res://tests/x.tscn", {}, "TSCN_MISSING_ROOT_NODE", -1],
+		["no_root_node_empty_path", hdr, "", {}, "TSCN_MISSING_ROOT_NODE", -1],
+		["tres_without_node", "[gd_resource type=\"Resource\" format=3]\n", "res://tests/x.tres", {}, "", 0],
+		["numeric_ext_undefined", hdr + dummy_ext + node + "script = ExtResource(7)\n", "res://tests/x.tscn", {}, "TSCN_UNDEFINED_RESOURCE_REFERENCE", 4],
+		["numeric_ext_defined", hdr + "[ext_resource type=\"Script\" path=\"%s\" id=\"7\"]\n" % [dummy_script_path] + node + "script = ExtResource(7)\n", "res://tests/x.tscn", {}, "", 0],
+		["sub_undefined", hdr + node + "shape = SubResource(\"nope\")\n", "res://tests/x.tscn", {}, "TSCN_UNDEFINED_RESOURCE_REFERENCE", 3],
+		["comments_skipped", "; yorum\n# yorum\n" + hdr + node, "res://tests/x.tscn", {}, "", 0],
+		["missing_ext_on_disk", hdr + "[ext_resource type=\"Script\" path=\"%s\" id=\"m\"]\n" % [missing_res] + node, "res://tests/x.tscn", {}, "RESOURCE_REFERENCE_NOT_FOUND", 2],
+		["missing_ext_in_batch", hdr + "[ext_resource type=\"Script\" path=\"%s\" id=\"m\"]\n" % [missing_res] + node, "res://tests/x.tscn", {missing_res: "extends Node\n"}, "", 0],
+	]
+	var trace: Array = []
+	var case_fail: Array = []
+	for c in cases:
+		var r = AISidebarVerificationPipeline.validate_tscn_source(c[1], c[2], c[3])
+		trace.append(r)
+		var want_code = str(c[4])
+		if want_code.is_empty():
+			if not (r.get("success", false) and r.get("status") == AISidebarVerificationPipeline.VerificationStatus.PASSED):
+				case_fail.append(str(c[0]) + "=" + str(r))
+		else:
+			var e = r.get("error", {})
+			var got_line = int(e.get("line", -1)) if e is Dictionary else -2
+			if r.get("success", true) or r.get("status") != AISidebarVerificationPipeline.VerificationStatus.FAILED or str(e.get("code", "")) != want_code or got_line != int(c[5]):
+				case_fail.append(str(c[0]) + "=" + str(r))
+	# Altın iz: refactor öncesi koddan üretildi; mesaj/anahtar değişirse kırmızı.
+	var golden = "9b68806ebb2896ea92121f68ad71ccd1"
+	var digest = JSON.stringify(trace).md5_text()
+	if case_fail.is_empty() and digest == golden:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 7 Başarısız: TSCN sabitleme sapması: " + str(case_fail) + " digest=" + digest)
+
 	# Temizlik
 	for p in [valid_tscn_path, invalid_tscn_path, dummy_script_path, disk_test_path]:
 		if FileAccess.file_exists(p):
