@@ -34,19 +34,19 @@
 
 Sıra riske göre: saf/izole olanlar önce, sinyal akışının kalbi en son.
 
-| Adım | Yeni birim | İçerik (bugünkü satırlar) | Risk |
-|---|---|---|---|
-| 1.1 | `ui/docks/chat_dock_theme.gd` | `_apply_theme`, `_update_send_button_style` (270–397) | Çok düşük |
-| 1.2 | `ui/presenters/tool_presentation.gd` (static) | `_get_human_tool_title`, `_build_tech_details`, `_extract_tool_error`, `_screenshot_image_path`, `is_task_limit_error`, `format_limit_stop_reason` | Düşük |
-| 1.3 | `ui/presenters/plan_checklist_tracker.gd` | Checklist eşleştirme + snapshot (1777–1864) — saf mantık, birim testi kolay | Düşük |
-| 1.4 | `ui/components/message_queue_panel.gd` + kuyruk modeli | FIFO kuyruk, UI, dispatch (415–457, 1480–1556) | Orta |
-| 1.5 | `ui/components/input_composer.gd` | Mention/slash autocomplete, klavye, görsel eki (459–527, 745–928) | Orta |
-| 1.6 | `ui/controllers/chat_export_actions.gd` | Export, Copy Chat, per-task copy, history export dialog (606–688, 972–1029) | Düşük |
-| 1.7 | `ui/controllers/chat_session_controller.gd` | New/load/save/clear, history panel olayları, checkpoint/pause/resume (930–1097, 1338–1389, 1558–1577) | Orta-yüksek |
-| 1.8 | `ui/presenters/session_replay_renderer.gd` | `_rebuild_ui_stream_from_session` (1098–1180) | Orta |
-| 1.9 | `ui/presenters/agent_event_presenter.gd` | Ajan sinyal dinleyicileri, stream tamponu, activity/reasoning/thinking kartları (1623–2331) | **Yüksek** — en son |
+| Adım | Yeni birim | İçerik (başlangıçtaki satırlar) | Risk | Durum |
+|---|---|---|---|---|
+| 1.1 | `ui/docks/chat_dock_theme.gd` | `_apply_theme`, `_update_send_button_style` (270–397) | Çok düşük | ✅ `caaf041` |
+| 1.2 | `ui/presenters/tool_presentation.gd` (static) | `_get_human_tool_title`, `_build_tech_details`, `_extract_tool_error`, `_screenshot_image_path`, `is_task_limit_error`, `format_limit_stop_reason` | Düşük | ✅ `7476583` |
+| 1.3 | `ui/presenters/plan_checklist_tracker.gd` | Checklist eşleştirme + snapshot (1777–1864) — saf mantık, birim testi kolay | Düşük | ✅ `3b51c9b` (+8 test) |
+| 1.4 | `ui/components/message_queue_panel.gd` + kuyruk modeli | FIFO kuyruk, UI, dispatch (415–457, 1480–1556) | Orta | ✅ `f7d7f79` (sahte testler gerçeğe çevrildi) |
+| 1.5 | `ui/components/input_composer.gd` | Mention/slash autocomplete, klavye, görsel eki (459–527, 745–928) | Orta | ✅ `d83cfb4` (Test 1 gerçeğe çevrildi) |
+| 1.6 | `ui/controllers/chat_export_actions.gd` | Export, Copy Chat, per-task copy, history export dialog (606–688, 972–1029) | Düşük | ✅ `1c81cec` (+5 test) |
+| 1.7 | `ui/controllers/chat_session_controller.gd` | New/load/save/clear, history panel olayları, checkpoint/pause/resume (930–1097, 1338–1389, 1558–1577) | Orta-yüksek | ⏳ |
+| 1.8 | `ui/presenters/session_replay_renderer.gd` | `_rebuild_ui_stream_from_session` (1098–1180) | Orta | ⏳ |
+| 1.9 | `ui/presenters/agent_event_presenter.gd` | Ajan sinyal dinleyicileri, stream tamponu, activity/reasoning/thinking kartları (1623–2331) | **Yüksek** — en son | ⏳ |
 
-**Hedef:** ChatDock ≤ ~500 satır; yalnızca sahne bağlantısı + birimlerin kompozisyonu.
+**İlerleme:** 2349 → 1539 satır (1.1–1.6). **Hedef:** ChatDock ≤ ~500 satır; yalnızca sahne bağlantısı + birimlerin kompozisyonu.
 **Faz sonu:** editörde elle duman testi (aşağıdaki kontrol listesi) — headless testler UI'ın gerçek hissini kanıtlamaz.
 
 ## Faz 2 — AgentRunner
@@ -70,9 +70,13 @@ Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur
 
 ## Okurken bulunanlar (ayrı commit, önce doğrulanacak)
 
+0. ✅ **Düzeltildi (`d5efc41`) — Test runner açığı:** çalışma anında çöken bir paket `[PASS] Unknown (0/0)` sayılıyor, koşu yeşil kalıyordu. Artık FAIL. 1af07d3 bazında gizli çökme yoktu (doğrulandı).
+
 1. **Şüpheli bug — Retry yolu:** `ErrorCard.retry_requested`, `agent_runner.start_task`'ı doğrudan çağırıyor; `_start_task_prompt` atlanıyor. Sonuç olarak `agent_context.begin_task`, mention çözümleme ve checkpoint sıfırlama yapılmıyor olabilir, yani yeniden denenen task transcript/export'ta eksik görünebilir. Test ile doğrulanacak.
 2. **Ölü değişken:** `_stream_is_envelope` hiçbir yerde `true` yapılmıyor.
 3. **Tekrarlı kontrol:** `_resume_paused_task` içinde `current_session == null` iki kez kontrol ediliyor.
+5. **Ölü kod:** `report_task_stop` hiçbir yerden çağrılmıyor; `ToolPresentation.format_limit_stop_reason` yalnızca testte kullanılıyor.
+6. **Sahte testler (kalan):** `test_ui_ux_queue_and_input.gd` Test 10 hâlâ düz Array üzerinde çalışıyor. Benzer "kendi ifadesini test eden" testler için Faz 3'te tarama yapılacak.
 4. **Tema dışı renkler:** Kuyruk panelinde `Color(0.7, 0.7, 0.7)`, `Color(0.9, 0.4, 0.4)` gibi sabit renkler var (tema token'ı değil).
 
 ## Editör Duman Testi Kontrol Listesi (Faz 1 sonu)
