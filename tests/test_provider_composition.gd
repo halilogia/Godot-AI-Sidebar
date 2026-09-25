@@ -99,7 +99,13 @@ static func run() -> Dictionary:
 	# hiçbir sinyali runner'a veya model çubuğuna ulaşmaz; yenisinin model listesi ulaşır.
 	# Eski provider'dan kalan "AGY hazırlanıyor" durumu sıfırlanır.
 	dock._stream.agy_preparing = true
+	# Ayar kaydı sırasında görev çalışıyor ve eski provider'ın isteği sürüyor: görev kullanıcı
+	# adına durdurulur (Paused, "devam et" ile sürer) ve eski istek iptal edilir; aksi halde eski
+	# yanıt yeni provider'a gelir ya da (AGY'ye geçişte) runner sonsuza kadar bekler.
+	runner.current_state = AISidebarAgentRunner.AgentState.EXECUTING
+	nm._is_request_active = true
 	dock._rebuild_provider()
+	var inflight_closed = not runner.is_running() and not nm._is_request_active and dock._tasks.is_user_stopped
 	var p2 = host.provider
 	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2 and not dock._stream.agy_preparing
 	var same_nm = host.network_manager == nm and p2.network_manager == nm
@@ -110,11 +116,11 @@ static func run() -> Dictionary:
 	var stale_ignored = dock.model_selector.item_count != 3
 	p2.models_fetched.emit(["m1", "m2"])
 	var fresh_shown = dock.model_selector.item_count == 2 and dock.model_selector.get_item_text(0) == "m1"
-	if switched and same_nm and nm_single and old_detached and stale_ignored and fresh_shown:
+	if switched and same_nm and nm_single and inflight_closed and old_detached and stale_ignored and fresh_shown:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T2 (provider switch) failed: switched=%s nm=%s nm_single=%s detached=%s stale=%s fresh=%s" % [str(switched), str(same_nm), str(nm_single), str(old_detached), str(stale_ignored), str(fresh_shown)])
+		errors.append("T2 (provider switch) failed: switched=%s nm=%s nm_single=%s inflight_closed=%s detached=%s stale=%s fresh=%s" % [str(switched), str(same_nm), str(nm_single), str(inflight_closed), str(old_detached), str(stale_ignored), str(fresh_shown)])
 
 	# 3. AGY hazırlık rozeti: hazır değil -> "hazırlanıyor"; hazır + boşta -> "Hazır";
 	# hazır + ajan çalışıyor -> "Thinking..."; hazırlık durumu olmayan provider rozete dokunmaz.

@@ -101,7 +101,11 @@ func _notification(what: int) -> void:
 		_queue_panel.free()
 
 ## Provider'ı config'e göre yeniden kurdurur; eski provider'dan kalan hazırlık durumu sıfırlanır.
+## Çalışan görev önce kullanıcı adına durdurulur (Paused; "devam et" ile yeni provider'da sürer):
+## eski provider'ın isteğine yanıt verecek kimse kalmayabilir.
 func _rebuild_provider() -> void:
+	if _tasks:
+		_tasks.stop_by_user()
 	if _stream:
 		_stream.agy_preparing = false
 	if agent_host:

@@ -30,6 +30,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Uzun model düşünceleri (thinking) kesilmiyor: kart 3000 yerine 20.000 karaktere kadar gösteriyor, transcript / export 1000 yerine 16.000 karaktere kadar saklıyor.
 * Kod blokları komşu satırları örtmüyor; kalın / kod metni gövdeyle aynı boyutta.
 * Onay modu ekranda iki kez yazmıyor: durum rozeti yalnızca "Hazır" gösteriyor, mod model çubuğundaki butonda.
+* Ajan çalışırken ayarlar kaydedilirse görev "Paused" olarak durduruluyor ("devam et" ile yeni provider'da sürüyor); eski isteğin cevabı yeni provider'a karışmıyor, AGY'ye geçişte ajan asılı kalmıyor.
 * `/analyze`, `/fix` gibi ajanı başlatan slash komutları ekli görseli artık modele gönderiyor (ajan meşgulse kuyruğa görselle alınıyor); `/help` gibi yerel komutlar eki silmiyor.
 * Eski sürümlerde `/clear` kullanılmış oturumlar History'den yüklenince `/clear`'ın yerel yanıtı artık modele gönderilmiyor.
 * Kuyrukta birden fazla mesaj varken görev hatayla bitince (veya hatadan hemen sonra Retry'a basılınca) kuyruktaki bir mesaj kaybolmuyor ve çalışan görevin kaydı "iptal" görünmüyor.

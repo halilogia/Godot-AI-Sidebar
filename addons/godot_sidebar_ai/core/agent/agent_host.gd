@@ -36,11 +36,14 @@ static func create_provider(provider_type: String, p_network_manager: AISidebarN
 		return AISidebarOpenAICompatibleProvider.new(p_network_manager)
 	return AISidebarAGYProvider.new()
 
-## Config'e göre provider'ı (yeniden) kurar: eskisinin alt sürecini durdurur, yenisini bağlar,
+## Config'e göre provider'ı (yeniden) kurar: eskisinin süren isteğini iptal eder ve alt sürecini durdurur, yenisini bağlar,
 ## ısıtır (pre_warm) ve runner'ı ona geçirir.
 func rebuild_provider() -> void:
 	var cfg = AISidebarConfig.load_config()
 	var prov_type = cfg.get("provider_type", "antigravity_cli")
+	# Süren istek kapatılır: yanıtı ortak NetworkManager üzerinden yeni provider'a gelmesin.
+	if provider:
+		provider.cancel()
 	if provider and provider.has_method("stop_process"):
 		provider.stop_process()
 	_bind_provider(create_provider(prov_type, network_manager), true)
