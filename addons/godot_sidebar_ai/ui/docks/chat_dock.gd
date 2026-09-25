@@ -736,6 +736,10 @@ func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -
 	var result = AISidebarSlashCommandManager.execute_command(cmd_name, cmd_args, exec_context)
 	var action = result.get("action", "")
 	
+	if action == "clear_chat":
+		_on_clear_pressed()
+		return
+		
 	if action == "local_response":
 		var cmd_bubble = AISidebarMessageBubble.new("command", raw_text)
 		cmd_bubble.meta_clicked.connect(_on_meta_clicked)
@@ -746,8 +750,7 @@ func _handle_slash_command_execution(parsed_cmd: Dictionary, raw_text: String) -
 		assistant_bubble.meta_clicked.connect(_on_meta_clicked)
 		_add_stream_component(assistant_bubble)
 		
-		# /clear önceki sohbeti base listeye sabitler (ChatSessionStore).
-		_sessions.record_local_command(raw_text, reply_text, cmd_name == "clear")
+		_sessions.record_local_command(raw_text, reply_text)
 		_update_header_title()
 		return
 		

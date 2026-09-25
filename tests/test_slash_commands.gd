@@ -10,6 +10,8 @@ const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/se
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
+const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
+const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 
 class MockSlashCommandProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
@@ -157,12 +159,9 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 8: get_suggestions öneri filtreleme başarısız.")
 		
-	# Test 9: /help ve /clear Yerel İcra (Local Response)
+	# Test 9: /help yerel yanıt; /clear yanıt balonu üretmez, temizliği ChatDock'a bırakır
 	var help_res = AISidebarSlashCommandManager.execute_command("help", "")
-	var clear_ctx = AISidebarAgentContext.new()
-	clear_ctx.add_user_message("Mesaj 1")
-	clear_ctx.add_assistant_message("Mesaj 2")
-	var clear_res = AISidebarSlashCommandManager.execute_command("clear", "", {"agent_context": clear_ctx})
+	var clear_res = AISidebarSlashCommandManager.execute_command("clear", "")
 	
 	var help_msg = help_res.get("message", "")
 	var help_has_all = true
@@ -172,11 +171,39 @@ static func run() -> Dictionary:
 			break
 			
 	if help_res.get("action") == "local_response" and help_has_all \
-		and clear_res.get("action") == "local_response" and clear_ctx.messages.size() == 0:
+		and clear_res.get("action") == "clear_chat" and not clear_res.has("message"):
 		passed += 1
 	else:
 		failed += 1
 		errors.append("Test 9: /help veya /clear yerel icra davranışı hatalı.")
+		
+	# Test 9b: Dock'ta /clear = Clear butonu. Akış temizlenir, bilgi balonu eklenmez,
+	# context ve oturum içeriği boşalır.
+	var dock = ChatDockScene.instantiate()
+	dock._ready()
+	dock._auto_scroll_enabled = false
+	dock._sessions.context = AISidebarAgentContext.new()
+	dock._sessions.start_new()
+	var dock_sid = dock._sessions.current_id()
+	dock._sessions.context.add_user_message("Eski mesaj")
+	dock._sessions.save()
+	for child in dock.message_stream.get_children():
+		child.free()
+	dock.message_stream.add_child(Label.new())
+	dock._handle_slash_command_execution(AISidebarSlashCommandManager.parse("/clear"), "/clear")
+	var stream_cleared = true
+	for child in dock.message_stream.get_children():
+		if not child.is_queued_for_deletion():
+			stream_cleared = false
+	if stream_cleared and dock._sessions.context.messages.is_empty() and dock._sessions.current.messages.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 9b: /clear sohbeti temizlemedi (akış=%s, context=%d, oturum=%d)." % [str(stream_cleared), dock._sessions.context.messages.size(), dock._sessions.current.messages.size()])
+	for child in dock.message_stream.get_children():
+		child.free()
+	dock.free()
+	AISidebarChatManager.delete_session(dock_sid)
 		
 	# Test 10: Agent Görevi Başlatan Komutların Prompt Üretimi
 	var ana_res = AISidebarSlashCommandManager.execute_command("analyze", "")

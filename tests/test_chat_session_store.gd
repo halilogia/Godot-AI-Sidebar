@@ -3,7 +3,7 @@ extends RefCounted
 
 ## ChatSessionStore için DETERMINISTIK testler (UI yok; gerçek ChatManager diski kullanılır,
 ## oluşturulan her oturum test sonunda silinir).
-## Kapsar: yeni oturum, kaydet/yükle round-trip, bulunamayan oturum, /clear base sabitleme,
+## Kapsar: yeni oturum, kaydet/yükle round-trip, bulunamayan oturum, Clear'ın kalıcılığı,
 ## yerel komut kaydı, Clear, pause checkpoint (resumable / terminal), yeni task'ın checkpoint'i
 ## geçersiz kılması, rename.
 
@@ -62,35 +62,36 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T3 (missing session) failed.")
 
-	# 4. /clear: önceki sohbet base'e sabitlenir, context boşalır; sonraki kayıt base + yeni mesajlar
+	# 4. Clear (buton ve /clear) sonrası diskten yüklenen oturum boştur; sonraki kayıt
+	# yalnızca yeni mesajları içerir (eski sohbet geri gelmez).
 	var st4 = _make()
 	created_ids.append(st4.current_id())
 	st4.context.messages.append(_msg("user", "ilk"))
 	st4.save()
-	st4.record_local_command("/clear", "Temizlendi", true)
-	var ctx_cleared = st4.context.messages.is_empty()
+	st4.clear_contents()
+	var reloaded_empty = st4.load_by_id(st4.current_id()) and st4.context.messages.is_empty()
 	st4.context.messages.append(_msg("user", "sonraki"))
 	st4.save()
 	var contents: Array = []
-	for m in st4.current.messages:
+	for m in AISidebarChatManager.load_session(st4.current_id()).messages:
 		contents.append(str(m.get("content", "")))
-	if ctx_cleared and contents == ["ilk", "/clear", "Temizlendi", "sonraki"]:
+	if reloaded_empty and contents == ["sonraki"]:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T4 (/clear base pinning) failed: " + str(contents))
+		errors.append("T4 (clear persists) failed: empty=%s contents=%s" % [str(reloaded_empty), str(contents)])
 
-	# 5. Yerel (clear olmayan) komut. BİLİNEN BUG (REFACTOR_PLAN bulgu #7): context varken
-	# save() mesajları base + context'ten yeniden kurduğu için eklenen komut kaybolur.
+	# 5. Yerel komut (/help). BİLİNEN BUG (REFACTOR_PLAN bulgu #7): context varken
+	# save() mesajları context'ten yeniden kurduğu için eklenen komut kaybolur.
 	# Düzeltilince bu test bilerek kırmızıya döner ve güncellenir.
 	var st5 = _make()
 	created_ids.append(st5.current_id())
-	st5.record_local_command("/help", "Komutlar...", false)
+	st5.record_local_command("/help", "Komutlar...")
 	var dropped_with_context = st5.current.messages.is_empty()
 	var st5b = AISidebarChatSessionStore.new()
 	st5b.start_new()
 	created_ids.append(st5b.current_id())
-	st5b.record_local_command("/help", "Komutlar...", false)
+	st5b.record_local_command("/help", "Komutlar...")
 	var roles: Array = []
 	for m in st5b.current.messages:
 		roles.append(str(m.get("role", "")))
