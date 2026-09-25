@@ -19,6 +19,7 @@ signal plan_applied()
 signal plan_cancelled()
 
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
+const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
@@ -88,7 +89,7 @@ func _setup_ui() -> void:
 	_plan_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	_plan_lbl.add_theme_font_size_override("normal_font_size", 11)
 	_plan_lbl.add_theme_color_override("default_color", Color(0.88, 0.92, 0.96))
-	_plan_lbl.text = _build_display_text()
+	_plan_lbl.text = AISidebarMarkdownRenderer.to_bbcode(_build_display_text())
 	_vbox.add_child(_plan_lbl)
 
 	_buttons_bar = HBoxContainer.new()

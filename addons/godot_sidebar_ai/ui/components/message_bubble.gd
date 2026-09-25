@@ -11,6 +11,7 @@ signal copy_code_requested(code_text: String)
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
+const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 
 var role: String = "assistant"
 var text_content: String = ""
@@ -316,7 +317,9 @@ func _render_content() -> void:
 	_content_label.text = formatted
 
 func _format_text_with_links_and_code(raw: String) -> String:
-	var result = raw
+	# Asistan / komut yanıtı Markdown olarak işlenir; kullanıcı metni düz kalır.
+	# Her iki yolda köşeli parantezler kaçırılır (metin BBCode enjekte edemez).
+	var result = AISidebarMarkdownRenderer.escape_bbcode(raw) if role == "user" else AISidebarMarkdownRenderer.to_bbcode(raw)
 	# Dosya yollarını tıklanabilir linke dönüştür (res://...)
 	var regex = RegEx.new()
 	regex.compile("(res://[a-zA-Z0-9_/\\.\\-]+)")
