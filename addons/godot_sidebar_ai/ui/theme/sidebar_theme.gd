@@ -18,6 +18,7 @@ const SPACE_XL: int = 24
 const RADIUS_SM: int = 4
 const RADIUS_MD: int = 6
 const RADIUS_LG: int = 8
+const RADIUS_PILL: int = 999
 
 # 3. Typography Tokens
 const FONT_SIZE_MICRO: int = 9
@@ -198,6 +199,19 @@ static func create_ghost_button_style(is_hover: bool = false) -> StyleBoxFlat:
 	style.set_corner_radius_all(RADIUS_SM)
 	style.content_margin_left = SPACE_XS + 2
 	style.content_margin_right = SPACE_XS + 2
+	style.content_margin_top = SPACE_XXS + 1
+	style.content_margin_bottom = SPACE_XXS + 1
+	return style
+
+## Renkli durum hapı (onay modu gibi): vurgu renginin soluk dolgusu + ince kenarlık, tam yuvarlak.
+static func create_pill_style(accent: Color, is_hover: bool = false) -> StyleBoxFlat:
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(accent, 0.20 if is_hover else 0.12)
+	style.border_color = Color(accent, 0.70 if is_hover else 0.45)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(RADIUS_PILL)
+	style.content_margin_left = SPACE_SM
+	style.content_margin_right = SPACE_SM + 1
 	style.content_margin_top = SPACE_XXS + 1
 	style.content_margin_bottom = SPACE_XXS + 1
 	return style

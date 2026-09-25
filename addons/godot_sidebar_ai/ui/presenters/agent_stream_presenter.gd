@@ -9,7 +9,6 @@ signal answer_text_started
 
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
-const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarReasoningCard = preload("res://addons/godot_sidebar_ai/ui/components/reasoning_card.gd")
 const AISidebarThinkingCard = preload("res://addons/godot_sidebar_ai/ui/components/thinking_card.gd")
@@ -56,8 +55,7 @@ func on_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: St
 	match new_state:
 		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
 			stop_thinking_timer()
-			var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
-			set_status.call(state_desc + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
+			set_status.call(state_desc, AISidebarTheme.COLOR_SUCCESS)
 		AISidebarAgentRunner.AgentState.PLANNING:
 			# Yeni LLM turu: thinking kartı sıfırlanır (sonraki thinking yeni kart açar),
 			# rozet yanıt gelene kadar "Waiting" gösterir (thinking varsayılmaz).

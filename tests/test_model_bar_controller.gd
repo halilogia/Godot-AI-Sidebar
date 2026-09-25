@@ -24,21 +24,39 @@ static func run() -> Dictionary:
 	ctrl.approve_mode_btn = Button.new()
 	ctrl.set_status = func(t, _c): badge.append(t)
 
-	# 1. Onay modu döngüsü: Manuel → Otomatik → Tam otomatik → Manuel; rozet yalnızca ajan boştayken
+	# 1. Onay modu döngüsü: Manuel → Otomatik → Tam otomatik → Manuel. Mod yalnızca butonda
+	# görünür (ikon + renkli hap); durum rozeti modu tekrar etmez, mod değişimi rozete dokunmaz.
 	AISidebarPermissionPolicy.set_auto_approve_mode(AISidebarPermissionPolicy.AutoApproveMode.MANUAL)
-	ctrl.is_agent_idle = func(): return true
 	ctrl.on_approve_mode_pressed()
-	var step1 = AISidebarPermissionPolicy.get_auto_approve_mode() == AISidebarPermissionPolicy.AutoApproveMode.AUTO and ctrl.approve_mode_btn.text == AISidebarI18n.get_text("mode_auto") and badge.size() == 1
-	ctrl.is_agent_idle = func(): return false
+	var step1 = AISidebarPermissionPolicy.get_auto_approve_mode() == AISidebarPermissionPolicy.AutoApproveMode.AUTO and ctrl.approve_mode_btn.text == AISidebarI18n.get_text("mode_auto")
 	ctrl.on_approve_mode_pressed()
-	var step2 = AISidebarPermissionPolicy.get_auto_approve_mode() == AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO and badge.size() == 1
+	var step2 = AISidebarPermissionPolicy.get_auto_approve_mode() == AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO and ctrl.approve_mode_btn.text == AISidebarI18n.get_text("mode_full_auto")
 	ctrl.on_approve_mode_pressed()
 	var step3 = AISidebarPermissionPolicy.get_auto_approve_mode() == AISidebarPermissionPolicy.AutoApproveMode.MANUAL and ctrl.approve_mode_btn.text == AISidebarI18n.get_text("mode_manual")
-	if step1 and step2 and step3:
+	var no_badge = badge.is_empty()
+	var styled = ctrl.approve_mode_btn.icon != null and ctrl.approve_mode_btn.has_theme_stylebox_override("normal") and ctrl.approve_mode_btn.tooltip_text.contains(AISidebarI18n.get_text("mode_manual_desc"))
+	if step1 and step2 and step3 and no_badge and styled:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T1 (approve mode cycle) failed: %s %s %s badge=%s" % [str(step1), str(step2), str(step3), str(badge)])
+		errors.append("T1 (approve mode cycle) failed: %s %s %s no_badge=%s styled=%s badge=%s" % [str(step1), str(step2), str(step3), str(no_badge), str(styled), str(badge)])
+
+	# 1b. Durum rozeti mod adını tekrar etmez (ekranda iki kez "Manual" yazmasın)
+	var ready_txt = AISidebarI18n.get_text("status_ready")
+	var mode_names_absent = true
+	for key in ["mode_manual", "mode_auto", "mode_full_auto"]:
+		if ready_txt.contains(AISidebarI18n.get_text(key)):
+			mode_names_absent = false
+	var specs_ok = true
+	for m in [AISidebarPermissionPolicy.AutoApproveMode.MANUAL, AISidebarPermissionPolicy.AutoApproveMode.AUTO, AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO]:
+		var spec = AISidebarModelBarController.approve_mode_spec(m)
+		if not FileAccess.file_exists("res://addons/godot_sidebar_ai/assets/icons/" + str(spec["icon"]) + ".svg"):
+			specs_ok = false
+	if mode_names_absent and specs_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T1b (badge/mode spec) failed: absent=%s icons=%s" % [str(mode_names_absent), str(specs_ok)])
 
 	# 2. Liste doldurma kayıtlı modeli seçer; seçim ve gelen liste config'e yazılır
 	var cfg = AISidebarConfig.load_config()

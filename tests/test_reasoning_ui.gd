@@ -364,4 +364,18 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T18 (long thinking kept) failed: len=%d card_full=%s stored_len=%d trunc=%s" % [long_thought.length(), str(card_full), stored.length(), str(stored_trunc)])
 
+	# 19. Boşta rozeti onay modunu tekrar etmez: mod yalnızca model çubuğundaki butonda görünür
+	var dock19 = _dock()
+	dock19._stream.on_state_changed(AISidebarAgentRunner.AgentState.IDLE, "Ready")
+	var badge_idle = dock19.status_badge.text
+	dock19._stream.on_state_changed(AISidebarAgentRunner.AgentState.COMPLETED, "Completed")
+	var badge_done = dock19.status_badge.text
+	var mode_btn_txt = dock19.approve_mode_btn.text
+	dock19.free()
+	if badge_idle == "Ready" and badge_done == "Completed" and not mode_btn_txt.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T19 (badge without mode) failed: idle='%s' done='%s' btn='%s'" % [badge_idle, badge_done, mode_btn_txt])
+
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}

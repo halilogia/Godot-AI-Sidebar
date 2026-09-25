@@ -34,9 +34,9 @@ static func apply(dock: Control) -> void:
 		dock.model_selector.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
 		dock.model_selector.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	if dock.approve_mode_btn:
-		dock.approve_mode_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XXS))
-		dock.approve_mode_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XXS))
+		# Renkli pill stili ve ikon moda göre ModelBarController.update_approve_mode_ui'da atanır.
 		dock.approve_mode_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		dock.approve_mode_btn.add_theme_constant_override("h_separation", AISidebarTheme.SPACE_XXS + 1)
 	for btn in [dock.refresh_models_btn, dock.settings_btn]:
 		_style_ghost_boxes(btn)
 

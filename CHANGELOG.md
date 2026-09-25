@@ -24,12 +24,14 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * `/help` gibi yerel komutlar sohbet kaydında kalıyor ve History'den yüklenince görünüyor; modele gönderilmiyor.
 * Uzun model düşünceleri (thinking) kesilmiyor: kart 3000 yerine 20.000 karaktere kadar gösteriyor, transcript / export 1000 yerine 16.000 karaktere kadar saklıyor.
 * Kod blokları komşu satırları örtmüyor; kalın / kod metni gövdeyle aynı boyutta.
+* Onay modu ekranda iki kez yazmıyor: durum rozeti yalnızca "Hazır" gösteriyor, mod model çubuğundaki butonda.
 * History replay'de yanıtlanmış `ask_user` kartı akışı durdurmuyor; uzun başlıklar header butonlarını taşırmıyor.
 
 ### Eklenenler
 * Asistan cevaplarında ve plan kartında Markdown (başlık, kalın, italik, kod, liste, alıntı).
 * Model yanıtı beklenirken akışta canlı bekleme göstergesi (aşama + süre, uzun bekleyişte iptal ipucu).
 * Emoji yerine tek renkli Lucide ikonları (`AISidebarStatusIcon`, boyanabilir SVG'ler).
+* Onay modu butonu ikonlu renkli hap: Manuel (el, sarı), Auto (kalkan, yeşil), Full Auto (şimşek, mor); ipucu modu açıklıyor (TR/EN).
 * README için gerçek arayüz bileşenlerinden ekran görüntüsü üreten `tools/readme_shots.gd`.
 
 ---
