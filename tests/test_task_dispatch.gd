@@ -6,8 +6,7 @@ extends RefCounted
 ## slash komut yolları ve kuyruk dağıtımı. Oluşturulan oturumlar test sonunda silinir.
 
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
-const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
-const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
@@ -26,21 +25,11 @@ static func _make_dock() -> Dictionary:
 	dock._auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
-	var ctx = AISidebarAgentContext.new()
-	var runner = AISidebarAgentRunner.new(SilentProvider.new(), ctx)
-	dock.agent_context = ctx
-	dock._sessions.context = ctx
-	dock._export_actions.agent_context = ctx
-	dock._checklist_tracker.context = ctx
-	dock._activity.context = ctx
-	dock._interaction.context = ctx
-	dock.agent_runner = runner
-	dock._interaction.runner = runner
-	dock._tasks.context = ctx
-	dock._tasks.runner = runner
-	dock._connect_agent_runner()
+	var host = AISidebarAgentHost.new()
+	host.set_provider(SilentProvider.new())
+	dock.attach_agent_host(host)
 	dock._sessions.start_new()
-	return {"dock": dock, "ctx": ctx, "runner": runner}
+	return {"dock": dock, "ctx": host.context, "runner": host.runner}
 
 static func _send(dock, text: String) -> void:
 	dock.input_field.text = text
@@ -54,6 +43,7 @@ static func _user_bubbles(dock) -> Array:
 	return out
 
 static func _dispose(dock, created: Array) -> void:
+	var host = dock.agent_host
 	if dock.agent_runner.is_running():
 		dock.agent_runner.stop()
 	dock._stream.stop_thinking_timer()
@@ -61,6 +51,7 @@ static func _dispose(dock, created: Array) -> void:
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.free()
+	host.free()
 
 static func run() -> Dictionary:
 	var passed = 0

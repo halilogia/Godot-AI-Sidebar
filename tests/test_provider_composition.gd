@@ -1,17 +1,18 @@
 @tool
 extends RefCounted
 
-## Provider kompozisyonu (Refactor Faz 2.0 sabitleme testleri): config'e göre provider seçimi ve
+## Provider kompozisyonu (AgentHost + ChatDock, Refactor Faz 2.0): config'e göre provider seçimi ve
 ## NetworkManager bağı, ayar kaydında runner'ın yeni provider'a geçmesi (eski provider'ın bağı
 ## kopar), model listesi ve AGY hazırlık rozeti aktarımı, görsel desteği, Refresh ve kapanışta alt
-## sürecin durdurulması. AGY dalı burada kurulmaz: pre_warm gerçek 'agy' sürecini başlatır.
+## sürecin durdurulması. AGY dalı config ile kurulmaz: pre_warm gerçek 'agy' sürecini başlatır.
 ## Kullanıcının config.json'u test başında aynen saklanır ve sonunda geri yazılır.
 
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
-const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarOpenAICompatibleProvider = preload("res://addons/godot_sidebar_ai/core/providers/openai_compatible_provider.gd")
+const AISidebarAGYProvider = preload("res://addons/godot_sidebar_ai/core/providers/agy_cli_provider.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
@@ -38,42 +39,32 @@ class PlainProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
 		pass
 
-## Editör yolundaki bağlama ile aynı; provider başlangıçta PlainProvider'dır.
+## Editör yolundaki bağlama ile aynı (host plugin.gd yerine burada kurulur); provider
+## başlangıçta PlainProvider'dır.
 static func _make_dock() -> Dictionary:
 	var dock = ChatDockScene.instantiate()
 	dock._ready()
 	dock._auto_scroll_enabled = false
 	for child in dock.message_stream.get_children():
 		child.free()
-	var ctx = AISidebarAgentContext.new()
-	var runner = AISidebarAgentRunner.new(PlainProvider.new(), ctx)
-	dock.agent_context = ctx
-	dock._sessions.context = ctx
-	dock._export_actions.agent_context = ctx
-	dock._checklist_tracker.context = ctx
-	dock._activity.context = ctx
-	dock._interaction.context = ctx
-	dock.agent_runner = runner
-	dock._interaction.runner = runner
-	dock._tasks.context = ctx
-	dock._tasks.runner = runner
-	dock._connect_agent_runner()
-	return {"dock": dock, "runner": runner}
+	var host = AISidebarAgentHost.new()
+	host.set_provider(PlainProvider.new())
+	dock.attach_agent_host(host)
+	return {"dock": dock, "host": host, "runner": host.runner}
 
-## Testin kullandığı provider'ı dock'a ve runner'a yerleştirir (hazırlık sinyali dahil).
+## Testin kullandığı provider'ı host üzerinden bağlar (runner ve hazırlık aktarımı dahil).
 static func _use_provider(dock, p) -> void:
-	dock.provider = p
-	dock.agent_runner.set_provider(p)
-	if p != null and p.has_signal("readiness_changed") and not p.readiness_changed.is_connected(dock._on_provider_readiness_changed):
-		p.readiness_changed.connect(dock._on_provider_readiness_changed)
+	dock.agent_host.set_provider(p)
 
 static func _dispose(dock) -> void:
+	var host = dock.agent_host
 	if dock.agent_runner.is_running():
 		dock.agent_runner.stop()
 	dock._stream.stop_thinking_timer()
 	for child in dock.message_stream.get_children():
 		child.free()
 	dock.free()
+	host.free()
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -88,14 +79,15 @@ static func run() -> Dictionary:
 
 	var made = _make_dock()
 	var dock = made["dock"]
+	var host = made["host"]
 	var runner = made["runner"]
 
-	# 1. openai_compatible: OpenAI provider ortak NetworkManager ile kurulur, runner ona geçer
-	dock._setup_provider()
-	var p1 = dock.provider
-	var nm = dock.network_manager
+	# 1. openai_compatible: OpenAI provider host'un NetworkManager'ı ile kurulur, runner ona geçer
+	dock._rebuild_provider()
+	var p1 = host.provider
+	var nm = host.network_manager
 	var is_openai = p1 is AISidebarOpenAICompatibleProvider
-	var nm_shared = is_openai and nm != null and p1.network_manager == nm and nm.get_parent() == dock
+	var nm_shared = is_openai and nm != null and p1.network_manager == nm and nm.get_parent() == host
 	var runner_on_p1 = runner.provider == p1 and p1.response_received.is_connected(runner._on_provider_response)
 	if is_openai and nm_shared and runner_on_p1:
 		passed += 1
@@ -107,10 +99,10 @@ static func run() -> Dictionary:
 	# hiçbir sinyali runner'a veya model çubuğuna ulaşmaz; yenisinin model listesi ulaşır.
 	# Eski provider'dan kalan "AGY hazırlanıyor" durumu sıfırlanır.
 	dock._stream.agy_preparing = true
-	dock._setup_provider()
-	var p2 = dock.provider
+	dock._rebuild_provider()
+	var p2 = host.provider
 	var switched = p2 != p1 and p2 is AISidebarOpenAICompatibleProvider and runner.provider == p2 and not dock._stream.agy_preparing
-	var same_nm = dock.network_manager == nm and p2.network_manager == nm
+	var same_nm = host.network_manager == nm and p2.network_manager == nm
 	var old_detached = p1.response_received.get_connections().is_empty() and p1.chunk_received.get_connections().is_empty() and p1.error_occurred.get_connections().is_empty() and p1.models_fetched.get_connections().is_empty()
 	p1.models_fetched.emit(["stale-a", "stale-b", "stale-c"])
 	var stale_ignored = dock.model_selector.item_count != 3
@@ -190,6 +182,21 @@ static func run() -> Dictionary:
 		errors.append("T6 (exit_tree stops provider process) failed: stop_calls=%d" % fake.stop_calls)
 
 	_dispose(dock)
+
+	# 7. Provider seçimi: openai_compatible -> OpenAI (verilen NetworkManager ile), diğer her şey
+	# -> AGY. Seçim alt süreç başlatmaz (ısıtma yalnızca rebuild_provider'da).
+	var sel_nm = AISidebarAgentHost.AISidebarNetworkManager.new()
+	var sel_openai = AISidebarAgentHost.create_provider("openai_compatible", sel_nm)
+	var sel_agy = AISidebarAgentHost.create_provider("antigravity_cli", sel_nm)
+	var sel_unknown = AISidebarAgentHost.create_provider("unknown", null)
+	var openai_ok = sel_openai is AISidebarOpenAICompatibleProvider and sel_openai.network_manager == sel_nm
+	var agy_ok = sel_agy is AISidebarAGYProvider and sel_unknown is AISidebarAGYProvider and sel_agy._pid == -1 and not sel_agy.is_ready()
+	sel_nm.free()
+	if openai_ok and agy_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T7 (create_provider) failed: openai=%s agy=%s" % [str(openai_ok), str(agy_ok)])
 
 	# Kullanıcı config'ini aynen geri yükle
 	if had_file:

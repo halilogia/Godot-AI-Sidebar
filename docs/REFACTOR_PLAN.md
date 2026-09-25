@@ -1,6 +1,6 @@
 # Refactor Planı — Ertelenen Borcun Ödenmesi
 
-> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · Sıradaki: Faz 2 (AgentRunner) · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
+> Durum: **Faz 1 tamamlandı ve `main`'e birleştirildi (2026-09-25)** · **Faz 2 (AgentRunner) sürüyor** (`refactor/agent-runner`) · Başlangıç: 2026-09-25 · Baz commit: `1af07d3`
 > Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
@@ -75,15 +75,18 @@ ChatGPT'nin PR #1 diff incelemesindeki dört madde koda karşı doğrulandı:
 
 **Kurallar (Faz 1'den):** Önce sabitleme testi, sonra taşıma. Her adımda typecheck + test_runner yeşil ve motor hata/uyarı profili aynı. Bulunan bug ayrı commit'te, kırmızıya dönen testle. Faz sonunda `verify.ps1 -Live` (artık fail-closed) yerelde koşulur.
 
-| Adım | Yeni birim | İçerik | Risk |
-|---|---|---|---|
-| 2.0 | `core/agent/provider_factory.gd` (veya `plugin.gd` kompozisyonu) | Provider + NetworkManager oluşturma ChatDock'tan çıkar; ChatDock provider'ı enjekte alır. `AGENTS.md` §3.1 çelişkisi kapanır. Karar notu: factory mi, `plugin.gd` composition root mu | Orta |
-| 2.1 | `core/agent/agent_telemetry.gd` | ~30 sayaç/süre alanı, `_record_tool_telemetry`, `_classify_telemetry_op`, `_record_category_time`, `_finish_task` içindeki metrik sözlüğü | Orta |
-| 2.2 | `core/agent/pending_interaction.gd` | Bekleyen onay / netleştirme / plan durumu ve onay-red geçişleri | Orta |
-| 2.3 | — | `_on_provider_response` (201 satır) iç adımlara bölünür: parse → boş yanıt / retry → tool dispatch → tamamlama kapısı. Önce her dal için sabitleme testi | **Yüksek** |
-| 2.4 | — | Bağımsızlık: iki `AgentRunner` aynı anda kurulup çalıştırılır (ayrı context, ayrı telemetri, birbirini etkilemez). Ürün Faz 10 (alt ajanlar) ve CLI / MCP köprüsünün önkoşulu | Orta |
+| Adım | Yeni birim | İçerik | Risk | Durum |
+|---|---|---|---|---|
+| 2.0 | `core/agent/agent_host.gd` + `plugin.gd` kompozisyon kökü | Provider + NetworkManager oluşturma ChatDock'tan çıkar; ChatDock host'u enjekte alır. `AGENTS.md` §3.1 çelişkisi kapanır | Orta | ✅ (önce `ProviderCompositionTests` ile sabitlendi) |
+| 2.1 | `core/agent/agent_telemetry.gd` | ~30 sayaç/süre alanı, `_record_tool_telemetry`, `_classify_telemetry_op`, `_record_category_time`, `_finish_task` içindeki metrik sözlüğü | Orta | |
+| 2.2 | `core/agent/pending_interaction.gd` | Bekleyen onay / netleştirme / plan durumu ve onay-red geçişleri | Orta | |
+| 2.3 | — | `_on_provider_response` (201 satır) iç adımlara bölünür: parse → boş yanıt / retry → tool dispatch → tamamlama kapısı. Önce her dal için sabitleme testi | **Yüksek** | |
+| 2.4 | — | Bağımsızlık: iki `AgentRunner` aynı anda kurulup çalıştırılır (ayrı context, ayrı telemetri, birbirini etkilemez). Ürün Faz 10 (alt ajanlar) ve CLI / MCP köprüsünün önkoşulu | Orta | |
 
-**Paylaşılan (statik) durum envanteri:** `verification_pipeline` (`_validators`, `_engine_verifiers`), `permission_policy` (`_tool_risk_registry`), `slash_command_manager` (`_commands`) salt okunur kayıt defteri; paylaşılması sorun değil. `runtime_debugger` izleme durumu (`_is_monitoring`, log offset'leri, `_last_observation`) gerçekten paylaşılan: tek oyun örneği olduğu için anlamlı, ama alt ajanlar oyunu çalıştıramamalı (2.4'te test edilir). `ui_telemetry_tools._registered_sidebar_dock` tek dock referansı.
+**2.0 karar notu — factory değil, kompozisyon birimi + `plugin.gd` kökü.** Yalnızca bir `provider_factory` provider'ın `new` çağrısını gizlerdi; ChatDock yine provider'ı tutar, `models_fetched` / `readiness_changed` / `is_ready` / `supports_vision` / `fetch_models` / `stop_process` için doğrudan altyapıya konuşurdu. Bunun yerine `AISidebarAgentHost` (Node) NetworkManager, provider, context ve runner'ın sahibi oldu: provider seçimi (`create_provider`, ısıtmasız), yeniden kurulum (`rebuild_provider`: eski alt süreç durur, yeni provider bağlanır, ısıtılır, runner ona geçer) ve provider olaylarının aktarımı orada. `plugin.gd` host'u kurar ve dock'a `_ready`'den önce enjekte eder; ChatDock `attach_agent_host()` ile bağlanır. Sıra korunur: dock önce host sinyallerine bağlanır, sonra provider'ı kurdurur; böylece `pre_warm`'ın senkron "AGY hazırlanıyor" olayı rozete ulaşır. Isıtma, runner yeni provider'a geçmeden önce yapılır (eski koddaki sıra). Testlerde üç yerde elle kopyalanan dock bağlaması (`DockAgentWiringTests`, `TaskDispatchTests`, `tools/readme_shots.gd`) tek `attach_agent_host()` çağrısına indi; testler sahte provider'ı `host.set_provider()` ile bağlar.
+Bilinen tek fark: `chat_dock.tscn` editörde eklentisiz, tek başına açılırsa artık provider kurmaz (eskiden `@tool` `_ready`'si AGY sürecini başlatmaya çalışırdı). Eklenti yolunda davranış aynı. Açık konu: dock ağaçtan çıkınca (ör. dock yuvası değişince) AGY süreci durdurulur ve `_ready` tekrar çalışmadığı için yeniden ısıtılmaz; bu eski davranıştır, korunmuştur.
+
+**Paylaşılan (statik) durum envanteri:** `verification_pipeline` (`_validators`, `_engine_verifiers`), `permission_policy` (`_tool_risk_registry`), `slash_command_manager` (`_commands`) salt okunur kayıt defteri; paylaşılması sorun değil. `runtime_debugger` izleme durumu (`_is_monitoring`, log offset'leri, `_last_observation`) gerçekten paylaşılan: tek oyun örneği olduğu için anlamlı, ama alt ajanlar oyunu çalıştıramamalı (2.4'te test edilir). `ui_telemetry_tools._registered_sidebar_dock` tek dock referansı. `debugger_plugin.instance` tek `EditorDebuggerPlugin` referansı (runtime köprüsü; tek oyun örneğiyle aynı gerekçe). UI önbellekleri (`icon_helper` ikon/boya önbelleği, `markdown_renderer` regex ve yazı tipi) saf önbellektir, runner'la ilgisi yoktur.
 
 Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur.
 

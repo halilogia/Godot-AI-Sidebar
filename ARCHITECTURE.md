@@ -34,6 +34,7 @@ graph TD
     end
 
     subgraph Application ["🤖 Application Layer (core/agent/ & core/chat/ & core/commands/)"]
+        AgentHost["agent_host.gd (Kompozisyon: NetworkManager + Provider + Context + Runner)"]
         AgentRunner["agent_runner.gd (State Machine & Streaming Forwarder)"]
         PlanningPolicy["planning_policy.gd (Kapsam Siniflandirici & Mutation Guard)"]
         AgentContext["agent_context.gd (Context Window)"]
@@ -76,6 +77,11 @@ graph TD
     ChatDock --> Controllers
     ChatDock --> Presenters
     ChatDock --> HistoryPanel
+    ChatDock -.->|"attach_agent_host (plugin.gd enjekte eder)"| AgentHost
+    AgentHost --> AgentRunner
+    AgentHost --> AgentContext
+    AgentHost --> AIProvider
+    AgentHost --> NetworkManager
     AgentRunner -.->|"sinyaller"| Presenters
     AgentRunner -.->|"task_completed / error_occurred"| Controllers
     Controllers --> AgentRunner
@@ -113,14 +119,14 @@ graph TD
 
 ## 🧩 Katmanlar ve Sorumlulukları
 
-Giriş noktası: [`plugin.gd`](addons/godot_sidebar_ai/plugin.gd) eklentiyi etkinleştirir, dock'u editöre yerleştirir ve runtime debugger köprüsünü kaydeder.
+Giriş noktası ve kompozisyon kökü: [`plugin.gd`](addons/godot_sidebar_ai/plugin.gd) eklentiyi etkinleştirir, ajan katmanını (`AgentHost`) kurup dock'a enjekte eder, dock'u editöre yerleştirir ve runtime debugger köprüsünü kaydeder. UI provider veya `NetworkManager` oluşturmaz.
 
 ### 1. 🎨 Presentation Katmanı (`ui/`)
 
 AgentRunner sinyallerini presenter'lar dinler; görev akışını controller'lar yönetir; ChatDock yalnızca sahne düğümlerini bağlar ve birimleri birbirine kompoze eder. Bileşenler (`components/`) veri bilmez, yalnızca görünümdür. Faz 1 refactor'ının gerekçesi: `docs/REFACTOR_PLAN.md`.
 
 **Dock (kompozisyon)**
-* **[`chat_dock.gd`](addons/godot_sidebar_ai/ui/docks/chat_dock.gd):** Sahne referansları, birimlerin kurulumu ve bağlanması (`_connect_agent_runner`), provider seçimi, dil/ikon yenileme ve sohbet gezinmesi (New, History yükleme, Clear, karşılama kartı).
+* **[`chat_dock.gd`](addons/godot_sidebar_ai/ui/docks/chat_dock.gd):** Sahne referansları, birimlerin kurulumu ve bağlanması (`attach_agent_host` → `_connect_agent_runner`), dil/ikon yenileme ve sohbet gezinmesi (New, History yükleme, Clear, karşılama kartı). Provider'a doğrudan dokunmaz; model listesi ve AGY hazırlık olaylarını `AgentHost`'tan dinler, ayar kaydında provider'ı host'a yeniden kurdurur.
 * **[`chat_dock_theme.gd`](addons/godot_sidebar_ai/ui/docks/chat_dock_theme.gd):** ChatDock sahne düğümlerine tema ve stil uygular; mantık içermez.
 
 **Controllers (akış ve durum)**
@@ -166,6 +172,7 @@ AgentRunner sinyallerini presenter'lar dinler; görev akışını controller'lar
 * **[`sidebar_theme.gd`](addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd):** Merkezi tema (`AISidebarTheme`): semantik renk tokenları, tipografi, StyleBox fabrikaları.
 
 ### 2. 🤖 Application Katmanı (`core/agent/`, `core/chat/`, `core/commands/`)
+* **[`agent_host.gd`](addons/godot_sidebar_ai/core/agent/agent_host.gd):** Ajan katmanının kompozisyon birimi. `NetworkManager`, provider, `AgentContext` ve `AgentRunner`'ın sahibidir; provider'ı config'e göre kurar (`create_provider`, `rebuild_provider`: eski alt süreç durdurulur, yeni provider ısıtılır, runner ona geçer), model listesi ve hazırlık olaylarını UI'a aktarır. `plugin.gd` kurar ve dock'a enjekte eder; testler `set_provider` ile sahte provider bağlar.
 * **[`agent_runner.gd`](addons/godot_sidebar_ai/core/agent/agent_runner.gd):** Ajan durum makinesini (State Machine) yönetir (`IDLE ➔ PLANNING ➔ EXECUTING ➔ OBSERVING ➔ VERIFYING ➔ COMPLETED`, ayrıca `WAITING_FOR_APPROVAL`, `WAITING_FOR_CLARIFICATION` ve `WAITING_FOR_PLAN_APPROVAL`).
 * **[`planning_policy.gd`](addons/godot_sidebar_ai/core/agent/planning_policy.gd):** Uygulama planlama katmanının **deterministik** karar merkezi. Modelin davranışına bırakılmadan (a) bir isteğin plan gerektirip gerektirmediğini sınıflandırır (`should_plan`), (b) plan fazında hangi araçların engelleneceğini belirler (`is_mutation_blocked`, fail-closed). Risk listesi tekrar yazılmaz; `PermissionPolicy` risk kayıt defteri tek doğruluk kaynağı olarak kullanılır.
 * **[`context_compactor.gd`](addons/godot_sidebar_ai/core/agent/context_compactor.gd):** Eski araç çıktılarını 1-2 satırlık özetlere dönüştürerek token tasarrufu sağlar.
@@ -183,7 +190,7 @@ AgentRunner sinyallerini presenter'lar dinler; görev akışını controller'lar
 * **[`editor_mutation_service.gd`](addons/godot_sidebar_ai/core/mutations/editor_mutation_service.gd):** Düğüm ekleme/silme ve özellik değişikliklerini `EditorUndoRedoManager`'a kaydeder.
 * **[`verification_pipeline.gd`](addons/godot_sidebar_ai/core/verification/verification_pipeline.gd):** Diske yazılmadan önce GDScript sözdizimini derleme motoruyla doğrular.
 * **[`permission_policy.gd`](addons/godot_sidebar_ai/core/security/permission_policy.gd):** İşlemleri yetki sınıflarına ayırır ve `MANUAL` / `AUTO` / `FULL_AUTO` onay moduna göre kullanıcı onayı gerekip gerekmediğine karar verir.
-* **[`ui_telemetry_tools.gd`](addons/godot_sidebar_ai/core/tools/telemetry/ui_telemetry_tools.gd):** Godot Control/Container hiyerarşisini, taşma ve tema detaylarını denetleyen telemetri motoru.
+* **[`ui_telemetry_tools.gd`](addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd):** Godot Control/Container hiyerarşisini, taşma ve tema detaylarını denetleyen telemetri motoru.
 * **[`implementation_plan.gd`](addons/godot_sidebar_ai/core/types/implementation_plan.gd):** Kullanıcıya gösterilen planın veri modeli. Planı yapılandırılmış alanlardan (`goal`, `affected_files`, `steps`, `dependencies`, `verification`, `risks`) üretir ve Markdown artifact'a çevirir. **Modelin gizli reasoning'i bu modele hiç girmez.**
 
 ### 3.1 📋 Uygulama Planlama Katmanı (Implementation Planning Layer)
@@ -237,9 +244,9 @@ Birim, mantık ve entegrasyon testleri üç ayrı seviyede koşulur:
 ```bash
 powershell -ExecutionPolicy Bypass -File .\typecheck.ps1
 ```
-*Tüm eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) scriptlerini (135 GDScript, 4 Sahne) statik olarak yükleyip derleme hatalarını doğrular.*
+*Tüm eklenti (`addons/godot_sidebar_ai/`) ve test (`tests/`) scriptlerini ve sahneleri statik olarak yükleyip derleme hatalarını doğrular. Güncel dosya sayısı komut çıktısındadır.*
 
-2. **Headless Master Test Suite (56 Test Paketi / 358 Assertion):**
+2. **Headless Master Test Suite (güncel paket / assertion sayısı `verify.ps1` çıktısındadır):**
 ```bash
 godot --headless --path . -s res://tests/test_runner.gd
 ```

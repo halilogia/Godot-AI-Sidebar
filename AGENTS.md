@@ -28,7 +28,7 @@
 
 1. **Clean Architecture & Katı SRP (1 Dosya = 1 İş):**
    * `Presentation (ui/)` asla doğrudan `Infrastructure (network/, providers/)` ile konuşmaz.
-   * UI katmanında (`ui/`) hiçbir HTTP düğümü veya ağ mantığı bulunmaz. **Bilinen istisna (Refactor Faz 2.0'da kapanacak):** `ChatDock._setup_provider()` provider ve `NetworkManager` nesnelerini hâlâ kendisi oluşturuyor. `AgentRunner` sinyallerini presenter'lar (`ui/presenters/`) ve `TaskController` dinler; `ChatDock` yalnızca sahne düğümlerini bağlar ve birimleri kompoze eder (bkz. `ARCHITECTURE.md`).
+   * UI katmanında (`ui/`) hiçbir HTTP düğümü veya ağ mantığı bulunmaz. Provider ve `NetworkManager` `core/agent/agent_host.gd` (`AISidebarAgentHost`) içinde kurulur; kompozisyon kökü `plugin.gd` host'u kurar ve `ChatDock`'a enjekte eder. `AgentRunner` sinyallerini presenter'lar (`ui/presenters/`) ve `TaskController` dinler; `ChatDock` yalnızca sahne düğümlerini bağlar, birimleri kompoze eder ve host'un model listesi / hazırlık olaylarını dinler (bkz. `ARCHITECTURE.md`).
 2. **Motor Güvenliği & Merkezi Undo/Redo:**
    * Tüm sahne ve düğüm mutasyonları `AISidebarMutationService` üzerinden `EditorUndoRedoManager`'a kaydedilir (`add_do_reference` zorunludur).
 3. **Headless CLI Preload Kuralı:**

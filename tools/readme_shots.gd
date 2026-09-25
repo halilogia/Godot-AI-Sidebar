@@ -14,7 +14,7 @@ extends SceneTree
 
 const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
-const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
+const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/providers/ai_provider.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
@@ -80,16 +80,11 @@ func _shot(name: String, height: int, full: bool, scenario: Callable) -> void:
 	await process_frame
 	for c in dock.message_stream.get_children():
 		c.free()
-	var ctx = AISidebarAgentContext.new()
-	var runner = AISidebarAgentRunner.new(SilentProvider.new(), ctx)
-	dock.agent_context = ctx
-	for o in [dock._sessions, dock._checklist_tracker, dock._activity, dock._interaction, dock._tasks]:
-		o.context = ctx
-	dock._export_actions.agent_context = ctx
-	dock.agent_runner = runner
-	dock._interaction.runner = runner
-	dock._tasks.runner = runner
-	dock._connect_agent_runner()
+	var host = AISidebarAgentHost.new()
+	host.set_provider(SilentProvider.new())
+	dock.attach_agent_host(host)
+	var ctx = host.context
+	var runner = host.runner
 	dock._sessions.start_new()
 	dock._model_bar.populate_model_selector(["deepseek/deepseek-v4-flash"])
 	dock.update_ui_language()
@@ -111,6 +106,7 @@ func _shot(name: String, height: int, full: bool, scenario: Callable) -> void:
 	print("saved ", path)
 	_sessions.append(dock._sessions.current_id())
 	dock.free()
+	host.free()
 
 func _t(en: String, tr: String) -> String:
 	return tr if _lang == "tr" else en

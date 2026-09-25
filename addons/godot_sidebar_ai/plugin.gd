@@ -4,9 +4,13 @@ extends EditorPlugin
 const DOCK_SCENE_PATH: String = "res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn"
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd")
+const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 
 var chat_dock: Control = null
 var debugger_plugin: AISidebarDebuggerPlugin = null
+## Kompozisyon kökü: ajan katmanı (NetworkManager, provider, context, runner) burada kurulur
+## ve dock'a enjekte edilir; UI altyapıyı kendisi kurmaz.
+var agent_host: AISidebarAgentHost = null
 
 func _enter_tree() -> void:
 	# 1. Hata Ayıklayıcı Eklentisi & Runtime Bridge
@@ -18,8 +22,12 @@ func _enter_tree() -> void:
 	if ResourceLoader.exists(DOCK_SCENE_PATH):
 		var dock_scene: PackedScene = load(DOCK_SCENE_PATH)
 		if dock_scene:
+			agent_host = AISidebarAgentHost.new()
+			agent_host.name = "GodotAIAgentHost"
+			add_child(agent_host)
 			chat_dock = dock_scene.instantiate()
 			chat_dock.name = "GodotAISidebar"
+			chat_dock.agent_host = agent_host
 			add_control_to_dock(DOCK_SLOT_RIGHT_UL, chat_dock)
 			AISidebarUITelemetryTools.register_sidebar_dock(chat_dock)
 			print("[Godot AI Core] Eklenti başarıyla yüklendi (Sağ Dock).")
@@ -36,3 +44,6 @@ func _exit_tree() -> void:
 		chat_dock.queue_free()
 		chat_dock = null
 		print("[Godot AI Core] Eklenti devre dışı bırakıldı.")
+	if agent_host:
+		agent_host.queue_free()
+		agent_host = null
