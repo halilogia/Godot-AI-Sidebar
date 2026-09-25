@@ -230,10 +230,10 @@ static func run() -> Dictionary:
 	dock2._ready()
 	dock2._composer.attach_image_from_clipboard(test_img)
 	var vi_ref = dock2._composer.attached_vision_input
-	dock2._last_sent_vision_input = vi_ref
+	dock2._tasks.last_sent_vision_input = vi_ref
 	dock2._composer.clear_attached_image()
 	# Simüle edilen sağlayıcı hatası (örn. AGY vision reddi)
-	dock2._on_agent_error("Antigravity CLI görsel girdisini desteklemiyor")
+	dock2._tasks.on_error("Antigravity CLI görsel girdisini desteklemiyor")
 	var restored_ok = (dock2._composer.attached_vision_input != null and dock2._composer.attachment_container.visible == true)
 	dock2.queue_free()
 	if restored_ok:

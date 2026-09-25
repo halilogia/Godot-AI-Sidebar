@@ -35,13 +35,15 @@ static func _make_dock() -> Dictionary:
 	dock._interaction.context = ctx
 	dock.agent_runner = runner
 	dock._interaction.runner = runner
+	dock._tasks.context = ctx
+	dock._tasks.runner = runner
 	dock._connect_agent_runner()
 	dock._sessions.start_new()
 	return {"dock": dock, "ctx": ctx, "runner": runner}
 
 static func _send(dock, text: String) -> void:
 	dock.input_field.text = text
-	dock._on_send_pressed()
+	dock._tasks.submit_input()
 
 static func _user_bubbles(dock) -> Array:
 	var out: Array = []
@@ -71,15 +73,15 @@ static func run() -> Dictionary:
 	var d1 = s1["dock"]
 	var r1 = s1["runner"]
 	_send(d1, "Oyuncuya zıplama ekle")
-	var started = r1.is_running() and d1.input_field.text == "" and d1.last_user_prompt == "Oyuncuya zıplama ekle" and _user_bubbles(d1) == ["Oyuncuya zıplama ekle"]
+	var started = r1.is_running() and d1.input_field.text == "" and d1._tasks.last_user_prompt == "Oyuncuya zıplama ekle" and _user_bubbles(d1) == ["Oyuncuya zıplama ekle"]
 	var task_id = str(s1["ctx"].get_transcript().get_current_task().get("id", ""))
 	_send(d1, "Sonra hasar sistemi")
-	var queued = d1._queue_panel.count() == 1 and d1.last_user_prompt == "Oyuncuya zıplama ekle"
+	var queued = d1._queue_panel.count() == 1 and d1._tasks.last_user_prompt == "Oyuncuya zıplama ekle"
 	_send(d1, "")
-	var stopped = not r1.is_running() and d1._is_user_stopped and d1.status_badge.text.begins_with("Paused") and d1._queue_panel.count() == 1
+	var stopped = not r1.is_running() and d1._tasks.is_user_stopped and d1.status_badge.text.begins_with("Paused") and d1._queue_panel.count() == 1
 	_send(d1, "devam et")
 	var resumed_id = str(s1["ctx"].get_transcript().get_current_task().get("id", ""))
-	var resumed = r1.is_running() and not task_id.is_empty() and resumed_id == task_id and not d1._is_user_stopped
+	var resumed = r1.is_running() and not task_id.is_empty() and resumed_id == task_id and not d1._tasks.is_user_stopped
 	if started and queued and stopped and resumed:
 		passed += 1
 	else:
@@ -93,11 +95,11 @@ static func run() -> Dictionary:
 	var vi = AISidebarVisionInput.new("user://img.png", "aGVsbG8=", 4, 4)
 	d2._composer.attach_vision_input(vi)
 	_send(d2, "")
-	if s2["runner"].is_running() and d2.last_user_prompt == "Bu görseli incele ve yardımcı ol." and d2._last_sent_vision_input == vi and d2._composer.attached_vision_input == null:
+	if s2["runner"].is_running() and d2._tasks.last_user_prompt == "Bu görseli incele ve yardımcı ol." and d2._tasks.last_sent_vision_input == vi and d2._composer.attached_vision_input == null:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T2 (image-only send) failed: prompt='%s'" % d2.last_user_prompt)
+		errors.append("T2 (image-only send) failed: prompt='%s'" % d2._tasks.last_user_prompt)
 	_dispose(d2, created)
 
 	# 3. Slash yolları: bilinmeyen komut hata balonu; /help yerel yanıt; /analyze boşta task,
@@ -109,7 +111,7 @@ static func run() -> Dictionary:
 	_send(d3, "/help")
 	var help_ok = not s3["runner"].is_running() and d3.message_stream.get_child_count() == 4
 	_send(d3, "/analyze")
-	var analyze_ok = s3["runner"].is_running() and d3.last_user_prompt == "/analyze"
+	var analyze_ok = s3["runner"].is_running() and d3._tasks.last_user_prompt == "/analyze"
 	_send(d3, "/analyze Player")
 	var queued_ok = d3._queue_panel.count() == 1
 	if unknown_ok and help_ok and analyze_ok and queued_ok:
@@ -123,12 +125,12 @@ static func run() -> Dictionary:
 	var s4 = _make_dock()
 	var d4 = s4["dock"]
 	d4._queue_panel.enqueue("Kuyruktaki istek", "Kuyruktaki istek")
-	d4._is_user_stopped = true
-	d4._check_and_dispatch_next_queue()
+	d4._tasks.is_user_stopped = true
+	d4._tasks.dispatch_next_queued()
 	var held = d4._queue_panel.count() == 1 and not s4["runner"].is_running()
-	d4._is_user_stopped = false
-	d4._check_and_dispatch_next_queue()
-	var dispatched = d4._queue_panel.count() == 0 and s4["runner"].is_running() and d4.last_user_prompt == "Kuyruktaki istek"
+	d4._tasks.is_user_stopped = false
+	d4._tasks.dispatch_next_queued()
+	var dispatched = d4._queue_panel.count() == 0 and s4["runner"].is_running() and d4._tasks.last_user_prompt == "Kuyruktaki istek"
 	if held and dispatched:
 		passed += 1
 	else:
