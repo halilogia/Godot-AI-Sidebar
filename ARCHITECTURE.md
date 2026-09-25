@@ -36,6 +36,7 @@ graph TD
     subgraph Application ["🤖 Application Layer (core/agent/ & core/chat/ & core/commands/)"]
         AgentHost["agent_host.gd (Kompozisyon: NetworkManager + Provider + Context + Runner)"]
         AgentRunner["agent_runner.gd (State Machine & Streaming Forwarder)"]
+        AgentTelemetry["agent_telemetry.gd (Sayaçlar, Süreler, Task Metrikleri)"]
         PlanningPolicy["planning_policy.gd (Kapsam Siniflandirici & Mutation Guard)"]
         AgentContext["agent_context.gd (Context Window)"]
         ContextCompactor["context_compactor.gd (Token Optimization)"]
@@ -92,6 +93,7 @@ graph TD
     UIComponents -.->|"AISidebarTheme tokens"| Theme
     SettingsDialog --> Config
     AgentRunner --> AgentContext
+    AgentRunner --> AgentTelemetry
     AgentRunner --> ToolManager
     AgentRunner --> AIProvider
     AgentRunner --> VerificationPipeline
@@ -174,6 +176,7 @@ AgentRunner sinyallerini presenter'lar dinler; görev akışını controller'lar
 ### 2. 🤖 Application Katmanı (`core/agent/`, `core/chat/`, `core/commands/`)
 * **[`agent_host.gd`](addons/godot_sidebar_ai/core/agent/agent_host.gd):** Ajan katmanının kompozisyon birimi. `NetworkManager`, provider, `AgentContext` ve `AgentRunner`'ın sahibidir; provider'ı config'e göre kurar (`create_provider`, `rebuild_provider`: eski alt süreç durdurulur, yeni provider ısıtılır, runner ona geçer), model listesi ve hazırlık olaylarını UI'a aktarır. `plugin.gd` kurar ve dock'a enjekte eder; testler `set_provider` ile sahte provider bağlar.
 * **[`agent_runner.gd`](addons/godot_sidebar_ai/core/agent/agent_runner.gd):** Ajan durum makinesini (State Machine) yönetir (`IDLE ➔ PLANNING ➔ EXECUTING ➔ OBSERVING ➔ VERIFYING ➔ COMPLETED`, ayrıca `WAITING_FOR_APPROVAL`, `WAITING_FOR_CLARIFICATION` ve `WAITING_FOR_PLAN_APPROVAL`).
+* **[`agent_telemetry.gd`](addons/godot_sidebar_ai/core/agent/agent_telemetry.gd):** Runner başına görev telemetrisi: tool / LLM / bekleme sayaçları ve süreleri, read/search/write ayrımı, okunan / yazılan dosya kümeleri, tool türü sınıflandırması (`classify_tool_kind`) ve task sonu metrik sözlüğü (`build_metrics`; anahtar sırası export ve telemetri kartı için sabit). Karar vermez, sinyal yaymaz.
 * **[`planning_policy.gd`](addons/godot_sidebar_ai/core/agent/planning_policy.gd):** Uygulama planlama katmanının **deterministik** karar merkezi. Modelin davranışına bırakılmadan (a) bir isteğin plan gerektirip gerektirmediğini sınıflandırır (`should_plan`), (b) plan fazında hangi araçların engelleneceğini belirler (`is_mutation_blocked`, fail-closed). Risk listesi tekrar yazılmaz; `PermissionPolicy` risk kayıt defteri tek doğruluk kaynağı olarak kullanılır.
 * **[`context_compactor.gd`](addons/godot_sidebar_ai/core/agent/context_compactor.gd):** Eski araç çıktılarını 1-2 satırlık özetlere dönüştürerek token tasarrufu sağlar.
 * **[`chat_manager.gd`](addons/godot_sidebar_ai/core/chat/chat_manager.gd) / [`chat_session.gd`](addons/godot_sidebar_ai/core/chat/chat_session.gd):** Oturum kalıcılığı. Konuşmalar projeye bağlı `user://sidebar_ai_chats/` dizininde izole JSON dosyaları olarak saklanır; API anahtarı veya token asla diske yazılmaz.

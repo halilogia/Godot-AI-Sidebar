@@ -13,6 +13,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * `ui/docks/chat_dock.gd` 2349 satırdan ~600 satıra indi; sorumluluklar ayrı birimlere taşındı: `ChatDockTheme`, `ToolPresentation`, `PlanChecklistTracker`, `MessageQueuePanel`, `InputComposer`, `ChatExportActions`, `ChatSessionStore`, `SessionReplayRenderer`, `AgentStreamPresenter`, `AgentActivityPresenter`, `AgentInteractionPresenter`, `ModelBarController`, `TaskController`. Plan ve kararlar: `docs/REFACTOR_PLAN.md`.
 * Daha önce testsiz olan alanlar teste bağlandı: AgentRunner ↔ dock sinyal bağlantıları, gönder / kuyruk / durdur / devam et hattı, model çubuğu.
 * Provider ve `NetworkManager` artık arayüz tarafından değil, `plugin.gd`'nin kurduğu `AgentHost` (`core/agent/agent_host.gd`) tarafından oluşturuluyor; ChatDock bu birimi enjekte olarak alıyor. Provider seçimi, ayar kaydında provider değişimi, AGY hazırlık rozeti ve Refresh ilk kez test altında.
+* AgentRunner'ın telemetri sayaçları, süre dağılımı ve task sonu metrikleri `AgentTelemetry` (`core/agent/agent_telemetry.gd`) birimine taşındı; bekleme / LLM süresi muhasebesi ve metrik sözlüğünün tamamı ilk kez test altında.
 
 ### Düzeltilenler
 * `/clear` sohbeti gerçekten temizliyor (Clear butonuyla aynı yol).

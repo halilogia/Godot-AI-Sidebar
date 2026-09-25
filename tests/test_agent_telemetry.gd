@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-## AgentRunner telemetrisi (Refactor Faz 2.1 sabitleme testleri): task sonu metrik sözlüğünün
+## AgentRunner telemetrisi (AgentTelemetry, Refactor Faz 2.1): task sonu metrik sözlüğünün
 ## anahtar sırası ve alan eşlemesi, bekleme süresinin beş karar yolunda (onay, red, netleştirme,
 ## plan onayı, plan reddi) birikmesi, LLM süresi, op sınıflandırması + kategori süreleri ve yeni
 ## task'ta sayaçların sıfırlanması. Provider elle yanıtlar; ağ ve editör kullanılmaz.
@@ -35,7 +35,7 @@ static func _new_runner() -> Dictionary:
 
 ## Bekleme başlangıcını geçmişe çeker: çözümde en az ms kadar bekleme birikmeli.
 static func _waited(r, ms: int) -> void:
-	r._waiting_start_time = Time.get_ticks_msec() - ms
+	r.telemetry.waiting_start_time = Time.get_ticks_msec() - ms
 
 static func _near(value: int, expected: int) -> bool:
 	return value >= expected and value < expected + 250
@@ -47,34 +47,34 @@ static func run() -> Dictionary:
 
 	# 1. Metrik sözlüğü: anahtar sırası ve her alanın eşlemesi
 	var r1 = AISidebarAgentRunner.new()
-	r1.task_start_time_msec = Time.get_ticks_msec() - 20000
+	r1.telemetry.task_start_time_msec = Time.get_ticks_msec() - 20000
 	r1.current_step = 7
 	r1.max_steps = 20
 	r1.last_tools_sent_count = 11
 	r1.last_completion = {"verdict": "incomplete", "reason": "Kanıt yok."}
-	r1.llm_turns_count = 7
-	r1.tool_calls_count = 9
-	r1.file_ops_count = 3
-	r1.editor_ops_count = 2
-	r1.runtime_ops_count = 1
-	r1.verification_checkpoints_count = 4
-	r1.read_ops_count = 5
-	r1.search_ops_count = 6
-	r1.write_ops_count = 8
-	r1.failed_tool_count = 2
-	r1.retry_count = 1
-	r1.limit_hit = true
-	r1.files_read = {"res://a.gd": true, "res://b.gd": true}
-	r1.files_written = {"res://c.gd": true}
-	r1.tool_time_by_name = {"read_script": 1500}
-	r1.llm_time_msec = 4000
-	r1.tool_time_msec = 3000
-	r1.file_time_msec = 1500
-	r1.editor_time_msec = 700
-	r1.runtime_time_msec = 300
-	r1.verification_time_msec = 200
-	r1.waiting_time_msec = 5000
-	r1.research_time_msec = 5000
+	r1.telemetry.llm_turns_count = 7
+	r1.telemetry.tool_calls_count = 9
+	r1.telemetry.file_ops_count = 3
+	r1.telemetry.editor_ops_count = 2
+	r1.telemetry.runtime_ops_count = 1
+	r1.telemetry.verification_checkpoints_count = 4
+	r1.telemetry.read_ops_count = 5
+	r1.telemetry.search_ops_count = 6
+	r1.telemetry.write_ops_count = 8
+	r1.telemetry.failed_tool_count = 2
+	r1.telemetry.retry_count = 1
+	r1.telemetry.limit_hit = true
+	r1.telemetry.files_read = {"res://a.gd": true, "res://b.gd": true}
+	r1.telemetry.files_written = {"res://c.gd": true}
+	r1.telemetry.tool_time_by_name = {"read_script": 1500}
+	r1.telemetry.llm_time_msec = 4000
+	r1.telemetry.tool_time_msec = 3000
+	r1.telemetry.file_time_msec = 1500
+	r1.telemetry.editor_time_msec = 700
+	r1.telemetry.runtime_time_msec = 300
+	r1.telemetry.verification_time_msec = 200
+	r1.telemetry.waiting_time_msec = 5000
+	r1.telemetry.research_time_msec = 5000
 	var got1: Array = []
 	r1.task_completed.connect(func(m): got1.append(m))
 	r1._finish_task(false)
@@ -115,7 +115,7 @@ static func run() -> Dictionary:
 	var clar_state = r2.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION
 	_waited(r2, 1200)
 	r2.submit_clarification_response("A")
-	waits_ok.append(clar_state and _near(r2.waiting_time_msec, 1200) and r2._waiting_start_time == 0)
+	waits_ok.append(clar_state and _near(r2.telemetry.waiting_time_msec, 1200) and r2.telemetry.waiting_start_time == 0)
 	# 2b. Plan reddi (görev biter; metrikte de görünür)
 	var s3 = _new_runner()
 	var r3 = s3["runner"]
@@ -127,7 +127,7 @@ static func run() -> Dictionary:
 	_waited(r3, 800)
 	r3.reject_plan()
 	var m3: Dictionary = got3[0] if got3.size() > 0 else {}
-	waits_ok.append(plan_state and _near(r3.waiting_time_msec, 800) and abs(float(m3.get("waiting_time_s", -1.0)) - 0.8) < 0.3)
+	waits_ok.append(plan_state and _near(r3.telemetry.waiting_time_msec, 800) and abs(float(m3.get("waiting_time_s", -1.0)) - 0.8) < 0.3)
 	# 2c. Plan onayı
 	var s4 = _new_runner()
 	var r4 = s4["runner"]
@@ -135,7 +135,7 @@ static func run() -> Dictionary:
 	s4["provider"].respond("", [{"id": "p2", "name": "propose_plan", "arguments": {"goal": "G", "steps": ["a"]}}])
 	_waited(r4, 600)
 	r4.approve_plan()
-	waits_ok.append(_near(r4.waiting_time_msec, 600) and r4._waiting_start_time == 0)
+	waits_ok.append(_near(r4.telemetry.waiting_time_msec, 600) and r4.telemetry.waiting_start_time == 0)
 	# 2d. Tool onayı reddi
 	var s5 = _new_runner()
 	var r5 = s5["runner"]
@@ -144,7 +144,7 @@ static func run() -> Dictionary:
 	var approval_state = r5.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL
 	_waited(r5, 900)
 	r5.reject_pending_action()
-	waits_ok.append(approval_state and _near(r5.waiting_time_msec, 900) and r5._waiting_start_time == 0)
+	waits_ok.append(approval_state and _near(r5.telemetry.waiting_time_msec, 900) and r5.telemetry.waiting_start_time == 0)
 	# 2e. Tool onayı (onaylanan tool'un süresi tool_time'a, adı tool_time_by_name'e yazılır)
 	var s6 = _new_runner()
 	var r6 = s6["runner"]
@@ -152,7 +152,7 @@ static func run() -> Dictionary:
 	s6["provider"].respond("", [{"id": "d2", "name": "delete_node", "arguments": {"node_path": "TempNode"}}])
 	_waited(r6, 700)
 	r6.approve_pending_action()
-	waits_ok.append(_near(r6.waiting_time_msec, 700) and r6._waiting_start_time == 0 and r6.tool_time_by_name.has("delete_node") and r6.editor_ops_count == 1 and r6.tool_calls_count == 1)
+	waits_ok.append(_near(r6.telemetry.waiting_time_msec, 700) and r6.telemetry.waiting_start_time == 0 and r6.telemetry.tool_time_by_name.has("delete_node") and r6.telemetry.editor_ops_count == 1 and r6.telemetry.tool_calls_count == 1)
 	if not (false in waits_ok) and waits_ok.size() == 5:
 		passed += 1
 	else:
@@ -166,54 +166,54 @@ static func run() -> Dictionary:
 	var s7 = _new_runner()
 	var r7 = s7["runner"]
 	r7.start_task("Selam")
-	var turns_after_start = r7.llm_turns_count
-	r7._llm_step_start_time = Time.get_ticks_msec() - 700
+	var turns_after_start = r7.telemetry.llm_turns_count
+	r7.telemetry.llm_step_start_time = Time.get_ticks_msec() - 700
 	s7["provider"].respond("Merhaba!")
-	var llm_ok = turns_after_start == 1 and _near(r7.llm_time_msec, 700) and r7._llm_step_start_time == 0
+	var llm_ok = turns_after_start == 1 and _near(r7.telemetry.llm_time_msec, 700) and r7.telemetry.llm_step_start_time == 0
 	if llm_ok:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T3 (llm time) failed: turns=%d llm=%d start=%d" % [turns_after_start, r7.llm_time_msec, r7._llm_step_start_time])
+		errors.append("T3 (llm time) failed: turns=%d llm=%d start=%d" % [turns_after_start, r7.telemetry.llm_time_msec, r7.telemetry.llm_step_start_time])
 
 	# 4. Op sınıflandırması ve kategori süreleri (mevcut eşlemeler olduğu gibi)
 	var r8 = AISidebarAgentRunner.new()
-	r8._classify_telemetry_op("write_files", {"files": [{}, {}, {}]})
-	r8._classify_telemetry_op("write_files", {})
-	r8._classify_telemetry_op("replace_file_content", {})
-	r8._classify_telemetry_op("delete_node", {})
-	r8._classify_telemetry_op("take_runtime_screenshot", {})
-	r8._classify_telemetry_op("read_script", {})
-	var ops_ok = r8.file_ops_count == 5 and r8.editor_ops_count == 1 and r8.runtime_ops_count == 1
-	r8._record_category_time("create_or_update_script", 100)
-	r8._record_category_time("write_files", 40)
-	r8._record_category_time("replace_file_content", 50)
-	r8._record_category_time("delete_file", 60)
-	r8._record_category_time("reparent_node", 30)
-	r8._record_category_time("get_runtime_errors", 20)
-	r8._record_category_time("read_script", 10)
-	var cat_ok = r8.file_time_msec == 140 and r8.editor_time_msec == 30 and r8.runtime_time_msec == 20
+	r8.telemetry.classify_op("write_files", {"files": [{}, {}, {}]})
+	r8.telemetry.classify_op("write_files", {})
+	r8.telemetry.classify_op("replace_file_content", {})
+	r8.telemetry.classify_op("delete_node", {})
+	r8.telemetry.classify_op("take_runtime_screenshot", {})
+	r8.telemetry.classify_op("read_script", {})
+	var ops_ok = r8.telemetry.file_ops_count == 5 and r8.telemetry.editor_ops_count == 1 and r8.telemetry.runtime_ops_count == 1
+	r8.telemetry.record_category_time("create_or_update_script", 100)
+	r8.telemetry.record_category_time("write_files", 40)
+	r8.telemetry.record_category_time("replace_file_content", 50)
+	r8.telemetry.record_category_time("delete_file", 60)
+	r8.telemetry.record_category_time("reparent_node", 30)
+	r8.telemetry.record_category_time("get_runtime_errors", 20)
+	r8.telemetry.record_category_time("read_script", 10)
+	var cat_ok = r8.telemetry.file_time_msec == 140 and r8.telemetry.editor_time_msec == 30 and r8.telemetry.runtime_time_msec == 20
 	if ops_ok and cat_ok:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T4 (op classes + category time) failed: file=%d editor=%d runtime=%d | ft=%d et=%d rt=%d" % [r8.file_ops_count, r8.editor_ops_count, r8.runtime_ops_count, r8.file_time_msec, r8.editor_time_msec, r8.runtime_time_msec])
+		errors.append("T4 (op classes + category time) failed: file=%d editor=%d runtime=%d | ft=%d et=%d rt=%d" % [r8.telemetry.file_ops_count, r8.telemetry.editor_ops_count, r8.telemetry.runtime_ops_count, r8.telemetry.file_time_msec, r8.telemetry.editor_time_msec, r8.telemetry.runtime_time_msec])
 
 	# 5. Yeni task telemetriyi sıfırlar (önceki task'ın sayaçları ve süreleri taşınmaz)
 	var r9 = r6
-	r9.retry_count = 3
-	r9.limit_hit = true
-	r9.files_read = {"res://x.gd": true}
-	r9.research_time_msec = 99
-	r9.verification_checkpoints_count = 2
+	r9.telemetry.retry_count = 3
+	r9.telemetry.limit_hit = true
+	r9.telemetry.files_read = {"res://x.gd": true}
+	r9.telemetry.research_time_msec = 99
+	r9.telemetry.verification_checkpoints_count = 2
 	if r9.is_running():
 		r9.stop()
 	r9.start_task("Yeni görev")
-	var reset_ok = (r9.tool_calls_count == 0 and r9.editor_ops_count == 0 and r9.retry_count == 0
-		and not r9.limit_hit and r9.files_read.is_empty() and r9.tool_time_by_name.is_empty()
-		and r9.waiting_time_msec == 0 and r9.tool_time_msec == 0 and r9.research_time_msec == 0
-		and r9.verification_checkpoints_count == 0 and r9.llm_turns_count == 1
-		and Time.get_ticks_msec() - r9.task_start_time_msec < 1000)
+	var reset_ok = (r9.telemetry.tool_calls_count == 0 and r9.telemetry.editor_ops_count == 0 and r9.telemetry.retry_count == 0
+		and not r9.telemetry.limit_hit and r9.telemetry.files_read.is_empty() and r9.telemetry.tool_time_by_name.is_empty()
+		and r9.telemetry.waiting_time_msec == 0 and r9.telemetry.tool_time_msec == 0 and r9.telemetry.research_time_msec == 0
+		and r9.telemetry.verification_checkpoints_count == 0 and r9.telemetry.llm_turns_count == 1
+		and Time.get_ticks_msec() - r9.telemetry.task_start_time_msec < 1000)
 	r9.stop()
 	if reset_ok:
 		passed += 1

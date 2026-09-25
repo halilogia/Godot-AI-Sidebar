@@ -453,11 +453,11 @@ static func run() -> Dictionary:
 	]
 	runner22.start_task("Bir save/load sistemi ekle")
 	var probe_absent = not FileAccess.file_exists(GUARD_PROBE_PATH)
-	if runner22.file_ops_count == 0 and runner22.tool_calls_count == 1 and probe_absent:
+	if runner22.telemetry.file_ops_count == 0 and runner22.telemetry.tool_calls_count == 1 and probe_absent:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 22 (blocked tool not counted) failed: file_ops=" + str(runner22.file_ops_count) + " tool_calls=" + str(runner22.tool_calls_count) + " probe_absent=" + str(probe_absent))
+		errors.append("Test 22 (blocked tool not counted) failed: file_ops=" + str(runner22.telemetry.file_ops_count) + " tool_calls=" + str(runner22.telemetry.tool_calls_count) + " probe_absent=" + str(probe_absent))
 
 	_cleanup_probe_file()
 	AISidebarPermissionPolicy.set_auto_approve_mode(prev_mode)

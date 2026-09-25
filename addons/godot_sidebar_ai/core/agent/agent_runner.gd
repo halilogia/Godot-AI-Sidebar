@@ -18,7 +18,7 @@ const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/v
 const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
 const AISidebarCompletionPolicy = preload("res://addons/godot_sidebar_ai/core/agent/completion_policy.gd")
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
-const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
+const AISidebarAgentTelemetry = preload("res://addons/godot_sidebar_ai/core/agent/agent_telemetry.gd")
 
 enum AgentState {
 	IDLE,
@@ -78,43 +78,14 @@ var _last_error_signature: String = ""
 var _last_tool_signature: String = ""
 var _stagnation_count: int = 0
 
-# Detaylı Telemetri & Zaman Sayaçları (Milisaniye)
-var task_start_time_msec: int = 0
-var _llm_step_start_time: int = 0
-var _waiting_start_time: int = 0
-
-var llm_turns_count: int = 0
-var tool_calls_count: int = 0
-var file_ops_count: int = 0
-var editor_ops_count: int = 0
-var runtime_ops_count: int = 0
-var verification_checkpoints_count: int = 0
-## Performance Telemetry: read/search/write ayrımı, fail/retry/limit, dosya kümeleri.
-var read_ops_count: int = 0
-var search_ops_count: int = 0
-var write_ops_count: int = 0
-var failed_tool_count: int = 0
+## Sayaçlar, süre dağılımı ve task sonu metrikleri (runner başına ayrı örnek).
+var telemetry: AISidebarAgentTelemetry = AISidebarAgentTelemetry.new()
 var plan_was_approved: bool = false
 ## Kurtarılmamış başarısızlıklar (anahtar -> {"tool": String, "deferred": bool}).
 ## Aynı tool+hedef sonradan başarıyla çalışırsa silinir (recovery kanıtı).
 var unrecovered_failures: Dictionary = {}
 ## Son completion hükmü (metrics'e yazılır; success/incomplete/failed/cancelled).
 var last_completion: Dictionary = {"verdict": "success", "reason": "Task completed."}
-var retry_count: int = 0
-var limit_hit: bool = false
-var files_read: Dictionary = {}
-var files_written: Dictionary = {}
-var tool_time_by_name: Dictionary = {}
-
-var llm_time_msec: int = 0
-var tool_time_msec: int = 0
-var file_time_msec: int = 0
-var editor_time_msec: int = 0
-var runtime_time_msec: int = 0
-var verification_time_msec: int = 0
-var waiting_time_msec: int = 0
-## Research overhead paydası: read + search araçlarında harcanan süre.
-var research_time_msec: int = 0
 
 # Bekleyen Onay & Clarification Verisi
 var _pending_tool_name: String = ""
@@ -203,34 +174,10 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 		_pending_vision_inputs.append_array(initial_vision_inputs)
 	
 	# Telemetri Sıfırlama
-	task_start_time_msec = Time.get_ticks_msec()
-	llm_turns_count = 0
-	tool_calls_count = 0
-	file_ops_count = 0
-	editor_ops_count = 0
-	runtime_ops_count = 0
-	verification_checkpoints_count = 0
-	read_ops_count = 0
-	search_ops_count = 0
-	write_ops_count = 0
-	failed_tool_count = 0
+	telemetry.reset()
 	plan_was_approved = false
 	unrecovered_failures.clear()
 	last_completion = {"verdict": "success", "reason": "Task completed."}
-	retry_count = 0
-	limit_hit = false
-	files_read.clear()
-	files_written.clear()
-	tool_time_by_name.clear()
-
-	llm_time_msec = 0
-	tool_time_msec = 0
-	file_time_msec = 0
-	editor_time_msec = 0
-	runtime_time_msec = 0
-	verification_time_msec = 0
-	waiting_time_msec = 0
-	research_time_msec = 0
 	
 	var shown_prompt = display_prompt if not display_prompt.is_empty() else user_prompt
 	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), shown_prompt.left(60)])
@@ -248,9 +195,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	_run_next_step()
 
 func get_elapsed_s() -> float:
-	if task_start_time_msec <= 0:
-		return 0.0
-	return snappedf((Time.get_ticks_msec() - task_start_time_msec) / 1000.0, 0.1)
+	return telemetry.get_elapsed_s()
 
 ## Pause sonrası continuation: AYNI task_id ile kaldığı step'ten devam.
 ## start_task'tan farklı: sayaçlar/step sıfırlanmaz, unlock'lar korunur.
@@ -268,7 +213,7 @@ func resume_task(cp: Dictionary, resume_text: String, display_text: String = "de
 	if cp_max > 0:
 		max_steps = cp_max
 	var kept_elapsed = float(cp.get("elapsed_s", 0.0))
-	task_start_time_msec = Time.get_ticks_msec() - int(kept_elapsed * 1000.0) if kept_elapsed > 0.0 else Time.get_ticks_msec()
+	telemetry.task_start_time_msec = Time.get_ticks_msec() - int(kept_elapsed * 1000.0) if kept_elapsed > 0.0 else Time.get_ticks_msec()
 	_last_tool_signature = ""
 	_stagnation_count = 0
 	_empty_response_retry_count = 0
@@ -306,49 +251,10 @@ func stop() -> void:
 	_finish_task(false)
 
 func _finish_task(success: bool) -> void:
-	var total_elapsed_sec = (Time.get_ticks_msec() - task_start_time_msec) / 1000.0
+	var total_elapsed_sec = (Time.get_ticks_msec() - telemetry.task_start_time_msec) / 1000.0
 	var total_schemas_count = AISidebarToolManager.get_all_schemas().size()
-	var metrics = {
-		"success": success,
-		"completion": str(last_completion.get("verdict", "success")),
-		"completion_reason": str(last_completion.get("reason", "")),
-		"elapsed_seconds": snappedf(total_elapsed_sec, 0.1),
-		"used_steps": current_step,
-		"max_steps": max_steps,
-		"steps_summary": str(current_step) + " / " + str(max_steps),
-		"tools_sent": last_tools_sent_count,
-		"total_tools": total_schemas_count,
-		"tools_ratio": str(last_tools_sent_count) + " / " + str(total_schemas_count),
-		"llm_turns": llm_turns_count,
-		"tool_calls": tool_calls_count,
-		"file_ops": file_ops_count,
-		"editor_ops": editor_ops_count,
-		"runtime_ops": runtime_ops_count,
-		"verification_checkpoints": verification_checkpoints_count,
-		# Performance Telemetry: read/search/write ayrımı, fail/retry/limit, dosyalar.
-		"read_ops": read_ops_count,
-		"search_ops": search_ops_count,
-		"write_ops": write_ops_count,
-		"failed_tools": failed_tool_count,
-		"retry_count": retry_count,
-		"limit_hit": limit_hit,
-		"files_read_count": files_read.size(),
-		"files_written_count": files_written.size(),
-		"files_read": files_read.keys(),
-		"files_written": files_written.keys(),
-		"tool_time_by_tool_s": _tool_time_by_tool_seconds(),
-		# Detaylı Süre Dağılımı (Saniye)
-		"llm_time_s": snappedf(llm_time_msec / 1000.0, 0.1),
-		"tool_time_s": snappedf(tool_time_msec / 1000.0, 0.1),
-		"file_time_s": snappedf(file_time_msec / 1000.0, 0.1),
-		"editor_time_s": snappedf(editor_time_msec / 1000.0, 0.1),
-		"runtime_time_s": snappedf(runtime_time_msec / 1000.0, 0.1),
-		"verification_time_s": snappedf(verification_time_msec / 1000.0, 0.1),
-		"waiting_time_s": snappedf(waiting_time_msec / 1000.0, 0.1),
-		"research_time_s": snappedf(research_time_msec / 1000.0, 0.1),
-		"research_overhead_ratio": _research_overhead_ratio(total_elapsed_sec)
-	}
-	print("[TIMING] %s | TASK_COMPLETE | success=%s elapsed=%.3fs llm=%.3fs tool=%.3fs research=%.3fs overhead=%.2f" % [get_ts(), str(success), total_elapsed_sec, llm_time_msec / 1000.0, tool_time_msec / 1000.0, research_time_msec / 1000.0, _research_overhead_ratio(total_elapsed_sec)])
+	var metrics = telemetry.build_metrics(success, last_completion, current_step, max_steps, last_tools_sent_count, total_schemas_count, total_elapsed_sec)
+	print("[TIMING] %s | TASK_COMPLETE | success=%s elapsed=%.3fs llm=%.3fs tool=%.3fs research=%.3fs overhead=%.2f" % [get_ts(), str(success), total_elapsed_sec, telemetry.llm_time_msec / 1000.0, telemetry.tool_time_msec / 1000.0, telemetry.research_time_msec / 1000.0, telemetry.research_overhead_ratio(total_elapsed_sec)])
 	task_completed.emit(metrics)
 	loop_finished.emit()
 	_pending_vision_inputs.clear()
@@ -357,27 +263,12 @@ func _finish_task(success: bool) -> void:
 	_pending_clarification_options.clear()
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
-## Test edilebilir metrik yardımcıları (pure hesap, sinyal yok).
-func _tool_time_by_tool_seconds() -> Dictionary:
-	var out: Dictionary = {}
-	for k in tool_time_by_name.keys():
-		out[k] = snappedf(int(tool_time_by_name[k]) / 1000.0, 0.1)
-	return out
-
-## Research overhead = keşif (read+search) süresi / toplam task süresi.
-func _research_overhead_ratio(total_elapsed_sec: float) -> float:
-	if total_elapsed_sec <= 0.0:
-		return 0.0
-	return snappedf((research_time_msec / 1000.0) / total_elapsed_sec, 0.01)
-
 ## Kullanıcı bekleyen işlemi onayladı (Approve)
 func approve_pending_action() -> void:
 	if current_state != AgentState.WAITING_FOR_APPROVAL or _pending_tool_name.is_empty():
 		return
 		
-	if _waiting_start_time > 0:
-		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
-		_waiting_start_time = 0
+	telemetry.end_waiting()
 		
 	var fn_name = _pending_tool_name
 	var tc_id = _pending_tool_id
@@ -396,9 +287,9 @@ func approve_pending_action() -> void:
 	var t_start = Time.get_ticks_msec()
 	var result: Dictionary = await AISidebarToolManager.execute_tool_async(fn_name, args, true)
 	var t_delta = Time.get_ticks_msec() - t_start
-	tool_time_msec += t_delta
-	_record_category_time(fn_name, t_delta)
-	_record_tool_telemetry(fn_name, args, t_delta, result)
+	telemetry.tool_time_msec += t_delta
+	telemetry.record_category_time(fn_name, t_delta)
+	telemetry.record_tool(fn_name, args, t_delta, result)
 	
 	print("[TIMING] %s | TOOL_DONE (APPROVED) | tool=%s duration=%dms" % [get_ts(), fn_name, t_delta])
 	if not fn_name in _unlocked_tools:
@@ -416,9 +307,7 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 	if current_state != AgentState.WAITING_FOR_APPROVAL or _pending_tool_name.is_empty():
 		return
 		
-	if _waiting_start_time > 0:
-		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
-		_waiting_start_time = 0
+	telemetry.end_waiting()
 		
 	var fn_name = _pending_tool_name
 	var tc_id = _pending_tool_id
@@ -440,9 +329,7 @@ func submit_clarification_response(answer: String) -> void:
 	if current_state != AgentState.WAITING_FOR_CLARIFICATION or _pending_clarification_id.is_empty():
 		return
 		
-	if _waiting_start_time > 0:
-		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
-		_waiting_start_time = 0
+	telemetry.end_waiting()
 		
 	var tc_id = _pending_clarification_id
 	var question = _pending_clarification_question
@@ -472,9 +359,7 @@ func approve_plan() -> void:
 	if current_state != AgentState.WAITING_FOR_PLAN_APPROVAL:
 		return
 
-	if _waiting_start_time > 0:
-		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
-		_waiting_start_time = 0
+	telemetry.end_waiting()
 
 	var plan = _pending_plan
 	var plan_id = _pending_plan_id
@@ -503,9 +388,7 @@ func reject_plan(reason: String = "Kullanıcı planı reddetti.") -> void:
 	if current_state != AgentState.WAITING_FOR_PLAN_APPROVAL:
 		return
 
-	if _waiting_start_time > 0:
-		waiting_time_msec += (Time.get_ticks_msec() - _waiting_start_time)
-		_waiting_start_time = 0
+	telemetry.end_waiting()
 
 	var plan = _pending_plan
 	var plan_id = _pending_plan_id
@@ -563,7 +446,7 @@ func _run_next_step() -> void:
 	if context:
 		context.get_transcript().mark_step(current_step)
 	if current_step > max_steps:
-		limit_hit = true
+		telemetry.limit_hit = true
 		_set_state(AgentState.ERROR, "Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
 		error_occurred.emit("Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
 		last_completion = {"verdict": "failed", "reason": "Step limit reached (" + str(current_step) + " / " + str(max_steps) + ")."}
@@ -571,11 +454,11 @@ func _run_next_step() -> void:
 		return
 		
 	step_progress.emit(current_step, max_steps)
-	llm_turns_count += 1
+	telemetry.llm_turns_count += 1
 	var status_msg = "Agent Step " + str(current_step) + " / " + str(max_steps)
 	_set_state(AgentState.PLANNING, status_msg)
 	
-	_llm_step_start_time = Time.get_ticks_msec()
+	telemetry.begin_llm_step()
 	var context_text = ""
 	if context:
 		for msg in context.messages:
@@ -622,16 +505,13 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 	if not is_running():
 		return
 		
-	if _llm_step_start_time > 0:
-		var delta_req = Time.get_ticks_msec() - _llm_step_start_time
-		llm_time_msec += delta_req
-		_llm_step_start_time = 0
+	telemetry.end_llm_step()
 		
 	# Boş Yanıt Kontrolü (Empty Response Guard & Controlled Retry)
 	if text_content.is_empty() and thinking_content.is_empty() and tool_calls.is_empty():
 		if _empty_response_retry_count < max_empty_response_retries:
 			_empty_response_retry_count += 1
-			_note_retry()
+			telemetry.note_retry()
 			print("[TIMING] %s | PROVIDER_EMPTY_RESPONSE_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
 			_set_state(AgentState.RECOVERING, "Geçici boş yanıt alındı, tekrar deneniyor...")
 			_run_next_step()
@@ -664,7 +544,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			var tc_id: String = tc.get("id", "call_default")
 			var args: Dictionary = tc.get("arguments", {})
 			
-			tool_calls_count += 1
+			telemetry.tool_calls_count += 1
 			if not fn_name in _unlocked_tools:
 				_unlocked_tools.append(fn_name)
 			
@@ -702,7 +582,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_pending_clarification_id = tc_id
 				_pending_clarification_question = question
 				_pending_clarification_options = options
-				_waiting_start_time = Time.get_ticks_msec()
+				telemetry.begin_waiting()
 				
 				_set_state(AgentState.WAITING_FOR_CLARIFICATION, "Kullanıcıdan yanıt bekleniyor...")
 				print("[TIMING] %s | CLARIFICATION_REQUESTED | question=%s options=%s" % [get_ts(), question, str(options)])
@@ -716,7 +596,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				var plan = AISidebarImplementationPlan.new(args)
 				_pending_plan = plan
 				_pending_plan_id = tc_id
-				_waiting_start_time = Time.get_ticks_msec()
+				telemetry.begin_waiting()
 
 				_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")
 				print("[TIMING] %s | PLAN_PROPOSED | steps=%d files=%d" % [get_ts(), plan.steps.size(), plan.affected_files.size()])
@@ -743,7 +623,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 
 			# Telemetri sınıflandırması guard'dan SONRA yapılır; böylece engellenen
 			# (hiç çalışmayan) bir işlem 'file_ops' / 'editor_ops' olarak SAYILMAZ.
-			_classify_telemetry_op(fn_name, args)
+			telemetry.classify_op(fn_name, args)
 
 			# Değişiklik Öncesi Eski İçerikleri Kaydet (ChangeSet Hazırlığı)
 			var cs = _build_changeset_for_tool(fn_name, args)
@@ -758,9 +638,9 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 			if not is_running():
 				return
 			var t_delta = Time.get_ticks_msec() - t_start
-			tool_time_msec += t_delta
-			_record_category_time(fn_name, t_delta)
-			_record_tool_telemetry(fn_name, args, t_delta, result)
+			telemetry.tool_time_msec += t_delta
+			telemetry.record_category_time(fn_name, t_delta)
+			telemetry.record_tool(fn_name, args, t_delta, result)
 			
 			# search_tools ile keşfedilen araçları dynamic context'e ekle
 			if fn_name == "search_tools" and result.get("success", false):
@@ -779,7 +659,7 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 				_pending_tool_id = tc_id
 				_pending_tool_args = args
 				_pending_change_set = cs
-				_waiting_start_time = Time.get_ticks_msec()
+				telemetry.begin_waiting()
 				_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
 				print("[TIMING] %s | APPROVAL_REQUESTED | tool=%s" % [get_ts(), fn_name])
 				_defer_remaining_calls(tool_calls.slice(_tc_idx + 1), "DEFERRED_FOR_APPROVAL", "Kullanıcı onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
@@ -800,11 +680,11 @@ func _on_provider_response(text_content: String, thinking_content: String, tool_
 	else:
 		# Completion Integrity Gate: toolsuz final metin tek başına SUCCESS değildir.
 		var gate_state = {
-			"tool_calls": tool_calls_count,
+			"tool_calls": telemetry.tool_calls_count,
 			"unrecovered": unrecovered_failures,
 			"plan_approved": plan_was_approved,
-			"mutations_done": (file_ops_count + editor_ops_count + write_ops_count) > 0,
-			"limit_hit": limit_hit,
+			"mutations_done": (telemetry.file_ops_count + telemetry.editor_ops_count + telemetry.write_ops_count) > 0,
+			"limit_hit": telemetry.limit_hit,
 			"steps_summary": str(current_step) + " / " + str(max_steps),
 		}
 		var gate = AISidebarCompletionPolicy.evaluate(gate_state)
@@ -869,93 +749,6 @@ func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarCh
 func old_content_after(s: String, idx: int, len_target: int) -> String:
 	return s.substr(idx + len_target)
 
-func _classify_telemetry_op(fn_name: String, args: Dictionary) -> void:
-	match fn_name:
-		"create_or_update_script", "replace_file_content", "delete_file", "create_scene", "save_scene":
-			file_ops_count += 1
-		"write_files":
-			var files_arr = args.get("files", [])
-			file_ops_count += maxi(1, files_arr.size())
-		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
-			editor_ops_count += 1
-		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
-			runtime_ops_count += 1
-
-func _record_category_time(fn_name: String, duration_msec: int) -> void:
-	match fn_name:
-		"create_or_update_script", "create_scene", "save_scene", "write_files":
-			file_time_msec += duration_msec
-		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
-			editor_time_msec += duration_msec
-		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
-			runtime_time_msec += duration_msec
-
-## Tool türü sınıflandırması (pure/static; Research Budget da bunu kullanacak).
-## "read" | "search" | "write" | "verify" | "runtime" | "editor" | "other"
-static func classify_tool_kind(tool_name: String) -> String:
-	match tool_name:
-		"read_script", "read_file", "get_project_files", "list_files", "analyze_project":
-			return "read"
-		"search_tools":
-			return "search"
-		"create_or_update_script", "replace_file_content", "write_files", "create_scene", "save_scene", "delete_file":
-			return "write"
-		"validate_script":
-			return "verify"
-		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
-			return "runtime"
-		"add_node", "delete_node", "rename_node", "duplicate_node", "set_node_property", "connect_signal", "reparent_node", "select_node":
-			return "editor"
-		_:
-			if tool_name.begins_with("search"):
-				return "search"
-			if tool_name.begins_with("read") or tool_name.begins_with("get_"):
-				return "read"
-			return "other"
-
-func _note_retry() -> void:
-	retry_count += 1
-
-## Her GERÇEK tool icrası için tek kayıt noktası (normal + onaylı yol).
-## Başarı hükmü transcript helper ile (outer ok + payload fail yakalanır).
-func _record_tool_telemetry(fn_name: String, args: Dictionary, duration_msec: int, result: Dictionary) -> void:
-	var kind = classify_tool_kind(fn_name)
-	match kind:
-		"read":
-			read_ops_count += 1
-			research_time_msec += duration_msec
-		"search":
-			search_ops_count += 1
-			research_time_msec += duration_msec
-		"write":
-			write_ops_count += 1
-	tool_time_by_name[fn_name] = int(tool_time_by_name.get(fn_name, 0)) + duration_msec
-	for f in _telemetry_file_targets(args):
-		if kind == "write":
-			files_written[f] = true
-		else:
-			files_read[f] = true
-	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
-	if not bool(outcome.get("success", false)):
-		failed_tool_count += 1
-
-static func _telemetry_file_targets(args: Dictionary) -> Array:
-	var out: Array = []
-	if args == null:
-		return out
-	for k in ["file_path", "scene_path"]:
-		var v = str(args.get(k, "")).strip_edges()
-		if not v.is_empty():
-			out.append(v)
-	var files = args.get("files", [])
-	if files is Array:
-		for f in files:
-			if f is Dictionary:
-				var fp = str((f as Dictionary).get("file_path", (f as Dictionary).get("path", ""))).strip_edges()
-				if not fp.is_empty():
-					out.append(fp)
-	return out
-
 ## Kalan kuyruk çağrılarını erteler: her birine açık DEFERRED sonucu yazılır
 ## (sessiz kayıp yok) ve tool_completed yayılır; körlemesine icra yapılmaz.
 func _defer_remaining_calls(remaining: Array, code: String, message: String) -> void:
@@ -981,12 +774,12 @@ func _verify_tool_result(tool_name: String, args: Dictionary, result: Variant) -
 		_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
 		print("[TIMING] %s | VERIFICATION_START | tool=%s" % [get_ts(), tool_name])
 		verification_started.emit(tool_name)
-		verification_checkpoints_count += 1
+		telemetry.verification_checkpoints_count += 1
 
 		var v_start = Time.get_ticks_msec()
 		var verified_result = AISidebarVerificationPipeline.auto_verify_tool_execution(tool_name, args, res_dict)
 		var v_delta = Time.get_ticks_msec() - v_start
-		verification_time_msec += v_delta
+		telemetry.verification_time_msec += v_delta
 
 		is_valid = verified_result.get("success", false)
 		ui_msg = verified_result.get("message", ui_msg)
@@ -1048,7 +841,7 @@ func _on_provider_error(error_message: String) -> void:
 		
 	if ("PROVIDER_EMPTY_RESPONSE" in error_message or "boş yanıt" in error_message) and _empty_response_retry_count < max_empty_response_retries:
 		_empty_response_retry_count += 1
-		_note_retry()
+		telemetry.note_retry()
 		print("[TIMING] %s | PROVIDER_EMPTY_ERROR_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
 		_set_state(AgentState.RECOVERING, "Geçici ağ/boş yanıt hatası, tekrar deneniyor...")
 		_run_next_step()
