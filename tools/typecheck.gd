@@ -2,7 +2,7 @@
 extends SceneTree
 
 ## Godot AI Core - Headless GDScript Compilation & Scene Load Validator
-## Eklenti (addons/godot_sidebar_ai) ve test (tests) altındaki tüm .gd ve .tscn dosyalarını
+## Eklenti (addons/godot_sidebar_ai), test (tests) ve araç (tools) altındaki tüm .gd ve .tscn dosyalarını
 ## Godot GUI açılmadan statik olarak yükleyip derler, sözdizimi ve sahne hatalarını yakalar.
 
 func _init() -> void:
@@ -15,7 +15,9 @@ func _init() -> void:
 	
 	_collect_files("res://addons/godot_sidebar_ai", gd_files, tscn_files)
 	_collect_files("res://tests", gd_files, tscn_files)
-	
+	# tools/ (typecheck, uyarı raporu, README görselleri) da derlenir; scripts/ (demo) kapsam dışıdır.
+	_collect_files("res://tools", gd_files, tscn_files)
+
 	print("Bulunan dosyalar: %d GDScript (.gd), %d Sahne (.tscn)\n" % [gd_files.size(), tscn_files.size()])
 	
 	var passed_gd = 0
@@ -25,7 +27,12 @@ func _init() -> void:
 	# 1. GDScript derleme denetimi.
 	# NOT: load() parse-hatalı script'te bile non-null GDScript döner; gerçek
 	# hüküm reload() dönüşüdür (OK=0). İkisi de geçmeli (fail-closed).
+	var self_path = (get_script() as Script).resource_path
 	for f in gd_files:
+		# Çalışan betik kendini reload edemez (ERR_ALREADY_IN_USE); koşuyor olması derlendiğinin kanıtı.
+		if f == self_path:
+			passed_gd += 1
+			continue
 		var script = load(f)
 		var ok_load = script is GDScript
 		var ok_reload = ok_load and (script as GDScript).reload() == OK

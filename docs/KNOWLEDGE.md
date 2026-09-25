@@ -70,6 +70,13 @@ Bu dosya, Godot 4.7 motor özellikleri, GDScript 2.0 kuralları, 9Router/LLM pro
 
 * `GDScript.reload()` hem parser hatasında hem de eksik `preload` / `extends "yol"` çözümlemesinde `ERR_PARSE_ERROR` (43) döner; dönüş koduyla ikisi ayırt edilemez. Parser hatası (ör. `Expected parameter name`) varsa preload çözümlemesine hiç geçilmez.
 * `preload` ve `extends "res://…"` betiği `GDScriptCache` üzerinden **diskten** okur. Bellek içi bir `GDScript`'i `take_over_path()` ile o yola kaydetmek yetmez ("Could not find script"). Henüz yazılmamış bir dosyaya bağımlı betiği gerçekten derlemek için bağımlılık diske (proje dışı `user://` aynası) yazılmalıdır (`VerificationPipeline` batch aynası).
+* **GDScript uyarıları headless'ta (Refactor Faz 4.A.2 araştırması):**
+  * Ayar adları `debug/gdscript/warnings/<ad>` (0 = kapalı, 1 = uyarı, 2 = hata). 4.x'teki `exclude_addons` 4.7'de yoktur; yerine `debug/gdscript/warnings/directory_rules` sözlüğü gelir, varsayılan `{ "res://addons": 0 }` (addons hariç). Karar değeri 0 = hariç, 1 = dahil; 2 geçersizdir (`decision >= DECISION_MAX` hatası).
+  * Seviye 1'de (uyarı) headless `reload()` **hiçbir şey basmaz** ve OK döner; uyarılar yalnızca editörün betik panelinde görünür.
+  * Seviye 2'de uyarılar `SCRIPT ERROR: Parse Error: … (Warning treated as error.)` olarak satır numarasıyla basılır ve `reload()` `ERR_PARSE_ERROR` döner. Bir dosyadaki tüm uyarılar raporlanır (ilk hatada durmaz).
+  * `ProjectSettings.set_setting` ile değiştirilen uyarı seviyeleri parser'a **bir kare sonra** yansır (`update_project_settings`); `_init` içinde aynı karede derlenen betik eski ayarı görür. `_initialize` + `await process_frame` gerekir.
+  * Ölçüm yöntemi (`tools/warning_report.gd`): alt süreçte önce tüm betikler varsayılan ayarla yüklenir, sonra her tür tek başına seviye 2'ye çekilip betikler yerinde `reload(true)` edilir; bağımlılıklar önbellekten geldiği için hata zincirlenmez (sonuç derleme sırasından bağımsız ve deterministik, doğrulandı). Çalışan betik kendini `reload()` edemez.
+  * LSP (`--lsp-port`, `publishDiagnostics`) yolu denenmedi; yukarıdaki yöntem yeterli olduğu için gerek kalmadı.
 * Aynı betik içindeki `Callable(Script, "static_func")` ve iki betik arasında döngüsel `preload` (`verification_pipeline.gd` ↔ `tscn_validator.gd`) headless'ta sorunsuz çalışır.
 
 ## İkon Sistemi (Lucide) ve Emoji Yasağı

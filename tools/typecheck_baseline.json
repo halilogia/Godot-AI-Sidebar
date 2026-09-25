@@ -1,0 +1,412 @@
+{
+  "core/agent/agent_context.gd": {
+    "untyped_declaration": 34,
+    "unsafe_method_access": 13,
+    "unsafe_call_argument": 11,
+    "unsafe_cast": 1
+  },
+  "core/agent/agent_host.gd": {
+    "untyped_declaration": 2,
+    "unsafe_method_access": 7,
+    "unsafe_property_access": 3,
+    "unsafe_call_argument": 1
+  },
+  "core/agent/agent_runner.gd": {
+    "untyped_declaration": 99,
+    "unsafe_method_access": 32,
+    "unsafe_call_argument": 85,
+    "unsafe_cast": 1
+  },
+  "core/agent/agent_telemetry.gd": {
+    "untyped_declaration": 11,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 4,
+    "unsafe_cast": 2
+  },
+  "core/agent/completion_policy.gd": {
+    "untyped_declaration": 4,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 4,
+    "unsafe_cast": 3
+  },
+  "core/agent/context_compactor.gd": {
+    "untyped_declaration": 35,
+    "unsafe_method_access": 33,
+    "unsafe_call_argument": 4
+  },
+  "core/agent/pending_interaction.gd": {
+    "untyped_declaration": 3
+  },
+  "core/agent/planning_policy.gd": {
+    "untyped_declaration": 3
+  },
+  "core/chat/chat_exporter.gd": {
+    "untyped_declaration": 136,
+    "unsafe_method_access": 105,
+    "unsafe_call_argument": 84,
+    "unsafe_cast": 66
+  },
+  "core/chat/chat_manager.gd": {
+    "untyped_declaration": 20,
+    "unsafe_method_access": 9,
+    "unsafe_call_argument": 11
+  },
+  "core/chat/chat_session.gd": {
+    "untyped_declaration": 11,
+    "unsafe_method_access": 17,
+    "unsafe_cast": 1
+  },
+  "core/chat/mention_manager.gd": {
+    "untyped_declaration": 53,
+    "unsafe_method_access": 18,
+    "unsafe_call_argument": 10
+  },
+  "core/chat/task_checkpoint.gd": {
+    "untyped_declaration": 17,
+    "unsafe_method_access": 15,
+    "unsafe_call_argument": 9
+  },
+  "core/chat/task_transcript.gd": {
+    "untyped_declaration": 17,
+    "unsafe_method_access": 5,
+    "unsafe_call_argument": 12,
+    "unsafe_cast": 11
+  },
+  "core/commands/slash_command_manager.gd": {
+    "untyped_declaration": 42,
+    "unsafe_method_access": 3,
+    "unsafe_call_argument": 3
+  },
+  "core/config/api_config.gd": {
+    "untyped_declaration": 8,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 4
+  },
+  "core/i18n/i18n.gd": {
+    "untyped_declaration": 7,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 2
+  },
+  "core/mutations/editor_mutation_service.gd": {
+    "untyped_declaration": 20,
+    "unsafe_call_argument": 10
+  },
+  "core/network/network_manager.gd": {
+    "untyped_declaration": 44,
+    "unsafe_method_access": 7,
+    "unsafe_call_argument": 16
+  },
+  "core/network/sse_parser.gd": {
+    "untyped_declaration": 32,
+    "unsafe_method_access": 34,
+    "unsafe_call_argument": 6,
+    "unsafe_cast": 4
+  },
+  "core/providers/agy_cli_provider.gd": {
+    "untyped_declaration": 48,
+    "unsafe_method_access": 23,
+    "unsafe_call_argument": 19
+  },
+  "core/providers/openai_compatible_provider.gd": {
+    "untyped_declaration": 41,
+    "unsafe_method_access": 24,
+    "unsafe_call_argument": 9
+  },
+  "core/runtime/debugger_plugin.gd": {
+    "untyped_declaration": 18,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 5,
+    "unsafe_cast": 2
+  },
+  "core/runtime/runtime_bridge.gd": {
+    "untyped_declaration": 33,
+    "unsafe_method_access": 13,
+    "unsafe_call_argument": 17
+  },
+  "core/runtime/runtime_debugger.gd": {
+    "untyped_declaration": 17,
+    "unsafe_method_access": 3,
+    "unsafe_call_argument": 7
+  },
+  "core/runtime/runtime_observer.gd": {
+    "untyped_declaration": 12,
+    "unsafe_method_access": 5,
+    "unsafe_call_argument": 2
+  },
+  "core/runtime/source_mapper.gd": {
+    "untyped_declaration": 30,
+    "unsafe_call_argument": 11
+  },
+  "core/security/path_policy.gd": {
+    "untyped_declaration": 7,
+    "unsafe_call_argument": 1
+  },
+  "core/security/permission_policy.gd": {
+    "untyped_declaration": 23,
+    "unsafe_method_access": 3,
+    "unsafe_call_argument": 3
+  },
+  "core/state/context_collector.gd": {
+    "untyped_declaration": 3,
+    "unsafe_method_access": 3,
+    "unsafe_call_argument": 2
+  },
+  "core/state/diagnosis_context.gd": {
+    "untyped_declaration": 1
+  },
+  "core/state/editor_state_snapshot.gd": {
+    "untyped_declaration": 10,
+    "unsafe_method_access": 7,
+    "unsafe_call_argument": 4
+  },
+  "core/tools/intent/game_intent_tools.gd": {
+    "untyped_declaration": 59,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 47
+  },
+  "core/tools/primitive/editor_tools.gd": {
+    "untyped_declaration": 70,
+    "unsafe_method_access": 15,
+    "unsafe_call_argument": 51
+  },
+  "core/tools/primitive/scene_tools.gd": {
+    "untyped_declaration": 105,
+    "unsafe_method_access": 15,
+    "unsafe_call_argument": 109,
+    "unsafe_cast": 1
+  },
+  "core/tools/primitive/script_tools.gd": {
+    "untyped_declaration": 95,
+    "unsafe_method_access": 20,
+    "unsafe_call_argument": 86,
+    "unsafe_cast": 6
+  },
+  "core/tools/primitive/ui_telemetry_tools.gd": {
+    "untyped_declaration": 52,
+    "unsafe_method_access": 18,
+    "unsafe_call_argument": 42,
+    "unsafe_cast": 4
+  },
+  "core/tools/tool_manager.gd": {
+    "untyped_declaration": 85,
+    "unsafe_method_access": 23,
+    "unsafe_call_argument": 39
+  },
+  "core/types/change_set.gd": {
+    "untyped_declaration": 39,
+    "unsafe_method_access": 6,
+    "unsafe_call_argument": 46
+  },
+  "core/types/implementation_plan.gd": {
+    "untyped_declaration": 7
+  },
+  "core/types/runtime_observation.gd": {
+    "untyped_declaration": 1,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 2
+  },
+  "core/types/type_parser.gd": {
+    "untyped_declaration": 10,
+    "unsafe_call_argument": 4
+  },
+  "core/types/vision_input.gd": {
+    "untyped_declaration": 18,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 9,
+    "unsafe_cast": 2
+  },
+  "core/types/visual_observation.gd": {
+    "untyped_declaration": 1,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 1
+  },
+  "core/verification/tscn_validator.gd": {
+    "untyped_declaration": 28,
+    "unsafe_call_argument": 7
+  },
+  "core/verification/verification_pipeline.gd": {
+    "untyped_declaration": 36,
+    "unsafe_method_access": 8,
+    "unsafe_call_argument": 16
+  },
+  "plugin.gd": {
+    "unsafe_property_access": 1
+  },
+  "ui/components/activity_group.gd": {
+    "untyped_declaration": 25,
+    "unsafe_method_access": 3,
+    "unsafe_call_argument": 14,
+    "unsafe_cast": 10
+  },
+  "ui/components/approval_card.gd": {
+    "untyped_declaration": 4,
+    "unsafe_call_argument": 2
+  },
+  "ui/components/changes_card.gd": {
+    "untyped_declaration": 12,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 4
+  },
+  "ui/components/clarification_card.gd": {
+    "untyped_declaration": 14,
+    "unsafe_method_access": 1,
+    "unsafe_property_access": 2,
+    "unsafe_call_argument": 11
+  },
+  "ui/components/error_card.gd": {
+    "untyped_declaration": 2,
+    "unsafe_call_argument": 2
+  },
+  "ui/components/history_panel.gd": {
+    "untyped_declaration": 42,
+    "unsafe_method_access": 12,
+    "unsafe_property_access": 2,
+    "unsafe_call_argument": 33
+  },
+  "ui/components/icon_helper.gd": {
+    "untyped_declaration": 16,
+    "unsafe_call_argument": 15
+  },
+  "ui/components/input_composer.gd": {
+    "untyped_declaration": 37,
+    "unsafe_method_access": 2,
+    "unsafe_property_access": 17,
+    "unsafe_call_argument": 27
+  },
+  "ui/components/message_bubble.gd": {
+    "untyped_declaration": 15,
+    "unsafe_method_access": 6,
+    "unsafe_call_argument": 7
+  },
+  "ui/components/message_queue_panel.gd": {
+    "untyped_declaration": 14,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 9
+  },
+  "ui/components/pending_indicator.gd": {
+    "untyped_declaration": 2,
+    "unsafe_call_argument": 2
+  },
+  "ui/components/plan_card.gd": {
+    "untyped_declaration": 4,
+    "unsafe_property_access": 1,
+    "unsafe_call_argument": 4
+  },
+  "ui/components/reasoning_card.gd": {
+    "untyped_declaration": 6
+  },
+  "ui/components/runtime_card.gd": {
+    "untyped_declaration": 6,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 4
+  },
+  "ui/components/screenshot_card.gd": {
+    "untyped_declaration": 16,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 11
+  },
+  "ui/components/status_icon.gd": {
+    "untyped_declaration": 1
+  },
+  "ui/components/task_checklist.gd": {
+    "untyped_declaration": 17,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 4,
+    "unsafe_cast": 1
+  },
+  "ui/components/telemetry_card.gd": {
+    "untyped_declaration": 24,
+    "unsafe_call_argument": 3
+  },
+  "ui/components/thinking_card.gd": {
+    "untyped_declaration": 7,
+    "unsafe_call_argument": 1
+  },
+  "ui/components/welcome_card.gd": {
+    "untyped_declaration": 11,
+    "unsafe_method_access": 1,
+    "unsafe_call_argument": 8
+  },
+  "ui/controllers/chat_export_actions.gd": {
+    "untyped_declaration": 32,
+    "unsafe_method_access": 18,
+    "unsafe_call_argument": 13
+  },
+  "ui/controllers/chat_session_store.gd": {
+    "untyped_declaration": 11,
+    "unsafe_method_access": 22,
+    "unsafe_call_argument": 10
+  },
+  "ui/controllers/model_bar_controller.gd": {
+    "untyped_declaration": 15,
+    "unsafe_call_argument": 8
+  },
+  "ui/controllers/task_controller.gd": {
+    "untyped_declaration": 47,
+    "unsafe_method_access": 16,
+    "unsafe_call_argument": 33,
+    "unsafe_cast": 1
+  },
+  "ui/dialogs/change_set_dialog.gd": {
+    "untyped_declaration": 9,
+    "unsafe_call_argument": 15
+  },
+  "ui/dialogs/settings_dialog.gd": {
+    "untyped_declaration": 33,
+    "unsafe_method_access": 13,
+    "unsafe_property_access": 2,
+    "unsafe_call_argument": 4
+  },
+  "ui/docks/chat_dock.gd": {
+    "untyped_declaration": 13,
+    "unsafe_method_access": 6,
+    "unsafe_property_access": 2,
+    "unsafe_call_argument": 9
+  },
+  "ui/docks/chat_dock_theme.gd": {
+    "untyped_declaration": 6,
+    "unsafe_method_access": 24,
+    "unsafe_property_access": 42,
+    "unsafe_call_argument": 11
+  },
+  "ui/presenters/agent_activity_presenter.gd": {
+    "untyped_declaration": 38,
+    "unsafe_method_access": 22,
+    "unsafe_call_argument": 25,
+    "unsafe_cast": 2
+  },
+  "ui/presenters/agent_interaction_presenter.gd": {
+    "untyped_declaration": 25,
+    "unsafe_method_access": 42,
+    "unsafe_call_argument": 7,
+    "unsafe_cast": 2
+  },
+  "ui/presenters/agent_stream_presenter.gd": {
+    "untyped_declaration": 13,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 3
+  },
+  "ui/presenters/markdown_renderer.gd": {
+    "untyped_declaration": 7,
+    "unsafe_call_argument": 3
+  },
+  "ui/presenters/plan_checklist_tracker.gd": {
+    "untyped_declaration": 15,
+    "unsafe_method_access": 2,
+    "unsafe_call_argument": 5,
+    "unsafe_cast": 4
+  },
+  "ui/presenters/session_replay_renderer.gd": {
+    "untyped_declaration": 24,
+    "unsafe_method_access": 22,
+    "unsafe_call_argument": 8
+  },
+  "ui/presenters/tool_presentation.gd": {
+    "untyped_declaration": 14,
+    "unsafe_method_access": 12,
+    "unsafe_call_argument": 3
+  },
+  "ui/theme/sidebar_theme.gd": {
+    "untyped_declaration": 12
+  }
+}

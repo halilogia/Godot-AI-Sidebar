@@ -55,7 +55,7 @@
 Yeni bir özellik veya düzeltme yapıldığında tek komut koşulur; herhangi bir adım kırmızıysa iş bitmiş sayılmaz:
 
 ```bash
-# Typecheck (addons/ + tests/) + tüm birim testleri. Godot'u kendisi bulur
+# Typecheck (addons/ + tests/ + tools/) + sıkı uyarı cırcırı + tüm birim testleri. Godot'u kendisi bulur
 # (-GodotPath > $env:GODOT_BIN > PATH > Masaüstü). Fail-closed: hata -> exit 1.
 powershell -ExecutionPolicy Bypass -File .\verify.ps1
 
@@ -65,6 +65,7 @@ powershell -ExecutionPolicy Bypass -File .\verify.ps1 -Live
 
 * Test/dosya sayıları dokümanlara elle yazılmaz (hızla eskir); güncel sayı `verify.ps1` çıktısındadır.
 * Adımlar ayrı ayrı gerekirse: `typecheck.ps1`, `tests/test_runner.gd`, `tests/integration/test_real_9router_live.gd`.
+* **Uyarı cırcırı:** `addons/` için 5 sıkı uyarı türü (`untyped_declaration`, `unsafe_method_access`, `unsafe_property_access`, `unsafe_call_argument`, `unsafe_cast`) dosya başına `tools/typecheck_baseline.json` ile karşılaştırılır; bir dosyada sayı artarsa `verify.ps1` kırmızıdır. Yeni dosya tabanda yoksa sıfır uyarıyla başlamalıdır (tam tipli yazılır). Tip ekleyip sayıyı düşürdüysen tabanı düşür: `godot --headless --path . -s res://tools/warning_report.gd -- --update-baseline` (tabanı asla yukarı çekmek için kullanma).
 
 ---
 

@@ -3,7 +3,7 @@ param(
     [switch]$Live
 )
 
-# Tek komutluk doğrulama: typecheck -> birim testleri -> (isteğe bağlı) canlı 9Router testi.
+# Tek komutluk doğrulama: typecheck -> uyarı cırcırı -> birim testleri -> (isteğe bağlı) canlı 9Router testi.
 # Usage: ./verify.ps1 [-GodotPath <path>] [-Live]
 # Herhangi bir adım başarısızsa sonraki adımlar koşmaz ve exit 1 döner.
 
@@ -26,6 +26,18 @@ Write-Step "Typecheck"
 & (Join-Path $ProjectPath "typecheck.ps1") -GodotPath $GodotBin | Select-Object -Last 6
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[VERIFY FAIL] Typecheck basarisiz." -ForegroundColor Red
+    exit 1
+}
+
+# 1b. Sıkı uyarı cırcırı: addons/ için 5 uyarı türü dosya başına sayılır; bir dosyada
+# sayı tools/typecheck_baseline.json'dakinden fazlaysa (yeni dosyada > 0) başarısız.
+Write-Step "Strict warnings (ratchet)"
+$warnOut = & $GodotBin --headless --path $ProjectPath -s "res://tools/warning_report.gd" 2>&1 | ForEach-Object { "$_" }
+$warnExit = $LASTEXITCODE
+$warnOut | Select-String -Pattern "^\s+-\s|WARNINGS|azaldi|azaldı|^\s+\* " | ForEach-Object { Write-Host $_.Line }
+$warnOk = $warnOut | Select-String -SimpleMatch "[WARNINGS OK]" | Select-Object -Last 1
+if ($warnExit -ne 0 -or -not $warnOk) {
+    Write-Host "[VERIFY FAIL] Uyari circiri basarisiz (exit=$warnExit)." -ForegroundColor Red
     exit 1
 }
 
