@@ -540,19 +540,8 @@ static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 	if not img or img.is_empty():
 		return AISidebarToolResult.err("IMAGE_EMPTY", "Viewport görüntüsü boş.")
 		
-	# Token tasarrufu için ölçeklendirme
-	if max_dim > 0 and (img.get_width() > max_dim or img.get_height() > max_dim):
-		var orig_w = img.get_width()
-		var orig_h = img.get_height()
-		var ratio = float(orig_w) / float(orig_h)
-		var new_w = max_dim
-		var new_h = max_dim
-		if ratio >= 1.0:
-			new_h = maxi(1, int(float(max_dim) / ratio))
-		else:
-			new_w = maxi(1, int(float(max_dim) * ratio))
-		img.resize(new_w, new_h, Image.INTERPOLATE_BILINEAR)
-		
+	downscale_to_max(img, max_dim)
+
 	var norm_path = path_check["path"]
 	var err = img.save_png(norm_path)
 	if err != OK:
@@ -569,6 +558,21 @@ static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 		"base64": b64,
 		"has_vision_data": true
 	}, "✓ " + vp_type_str.to_upper() + " Viewport ekran görüntüsü alındı (" + str(img.get_width()) + "x" + str(img.get_height()) + ")")
+
+## Token tasarrufu için ölçeklendirme: uzun kenar max_dim'i aşıyorsa oran korunarak
+## küçültür (yerinde). max_dim <= 0 ise dokunmaz.
+static func downscale_to_max(img: Image, max_dim: int) -> void:
+	if max_dim > 0 and (img.get_width() > max_dim or img.get_height() > max_dim):
+		var orig_w = img.get_width()
+		var orig_h = img.get_height()
+		var ratio = float(orig_w) / float(orig_h)
+		var new_w = max_dim
+		var new_h = max_dim
+		if ratio >= 1.0:
+			new_h = maxi(1, int(float(max_dim) / ratio))
+		else:
+			new_w = maxi(1, int(float(max_dim) * ratio))
+		img.resize(new_w, new_h, Image.INTERPOLATE_BILINEAR)
 
 static func _inspect_runtime_tree_sync(args: Dictionary) -> Dictionary:
 	var is_playing = false
