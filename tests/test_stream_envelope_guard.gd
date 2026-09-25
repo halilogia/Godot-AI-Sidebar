@@ -68,6 +68,14 @@ static func _feed_chunks(dock, chunks: Array) -> Dictionary:
 	return {"leaked": leaked, "steps": leaked_steps}
 
 
+## Motorun hata çıktısını sayar (Godot 4.5+ Logger): "Output'a ERROR basılmadı" kanıtı.
+class ErrorCatcher extends Logger:
+	var errors: Array = []
+	func _log_error(_function: String, _file: String, _line: int, _code: String, rationale: String, _editor_notify: bool, _error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		errors.append(rationale)
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
 static func run() -> Dictionary:
 	var passed = 0
 	var failed = 0
@@ -295,5 +303,21 @@ static func run() -> Dictionary:
 		errors.append("Test 7 (no stale buffer leak across turns) failed: visible='" + vis7 + "'")
 
 	dock.free()
+
+	# JSON olmayan kod blokları (dosya ağacı, GDScript) sessizce korunur: zarf kontrolü
+	# motor çıktısına "Parse JSON failed" ERROR'u basmaz (akış sırasında her parçada çalışır).
+	var tree_text = "Sahne hazır.\n```\nMain3D (Node3D)\n├── Ground (MeshInstance3D)\n```\n```gdscript\nfunc _ready():\n\tpass\n```\nBitti."
+	var catcher = ErrorCatcher.new()
+	OS.add_logger(catcher)
+	for cut in range(8, tree_text.length(), 8):
+		AISidebarMessageBubble.strip_tool_call_envelopes(tree_text.substr(0, cut), true)
+	var final_txt = AISidebarMessageBubble.strip_tool_call_envelopes(tree_text, false)
+	var is_env = AISidebarMessageBubble.is_tool_call_envelope("```\n{not json}\n```")
+	OS.remove_logger(catcher)
+	if catcher.errors.is_empty() and "Main3D (Node3D)" in final_txt and "func _ready()" in final_txt and not is_env:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T-silent (non-JSON code blocks log no errors) failed: %d engine errors %s" % [catcher.errors.size(), str(catcher.errors.slice(0, 2))])
 
 	return {"name": "StreamEnvelopeGuardTests", "passed": passed, "failed": failed, "errors": errors}
