@@ -9,33 +9,38 @@ const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_c
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 var model_selector: OptionButton = null
 var approve_mode_btn: Button = null
 ## func(text: String, color: Color) — durum rozeti.
 var set_status: Callable = func(_t, _c): pass
-## func() -> bool — ajan var ve boşta mı? (değilse mod değişimi rozeti ezmez)
-var is_agent_idle: Callable = func(): return false
 
 var current_model_list: Array = []
 
+## Onay modu → buton metni, açıklaması, Lucide ikonu ve vurgu rengi.
+static func approve_mode_spec(mode: int) -> Dictionary:
+	match mode:
+		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
+			return {"text": "mode_auto", "desc": "mode_auto_desc", "icon": "shield-check", "color": AISidebarTheme.COLOR_SUCCESS}
+		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
+			return {"text": "mode_full_auto", "desc": "mode_full_auto_desc", "icon": "zap", "color": AISidebarTheme.COLOR_MODE_FULL_AUTO}
+	return {"text": "mode_manual", "desc": "mode_manual_desc", "icon": "hand", "color": AISidebarTheme.COLOR_WARNING}
+
+## Mod butonu tek kaynaktır: durum rozeti modu tekrar etmez.
 func update_approve_mode_ui() -> void:
 	if not approve_mode_btn:
 		return
-	var mode = AISidebarPermissionPolicy.get_auto_approve_mode()
-	match mode:
-		AISidebarPermissionPolicy.AutoApproveMode.MANUAL:
-			approve_mode_btn.text = AISidebarI18n.get_text("mode_manual")
-			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_manual") + " (Her riskli işlemde onay sorulur)"
-			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
-		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
-			approve_mode_btn.text = AISidebarI18n.get_text("mode_auto")
-			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_auto") + " (Güvenli kod/dosya yazımları otomatik, silme onaylı)"
-			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
-		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
-			approve_mode_btn.text = AISidebarI18n.get_text("mode_full_auto")
-			approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + ": " + AISidebarI18n.get_text("mode_full_auto") + " (Tüm araçlar otomatik onaylanır, PathPolicy kalkanı devrededir)"
-			approve_mode_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_MODE_FULL_AUTO)
+	var spec = approve_mode_spec(AISidebarPermissionPolicy.get_auto_approve_mode())
+	var color: Color = spec["color"]
+	approve_mode_btn.text = AISidebarI18n.get_text(spec["text"])
+	approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + "\n" + AISidebarI18n.get_text(spec["desc"])
+	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		approve_mode_btn.add_theme_color_override(key, color)
+	approve_mode_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(color, false))
+	approve_mode_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_pill_style(color, true))
+	approve_mode_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_pill_style(color, true))
+	AISidebarIconHelper.apply_tinted_icon(approve_mode_btn, spec["icon"], color, 12)
 
 func on_approve_mode_pressed() -> void:
 	var current_mode = AISidebarPermissionPolicy.get_auto_approve_mode()
@@ -49,9 +54,6 @@ func on_approve_mode_pressed() -> void:
 			next_mode = AISidebarPermissionPolicy.AutoApproveMode.MANUAL
 	AISidebarPermissionPolicy.set_auto_approve_mode(next_mode)
 	update_approve_mode_ui()
-	if is_agent_idle.call():
-		var mode_txt = AISidebarPermissionPolicy.get_mode_name(next_mode)
-		set_status.call(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
 
 func load_cached_models() -> void:
 	var cfg = AISidebarConfig.load_config()

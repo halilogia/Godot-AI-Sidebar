@@ -28,7 +28,7 @@
 
 1. **Clean Architecture & Katı SRP (1 Dosya = 1 İş):**
    * `Presentation (ui/)` asla doğrudan `Infrastructure (network/, providers/)` ile konuşmaz.
-   * `ChatDock` içinde hiçbir HTTP düğümü veya ağ mantığı bulunmaz; sadece `AgentRunner` sinyallerini dinler.
+   * UI katmanında (`ui/`) hiçbir HTTP düğümü veya ağ mantığı bulunmaz. **Bilinen istisna (Refactor Faz 2.0'da kapanacak):** `ChatDock._setup_provider()` provider ve `NetworkManager` nesnelerini hâlâ kendisi oluşturuyor. `AgentRunner` sinyallerini presenter'lar (`ui/presenters/`) ve `TaskController` dinler; `ChatDock` yalnızca sahne düğümlerini bağlar ve birimleri kompoze eder (bkz. `ARCHITECTURE.md`).
 2. **Motor Güvenliği & Merkezi Undo/Redo:**
    * Tüm sahne ve düğüm mutasyonları `AISidebarMutationService` üzerinden `EditorUndoRedoManager`'a kaydedilir (`add_do_reference` zorunludur).
 3. **Headless CLI Preload Kuralı:**
@@ -103,3 +103,20 @@ Aktif plan ve ilerleme: `docs/REFACTOR_PLAN.md`.
 * `AGENTS.md` — tüm ajanlar için tek giriş noktası (bu dosya).
 * `ARCHITECTURE.md` — katmanlar ve veri akışı. `ROADMAP.md` — fazlar. `CHANGELOG.md` — tarihçe (geçmiş sayılar düzeltilmez).
 * `docs/KNOWLEDGE.md` — kalıcı teknik bilgi (paylaşılan kaynak). `brain/`, `archives/` git-ignored yerel çalışma alanlarıdır; kalıcı kararlar oradan `docs/`'a taşınır.
+
+---
+
+## 📝 10. Doküman Güncelleme Kuralı
+
+Doküman, onu eskiten değişiklikle **aynı iş kapsamında** güncellenir; sonraya bırakılmaz.
+
+| Değişiklik | Güncellenecek belge |
+|---|---|
+| `addons/` altına yeni / taşınan / silinen `.gd` | `ARCHITECTURE.md` (test zorunlu kılar: `tests/test_docs_coverage.gd`) |
+| Kullanıcının göreceği özellik veya düzeltme | `CHANGELOG.md` → `[Unreleased]` |
+| Ürün fazı tamamlandı, yeni özellik planlandı | `ROADMAP.md` (ürün fazları; refactor fazları `docs/REFACTOR_PLAN.md`'de "Refactor Faz N" olarak ayrı tutulur) |
+| Sürüm çıkarıldı | `CHANGELOG.md` `[Unreleased]` → sürüm numarası + tarih; README sürüm rozeti |
+| Refactor adımı, bulunan bug, faz durumu | `docs/REFACTOR_PLAN.md` |
+| Kalıcı teknik öğrenim (motor davranışı, protokol, tuzak) | `docs/KNOWLEDGE.md` |
+| Mimari kural değişikliği | `AGENTS.md` |
+| Arayüz görünümü değişti | `tools/readme_shots.gd` ile README görselleri yeniden üretilir |

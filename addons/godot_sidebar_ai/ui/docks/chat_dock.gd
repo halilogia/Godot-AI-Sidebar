@@ -19,7 +19,6 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarInputComposer = preload("res://addons/godot_sidebar_ai/ui/components/input_composer.gd")
 const AISidebarChatSession = preload("res://addons/godot_sidebar_ai/core/chat/chat_session.gd")
 const AISidebarHistoryPanel = preload("res://addons/godot_sidebar_ai/ui/components/history_panel.gd")
-const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/components/welcome_card.gd")
@@ -167,7 +166,6 @@ func _ready() -> void:
 	_model_bar.model_selector = model_selector
 	_model_bar.approve_mode_btn = approve_mode_btn
 	_model_bar.set_status = set_status_badge
-	_model_bar.is_agent_idle = func(): return agent_runner != null and not agent_runner.is_running()
 	_setup_history_panel()
 	_setup_queue_ui()
 	_composer = AISidebarInputComposer.new(input_area, input_field, mention_container, mention_list)
@@ -501,8 +499,7 @@ func _on_provider_readiness_changed(state: int, _message: String) -> void:
 		set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
 	else:
 		# Ajan beklemede: hazirlik bitti, bos durum rozetini geri yukle.
-		var mode_txt = AISidebarPermissionPolicy.get_mode_name(AISidebarPermissionPolicy.get_auto_approve_mode())
-		set_status_badge(AISidebarI18n.get_text("status_ready") + " [" + mode_txt + "]", AISidebarTheme.COLOR_SUCCESS)
+		set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
 
 func _update_header_title() -> void:
 	if title_label:

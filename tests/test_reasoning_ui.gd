@@ -11,6 +11,7 @@ const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarPendingIndicator = preload("res://addons/godot_sidebar_ai/ui/components/pending_indicator.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarRuntimeObservation = preload("res://addons/godot_sidebar_ai/core/types/runtime_observation.gd")
 const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/presenters/tool_presentation.gd")
 const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
@@ -182,7 +183,7 @@ static func run() -> Dictionary:
 	dock10._stream.on_thinking_received("   ")
 	var card10 = AISidebarThinkingCard.new()
 	card10._ready()
-	card10.append_thinking("y".repeat(5000))
+	card10.append_thinking("y".repeat(AISidebarThinkingCard.MAX_DISPLAY_CHARS + 1000))
 	if _thinking_cards(dock10).is_empty() and card10.is_truncated() and card10.get_text().length() <= AISidebarThinkingCard.MAX_DISPLAY_CHARS + 20:
 		passed += 1
 	else:
@@ -334,5 +335,47 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T17 (reasoning title i18n) failed: " + en_header)
 	dock17.free()
+
+	# 18. Uzun thinking (gerçek oturumda ~5000 karakter) ekranda ve transcript'te kesilmez.
+	# Önceden kart 3000'de "…[truncated]" yazıyor, transcript ilk 1000 karakteri tutuyordu.
+	var long_thought = ""
+	for i in 100:
+		long_thought += "Adım %d: sahneyi ve scripti değerlendiriyorum. " % i
+	var dock18 = _dock()
+	var chunk_size = 120
+	for start in range(0, long_thought.length(), chunk_size):
+		dock18._stream.on_chunk_received("", long_thought.substr(start, chunk_size))
+	var tc18 = dock18._stream.thinking_card
+	var card_full = tc18 != null and not tc18.is_truncated() and tc18.get_text() == long_thought
+	dock18._stream.stop_thinking_timer()
+	dock18.free()
+	var ctx18 = AISidebarAgentContext.new()
+	ctx18.begin_task("uzun düşünce", "")
+	ctx18.add_assistant_tool_call_message("", [{"id": "c1", "name": "read_script", "arguments": {}}], long_thought)
+	var stored = ""
+	var stored_trunc = true
+	for e in ctx18.get_transcript().get_current_task().get("events", []):
+		if str(e.get("t", "")) == "tool_call":
+			stored = str(e.get("data", {}).get("thinking", ""))
+			stored_trunc = bool(e.get("data", {}).get("thinking_truncated", true))
+	if long_thought.length() > 3000 and card_full and stored == long_thought and not stored_trunc:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T18 (long thinking kept) failed: len=%d card_full=%s stored_len=%d trunc=%s" % [long_thought.length(), str(card_full), stored.length(), str(stored_trunc)])
+
+	# 19. Boşta rozeti onay modunu tekrar etmez: mod yalnızca model çubuğundaki butonda görünür
+	var dock19 = _dock()
+	dock19._stream.on_state_changed(AISidebarAgentRunner.AgentState.IDLE, "Ready")
+	var badge_idle = dock19.status_badge.text
+	dock19._stream.on_state_changed(AISidebarAgentRunner.AgentState.COMPLETED, "Completed")
+	var badge_done = dock19.status_badge.text
+	var mode_btn_txt = dock19.approve_mode_btn.text
+	dock19.free()
+	if badge_idle == "Ready" and badge_done == "Completed" and not mode_btn_txt.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T19 (badge without mode) failed: idle='%s' done='%s' btn='%s'" % [badge_idle, badge_done, mode_btn_txt])
 
 	return {"name": "ReasoningUITests", "passed": passed, "failed": failed, "errors": errors}

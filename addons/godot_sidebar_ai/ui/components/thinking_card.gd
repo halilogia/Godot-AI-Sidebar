@@ -12,7 +12,9 @@ signal meta_clicked(meta: Variant)
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 
 ## Chat alanını ele geçirmemesi için display sınırı.
-const MAX_DISPLAY_CHARS: int = 3000
+## Ekranda gösterilen üst sınır. Gerçek modeller tek turda birkaç bin karakter düşünebilir;
+## 3000 bunu kesiyordu. Sınır yalnızca aşırı büyük metnin etiketi yavaşlatmasını önler.
+const MAX_DISPLAY_CHARS: int = 20000
 
 var is_expanded: bool = false
 

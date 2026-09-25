@@ -2,7 +2,7 @@
 extends PanelContainer
 
 ## Queued Messages: ajan çalışırken gönderilen mesajların FIFO kuyruğu ve paneli (SRP).
-## Veri ve görünüm birlikte tutulur; ne zaman dispatch edileceğine ChatDock karar verir.
+## Veri ve görünüm birlikte tutulur; ne zaman dispatch edileceğine TaskController karar verir.
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")

@@ -120,7 +120,7 @@ func add_assistant_tool_call_message(text: String, tool_calls: Array, thinking: 
 		tc_entry["args"] = flagged_args["text"]
 		tc_entry["args_truncated"] = flagged_args["truncated"]
 		tc_summary.append(tc_entry)
-	var thought = AISidebarTaskTranscript.truncate_flagged(thinking, 1000)
+	var thought = AISidebarTaskTranscript.truncate_flagged(thinking, AISidebarTaskTranscript.MAX_THINKING_CHARS)
 	var tc_data = {"text": AISidebarTaskTranscript.truncate_text(text, 1000), "calls": tc_summary}
 	if not str(thought["text"]).strip_edges().is_empty():
 		tc_data["thinking"] = thought["text"]

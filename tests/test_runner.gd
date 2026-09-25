@@ -86,6 +86,7 @@ const TestDockAgentWiring = preload("res://tests/test_dock_agent_wiring.gd")
 const TestModelBarController = preload("res://tests/test_model_bar_controller.gd")
 const TestTaskDispatch = preload("res://tests/test_task_dispatch.gd")
 const TestMarkdownRenderer = preload("res://tests/test_markdown_renderer.gd")
+const TestDocsCoverage = preload("res://tests/test_docs_coverage.gd")
 
 func _init() -> void:
 	print("==================================================")
@@ -174,6 +175,7 @@ func _init() -> void:
 		TestModelBarController,
 		TestTaskDispatch,
 		TestMarkdownRenderer,
+		TestDocsCoverage,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

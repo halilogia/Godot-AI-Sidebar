@@ -11,6 +11,9 @@ class_name AISidebarTaskTranscript
 ## verification -> completion/failure/cancellation zincirini kapsar.
 
 const MAX_STORED_CHARS: int = 4000
+## Tool çağrısına eşlik eden model düşüncesi (thinking) için kayıt sınırı. Export'ta tam
+## görünmesi için MAX_TEXT_CHARS'tan geniştir; aşarsa `thinking_truncated` bayrağı düşer.
+const MAX_THINKING_CHARS: int = 16000
 const MAX_EVENTS_PER_TASK: int = 500
 ## Everything Export boyut sınırları (makul, deterministik, flag'li truncation).
 const MAX_TEXT_CHARS: int = 4000

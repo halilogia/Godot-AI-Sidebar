@@ -14,6 +14,9 @@ const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat
 var current: AISidebarChatSession = null
 ## Mesaj ve transcript kaynağı olan AgentContext (headless testlerde null olabilir).
 var context = null
+## LLM'siz yanıtlanan yerel komutlar (/help): oturumda ve History'de görünür, modele gitmez.
+## Her kayıt "anchor" = eklendiği andaki context mesaj sayısı; kayıtta araya bu sırayla girer.
+var _local_entries: Array = []
 
 func is_current(session_id: String) -> bool:
 	return current != null and current.id == session_id
@@ -31,6 +34,7 @@ func has_live_messages() -> bool:
 
 func start_new() -> void:
 	current = AISidebarChatSession.new()
+	_local_entries.clear()
 	if context:
 		context.clear()
 
@@ -38,7 +42,7 @@ func save() -> void:
 	if current == null:
 		return
 	if context:
-		current.messages = context.messages.duplicate(true)
+		current.messages = _merge_local_entries(context.messages)
 		current.transcript_tasks = context.get_transcript().to_data()
 	AISidebarChatManager.save_session(current)
 
@@ -48,9 +52,19 @@ func load_by_id(session_id: String) -> bool:
 	if not loaded:
 		return false
 	current = loaded
+	_local_entries.clear()
 	if context:
 		context.clear()
-		context.messages = loaded.messages.duplicate(true)
+		# Yerel komutlar (ve eski oturumlardaki "command" rolü) modele gitmez; ayrı tutulur.
+		var ctx_msgs: Array = []
+		for m in loaded.messages:
+			if m is Dictionary and (bool(m.get("local", false)) or str(m.get("role", "")) == "command"):
+				var e: Dictionary = m.duplicate(true)
+				e["anchor"] = ctx_msgs.size()
+				_local_entries.append(e)
+			else:
+				ctx_msgs.append(m.duplicate(true) if m is Dictionary else m)
+		context.messages = ctx_msgs
 		context.get_transcript().load_data(loaded.transcript_tasks)
 	return true
 
@@ -58,6 +72,7 @@ func load_by_id(session_id: String) -> bool:
 func clear_contents() -> void:
 	if context:
 		context.clear()
+	_local_entries.clear()
 	if current:
 		current.messages.clear()
 		current.telemetry.clear()
@@ -71,12 +86,41 @@ func rename_if_current(session_id: String, new_title: String) -> bool:
 	current.title = new_title
 	return true
 
-## Yerel yanıtlanan slash komutunu (LLM'siz, örn. /help) oturuma yazar.
+## Yerel yanıtlanan slash komutunu (LLM'siz, örn. /help) oturuma yazar. Context varken
+## modele giden mesajlara eklenmez; kayıtta doğru sıraya yerleştirilir (_merge_local_entries).
 func record_local_command(raw_text: String, reply_text: String) -> void:
 	ensure_session()
-	current.messages.append({"role": "command", "content": raw_text})
-	current.messages.append({"role": "assistant", "content": reply_text})
+	var entries = [
+		{"role": "command", "content": raw_text, "local": true},
+		{"role": "assistant", "content": reply_text, "local": true},
+	]
+	if context:
+		for e in entries:
+			e["anchor"] = context.messages.size()
+			_local_entries.append(e)
+	else:
+		current.messages.append_array(entries)
 	save()
+
+## Context mesajlarının arasına yerel kayıtları anchor sırasıyla yerleştirir. Compaction
+## context'i kısaltırsa kayıt kaybolmaz, en sona kayar.
+func _merge_local_entries(ctx_msgs: Array) -> Array:
+	var out: Array = []
+	var li := 0
+	for i in ctx_msgs.size():
+		while li < _local_entries.size() and int(_local_entries[li].get("anchor", 0)) <= i:
+			out.append(_without_anchor(_local_entries[li]))
+			li += 1
+		out.append(ctx_msgs[i].duplicate(true) if ctx_msgs[i] is Dictionary else ctx_msgs[i])
+	while li < _local_entries.size():
+		out.append(_without_anchor(_local_entries[li]))
+		li += 1
+	return out
+
+static func _without_anchor(e: Dictionary) -> Dictionary:
+	var c = e.duplicate(true)
+	c.erase("anchor")
+	return c
 
 # --- Resume checkpoint (session'da tek slot) ---
 

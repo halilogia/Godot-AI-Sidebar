@@ -4,6 +4,8 @@
 > Faz 1 kapanış ölçümü: typecheck 187/187 GDScript + 4/4 sahne ✅ · test_runner **610 assertion** ✅
 > Baz ölçüm: typecheck 162/162 GDScript + 4/4 sahne ✅ · test_runner **553 assertion** ✅
 
+> **Numaralandırma:** Bu belgedeki fazlar **refactor** fazlarıdır; başka belgelerde "Refactor Faz N" diye anılır. Ürün fazları (özellikler) `ROADMAP.md`'dedir ve ayrı numaralanır.
+
 ## Amaç
 
 "1 dosya = 1 iş" kuralını gerçeğe dönüştürmek. En büyük iki dosya kuralı açıkça çiğniyor:
@@ -56,15 +58,36 @@ Sıra riske göre: saf/izole olanlar önce, sinyal akışının kalbi en son.
 **Ara kontrol:** 1.1–1.6 kullanıcı tarafından editörde (yeni-oyun-projesi, junction) elle test edildi, sorun yok (2026-09-25).
 **Faz sonu:** editörde elle duman testi (aşağıdaki kontrol listesi) — headless testler UI'ın gerçek hissini kanıtlamaz.
 
+## Faz 1.1 — Harici inceleme sonrası temizlik (✅ 2026-09-25)
+
+ChatGPT'nin PR #1 diff incelemesindeki dört madde koda karşı doğrulandı:
+
+| Madde | Sonuç | Commit |
+|---|---|---|
+| Retry task hattını atlıyor | Doğru ve daha ciddi: slash komutunda modele düz "/analyze" gidiyordu | `30d4464` (+`TaskDispatchTests` T5) |
+| `/help` kaydı kayboluyor | Doğru (bulgu #7) | `8d46dcb` (+`ChatSessionStoreTests` T5) |
+| `verify.ps1 -Live` fail-closed değil | Doğru ve daha ciddi: canlı test her durumda `quit(0)` diyordu, 9Router kapalıyken sonsuza kadar asılıyordu | `e0f53b4` (sahte sunucu + PowerShell 7.5.3 ile 3 senaryo) |
+| ChatDock altyapıyı (`network/`, `providers/`) doğrudan kuruyor | Doğru; `AGENTS.md` §3.1 ile çelişiyor | Faz 2.0'a alındı |
+
 ## Faz 2 — AgentRunner
+
+**Başlangıç ölçümü (2026-09-25):** `core/agent/agent_runner.gd` 1061 satır · 56 alan · 20 sinyal · 35 fonksiyon. En büyük fonksiyonlar: `_on_provider_response` 201, `start_task` 71, `_finish_task` 52, `_build_changeset_for_tool` 45, `_run_next_step` 44, `approve_pending_action` 40. Alanların ~30'u telemetri sayacı/süresi, ~12'si bekleyen onay / soru / plan durumu. Runner'ı doğrudan kuran 26 test dosyası var.
+
+**Kurallar (Faz 1'den):** Önce sabitleme testi, sonra taşıma. Her adımda typecheck + test_runner yeşil ve motor hata/uyarı profili aynı. Bulunan bug ayrı commit'te, kırmızıya dönen testle. Faz sonunda `verify.ps1 -Live` (artık fail-closed) yerelde koşulur.
 
 | Adım | Yeni birim | İçerik | Risk |
 |---|---|---|---|
-| 2.1 | `core/agent/agent_telemetry.gd` | ~30 sayaç/süre değişkeni, `_record_tool_telemetry`, `_classify_telemetry_op`, `_record_category_time`, metrik üretimi | Orta |
-| 2.2 | `core/agent/pending_interaction.gd` | Bekleyen onay / clarification / plan durumu | Orta |
-| 2.3 | — | `_on_provider_response` (~200 satır) iç adımlara bölünür: parse → boş yanıt/retry → tool dispatch → tamamlama kapısı | **Yüksek** |
+| 2.0 | `core/agent/provider_factory.gd` (veya `plugin.gd` kompozisyonu) | Provider + NetworkManager oluşturma ChatDock'tan çıkar; ChatDock provider'ı enjekte alır. `AGENTS.md` §3.1 çelişkisi kapanır. Karar notu: factory mi, `plugin.gd` composition root mu | Orta |
+| 2.1 | `core/agent/agent_telemetry.gd` | ~30 sayaç/süre alanı, `_record_tool_telemetry`, `_classify_telemetry_op`, `_record_category_time`, `_finish_task` içindeki metrik sözlüğü | Orta |
+| 2.2 | `core/agent/pending_interaction.gd` | Bekleyen onay / netleştirme / plan durumu ve onay-red geçişleri | Orta |
+| 2.3 | — | `_on_provider_response` (201 satır) iç adımlara bölünür: parse → boş yanıt / retry → tool dispatch → tamamlama kapısı. Önce her dal için sabitleme testi | **Yüksek** |
+| 2.4 | — | Bağımsızlık: iki `AgentRunner` aynı anda kurulup çalıştırılır (ayrı context, ayrı telemetri, birbirini etkilemez). Ürün Faz 10 (alt ajanlar) ve CLI / MCP köprüsünün önkoşulu | Orta |
+
+**Paylaşılan (statik) durum envanteri:** `verification_pipeline` (`_validators`, `_engine_verifiers`), `permission_policy` (`_tool_risk_registry`), `slash_command_manager` (`_commands`) salt okunur kayıt defteri; paylaşılması sorun değil. `runtime_debugger` izleme durumu (`_is_monitoring`, log offset'leri, `_last_observation`) gerçekten paylaşılan: tek oyun örneği olduğu için anlamlı, ama alt ajanlar oyunu çalıştıramamalı (2.4'te test edilir). `ui_telemetry_tools._registered_sidebar_dock` tek dock referansı.
 
 Faz 2 sonunda canlı entegrasyon testi (`test_real_9router_live.gd`) de koşulur.
+
+Faz 2, ROADMAP'teki ürün Faz 10'un (Alt Ajanlar) ve Faz 7'deki editör köprüsü / CLI / MCP işinin önkoşuludur: `AgentRunner` birden çok kez, birbirinden bağımsız oluşturulabilir hale gelmeli. Bu yüzden 2.1–2.3'te runner'ın global / statik duruma bağımlılığı da kaldırılır ve iki bağımsız runner'ın aynı anda çalıştığı bir test eklenir.
 
 ## Faz 3 — Diğer büyük dosyalar (önce değerlendirme)
 
@@ -113,17 +136,18 @@ Durum (25.09 ölçümü): `AISidebarI18n` sözlüğü kod içinde; TR ve EN'de 6
 
 0. ✅ **Düzeltildi (`d5efc41`) — Test runner açığı:** çalışma anında çöken bir paket `[PASS] Unknown (0/0)` sayılıyor, koşu yeşil kalıyordu. Artık FAIL. 1af07d3 bazında gizli çökme yoktu (doğrulandı).
 
-1. **Şüpheli bug — Retry yolu:** `ErrorCard.retry_requested`, `agent_runner.start_task`'ı doğrudan çağırıyor; `_start_task_prompt` atlanıyor. Sonuç olarak `agent_context.begin_task`, mention çözümleme ve checkpoint sıfırlama yapılmıyor olabilir, yani yeniden denenen task transcript/export'ta eksik görünebilir. Test ile doğrulanacak.
+1. ✅ **Düzeltildi (Faz 1.1) — Retry yolu task hattını atlıyordu:** `ErrorCard.retry_requested` doğrudan `runner.start_task(last_user_prompt)` çağırıyordu. Transcript'te yeni görev açılmıyor, checkpoint sıfırlanmıyor, mention çözülmüyordu; üstelik `last_user_prompt` ekrandaki metin olduğu için `/analyze` gibi slash komutlarında modele komutun ürettiği istem yerine düz "/analyze" gidiyordu. Artık `TaskController.retry_last_task()` son isteği (`last_request`: istem, görünen metin, görseller) normal `start_task_prompt` hattından başlatır. Test: `TaskDispatchTests` T5. (Harici inceleme: ChatGPT, 25.09.)
 2. ✅ **Kaldırıldı — Ölü değişken:** `_stream_is_envelope` hiçbir yerde `true` yapılmıyordu.
 3. **Tekrarlı kontrol:** `_resume_paused_task` içinde `current_session == null` iki kez kontrol ediliyor.
 4. **Tema dışı renkler:** Kuyruk panelinde `Color(0.7, 0.7, 0.7)`, `Color(0.9, 0.4, 0.4)` gibi sabit renkler var (tema token'ı değil).
 5. ✅ **Kaldırıldı — Ölü kod:** `report_task_stop` hiçbir yerden çağrılmıyordu (1.9b'de yeni birime taşınmadan önce silindi). `ToolPresentation.format_limit_stop_reason` yalnızca testte kullanılıyor; testli yardımcı olduğu için şimdilik korundu.
 6. **Sahte testler (kalan):** `test_ui_ux_queue_and_input.gd` Test 10 hâlâ düz Array üzerinde çalışıyor. Benzer "kendi ifadesini test eden" testler için Faz 3'te tarama yapılacak.
-7. **Doğrulanmış bug — yerel slash komutları kaybolur:** `/help` gibi LLM'siz yanıtlanan komutlar oturuma eklenir ama hemen ardından `save()` mesajları context'ten yeniden kurar ve silinir; History'den yüklenen sohbette görünmezler. Orijinal kodda da vardı (1.7'de `ChatSessionStoreTests` T5 yakaladı ve belgeledi). Düzeltme tasarım kararı ister: context'e eklemek LLM'e geçersiz `command` rolü gönderir. (`/clear`'ın base sabitlemesi 9. madde ile kaldırıldı.)
+7. ✅ **Düzeltildi (Faz 1.1) — Yerel slash komutları kayboluyordu:** `/help` gibi LLM'siz komutlar oturuma ekleniyor, hemen ardından `save()` mesajları context'ten yeniden kurduğu için siliniyordu. Karar: yerel komutlar `ChatSessionStore._local_entries` içinde `local: true` işaretiyle ayrı tutulur ve eklendikleri konuma göre (anchor) kayıtta araya yerleştirilir; yüklemede tekrar ayrılır, modele giden context'e hiç girmez (eski oturumlardaki `command` rolü de ayıklanır). Transcript tabanlı export'ta yer almazlar (transcript olayı değiller, UI-yerel); oturum mesajı tabanlı Copy Chat / History'de görünürler. Test: `ChatSessionStoreTests` T5.
 8. ✅ **Düzeltildi (`826fc68`) — History replay çökmesi:** yanıtlanmış `ask_user` içeren oturum yüklenince replay var olmayan `card._input_container` alanında çöküyor, sonraki mesajlar/telemetri çizilmiyordu; kart ayrıca `_ready` iki kez çağrıldığı için çift kuruluyordu. Gerçek SceneTree probe'u ile kanıtlandı.
 9. ✅ **Düzeltildi — `/clear` sohbeti temizlemiyordu:** yalnızca ajan context'ini sıfırlayıp ekrana "Agent çalışma hafızası sıfırlandı" balonu basıyor, eski sohbet ekranda ve kayıtta (base mesajlar) kalıyordu. Artık Clear butonuyla aynı yolu izler (`clear_chat` aksiyonu → `_on_clear_pressed`); bilgi balonu yok. Base sabitleme mekanizması tek kullanıcısı gittiği için `ChatSessionStore`'dan kaldırıldı. Testler: `SlashCommandTests` 9/9b, `ChatSessionStoreTests` T4.
 10. ✅ **Düzeltildi — İki ayrı "düşünme" göstergesi:** her LLM turunda akışa "Düşünülüyor (Ns)..." yazan yer tutucu asistan balonu ekleniyordu. Modelin gerçek thinking kartı sonra geldiği için balonun altına düşüyor (düşünce cevabın altında görünüyordu); metinsiz tool turlarında balon akışta asılı kalıyordu. Baz commit `1af07d3`'te de vardı. Yer tutucu kaldırıldı. Ardından (kullanıcı geri bildirimi: ilk yanıta kadar ekran boş kalıyordu) balon olmayan bir `PendingIndicator` eklendi: akışın sonunda dönen ikon + bilinen aşama + süre, 15 sn sonra iptal ipucu; ilk hayat belirtisinde (thinking, metin, tool, kart, durum değişimi) kalkar, thinking kartı onun yerine oturur. Testler: `ReasoningUITests` T11–T15.
 11. ✅ **Düzeltildi — Stop sonrası Paused rozeti görünmüyordu:** Stop → checkpoint yazılıp "Paused — Step x/y" gösteriliyor, ardından runner `IDLE`'a geçince rozet "● Hazır" ile eziliyordu; kullanıcı "devam et" seçeneğini göremiyordu. Baz commit `1af07d3`'te de aynı (worktree'de izlenerek doğrulandı). Artık boşta durumda devam ettirilebilir checkpoint varsa rozet Paused kalır. Görev gönderme hattı (gönder/kuyruk/durdur/devam/görsel/slash/kuyruk dağıtımı) 1.11 öncesi ilk kez sabitleme testleriyle kapsandı: `TaskDispatchTests` T1–T4.
+12. **Açık — Slash komutları eklenmiş görseli iletmiyor:** `/analyze` gibi ajan başlatan komutlarda `TaskController.handle_slash_command` görseli `start_task_prompt`'a geçirmiyor; görsel sessizce düşüyor (Faz 1 öncesinden). Karar: komut + görsel desteklenecek mi, yoksa kullanıcıya uyarı mı gösterilecek.
 
 ## Editör Duman Testi Kontrol Listesi (Faz 1 sonu)
 

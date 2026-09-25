@@ -23,16 +23,23 @@ func _init() -> void:
 	print("==================================================\n")
 	
 	# TEST 1: Streaming (stream: true)
-	_execute_single_test(1, true)
+	var ok_stream = _execute_single_test(1, true)
 	OS.delay_msec(1000)
 	
 	# TEST 2: Non-Streaming (stream: false)
-	_execute_single_test(2, false)
+	var ok_json = _execute_single_test(2, false)
 	
+	# Fail-closed: başarı yalnızca iki alt test de kanıtla geçerse. verify.ps1 -Live hem çıkış
+	# kodunu hem de bu satırlardan birini arar (çökme / askıda kalma yeşil sayılmaz).
 	print("\n==================================================")
-	print("🎉 CANLI 9ROUTER ENTEGRASYON TESTLERİ TAMAMLANDI")
-	print("==================================================")
-	quit(0)
+	if ok_stream and ok_json:
+		print("LIVE TEST PASSED (stream=%s, json=%s)" % [str(ok_stream), str(ok_json)])
+		print("==================================================")
+		quit(0)
+	else:
+		print("LIVE TEST FAILED (stream=%s, json=%s)" % [str(ok_stream), str(ok_json)])
+		print("==================================================")
+		quit(1)
 
 func _load_credentials() -> void:
 	# 1. Ortam Değişkeni (Öncelikli)
@@ -70,7 +77,11 @@ func _load_credentials() -> void:
 				if not cfg_mod.is_empty() and cfg_mod != "all":
 					model_name = cfg_mod
 
-func _execute_single_test(stage_num: int, is_streaming: bool) -> void:
+## Bir alt testin zaman aşımı: sunucu yanıt vermezse döngü sonsuza kadar beklemez.
+const TEST_TIMEOUT_MSEC := 60000
+
+## Alt test: HTTP 200 ve boş olmayan model içeriği alındıysa true.
+func _execute_single_test(stage_num: int, is_streaming: bool) -> bool:
 	var raw_response = PackedByteArray()
 	var has_received_first_byte = false
 	var seen_done_marker = false
@@ -126,7 +137,7 @@ func _execute_single_test(stage_num: int, is_streaming: bool) -> void:
 	var err = client.connect_to_host(host, port)
 	if err != OK:
 		print("❌ HATA: connect_to_host başarısız (err=%d)" % err)
-		return
+		return false
 		
 	var request_sent = false
 	var is_active = true
@@ -136,6 +147,10 @@ func _execute_single_test(stage_num: int, is_streaming: bool) -> void:
 	while is_active:
 		client.poll()
 		var status = client.get_status()
+		if Time.get_ticks_msec() - req_start_msec > TEST_TIMEOUT_MSEC:
+			print("❌ HATA: zaman aşımı (%d ms), son durum: %d" % [TEST_TIMEOUT_MSEC, status])
+			client.close()
+			return false
 		
 		match status:
 			HTTPClient.STATUS_RESOLVING, HTTPClient.STATUS_CONNECTING:
@@ -149,6 +164,13 @@ func _execute_single_test(stage_num: int, is_streaming: bool) -> void:
 					if req_err != OK:
 						print("❌ HATA: request() başarısız (err=%d)" % req_err)
 						is_active = false
+				elif client.has_response():
+					# İstek gönderildi ve bağlantı CONNECTED'a döndü: yanıt bitti (keep-alive).
+					if last_http_status == -1:
+						last_http_status = client.get_response_code()
+					total_dur = Time.get_ticks_msec() - req_start_msec
+					exit_status = status
+					is_active = false
 				OS.delay_msec(2)
 			HTTPClient.STATUS_REQUESTING:
 				OS.delay_msec(5)
@@ -172,6 +194,10 @@ func _execute_single_test(stage_num: int, is_streaming: bool) -> void:
 						print("  [3] Tamamlanma Belirteci Yakalandı! (Chunk #%d, Süre: %d ms)" % [chunk_count, total_dur])
 						is_active = false
 				OS.delay_msec(5)
+			HTTPClient.STATUS_CANT_RESOLVE, HTTPClient.STATUS_CANT_CONNECT, HTTPClient.STATUS_TLS_HANDSHAKE_ERROR:
+				print("❌ HATA: sunucuya bağlanılamadı (status=%d). 9Router %s:%d üzerinde çalışıyor mu?" % [status, host, port])
+				client.close()
+				return false
 			HTTPClient.STATUS_DISCONNECTED, HTTPClient.STATUS_CONNECTION_ERROR:
 				total_dur = Time.get_ticks_msec() - req_start_msec
 				exit_status = status
@@ -208,17 +234,19 @@ func _execute_single_test(stage_num: int, is_streaming: bool) -> void:
 						var d = pj["choices"][0].get("delta", {})
 						parsed_content += str(d.get("content", ""))
 		print("• Ayrıştırılan Metin: \"%s\"" % parsed_content.strip_edges())
-		if "TEST_OK" in parsed_content or not parsed_content.is_empty():
+		if last_http_status == 200 and not parsed_content.strip_edges().is_empty():
 			print("✅ TEST BAŞARILI (Streaming içerik başarıyla alındı)")
-		else:
-			print("⚠️ UYARI: Ayrıştırılan içerik boş veya beklenenden farklı.")
+			return true
+		print("❌ HATA: HTTP %d, ayrıştırılan içerik boş veya beklenenden farklı." % last_http_status)
+		return false
 	else:
 		var json_obj = JSON.parse_string(body_text)
 		var content = ""
 		if json_obj is Dictionary and json_obj.has("choices") and json_obj["choices"].size() > 0:
 			content = json_obj["choices"][0].get("message", {}).get("content", "")
 		print("• Ayrıştırılan Metin: \"%s\"" % content.strip_edges())
-		if "TEST_OK" in content or not content.is_empty():
+		if last_http_status == 200 and not str(content).strip_edges().is_empty():
 			print("✅ TEST BAŞARILI (Non-streaming JSON başarıyla alındı)")
-		else:
-			print("⚠️ UYARI: JSON içeriği boş veya beklenenden farklı.")
+			return true
+		print("❌ HATA: HTTP %d, JSON içeriği boş veya beklenenden farklı." % last_http_status)
+		return false

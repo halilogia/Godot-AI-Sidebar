@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Mesaj giriş alanının davranışı (SRP): klavye (Enter / Shift+Enter / Ctrl+V),
 ## @mention ve /slash autocomplete popup'ı, pano görseli eki.
-## Düğümler ChatDock sahnesinden gelir; gönderme kararı `send_requested` ile ChatDock'a bırakılır.
+## Düğümler ChatDock sahnesinden gelir; gönderme kararı `send_requested` ile TaskController'a bırakılır.
 
 signal send_requested
 
