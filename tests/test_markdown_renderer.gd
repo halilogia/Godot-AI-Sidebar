@@ -101,4 +101,17 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T7 (font sizes) failed: bubble=%s plan=%s" % [str(same), str(same_plan)])
 
+	# 8. Çitli kod bloğu glif başına arka plan ([bgcolor]) kullanmaz: tek kutulu tablo hücresi.
+	# ([bgcolor] komşu satırlara taşıp başlığı ve alt çizgileri örtüyordu.) Kod yazı tipi eş genişlikli.
+	var b8 = R.to_bbcode("### Tree\n```\nMain3D (Node3D)\n├── Ground\n```")
+	var bub8 = AISidebarMessageBubble.new("assistant", "x")
+	bub8._ready()
+	var mono_ok = bub8._content_label.has_theme_font_override("mono_font") and bub8._content_label.get_theme_font("mono_font") is SystemFont
+	bub8.free()
+	if not "[bgcolor" in b8 and "[table=1][cell bg=" in b8 and "Main3D (Node3D)" in _plain(b8) and mono_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T8 (code block box + mono font) failed: " + b8)
+
 	return {"name": "MarkdownRendererTests", "passed": passed, "failed": failed, "errors": errors}
