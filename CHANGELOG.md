@@ -7,6 +7,30 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
+## [Unreleased] - Faz 1: ChatDock refactor + UI düzeltmeleri
+
+### Yeniden yapılanma (davranış değişmeden)
+* `ui/docks/chat_dock.gd` 2349 satırdan ~600 satıra indi; sorumluluklar ayrı birimlere taşındı: `ChatDockTheme`, `ToolPresentation`, `PlanChecklistTracker`, `MessageQueuePanel`, `InputComposer`, `ChatExportActions`, `ChatSessionStore`, `SessionReplayRenderer`, `AgentStreamPresenter`, `AgentActivityPresenter`, `AgentInteractionPresenter`, `ModelBarController`, `TaskController`. Plan ve kararlar: `docs/REFACTOR_PLAN.md`.
+* Daha önce testsiz olan alanlar teste bağlandı: AgentRunner ↔ dock sinyal bağlantıları, gönder / kuyruk / durdur / devam et hattı, model çubuğu.
+
+### Düzeltilenler
+* `/clear` sohbeti gerçekten temizliyor (Clear butonuyla aynı yol).
+* Stop sonrası "Paused" rozeti artık hemen "Hazır" ile ezilmiyor.
+* Sahte "Düşünülüyor" balonu kaldırıldı; thinking kartı cevabın üstünde kalıyor.
+* Mesajdaki `[b]`, `[url=…]` gibi metinler BBCode olarak yorumlanıp silinmiyor.
+* Runtime kartı modele giden uzun teşhis metni yerine kısa hata satırı gösteriyor.
+* Normal kod blokları Output'a "Parse JSON failed" hatası bastırmıyor.
+* Kod blokları komşu satırları örtmüyor; kalın / kod metni gövdeyle aynı boyutta.
+* History replay'de yanıtlanmış `ask_user` kartı akışı durdurmuyor; uzun başlıklar header butonlarını taşırmıyor.
+
+### Eklenenler
+* Asistan cevaplarında ve plan kartında Markdown (başlık, kalın, italik, kod, liste, alıntı).
+* Model yanıtı beklenirken akışta canlı bekleme göstergesi (aşama + süre, uzun bekleyişte iptal ipucu).
+* Emoji yerine tek renkli Lucide ikonları (`AISidebarStatusIcon`, boyanabilir SVG'ler).
+* README için gerçek arayüz bileşenlerinden ekran görüntüsü üreten `tools/readme_shots.gd`.
+
+---
+
 ## [2.7.0] - 2026-09-22 (AI UI Telemetry, Headless Static Typecheck & Centralized Design System)
 
 ### 🌟 Eklenenler & İyileştirmeler
