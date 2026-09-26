@@ -26,4 +26,14 @@ Skill'ler yeni bir Godot API'si eklemez; köprünün mevcut araçlarını (okuma
 
 ## Proje hafızası
 
-Oyun deposunun kökünde beş belge tutulur; şablonlar `templates/` altında: `GAME_SPEC.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `DECISIONS.md`, `KNOWN_ISSUES.md`. Skill'ler bunları okur ve günceller. Gerekmedikçe başka belge türü eklenmez.
+Oyun deposunun kökünde beş belge tutulur. Şablonlar `skills/godot-project-bootstrap/templates/` altındadır; skill kopyalanınca şablonlar da onunla gider. Gerekmedikçe başka belge türü eklenmez. Claude Code'un kendi `CLAUDE.md`'si yalnız bu beş belgeye ve dosya-öncelikli kurala işaret eden kısa bir bölüm alır.
+
+| Belge | İçerik | Kim / ne zaman günceller |
+|---|---|---|
+| `GAME_SPEC.md` | Oyunun ne olduğu: pitch, sütunlar, çekirdek döngü, kapsam, hedef | Bootstrap taslağı yazar; yalnız kullanıcı onayıyla değişir |
+| `ARCHITECTURE.md` | Klasörler, ana sahne, autoload'lar, sistemler, veri akışı | Sistem / sahne / autoload ekleyen, taşıyan, silen değişiklikle aynı işte (feature, refactor) |
+| `ROADMAP.md` | Milestone'lar, kabul kriterleriyle maddeler | Feature geliştirme başında kriter, doğrulandıktan sonra ✔; milestone kapanışında taşıma |
+| `DECISIONS.md` | Tarihli kararlar, gerekçe, alternatifler | Tasarım / mimari kararı alındığında; eski kayıt değiştirilmez, yenisi eklenir |
+| `KNOWN_ISSUES.md` | Açık hatalar: yeniden üretim, kanıt, denenenler | Düzeltilemeyen hata bulunduğunda; düzeltilip doğrulanınca silinir |
+
+Akış: okuma her görevin başında (feature, debug, refactor), yazma yukarıdaki anlarda, toplu gözden geçirme milestone kapanışında (`godot-release-workflow`).

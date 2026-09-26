@@ -12,7 +12,7 @@ description: Start or take over a Godot 4 game project connected through the God
 
 ## 2. Project memory
 
-The project keeps five documents at the repository root (templates: `integrations/claude-code/templates/` in the Godot AI Sidebar repository):
+The project keeps five documents at the repository root. Templates are in the `templates/` folder next to this SKILL.md; copy and fill them, keeping their headings:
 
 | File | Holds |
 |---|---|
