@@ -97,11 +97,43 @@ const TestLineBudget = preload("res://tests/test_line_budget.gd")
 const TestStaticReferences = preload("res://tests/test_static_references.gd")
 const TestI18n = preload("res://tests/test_i18n.gd")
 
+## Test izolasyonu: testler geliştiricinin kişisel config.json'unu (onay modu, dil, adım
+## sınırı…) görmez; CI'daki gibi config'siz (varsayılanlar: MANUAL, TR) koşar. Dosyanın
+## byte'ları koşu başında user:// altına yedeklenir ve sonunda birebir geri yazılır.
+## Koşu yarıda çökerse yedek kalır; bir sonraki koşu başlarken önce o geri yüklenir.
+const USER_CONFIG = "res://addons/godot_sidebar_ai/config.json"
+const USER_CONFIG_BACKUP = "user://test_runner_user_config.backup"
+
+static var _had_user_config := false
+
+static func isolate_user_config() -> void:
+	if FileAccess.file_exists(USER_CONFIG_BACKUP):
+		restore_user_config()
+	_had_user_config = FileAccess.file_exists(USER_CONFIG)
+	if _had_user_config:
+		var bytes := FileAccess.get_file_as_bytes(USER_CONFIG)
+		var f := FileAccess.open(USER_CONFIG_BACKUP, FileAccess.WRITE)
+		f.store_buffer(bytes)
+		f.close()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_CONFIG))
+
+static func restore_user_config() -> void:
+	if FileAccess.file_exists(USER_CONFIG_BACKUP):
+		var bytes := FileAccess.get_file_as_bytes(USER_CONFIG_BACKUP)
+		var f := FileAccess.open(USER_CONFIG, FileAccess.WRITE)
+		f.store_buffer(bytes)
+		f.close()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_CONFIG_BACKUP))
+	elif FileAccess.file_exists(USER_CONFIG):
+		# Başta config yoktu; testlerin yazdığı dosya kalmasın.
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_CONFIG))
+
 func _init() -> void:
 	print("==================================================")
 	print("   GODOT AI CORE v2.0 - MASTER UNIT TESTS        ")
 	print("==================================================")
-	
+	isolate_user_config()
+
 	var suites = [
 		TestTypeParser,
 		TestPathPolicy,
@@ -226,6 +258,7 @@ func _init() -> void:
 			for e in s_errs:
 				print("   - " + str(e))
 				
+	restore_user_config()
 	print("--------------------------------------------------")
 	if total_failed == 0:
 		print("🎉 ALL TESTS PASSED! Total: " + str(total_passed) + " assertions.")
