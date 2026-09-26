@@ -296,25 +296,19 @@ static func _handle_mcp(args: String, _context: Dictionary) -> Dictionary:
 	var sub := args.strip_edges().to_lower()
 	var text := ""
 	if sub == "on":
-		var s := bridge.set_enabled(true)
-		var p: int = s["port"]
-		var t: String = str(s["token"])
-		var err := bridge.start(p, t)
-		if err != OK:
-			return {"action": "local_response", "message": "MCP köprüsü port %d üzerinde açılamadı (hata %d). Port başka bir süreçte kullanılıyor olabilir; config.json'daki `mcp_bridge_port` değerini değiştirip tekrar deneyin." % [p, err]}
+		var res := bridge.enable()
+		if res["ok"] != true:
+			return {"action": "local_response", "message": "MCP köprüsü port %d üzerinde açılamadı (hata %d). Port başka bir süreçte kullanılıyor olabilir; config.json'daki `mcp_bridge_port` değerini değiştirip tekrar deneyin." % [res["port"], res["error"]]}
 		text += "**MCP köprüsü açıldı.**\n\n"
 	elif sub == "off":
-		bridge.set_enabled(false)
-		bridge.stop()
+		bridge.disable()
 		return {"action": "local_response", "message": "**MCP köprüsü kapatıldı.** Dış ajanlar artık bu editöre bağlanamaz."}
 	elif not sub.is_empty():
 		return {"action": "local_response", "message": "Kullanım: `/mcp` (durum), `/mcp on`, `/mcp off`"}
 	if not bridge.is_running():
 		return {"action": "local_response", "message": "MCP köprüsü kapalı. Açmak için: `/mcp on`"}
-	var cmd := bridge.claude_add_command()
-	DisplayServer.clipboard_set(cmd)
-	var token_value := bridge.bearer_token()
-	var masked := cmd.replace(token_value, token_value.left(4) + "…")
+	DisplayServer.clipboard_set(bridge.claude_add_command())
+	var masked := bridge.masked_claude_add_command()
 	text += "Uç nokta: `%s` (yalnız bu bilgisayar)\n\n" % bridge.endpoint()
 	text += "Claude Code bağlantı komutu **panoya kopyalandı**; oyun projenizin klasöründe terminale yapıştırın:\n\n```\n%s\n```\n\n" % masked
 	text += "Açılan araçlar: %d (sahne / proje okuma, script doğrulama, oyunu çalıştırma, runtime hataları ve ekran görüntüleri, `sync_project`, açık sahnede Ctrl+Z ile geri alınabilen küçük sahne değişiklikleri). Kapatmak için: `/mcp off`" % bridge.tool_count()

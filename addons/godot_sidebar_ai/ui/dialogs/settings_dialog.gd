@@ -35,6 +35,16 @@ signal settings_saved()
 
 var _active_category: int = 0
 
+const AISidebarSkillsView = preload("res://addons/godot_sidebar_ai/ui/components/skills_view.gd")
+const AISidebarMcpSettingsView = preload("res://addons/godot_sidebar_ai/ui/components/mcp_settings_view.gd")
+const CATEGORY_COUNT_BASE := 4
+const CATEGORY_SKILLS := 4
+const CATEGORY_MCP := 5
+var skills_view: AISidebarSkillsView = null
+var mcp_view: AISidebarMcpSettingsView = null
+var _extra_nav: Array[Button] = []
+var _extra_pages: Array[Control] = []
+
 func _ensure_nodes() -> void:
 	if not base_url_line: base_url_line = find_child("BaseUrlEdit", true, false)
 	if not api_key_line: api_key_line = find_child("ApiKeyEdit", true, false)
@@ -63,6 +73,7 @@ func _ready() -> void:
 	
 	_ensure_nodes()
 	_setup_nav()
+	_add_extra_categories()
 	_setup_options()
 	_setup_temp()
 	_apply_styles()
@@ -83,17 +94,43 @@ func _setup_nav() -> void:
 	if btn_nav_prompt and not btn_nav_prompt.pressed.is_connected(func(): _select_category(3)):
 		btn_nav_prompt.pressed.connect(func(): _select_category(3))
 
+## Sahnede olmayan kategoriler (4: Skill'ler, 5: Dış Ajan / MCP): düğme ve sayfa kodla eklenir,
+## sayfalar ilgili yönetim görünümlerini barındırır (başlıktaki Skills penceresi ve /mcp aynı birimleri kullanır).
+func _add_extra_categories() -> void:
+	if not btn_nav_prompt or not page_prompt or not _extra_nav.is_empty():
+		return
+	skills_view = AISidebarSkillsView.new()
+	mcp_view = AISidebarMcpSettingsView.new()
+	for view: Control in [skills_view, mcp_view]:
+		var btn := Button.new()
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.focus_mode = Control.FOCUS_NONE
+		var idx := CATEGORY_COUNT_BASE + _extra_nav.size()
+		btn.pressed.connect(func() -> void: _select_category(idx))
+		btn_nav_prompt.get_parent().add_child(btn)
+		_extra_nav.append(btn)
+		view.visible = false
+		page_prompt.get_parent().add_child(view)
+		_extra_pages.append(view)
+
 func _select_category(idx: int) -> void:
 	_active_category = idx
 	if page_provider: page_provider.visible = (idx == 0)
 	if page_params: page_params.visible = (idx == 1)
 	if page_appearance: page_appearance.visible = (idx == 2)
 	if page_prompt: page_prompt.visible = (idx == 3)
-	
+	for i in _extra_pages.size():
+		_extra_pages[i].visible = (idx == CATEGORY_COUNT_BASE + i)
+	if idx == CATEGORY_SKILLS and skills_view:
+		skills_view.refresh()
+	elif idx == CATEGORY_MCP and mcp_view:
+		mcp_view.refresh()
+
 	_update_nav_buttons()
 
 func _update_nav_buttons() -> void:
 	var btns = [btn_nav_provider, btn_nav_params, btn_nav_appearance, btn_nav_prompt]
+	btns.append_array(_extra_nav)
 	for i in range(btns.size()):
 		var b = btns[i]
 		if b:
@@ -186,7 +223,10 @@ func update_labels() -> void:
 	if btn_nav_params: btn_nav_params.text = AISidebarI18n.get_text("tab_parameters")
 	if btn_nav_appearance: btn_nav_appearance.text = AISidebarI18n.get_text("tab_appearance")
 	if btn_nav_prompt: btn_nav_prompt.text = AISidebarI18n.get_text("tab_system_prompt")
-	
+	if _extra_nav.size() == 2:
+		_extra_nav[0].text = AISidebarI18n.get_text("tab_skills")
+		_extra_nav[1].text = AISidebarI18n.get_text("tab_external_agent")
+
 	if provider_selector and provider_selector.item_count >= 2:
 		provider_selector.set_item_text(0, AISidebarI18n.get_text("provider_antigravity"))
 		provider_selector.set_item_text(1, AISidebarI18n.get_text("provider_openai"))

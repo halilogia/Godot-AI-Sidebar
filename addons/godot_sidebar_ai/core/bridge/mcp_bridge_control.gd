@@ -60,3 +60,20 @@ func stop() -> void:
 
 func claude_add_command() -> String:
 	return server.claude_add_command()
+
+## Köprüyü açık olarak kaydeder ve başlatır (/mcp on ve Ayarlar → Dış Ajan). Dönüş: {ok, port, error}
+func enable() -> Dictionary:
+	var s := set_enabled(true)
+	var p: int = s["port"]
+	var err := start(p, str(s["token"]))
+	return {"ok": err == OK, "port": p, "error": err}
+
+## Köprüyü kapalı olarak kaydeder ve durdurur (/mcp off ve Ayarlar → Dış Ajan).
+func disable() -> void:
+	set_enabled(false)
+	stop()
+
+## Bağlantı komutu, token'ın yalnız ilk 4 karakteri görünür biçimde (sohbete / arayüze yazmak için).
+func masked_claude_add_command() -> String:
+	var token_value := bearer_token()
+	return claude_add_command().replace(token_value, token_value.left(4) + "…")
