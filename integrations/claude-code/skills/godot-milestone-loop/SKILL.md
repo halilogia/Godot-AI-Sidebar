@@ -1,6 +1,6 @@
 ---
 name: godot-milestone-loop
-description: Work autonomously through a Godot 4 game's milestones with the Godot AI Sidebar MCP bridge - research, plan, implement, sync, run, inspect, repair, verify, commit, then continue with the next item. Use when the user asks to build a game or a milestone end to end, or to keep going without step-by-step instructions.
+description: Work autonomously through a Godot 4 game's milestones with the Godot AI Sidebar tools - research, plan, implement, sync, run, inspect, repair, verify, commit, then continue with the next item. Use when the user asks to build a game or a milestone end to end, or to keep going without step-by-step instructions.
 ---
 
 # Godot milestone loop
@@ -36,3 +36,10 @@ The project memory (`GAME_SPEC.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `DECISIONS.
 - One item is finished only with runtime evidence; "should work" is not evidence.
 - Criteria that need real input (clicks, keys) are reported as "needs manual play test", and the milestone summary lists them.
 - Keep commits small: one verified item per commit, refactors separate from features.
+
+## Agent mapping
+
+The method above is the same for every agent; only access differs.
+
+- **Claude Code (or another MCP client) over the bridge:** the tools are `mcp__godot__<tool>` (prefix = the registered server name). Edit project files with your own file tools, then call `sync_project` with the written files in `changed_files`. Scene tools need `expected_scene_path` and the user's permission in the sidebar (`/mcp write ask` or `/mcp write auto`); connecting needs `/mcp on` and the `claude mcp add ...` command it copies.
+- **Godot AI Sidebar agent:** write files with `create_or_update_script`, `write_files`, `replace_file_content` or `create_scene` (they validate before writing; `create_or_update_script`, `write_files` and `replace_file_content` also reload an open scene they rewrite, so there is no `sync_project` step); scene tools run directly under the sidebar's approval mode.

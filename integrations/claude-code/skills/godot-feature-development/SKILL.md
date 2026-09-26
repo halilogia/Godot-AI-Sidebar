@@ -1,17 +1,17 @@
 ---
 name: godot-feature-development
-description: Build or change a gameplay feature in a Godot 4 project through the Godot AI Sidebar MCP bridge. Use when the user asks for a new mechanic, system, scene, UI or behavior change in a Godot game and the godot MCP tools (mcp__godot__*) are available.
+description: Build or change a gameplay feature in a Godot 4 project through the Godot AI Sidebar tools. Use when the user asks for a new mechanic, system, scene, UI or behavior change in a Godot game.
 ---
 
 # Godot feature development
 
-The Godot editor is open with the Godot AI Sidebar plugin and its MCP bridge (`/mcp on`). Its tools appear as `mcp__godot__<tool>` (the prefix is the server name the user registered, usually `godot`). You write files yourself; the bridge gives you the editor and the running game.
+The Godot editor is open with the Godot AI Sidebar plugin. Its tools give you the editor and the running game; tool names below are the plugin's names (see "Agent mapping" at the end for how your agent reaches them and edits files).
 
 ## Rule: construction is file-first
 
-- Write GDScript, `.tscn`, `.tres`, `.gdshader` and data files (JSON, CSV) with your own file tools. Prefer one complete `.tscn` or a procedural script over many single-node calls.
-- After writing, call `sync_project` and list every file you changed in `changed_files` (always every `.tscn`). An open scene you wrote is reloaded from disk so a later save does not overwrite it.
-- Use the bridge scene tools (`add_node`, `set_node_property`, `instantiate_scene`, `attach_script_to_node`, `save_scene`) only for small, precise edits of the scene that is open in the editor. They need an `expected_scene_path` (take `scene_file` from `get_scene_tree`) and the user must have enabled them (`/mcp write ask` or `auto`); `WRITES_DISABLED` means ask the user, do not work around it.
+- Write GDScript, `.tscn`, `.tres`, `.gdshader` and data files (JSON, CSV) as files. Prefer one complete `.tscn` or a procedural script over many single-node calls.
+- After changing files, synchronize the editor so it sees them and reloads an open scene you rewrote (otherwise a later save overwrites your file with the editor's stale copy).
+- Use the scene tools (`add_node`, `set_node_property`, `instantiate_scene`, `attach_script_to_node`, `save_scene`) only for small, precise, undoable edits of the scene that is open in the editor. A refusal such as `WRITES_DISABLED` means the user has not allowed it: ask, do not work around it.
 - Never edit `addons/godot_sidebar_ai/`, `.godot/` or `.git/`.
 
 ## Loop
@@ -29,3 +29,10 @@ The Godot editor is open with the Godot AI Sidebar plugin and its MCP bridge (`/
 - Claim a feature works without running the game and reading `get_runtime_errors`.
 - Retry a refused tool call unchanged (`WRITER_BUSY`: another agent is writing, wait; `USER_DENIED`: the user said no, ask or change approach; `ACTIVE_SCENE_NOT_CONFIRMED`: `open_scene` the intended scene first).
 - Add engine-level workarounds when a normal GDScript solution exists.
+
+## Agent mapping
+
+The method above is the same for every agent; only access differs.
+
+- **Claude Code (or another MCP client) over the bridge:** the tools are `mcp__godot__<tool>` (prefix = the registered server name). Edit project files with your own file tools, then call `sync_project` with the written files in `changed_files`. Scene tools need `expected_scene_path` and the user's permission in the sidebar (`/mcp write ask` or `/mcp write auto`); connecting needs `/mcp on` and the `claude mcp add ...` command it copies.
+- **Godot AI Sidebar agent:** write files with `create_or_update_script`, `write_files`, `replace_file_content` or `create_scene` (they validate before writing; `create_or_update_script`, `write_files` and `replace_file_content` also reload an open scene they rewrite, so there is no `sync_project` step); scene tools run directly under the sidebar's approval mode.

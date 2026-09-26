@@ -1,13 +1,13 @@
 ---
 name: godot-project-bootstrap
-description: Start or take over a Godot 4 game project connected through the Godot AI Sidebar MCP bridge - check the connection, set up the project memory documents, folder layout and a runnable main scene. Use at the beginning of work on a new or unfamiliar Godot project.
+description: Start or take over a Godot 4 game project connected through the Godot AI Sidebar tools - check the connection, set up the project memory documents, folder layout and a runnable main scene. Use at the beginning of work on a new or unfamiliar Godot project.
 ---
 
 # Godot project bootstrap
 
 ## 1. Check the connection
 
-- Call `analyze_project`. If the godot tools are missing or fail to connect, the user must open the project in Godot, run `/mcp on` in the Godot AI Sidebar and add the server to Claude Code with the command it copies. Stop and tell them.
+- Call `analyze_project`. If the Godot tools are missing or fail, the user must open the project in Godot with the Godot AI Sidebar plugin enabled and connect your agent (see "Agent mapping"). Stop and tell them.
 - `get_project_files` for the current layout. `get_scene_tree` shows the scene open in the editor (`NO_ACTIVE_SCENE` if none).
 
 ## 2. Project memory
@@ -36,3 +36,10 @@ The project keeps five documents at the repository root. Templates are in the `t
 ## 4. First run
 
 `play_game`, wait, `get_runtime_errors`, `take_runtime_screenshot`, `stop_game`. Report what runs and what the next milestone in `ROADMAP.md` is. Initialize git and commit if the project is not under version control and the user agrees.
+
+## Agent mapping
+
+The method above is the same for every agent; only access differs.
+
+- **Claude Code (or another MCP client) over the bridge:** the tools are `mcp__godot__<tool>` (prefix = the registered server name). Edit project files with your own file tools, then call `sync_project` with the written files in `changed_files`. Scene tools need `expected_scene_path` and the user's permission in the sidebar (`/mcp write ask` or `/mcp write auto`); connecting needs `/mcp on` and the `claude mcp add ...` command it copies.
+- **Godot AI Sidebar agent:** write files with `create_or_update_script`, `write_files`, `replace_file_content` or `create_scene` (they validate before writing; `create_or_update_script`, `write_files` and `replace_file_content` also reload an open scene they rewrite, so there is no `sync_project` step); scene tools run directly under the sidebar's approval mode.

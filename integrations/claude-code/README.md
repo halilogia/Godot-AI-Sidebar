@@ -2,7 +2,7 @@
 
 Godot AI Sidebar'ın MCP köprüsüyle çalışan Claude Code için **skill'ler** (nasıl çalışılacağını anlatan talimat paketleri) ve oyun projesi **hafıza belgesi şablonları**.
 
-Skill'ler yeni bir Godot API'si eklemez; köprünün mevcut araçlarını (okuma, `sync_project`, sahne araçları, oyunu çalıştırma, runtime hataları, ekran görüntüsü) doğru sırayla kullanmayı öğretir. Temel kural: **üretim dosya-öncelikli** (script, sahne, kaynak ve veri dosyalarını ajan kendisi yazar, sonra `sync_project`), **editör etkileşimi araç-öncelikli** (açık sahnede küçük, Undo'lu düzenlemeler).
+Skill'lerin içeriği **ajandan bağımsız Godot geliştirme metodolojisidir** (aynı yöntem sidebar ajanı ve ileride Companion için de geçerlidir); Claude Code'a özgü olan yalnız paketleme (`SKILL.md` biçimi, `.claude/skills/` kurulumu) ve her skill'in sonundaki "Agent mapping" bölümüdür. Sidebar'da ayrı bir skill motoru yoktur: aynı kurallar sidebar'ın sistem istemiyle uyumlu tutulur (`AGENTS.md` §3.5). Skill'ler yeni bir Godot API'si eklemez; köprünün mevcut araçlarını (okuma, `sync_project`, sahne araçları, oyunu çalıştırma, runtime hataları, ekran görüntüsü) doğru sırayla kullanmayı öğretir. Temel kural: **üretim dosya-öncelikli** (script, sahne, kaynak ve veri dosyalarını ajan kendisi yazar, sonra `sync_project`), **editör etkileşimi araç-öncelikli** (açık sahnede küçük, Undo'lu düzenlemeler).
 
 ## Kurulum
 
@@ -25,7 +25,9 @@ Skill'ler yeni bir Godot API'si eklemez; köprünün mevcut araçlarını (okuma
 | `godot-release-workflow` | Milestone kapanışı ve sürüm: belgeler, sürüm numarası, dışa aktarma, etiket |
 | `godot-milestone-loop` | Otonom akış (v3.2): araştır → planla → uygula → sync → çalıştır → gözle → onar → doğrula → commit → sonraki madde; ne zaman durup kullanıcıya soracağı |
 
-## Proje hafızası
+## Kalıcı proje bağlamı (repo içinde)
+
+Bu bir "AI bellek alt sistemi" değil, katmanlı bellek yaklaşımının ilk ve ucuz aşamasıdır: proje bilgisi (spec, mimari), aktif durum (roadmap), kararlar ve açık sorunlar depoda düz Markdown olarak durur; çalışma belleği ajanın kendi oturumudur. Olay (episodic) belleği, arama / RAG ve vektör indeksi yoktur; ancak benchmark ve gerçek kullanımda ölçülen bir ihtiyaç çıkarsa eklenir (ölçülecek sorular: `benchmarks/grand-strategy-slice/ACCEPTANCE.md`).
 
 Oyun deposunun kökünde beş belge tutulur. Şablonlar `skills/godot-project-bootstrap/templates/` altındadır; skill kopyalanınca şablonlar da onunla gider. Gerekmedikçe başka belge türü eklenmez. Claude Code'un kendi `CLAUDE.md`'si yalnız bu beş belgeye ve dosya-öncelikli kurala işaret eden kısa bir bölüm alır.
 

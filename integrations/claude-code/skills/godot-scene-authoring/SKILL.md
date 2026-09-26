@@ -1,6 +1,6 @@
 ---
 name: godot-scene-authoring
-description: Create or restructure Godot 4 scenes (.tscn), resources (.tres) and large or repetitive content (levels, maps, UI) for a project connected through the Godot AI Sidebar MCP bridge. Use when a task needs new scenes, many nodes, instanced scenes or generated content.
+description: Create or restructure Godot 4 scenes (.tscn), resources (.tres) and large or repetitive content (levels, maps, UI) for a project connected through the Godot AI Sidebar tools. Use when a task needs new scenes, many nodes, instanced scenes or generated content.
 ---
 
 # Godot scene authoring
@@ -55,6 +55,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 0)
 
 ## Editing the open scene with tools
 
-- Get `scene_file` from `get_scene_tree` and pass it as `expected_scene_path` on every scene tool call.
+- Confirm the open scene with `get_scene_tree` (`scene_file`); if your agent's scene tools require `expected_scene_path` (see "Agent mapping"), pass that value on every call.
 - Each call is one Ctrl+Z step for the user. Call `save_scene` when done, before you read the `.tscn` from disk or write it yourself.
-- `WRITES_DISABLED`: the user has not enabled external scene changes; ask them (`/mcp write ask` or `/mcp write auto`) or write the file instead.
+- `WRITES_DISABLED`: the user has not allowed scene changes from your agent; ask them (see "Agent mapping") or write the file instead.
+
+## Agent mapping
+
+The method above is the same for every agent; only access differs.
+
+- **Claude Code (or another MCP client) over the bridge:** the tools are `mcp__godot__<tool>` (prefix = the registered server name). Edit project files with your own file tools, then call `sync_project` with the written files in `changed_files`. Scene tools need `expected_scene_path` and the user's permission in the sidebar (`/mcp write ask` or `/mcp write auto`); connecting needs `/mcp on` and the `claude mcp add ...` command it copies.
+- **Godot AI Sidebar agent:** write files with `create_or_update_script`, `write_files`, `replace_file_content` or `create_scene` (they validate before writing; `create_or_update_script`, `write_files` and `replace_file_content` also reload an open scene they rewrite, so there is no `sync_project` step); scene tools run directly under the sidebar's approval mode.

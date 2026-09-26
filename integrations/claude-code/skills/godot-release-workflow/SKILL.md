@@ -24,3 +24,10 @@ description: Close a milestone or cut a release of a Godot 4 game - update the p
 5. Tag the release in git (`vX.Y.Z`) and summarize the changes since the last tag from the commit log.
 
 Export, git and packaging are terminal work; the Godot bridge has no export tool.
+
+## Agent mapping
+
+The method above is the same for every agent; only access differs.
+
+- **Claude Code (or another MCP client) over the bridge:** the tools are `mcp__godot__<tool>` (prefix = the registered server name). Edit project files with your own file tools, then call `sync_project` with the written files in `changed_files`. Scene tools need `expected_scene_path` and the user's permission in the sidebar (`/mcp write ask` or `/mcp write auto`); connecting needs `/mcp on` and the `claude mcp add ...` command it copies.
+- **Godot AI Sidebar agent:** write files with `create_or_update_script`, `write_files`, `replace_file_content` or `create_scene` (they validate before writing; `create_or_update_script`, `write_files` and `replace_file_content` also reload an open scene they rewrite, so there is no `sync_project` step); scene tools run directly under the sidebar's approval mode.

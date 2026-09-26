@@ -1,6 +1,6 @@
 ---
 name: godot-debug-and-repair
-description: Diagnose and fix errors, crashes and wrong behavior in a Godot 4 game using the Godot AI Sidebar MCP bridge (runtime errors, live scene tree, screenshots). Use when the game shows errors, does not start, behaves incorrectly or looks wrong.
+description: Diagnose and fix errors, crashes and wrong behavior in a Godot 4 game using the Godot AI Sidebar tools (runtime errors, live scene tree, screenshots). Use when the game shows errors, does not start, behaves incorrectly or looks wrong.
 ---
 
 # Godot debug and repair
@@ -16,7 +16,7 @@ description: Diagnose and fix errors, crashes and wrong behavior in a Godot 4 ga
 
 ## 2. Find the root cause
 
-- Open the reported file and line (`read_script` or your own file reader) and follow the data back to where it goes wrong. State the root cause in one sentence before editing.
+- Open the reported file and line (`read_script` or by reading the file) and follow the data back to where it goes wrong. State the root cause in one sentence before editing.
 - Common Godot causes: wrong node path in `$Node` / `get_node`, `@onready` used before the node is in the tree, signal not connected or connected twice, resource path typo, `class_name` conflict, physics layer/mask mismatch, node not added to the tree, `_process` doing work that belongs in `_ready`.
 
 ## 3. Minimal fix, then prove it
@@ -30,3 +30,10 @@ description: Diagnose and fix errors, crashes and wrong behavior in a Godot 4 ga
 
 - Root cause, the fix, and the evidence that it is gone.
 - If you could not fix it or it only happens sometimes: add it to `KNOWN_ISSUES.md` with reproduction steps and what you tried. Do not call it fixed.
+
+## Agent mapping
+
+The method above is the same for every agent; only access differs.
+
+- **Claude Code (or another MCP client) over the bridge:** the tools are `mcp__godot__<tool>` (prefix = the registered server name). Edit project files with your own file tools, then call `sync_project` with the written files in `changed_files`. Scene tools need `expected_scene_path` and the user's permission in the sidebar (`/mcp write ask` or `/mcp write auto`); connecting needs `/mcp on` and the `claude mcp add ...` command it copies.
+- **Godot AI Sidebar agent:** write files with `create_or_update_script`, `write_files`, `replace_file_content` or `create_scene` (they validate before writing; `create_or_update_script`, `write_files` and `replace_file_content` also reload an open scene they rewrite, so there is no `sync_project` step); scene tools run directly under the sidebar's approval mode.

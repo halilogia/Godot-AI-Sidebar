@@ -1,6 +1,6 @@
 ---
 name: godot-refactor
-description: Restructure Godot 4 code or scenes without changing behavior (split scripts, move files, rename classes, extract scenes) with evidence from the Godot AI Sidebar MCP bridge. Use when the user asks to clean up, reorganize or refactor a Godot project.
+description: Restructure Godot 4 code or scenes without changing behavior (split scripts, move files, rename classes, extract scenes) with evidence from the Godot AI Sidebar tools. Use when the user asks to clean up, reorganize or refactor a Godot project.
 ---
 
 # Godot refactor
@@ -23,3 +23,10 @@ A refactor changes structure, not behavior. Bugs found on the way are fixed in a
 ## After
 
 Run the baseline again (errors, screenshot, runtime tree) and compare. Any difference is either a mistake to undo or a separate, reported behavior change. Update `ARCHITECTURE.md` for moved or renamed parts. Commit the refactor separately from fixes and features.
+
+## Agent mapping
+
+The method above is the same for every agent; only access differs.
+
+- **Claude Code (or another MCP client) over the bridge:** the tools are `mcp__godot__<tool>` (prefix = the registered server name). Edit project files with your own file tools, then call `sync_project` with the written files in `changed_files`. Scene tools need `expected_scene_path` and the user's permission in the sidebar (`/mcp write ask` or `/mcp write auto`); connecting needs `/mcp on` and the `claude mcp add ...` command it copies.
+- **Godot AI Sidebar agent:** write files with `create_or_update_script`, `write_files`, `replace_file_content` or `create_scene` (they validate before writing; `create_or_update_script`, `write_files` and `replace_file_content` also reload an open scene they rewrite, so there is no `sync_project` step); scene tools run directly under the sidebar's approval mode.
