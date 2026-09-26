@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-## Kural (AGENTS.md §3.9): arayüz grafik kalitesi standardı.
+## Kural (CLAUDE.md → Arayüz grafik kalitesi standardı): geliştirici ajanın kuralının altyapısı.
 ##   T1 Cırcır: ui/ altındaki .gd dosyalarında sabit piksel yazı boyu (add_theme_font_size_override("font_size", 11))
 ##      ve tema dışı renk sabiti (Color(0.9, ...)) sayısı dosya başına BASELINE'ı aşamaz; yeni dosya sıfırla
 ##      başlar. Renk / boşluk / köşe AISidebarTheme belirteçlerinden, yazı boyu tema belirtecinden ya da

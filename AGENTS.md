@@ -43,12 +43,6 @@
    * Her özellik arayüzden erişilebilir ve ayarlanabilir olmalıdır; slash komutları (`/mcp`, `/skill` …) yalnız kısayoldur. Yeni bir yetenek, ayar ya da mod eklendiğinde Ayarlar penceresi (`ui/dialogs/settings_dialog.gd` ve sayfaları) **aynı işte** güncellenir; ayarı olan hiçbir altyapı Ayarlar'ın gerisinde kalmaz.
    * `config.json`'a giren her kullanıcı ayarı `core/config/settings_catalog.gd`'de arayüzdeki yeriyle kayıtlıdır (`UI_KEYS`); yalnız sistemin tuttuğu anahtarlar `INTERNAL_KEYS`'tedir. Kullanılmayan varsayılan bırakılmaz. `tests/test_settings_coverage.gd` arayüzsüz ya da ölü ayarı kırmızı yapar.
    * Ayar ekranları ve metinleri i18n'den geçer (§3.6), kişisel değerler (token vb.) arayüzde maskelenir.
-9. **Arayüz grafik kalitesi standardı (kod kuralı ve altyapı):**
-   * Renk, boşluk, köşe ve yazı boyu yalnız `AISidebarTheme` (`ui/theme/sidebar_theme.gd`) belirteçlerinden gelir; `ui/` dosyalarında sabit piksel yazı boyu (`add_theme_font_size_override("font_size", 11)`) ve tema dışı renk sabiti (`Color(0.9, …)`) yazılmaz. Yeni renk gerekiyorsa önce temaya adlı belirteç olarak eklenir.
-   * Ayarlar sayfaları ve benzeri formlar ortak bileşen setiyle kurulur (`ui/components/settings_ui_kit.gd`, `AISidebarSettingsUi`: kart, ipucu, rozet, birincil / ikincil düğme, form satırı, menü stilleri); yazı boyu editörün yazı boyundan türetilir. Aynı iş için ikinci bir stil yazılmaz.
-   * Durumlar eksiksiz stillenir: düğme ve menü öğelerinde normal / üzerinde / basılı / seçili ayrı görünür; düğmeler dikeyde uzamaz; uzun metin sarılır ya da üç noktayla kesilir; açılır listeler en uzun seçeneğe göre genişlemez (`AISidebarSettingsUi.option_button()`); kaydırma çubuğu içeriğe binmez; pencere dar ekranda da sığar.
-   * Görmeden "bitti" denmez: arayüz değişikliğinden önce ve sonra `tools/ui_shots.gd` ile iki dilde, geniş ve dar pencerede görüntü alınır ve incelenir (araç, pencere ekrana sığmazsa OVERFLOW basıp 1 ile çıkar) (dock görselleri için `tools/readme_shots.gd`). Editör içi duman testi yine gerekir (`docs/DEVELOPMENT.md` §9).
-   * Altyapı: `tests/test_ui_quality.gd` sabit yazı boyu ve renk sabiti sayısını dosya başına cırcırla tutar (yeni dosya sıfırla başlar, eski dosyalar temizlendikçe taban düşürülür) ve Ayarlar sayfalarının bileşen setini kullandığını denetler.
 
 ---
 
@@ -137,4 +131,4 @@ Doküman, onu eskiten değişiklikle **aynı iş kapsamında** güncellenir; son
 | Mimari kural değişikliği | `AGENTS.md` |
 | Yeni kullanıcı ayarı, yetenek ya da mod | Ayarlar penceresine denetim + `core/config/settings_catalog.gd` satırı (§3.8) |
 | Godot geliştirme metodolojisi / ajan davranış kuralı | sidebar sistem istemi (`core/config/api_config.gd`), köprü talimatı (`AISidebarMcpProtocol.INSTRUCTIONS`) ve yerleşik skill'ler (`addons/godot_sidebar_ai/skills/`) birlikte |
-| Arayüz görünümü değişti | Önce / sonra `tools/ui_shots.gd` görüntüleri incelenir (§3.9); `tools/readme_shots.gd` ile README görselleri yeniden üretilir |
+| Arayüz görünümü değişti | `tools/readme_shots.gd` ile README görselleri yeniden üretilir |

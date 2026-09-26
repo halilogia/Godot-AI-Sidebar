@@ -142,7 +142,7 @@ godot --path . -s res://tools/readme_shots.gd -- docs/media tr
 
 Pencere birkaç saniye açılıp kapanır; `config.json` dili geçici değiştirilir ve dosya birebir geri yazılır. Üretilen PNG'leri commit'lemeden önce gözle kontrol et.
 
-* **Arayüz görsel kontrolü (AGENTS.md §3.9):** Ayarlar penceresinin her sayfası gerçek bileşenleriyle, geniş (1280x800) ve dar (900x620) pencerede çekilir; uzun sayfaların alt kısmı ayrıca. Arayüz değişikliğinden önce ve sonra iki dilde çalıştır, görüntüleri karşılaştır. Çıktı klasörü repo dışında olsun (mutlak yol):
+* **Arayüz görsel kontrolü (CLAUDE.md):** Ayarlar penceresinin her sayfası gerçek bileşenleriyle, geniş (1280x800) ve dar (900x620) pencerede çekilir; uzun sayfaların alt kısmı ayrıca. Arayüz değişikliğinden önce ve sonra iki dilde çalıştır, görüntüleri karşılaştır. Çıktı klasörü repo dışında olsun (mutlak yol):
 
 ```bash
 godot --path . -s res://tools/ui_shots.gd -- <mutlak-klasör> tr

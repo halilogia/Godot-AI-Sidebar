@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Arayüz görsel kontrolü (AGENTS.md §3.9): Ayarlar penceresini GERÇEK bileşenleriyle açar ve her sayfanın
+## Arayüz görsel kontrolü (CLAUDE.md → Arayüz grafik kalitesi standardı): Ayarlar penceresini GERÇEK bileşenleriyle açar ve her sayfanın
 ## PNG'sini alır; uzun sayfaların alt kısmı da ayrıca çekilir. İki pencere boyutunda (geniş, dar) çekildiği
 ## için sığma / kırpılma sorunları da görünür. Arayüz değişikliğinden önce ve sonra çalıştırıp görüntüleri
 ## karşılaştırın; iki dilde de bakın.
