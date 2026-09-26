@@ -36,7 +36,7 @@ func _setup_ui() -> void:
 	_header_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_header_btn.focus_mode = Control.FOCUS_NONE
+	_header_btn.focus_mode = Control.FOCUS_NONE  # focus: akıştaki açılır başlık; tıklamak yazma odağını almasın
 	_header_btn.theme_type_variation = AISidebarThemeBuilder.LINK_BUTTON
 	_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TONE_INFO_TEXT)
 	_header_btn.text = "▾ " + AISidebarI18n.get_text("runtime_testing")

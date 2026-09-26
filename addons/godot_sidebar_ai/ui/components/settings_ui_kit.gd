@@ -93,7 +93,7 @@ static func set_badge(l: Label, text: String, accent: Color) -> void:
 static func button(text: String, on_press: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.focus_mode = Control.FOCUS_NONE
+	b.focus_mode = Control.FOCUS_ALL
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	if on_press.is_valid():

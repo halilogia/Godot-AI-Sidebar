@@ -35,7 +35,7 @@ func _init() -> void:
 	_clear_btn = Button.new()
 	_clear_btn.text = AISidebarI18n.get_text("btn_clear_all")
 	_clear_btn.flat = true
-	_clear_btn.focus_mode = Control.FOCUS_NONE
+	_clear_btn.focus_mode = Control.FOCUS_ALL
 	_clear_btn.theme_type_variation = AISidebarThemeBuilder.DANGER_LINK_BUTTON
 	_clear_btn.pressed.connect(clear_all)
 	header.add_child(_clear_btn)
@@ -121,7 +121,7 @@ func _refresh() -> void:
 		var cancel_btn = Button.new()
 		AISidebarIconHelper.apply_tinted_icon(cancel_btn, "x", AISidebarTheme.COLOR_ERROR, AISidebarTheme.ICON_SIZE_SM)
 		cancel_btn.flat = true
-		cancel_btn.focus_mode = Control.FOCUS_NONE
+		cancel_btn.focus_mode = Control.FOCUS_ALL
 		cancel_btn.theme_type_variation = AISidebarThemeBuilder.DANGER_LINK_BUTTON
 		cancel_btn.tooltip_text = AISidebarI18n.get_text("queue_cancel_tooltip")
 		var item_id = item.get("id", "")

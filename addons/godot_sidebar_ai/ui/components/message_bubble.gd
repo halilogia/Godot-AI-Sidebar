@@ -248,7 +248,7 @@ func _setup_ui() -> void:
 
 	_copy_btn = Button.new()
 	_copy_btn.flat = true
-	_copy_btn.focus_mode = Control.FOCUS_NONE
+	_copy_btn.focus_mode = Control.FOCUS_NONE  # focus: her balonda tekrarlanan kopyala; Tab zinciri balon sayısı kadar uzamasın (metin seçilip Ctrl+C ile de kopyalanır)
 	_copy_btn.tooltip_text = AISidebarI18n.get_text("tooltip_copy_text")
 	_copy_btn.theme_type_variation = AISidebarThemeBuilder.ICON_BUTTON
 	AISidebarIconHelper.apply_icon(_copy_btn, "copy")

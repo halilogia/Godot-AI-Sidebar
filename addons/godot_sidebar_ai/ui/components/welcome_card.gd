@@ -79,7 +79,7 @@ func _build_content() -> void:
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		btn.focus_mode = Control.FOCUS_NONE
+		btn.focus_mode = Control.FOCUS_ALL
 		btn.theme_type_variation = AISidebarThemeBuilder.CHIP_BUTTON
 		var p_txt = s["prompt"]
 		btn.pressed.connect(func(): prompt_selected.emit(p_txt))

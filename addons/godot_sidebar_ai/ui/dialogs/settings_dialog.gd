@@ -110,7 +110,7 @@ func _build() -> void:
 		var btn := Button.new()
 		btn.text = AISidebarI18n.get_text(key)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.focus_mode = Control.FOCUS_NONE
+		btn.focus_mode = Control.FOCUS_ALL
 		btn.pressed.connect(func() -> void: _select_category(idx))
 		nav.add_child(btn)
 		_nav_buttons.append(btn)

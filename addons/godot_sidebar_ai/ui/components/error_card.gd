@@ -67,7 +67,7 @@ func _setup_ui() -> void:
 	_retry_btn = Button.new()
 	_retry_btn.text = AISidebarI18n.get_text("btn_retry")
 	AISidebarIconHelper.apply_icon(_retry_btn, "refresh")
-	_retry_btn.focus_mode = Control.FOCUS_NONE
+	_retry_btn.focus_mode = Control.FOCUS_ALL
 	_retry_btn.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	_retry_btn.pressed.connect(_on_retry_pressed)
 	actions.add_child(_retry_btn)

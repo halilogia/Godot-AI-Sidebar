@@ -81,6 +81,12 @@ static var COLOR_ERROR_HOVER: Color = Color(1.0, 0.45, 0.45, 1.0)
 static var COLOR_ACCENT: Color = Color(0.30, 0.55, 0.95, 1.0)
 static var COLOR_ACCENT_HOVER: Color = Color(0.38, 0.62, 0.98, 1.0)
 static var COLOR_ACCENT_PRESSED: Color = Color(0.20, 0.45, 0.80, 1.0)
+# Dolgulu düğme zeminleri (üzerinde beyaz yazı; WCAG AA 4.5:1 kontrast)
+static var COLOR_ACCENT_FILL: Color = Color(0.20, 0.42, 0.84, 1.0)
+static var COLOR_ACCENT_FILL_HOVER: Color = Color(0.23, 0.46, 0.88, 1.0)
+static var COLOR_ACCENT_FILL_PRESSED: Color = Color(0.16, 0.36, 0.74, 1.0)
+static var COLOR_ERROR_FILL: Color = Color(0.78, 0.24, 0.24, 1.0)
+static var COLOR_ERROR_FILL_HOVER: Color = Color(0.84, 0.29, 0.29, 1.0)
 
 # Semantik Renk ve Balon Tokenları (Design Tokens)
 static var COLOR_BUBBLE_USER: Color = Color(0.14, 0.20, 0.30, 0.95)
@@ -173,6 +179,11 @@ const PALETTE_DARK := {
 	"COLOR_LAYER_RULES": Color(0.35, 0.60, 0.95, 1.0),
 	"COLOR_LAYER_SKILLS": Color(0.45, 0.80, 0.50, 1.0),
 	"COLOR_LAYER_TOOLS": Color(0.70, 0.50, 0.90, 1.0),
+	"COLOR_ACCENT_FILL": Color(0.20, 0.42, 0.84, 1.0),
+	"COLOR_ACCENT_FILL_HOVER": Color(0.23, 0.46, 0.88, 1.0),
+	"COLOR_ACCENT_FILL_PRESSED": Color(0.16, 0.36, 0.74, 1.0),
+	"COLOR_ERROR_FILL": Color(0.78, 0.24, 0.24, 1.0),
+	"COLOR_ERROR_FILL_HOVER": Color(0.84, 0.29, 0.29, 1.0),
 }
 
 const PALETTE_LIGHT := {
@@ -223,11 +234,21 @@ const PALETTE_LIGHT := {
 	"COLOR_LAYER_RULES": Color(0.18, 0.42, 0.84, 1.0),
 	"COLOR_LAYER_SKILLS": Color(0.16, 0.56, 0.28, 1.0),
 	"COLOR_LAYER_TOOLS": Color(0.48, 0.28, 0.74, 1.0),
+	"COLOR_ACCENT_FILL": Color(0.18, 0.42, 0.86, 1.0),
+	"COLOR_ACCENT_FILL_HOVER": Color(0.22, 0.47, 0.90, 1.0),
+	"COLOR_ACCENT_FILL_PRESSED": Color(0.13, 0.35, 0.75, 1.0),
+	"COLOR_ERROR_FILL": Color(0.75, 0.18, 0.18, 1.0),
+	"COLOR_ERROR_FILL_HOVER": Color(0.82, 0.24, 0.24, 1.0),
 }
 
 static func use_palette(light: bool) -> void:
 	is_light = light
 	var p: Dictionary = PALETTE_LIGHT if light else PALETTE_DARK
+	COLOR_ACCENT_FILL = p["COLOR_ACCENT_FILL"]
+	COLOR_ACCENT_FILL_HOVER = p["COLOR_ACCENT_FILL_HOVER"]
+	COLOR_ACCENT_FILL_PRESSED = p["COLOR_ACCENT_FILL_PRESSED"]
+	COLOR_ERROR_FILL = p["COLOR_ERROR_FILL"]
+	COLOR_ERROR_FILL_HOVER = p["COLOR_ERROR_FILL_HOVER"]
 	COLOR_BG_APP = p["COLOR_BG_APP"]
 	COLOR_BG_CARD = p["COLOR_BG_CARD"]
 	COLOR_BG_CARD_HOVER = p["COLOR_BG_CARD_HOVER"]
@@ -408,11 +429,11 @@ static func create_bubble_command_style() -> StyleBoxFlat:
 static func create_accent_button_style(is_hover: bool = false, is_pressed: bool = false) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
 	if is_pressed:
-		style.bg_color = COLOR_ACCENT_PRESSED
+		style.bg_color = COLOR_ACCENT_FILL_PRESSED
 	elif is_hover:
-		style.bg_color = COLOR_ACCENT_HOVER
+		style.bg_color = COLOR_ACCENT_FILL_HOVER
 	else:
-		style.bg_color = COLOR_ACCENT
+		style.bg_color = COLOR_ACCENT_FILL
 	style.set_border_width_all(0)
 	style.set_corner_radius_all(RADIUS_MD)
 	style.content_margin_left = px(SPACE_MD)

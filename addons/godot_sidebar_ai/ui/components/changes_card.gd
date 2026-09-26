@@ -75,7 +75,7 @@ func _setup_ui() -> void:
 	_diff_btn = Button.new()
 	_diff_btn.text = AISidebarI18n.get_text("btn_view_diff")
 	AISidebarIconHelper.apply_icon(_diff_btn, "diff")
-	_diff_btn.focus_mode = Control.FOCUS_NONE
+	_diff_btn.focus_mode = Control.FOCUS_ALL
 	_diff_btn.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	_diff_btn.pressed.connect(_on_diff_pressed)
 	_actions_bar.add_child(_diff_btn)
@@ -83,7 +83,7 @@ func _setup_ui() -> void:
 	_undo_btn = Button.new()
 	_undo_btn.text = AISidebarI18n.get_text("btn_undo")
 	AISidebarIconHelper.apply_icon(_undo_btn, "undo")
-	_undo_btn.focus_mode = Control.FOCUS_NONE
+	_undo_btn.focus_mode = Control.FOCUS_ALL
 	_undo_btn.theme_type_variation = AISidebarThemeBuilder.GHOST_BUTTON
 	_undo_btn.pressed.connect(_on_undo_pressed)
 	_actions_bar.add_child(_undo_btn)

@@ -53,7 +53,7 @@ func _ready() -> void:
 
 	_thumb_btn = Button.new()
 	_thumb_btn.flat = true
-	_thumb_btn.focus_mode = Control.FOCUS_NONE
+	_thumb_btn.focus_mode = Control.FOCUS_NONE  # focus: küçük resim önizlemesi; tıklamak yazma odağını almasın
 	_thumb_btn.custom_minimum_size = Vector2(120, 68)
 	_thumb_btn.tooltip_text = AISidebarI18n.get_text("tooltip_zoom")
 	_thumb_btn.pressed.connect(_on_thumb_pressed)

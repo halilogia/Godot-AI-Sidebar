@@ -52,7 +52,7 @@ func _setup_ui() -> void:
 	_header_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_header_btn.focus_mode = Control.FOCUS_NONE
+	_header_btn.focus_mode = Control.FOCUS_NONE  # focus: akıştaki açılır özet; tıklamak yazma odağını almasın
 	# Tek satır: dar dock'ta "…" ile kesilir, tam metin tooltip'te.
 	_header_btn.clip_text = true
 	_header_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -62,7 +62,7 @@ func _setup_ui() -> void:
 
 	_copy_btn = Button.new()
 	_copy_btn.flat = true
-	_copy_btn.focus_mode = Control.FOCUS_NONE
+	_copy_btn.focus_mode = Control.FOCUS_ALL
 	_copy_btn.tooltip_text = AISidebarI18n.get_text("telemetry_copy_tooltip")
 	_copy_btn.theme_type_variation = AISidebarThemeBuilder.LINK_BUTTON
 	_copy_btn.text = AISidebarI18n.get_text("btn_copy")

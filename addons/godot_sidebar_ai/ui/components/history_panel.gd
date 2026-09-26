@@ -71,7 +71,7 @@ func _setup_ui() -> void:
 	new_btn.text = AISidebarI18n.get_text("history_btn_new")
 	new_btn.tooltip_text = AISidebarI18n.get_text("history_btn_new")
 	new_btn.flat = true
-	new_btn.focus_mode = FOCUS_NONE
+	new_btn.focus_mode = Control.FOCUS_ALL
 	new_btn.theme_type_variation = AISidebarThemeBuilder.ACCENT_LINK_BUTTON
 	new_btn.pressed.connect(func(): new_chat_requested.emit())
 	header_hbox.add_child(new_btn)
@@ -80,7 +80,7 @@ func _setup_ui() -> void:
 	AISidebarIconHelper.apply_tinted_icon(close_btn, "x", AISidebarTheme.COLOR_TEXT_SECONDARY)
 	close_btn.tooltip_text = AISidebarI18n.get_text("history_btn_close_tooltip")
 	close_btn.flat = true
-	close_btn.focus_mode = FOCUS_NONE
+	close_btn.focus_mode = Control.FOCUS_ALL
 	close_btn.theme_type_variation = AISidebarThemeBuilder.ICON_BUTTON
 	close_btn.pressed.connect(func(): close_requested.emit())
 	header_hbox.add_child(close_btn)
@@ -249,7 +249,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	var ren_btn = Button.new()
 	ren_btn.flat = true
 	ren_btn.tooltip_text = AISidebarI18n.get_text("history_tooltip_rename")
-	ren_btn.focus_mode = FOCUS_NONE
+	ren_btn.focus_mode = Control.FOCUS_ALL
 	ren_btn.custom_minimum_size = Vector2(AISidebarTheme.px(24), AISidebarTheme.px(24))
 	ren_btn.theme_type_variation = AISidebarThemeBuilder.ICON_BUTTON
 	AISidebarIconHelper.apply_icon(ren_btn, "edit")
@@ -262,7 +262,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	var del_btn = Button.new()
 	del_btn.flat = true
 	del_btn.tooltip_text = AISidebarI18n.get_text("history_tooltip_delete")
-	del_btn.focus_mode = FOCUS_NONE
+	del_btn.focus_mode = Control.FOCUS_ALL
 	del_btn.custom_minimum_size = Vector2(AISidebarTheme.px(24), AISidebarTheme.px(24))
 	del_btn.theme_type_variation = AISidebarThemeBuilder.ICON_BUTTON
 	AISidebarIconHelper.apply_icon(del_btn, "trash")
@@ -275,7 +275,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	var exp_btn = Button.new()
 	exp_btn.flat = true
 	exp_btn.tooltip_text = AISidebarI18n.get_text("history_tooltip_export")
-	exp_btn.focus_mode = FOCUS_NONE
+	exp_btn.focus_mode = Control.FOCUS_ALL
 	exp_btn.custom_minimum_size = Vector2(AISidebarTheme.px(24), AISidebarTheme.px(24))
 	exp_btn.theme_type_variation = AISidebarThemeBuilder.ICON_BUTTON
 	AISidebarIconHelper.apply_icon(exp_btn, "download")

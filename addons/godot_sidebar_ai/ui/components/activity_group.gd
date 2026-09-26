@@ -46,7 +46,7 @@ func _setup_ui() -> void:
 	_header_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_header_btn.focus_mode = Control.FOCUS_NONE
+	_header_btn.focus_mode = Control.FOCUS_NONE  # focus: akıştaki açılır başlık; tıklamak yazma odağını mesaj kutusundan almasın
 	_header_btn.theme_type_variation = AISidebarThemeBuilder.EXPAND_HEADER
 	_header_btn.pressed.connect(_on_header_pressed)
 	_vbox.add_child(_header_btn)
@@ -234,7 +234,7 @@ func _render_item(item: Dictionary, idx: int) -> void:
 
 	var details_btn = Button.new()
 	details_btn.flat = true
-	details_btn.focus_mode = Control.FOCUS_NONE
+	details_btn.focus_mode = Control.FOCUS_NONE  # focus: akıştaki açılır ayrıntı; tıklamak yazma odağını almasın
 	details_btn.visible = false
 	details_btn.theme_type_variation = AISidebarThemeBuilder.EXPAND_HEADER_SMALL
 	outer.add_child(details_btn)

@@ -91,7 +91,7 @@ func _setup_ui() -> void:
 	_apply_btn = Button.new()
 	_apply_btn.text = AISidebarI18n.get_text("btn_plan_apply")
 	AISidebarIconHelper.apply_icon(_apply_btn, "check")
-	_apply_btn.focus_mode = Control.FOCUS_NONE
+	_apply_btn.focus_mode = Control.FOCUS_ALL
 	_apply_btn.theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	_apply_btn.pressed.connect(_on_apply)
 	_buttons_bar.add_child(_apply_btn)
@@ -99,7 +99,7 @@ func _setup_ui() -> void:
 	_cancel_btn = Button.new()
 	_cancel_btn.text = AISidebarI18n.get_text("btn_plan_cancel")
 	AISidebarIconHelper.apply_icon(_cancel_btn, "x")
-	_cancel_btn.focus_mode = Control.FOCUS_NONE
+	_cancel_btn.focus_mode = Control.FOCUS_ALL
 	_cancel_btn.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	_cancel_btn.pressed.connect(_on_cancel)
 	_buttons_bar.add_child(_cancel_btn)

@@ -175,7 +175,7 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 
 	_button(t, BUTTON, button, _outline(false), _outline(true), _outline(true), AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_button(t, PRIMARY_BUTTON, button, AISidebarTheme.create_accent_button_style(), AISidebarTheme.create_accent_button_style(true), AISidebarTheme.create_accent_button_style(false, true), AISidebarTheme.COLOR_WHITE)
-	_button(t, DANGER_BUTTON, button, _filled(AISidebarTheme.COLOR_ERROR), _filled(AISidebarTheme.COLOR_ERROR_HOVER), _filled(AISidebarTheme.COLOR_ERROR), AISidebarTheme.COLOR_WHITE)
+	_button(t, DANGER_BUTTON, button, _filled(AISidebarTheme.COLOR_ERROR_FILL), _filled(AISidebarTheme.COLOR_ERROR_FILL_HOVER), _filled(AISidebarTheme.COLOR_ERROR_FILL), AISidebarTheme.COLOR_WHITE)
 	_button(t, GHOST_BUTTON, button, AISidebarTheme.create_ghost_button_style(), AISidebarTheme.create_ghost_button_style(true), AISidebarTheme.create_ghost_button_style(true), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, OPTION_BUTTON, button, _option(false), _option(true), _option(true), AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_button(t, APPROVE_BUTTON, button, _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, false), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), AISidebarTheme.emphasize(AISidebarTheme.COLOR_TONE_WARNING_TEXT))
@@ -194,20 +194,20 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 	t.set_stylebox("normal", SELECT, AISidebarTheme.create_input_style())
 	t.set_stylebox("hover", SELECT, AISidebarTheme.create_card_hover_style())
 	t.set_stylebox("pressed", SELECT, AISidebarTheme.create_card_active_style())
-	t.set_stylebox("focus", SELECT, StyleBoxEmpty.new())
+	t.set_stylebox("focus", SELECT, focus_ring())
 	t.set_font_size("font_size", SELECT, body)
 	t.set_color("font_color", SELECT, AISidebarTheme.COLOR_TEXT_PRIMARY)
 	t.set_color("font_hover_color", SELECT, AISidebarTheme.COLOR_TEXT_PRIMARY)
 	t.set_type_variation(PILL_BUTTON, "Button")
 	t.set_font_size("font_size", PILL_BUTTON, hint)
 	t.set_constant("h_separation", PILL_BUTTON, AISidebarTheme.px(AISidebarTheme.SPACE_XXS + 1))
-	t.set_stylebox("focus", PILL_BUTTON, StyleBoxEmpty.new())
+	t.set_stylebox("focus", PILL_BUTTON, focus_ring(AISidebarTheme.RADIUS_PILL))
 	t.set_type_variation(LIST, "ItemList")
 	t.set_font_size("font_size", LIST, body)
 	_panel(t, POPUP_PANEL, AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
 	_button(t, FLOAT_BUTTON, hint, AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XXS), AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XXS), AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XXS), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, SEND_BUTTON, body, AISidebarTheme.create_accent_button_style(), AISidebarTheme.create_accent_button_style(true), AISidebarTheme.create_accent_button_style(false, true), AISidebarTheme.COLOR_WHITE)
-	_button(t, STOP_BUTTON, body, _filled(AISidebarTheme.COLOR_ERROR), _filled(AISidebarTheme.COLOR_ERROR_HOVER), _filled(AISidebarTheme.COLOR_ERROR), AISidebarTheme.COLOR_WHITE)
+	_button(t, STOP_BUTTON, body, _filled(AISidebarTheme.COLOR_ERROR_FILL), _filled(AISidebarTheme.COLOR_ERROR_FILL_HOVER), _filled(AISidebarTheme.COLOR_ERROR_FILL), AISidebarTheme.COLOR_WHITE)
 	for v: String in [SEND_BUTTON, STOP_BUTTON]:
 		t.set_color("icon_normal_color", v, AISidebarTheme.COLOR_WHITE)
 		t.set_color("icon_hover_color", v, AISidebarTheme.COLOR_WHITE)
@@ -264,6 +264,17 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 	_complete_variations(t, source_theme())
 	return t
 
+## Klavye odak halkası: yalnız kenarlık (zemin çizilmez), vurgu renginde, denetimin biraz dışında.
+## Fareyle tıklamada da görünür; Tab ile gezen kullanıcı nerede olduğunu görür.
+static func focus_ring(radius: int = AISidebarTheme.RADIUS_MD) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.draw_center = false
+	s.border_color = AISidebarTheme.COLOR_BORDER_FOCUS
+	s.set_border_width_all(AISidebarTheme.px(2))
+	s.set_corner_radius_all(radius)
+	s.set_expand_margin_all(AISidebarTheme.px(2))
+	return s
+
 ## Varyasyonsuz denetimler (onay kutusu, açılır liste, sayı kutusu, açılır menü …) de paletin yazı
 ## rengini ve giriş stilini alır; açık / koyu temada okunur kalır.
 static func _base_types(t: Theme, body: int) -> void:
@@ -274,6 +285,8 @@ static func _base_types(t: Theme, body: int) -> void:
 		t.set_color("font_hover_pressed_color", type_name, AISidebarTheme.COLOR_TEXT_PRIMARY)
 		t.set_color("font_focus_color", type_name, AISidebarTheme.COLOR_TEXT_PRIMARY)
 		t.set_color("font_disabled_color", type_name, AISidebarTheme.COLOR_TEXT_MUTED)
+	for type_name: String in ["Button", "CheckBox", "CheckButton", "OptionButton", "MenuButton", "LinkButton", "ItemList", "Tree"]:
+		t.set_stylebox("focus", type_name, focus_ring())
 	t.set_color("default_color", "RichTextLabel", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	t.set_color("font_placeholder_color", "LineEdit", AISidebarTheme.COLOR_TEXT_MUTED)
 	t.set_color("font_placeholder_color", "TextEdit", AISidebarTheme.COLOR_TEXT_MUTED)
@@ -381,7 +394,7 @@ static func _button(t: Theme, v: String, size: int, normal: StyleBox, hover: Sty
 	t.set_stylebox("pressed", v, pressed)
 	t.set_stylebox("hover_pressed", v, pressed)
 	t.set_stylebox("disabled", v, normal)
-	t.set_stylebox("focus", v, StyleBoxEmpty.new())
+	t.set_stylebox("focus", v, focus_ring())
 	t.set_font_size("font_size", v, size)
 	t.set_color("font_color", v, color)
 	t.set_color("font_hover_color", v, AISidebarTheme.COLOR_WHITE if color == AISidebarTheme.COLOR_WHITE else AISidebarTheme.COLOR_TEXT_PRIMARY)

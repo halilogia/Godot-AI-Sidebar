@@ -158,7 +158,7 @@ func _setup_ui() -> void:
 	_header_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_header_btn.focus_mode = Control.FOCUS_NONE
+	_header_btn.focus_mode = Control.FOCUS_NONE  # focus: akıştaki açılır başlık; tıklamak yazma odağını almasın
 	# Tek satır: dar dock'ta "…" ile kesilir, tam metin tooltip'te.
 	_header_btn.clip_text = true
 	_header_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

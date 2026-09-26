@@ -43,7 +43,7 @@ func _init() -> void:
 	texts.add_child(_round_lbl)
 	_stop_btn = Button.new()
 	_stop_btn.theme_type_variation = AISidebarThemeBuilder.GHOST_BUTTON
-	_stop_btn.focus_mode = Control.FOCUS_NONE
+	_stop_btn.focus_mode = Control.FOCUS_ALL
 	_stop_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	AISidebarIconHelper.apply_tinted_icon(_stop_btn, "stop", AISidebarTheme.COLOR_TEXT_SECONDARY, AISidebarTheme.ICON_SIZE_SM)
 	_stop_btn.pressed.connect(func() -> void: stop_requested.emit())

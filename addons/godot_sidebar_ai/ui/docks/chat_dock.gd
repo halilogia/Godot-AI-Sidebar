@@ -335,7 +335,7 @@ func _post_assistant_message(text: String) -> void:
 func _setup_skills_button() -> void:
 	skills_btn = Button.new()
 	skills_btn.flat = history_btn.flat
-	skills_btn.focus_mode = Control.FOCUS_NONE
+	skills_btn.focus_mode = Control.FOCUS_NONE  # focus: başlık araç çubuğu; tıklamak yazma odağını mesaj kutusundan almasın
 	history_btn.get_parent().add_child(skills_btn)
 	history_btn.get_parent().move_child(skills_btn, history_btn.get_index())
 	skills_panel = AISidebarSkillsPanel.new()
@@ -343,7 +343,7 @@ func _setup_skills_button() -> void:
 	skills_btn.pressed.connect(func() -> void: skills_panel.popup_centered())
 	help_btn = Button.new()
 	help_btn.flat = history_btn.flat
-	help_btn.focus_mode = Control.FOCUS_NONE
+	help_btn.focus_mode = Control.FOCUS_NONE  # focus: başlık araç çubuğu; tıklamak yazma odağını mesaj kutusundan almasın
 	history_btn.get_parent().add_child(help_btn)
 	history_btn.get_parent().move_child(help_btn, skills_btn.get_index())
 	help_dialog = AISidebarHelpDialog.new()

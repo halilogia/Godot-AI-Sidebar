@@ -68,7 +68,7 @@ func setup_attachment_ui() -> void:
 	_attachment_remove_btn = Button.new()
 	AISidebarIconHelper.apply_tinted_icon(_attachment_remove_btn, "x", AISidebarTheme.COLOR_ERROR)
 	_attachment_remove_btn.flat = true
-	_attachment_remove_btn.focus_mode = Control.FOCUS_NONE
+	_attachment_remove_btn.focus_mode = Control.FOCUS_ALL
 	_attachment_remove_btn.theme_type_variation = AISidebarThemeBuilder.DANGER_LINK_BUTTON
 	_attachment_remove_btn.tooltip_text = AISidebarI18n.get_text("attach_remove_tooltip")
 	_attachment_remove_btn.pressed.connect(clear_attached_image)

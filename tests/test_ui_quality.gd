@@ -10,6 +10,7 @@ extends RefCounted
 ##      literal_spacing     add_theme_constant_override("separation", 6)         → AISidebarTheme.px(SPACE_*)
 ##      unscaled_spacing    ..., AISidebarTheme.SPACE_SM)                         → AISidebarTheme.px(...)
 ##      literal_icon_size   apply_tinted_icon(b, "x", c, 12)                      → AISidebarTheme.ICON_SIZE_*
+##      unexplained_focus_none  FOCUS_NONE satırında "# focus: <gerekçe>" yok       → FOCUS_ALL ya da gerekçe
 ##      font_size_override  add_theme_font_size_override(...) herhangi biri        → tip varyasyonu (yazı boyu temada)
 ##      stylebox_override   add_theme_stylebox_override(...) herhangi biri         → tip varyasyonu (istisna: veriden
 ##                          gelen renkli haplar, BASELINE'da gerekçesiyle)
@@ -55,6 +56,7 @@ const PATTERNS := {
 	"bbcode_hex_color": "\\[color=#[0-9a-fA-F]",
 	"literal_spacing": "constant_override\\(\"[a-z_]+\",\\s*\\d",
 	"unscaled_spacing": "constant_override\\(\"[a-z_]+\",\\s*AISidebarTheme\\.SPACE",
+	"unexplained_focus_none": "FOCUS_NONE(?!.*# focus:)",
 	"font_size_override": "add_theme_font_size_override\\(",
 	"stylebox_override": "add_theme_stylebox_override\\(",
 	"literal_icon_size":"(?:tinted_icon|make_icon_rect|set_rect_icon|StatusIcon\\.new|get_status_icon)\\([^)]*[ (]\\d+\\)",
@@ -149,6 +151,8 @@ static func run() -> Dictionary:
 		"AISidebarIconHelper.apply_tinted_icon(b, \"x\", AISidebarTheme.COLOR_ERROR, 12)",
 		"AISidebarIconHelper.apply_tinted_icon(b, \"x\", AISidebarTheme.COLOR_ERROR, AISidebarTheme.ICON_SIZE_SM)",
 		"p.add_theme_stylebox_override(\"panel\", s)",
+		"b.focus_mode = Control.FOCUS_NONE",
+		"h.focus_mode = Control.FOCUS_NONE  # focus: akıştaki açılır başlık",
 		"# Color(1, 1, 1)",
 	])))
 	# Yazı boyu geçersiz kılması iki örnek satırda geçer; her tür en az bir kez yakalanır.
@@ -209,4 +213,48 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T6 palettes: keys=%s light=%s/%s dark=%s/%s body=%s" % [same_keys, light_text, light_bg, dark_text, dark_bg, light_body])
 
+	# T7 Kontrast (WCAG 2): iki palette de gövde / ikincil yazı ve dolgulu düğme yazısı en az 4.5:1,
+	# soluk (ipucu) yazı ve vurgu renginde bağlantı en az 3:1.
+	var low: Array[String] = []
+	for pal_name: String in ["PALETTE_DARK", "PALETTE_LIGHT"]:
+		var pal: Dictionary = AISidebarTheme.get(pal_name)
+		var app: Color = pal["COLOR_BG_APP"]
+		for pair: Array in CONTRAST_PAIRS:
+			var fg_name: String = pair[0]
+			var bg_name: String = pair[1]
+			var need: float = pair[2]
+			var fg: Color = AISidebarTheme.COLOR_WHITE if fg_name == "WHITE" else pal[fg_name]
+			var bg: Color = pal[bg_name]
+			var ratio := contrast(fg, bg, app)
+			if ratio < need:
+				low.append("%s %s on %s = %.2f < %.1f" % [pal_name, fg_name, bg_name, ratio, need])
+	if low.is_empty():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T7 contrast: " + ", ".join(PackedStringArray(low)))
+
 	return {"name": "UiQualityTests", "passed": passed, "failed": failed, "errors": errors}
+
+const CONTRAST_PAIRS: Array = [
+	["COLOR_TEXT_PRIMARY", "COLOR_BG_CARD", 4.5], ["COLOR_TEXT_PRIMARY", "COLOR_BG_APP", 4.5],
+	["COLOR_TEXT_SECONDARY", "COLOR_BG_CARD", 4.5], ["COLOR_TEXT_SECONDARY", "COLOR_BG_APP", 4.5],
+	["COLOR_TEXT_MUTED", "COLOR_BG_CARD", 3.0], ["COLOR_TEXT_MUTED", "COLOR_BG_APP", 3.0],
+	["COLOR_TEXT_PRIMARY", "COLOR_BUBBLE_USER", 4.5], ["COLOR_TEXT_PRIMARY", "COLOR_BUBBLE_ASSISTANT", 4.5],
+	["COLOR_ROLE_COMMAND", "COLOR_BUBBLE_COMMAND", 4.5], ["COLOR_ACCENT", "COLOR_BG_CARD", 3.0],
+	["COLOR_TONE_WARNING_TEXT", "COLOR_TONE_WARNING_BG", 4.5], ["COLOR_TONE_ERROR_TEXT", "COLOR_TONE_ERROR_BG", 4.5],
+	["COLOR_TONE_INFO_TEXT", "COLOR_TONE_INFO_BG", 4.5], ["COLOR_TONE_SUCCESS_TEXT", "COLOR_BG_CARD", 4.5],
+	["WHITE", "COLOR_ACCENT_FILL", 4.5], ["WHITE", "COLOR_ERROR_FILL", 4.5],
+]
+
+## WCAG 2 kontrast oranı; yarı saydam zemin önce uygulama zeminine, yazı zemine karıştırılır.
+static func contrast(fg: Color, bg: Color, app: Color) -> float:
+	var bg_solid := app.blend(bg)
+	var fg_solid := bg_solid.blend(fg)
+	var l1 := _rel_lum(fg_solid)
+	var l2 := _rel_lum(bg_solid)
+	return (maxf(l1, l2) + 0.05) / (minf(l1, l2) + 0.05)
+
+static func _rel_lum(c: Color) -> float:
+	var ch := func(x: float) -> float: return x / 12.92 if x <= 0.03928 else pow((x + 0.055) / 1.055, 2.4)
+	return 0.2126 * float(ch.call(c.r)) + 0.7152 * float(ch.call(c.g)) + 0.0722 * float(ch.call(c.b))
