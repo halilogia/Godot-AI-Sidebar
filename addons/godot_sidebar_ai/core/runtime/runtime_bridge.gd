@@ -6,6 +6,8 @@ class_name AISidebarRuntimeBridge
 ## Editör ile çalışan oyun süreci arasındaki yerleşik EngineDebugger kanalı üzerinden
 ## güvenli ve semantik sahne ağacı (Remote Scene Tree) ve düğüm denetimini sağlar.
 
+const AISidebarRuntimeInput = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_input.gd")
+
 const CAPTURE_NAME: String = "godot_ai"
 var _is_registered: bool = false
 
@@ -92,7 +94,18 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		EngineDebugger.send_message("godot_ai:response", [req_id, cap])
 		return true
 
+	elif cmd == "send_input":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
+		_send_input(req_id, spec)
+		return true
+
 	return false
+
+## Girdi basılı tutma süresi kadar sürer; yanıt bırakma olayından sonra gönderilir.
+func _send_input(req_id: String, spec: Dictionary) -> void:
+	var res: Dictionary = await AISidebarRuntimeInput.perform(get_tree(), spec)
+	EngineDebugger.send_message("godot_ai:response", [req_id, res])
 
 ## Çalışan OYUNUN kendi viewport görüntüsünü yakalar (editör ekranı değil,
 ## OS penceresi değil; oyun sürecinin ViewportTexture readback'i).
@@ -244,7 +257,9 @@ static func safe_value(v: Variant, depth: int) -> Variant:
 			var s := str(v)
 			return s if s.length() <= MAX_STRING_CHARS else s.left(MAX_STRING_CHARS) + "..."
 		TYPE_ARRAY, TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT64_ARRAY, TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY, TYPE_PACKED_STRING_ARRAY, TYPE_PACKED_VECTOR2_ARRAY, TYPE_PACKED_VECTOR3_ARRAY:
-			var arr: Array = Array(v)
+			var arr: Array = []
+			for item: Variant in v:
+				arr.append(item)
 			if depth >= MAX_VALUE_DEPTH:
 				return "<array size=%d>" % arr.size()
 			var items: Array = []

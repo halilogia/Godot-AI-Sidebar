@@ -17,6 +17,7 @@ const AISidebarGameIntentTools = preload("res://addons/godot_sidebar_ai/core/too
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
 const AISidebarSkillTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/skill_tools.gd")
+const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -89,6 +90,7 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarEditorTools.get_schemas())
 	schemas.append_array(AISidebarGameIntentTools.get_schemas())
 	schemas.append_array(AISidebarUITelemetryTools.get_schemas())
+	schemas.append_array(AISidebarRuntimeInputTools.get_schemas())
 	# Skill'ler: açık skill yoksa activate_skill hiç sunulmaz.
 	schemas.append_array(AISidebarSkillTools.get_schemas())
 
@@ -168,7 +170,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 		# Runtime / Debug odaklı dar araç seti (~12 araç)
 		var runtime_tools = [
 			"play_game", "stop_game", "restart_game", "get_runtime_errors",
-			"inspect_runtime_tree", "inspect_runtime_node",
+			"inspect_runtime_tree", "inspect_runtime_node", "send_input",
 			"take_runtime_screenshot", "take_viewport_screenshot", "create_or_update_script", "replace_file_content", "validate_script", "read_script"
 		]
 		for rt in runtime_tools:
@@ -299,7 +301,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name == AISidebarRuntimeInputTools.TOOL_NAME or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -314,6 +316,8 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 			{"requires_approval": true, "tool_name": tool_name, "args": args}
 		)
 		
+	if tool_name == AISidebarRuntimeInputTools.TOOL_NAME:
+		return await AISidebarRuntimeInputTools.execute_async(args)
 	return await AISidebarEditorTools.execute_async(tool_name, args)
 
 static func _search_tools(args: Dictionary) -> Dictionary:

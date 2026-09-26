@@ -16,7 +16,7 @@ enum Holder { NONE, SIDEBAR, EXTERNAL }
 const EXTERNAL_LEASE_MSEC := 60000
 
 ## Risk kaydında WRITE olsa da proje / sahne içeriğini değiştirmeyen araçlar.
-const NON_WRITING_TOOLS: Array[String] = ["play_game", "stop_game", "restart_game", "select_node", "open_scene"]
+const NON_WRITING_TOOLS: Array[String] = ["play_game", "stop_game", "restart_game", "send_input", "select_node", "open_scene"]
 
 static var _holder: Holder = Holder.NONE
 static var _lease_until_msec: int = 0

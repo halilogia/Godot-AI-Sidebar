@@ -423,7 +423,7 @@ const EXPECTED = {
 			"assistant_calls:search_tools",
 			"tool:search_tools:g1:",
 		],
-		"snap": "state=PLANNING step=2 unlocked=[\"search_tools\", \"<search:2/2>\"] unrecovered=[] pending=none stagnation=0 empty_retry=0",
+		"snap": "state=PLANNING step=2 unlocked=[\"search_tools\", \"<search:3/3>\"] unrecovered=[] pending=none stagnation=0 empty_retry=0",
 		"sent": 2,
 	},
 	"S12_missing_args_and_name": {

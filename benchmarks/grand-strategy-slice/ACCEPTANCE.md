@@ -1,6 +1,6 @@
 # Acceptance criteria — grand-strategy vertical slice
 
-Each criterion names the evidence that counts. "Manual" criteria need a person to play; the agent reports them as "needs manual play test".
+Each criterion names the evidence that counts. Input-driven criteria use send_input; report a criterion as "needs manual play test" only if send_input cannot reach it.
 
 | # | Criterion | Evidence |
 |---|---|---|
@@ -12,8 +12,8 @@ Each criterion names the evidence that counts. "Manual" criteria need a person t
 | A6 | Monthly income added to treasuries | top-bar treasury read before and after a month change (screenshot or node) |
 | A7 | Autoplay: an AI war starts after 30 days without input | screenshot or node state showing war / army after autoplay run |
 | A8 | Occupation changes province color | screenshot before and after occupation |
-| A9 | Clicking a province opens the info panel | **manual** |
-| A10 | Pause / speed controls respond to input | **manual** |
+| A9 | Clicking a province opens the info panel | `send_input` click on a province node, then screenshot or `inspect_runtime_node` of the panel |
+| A10 | Pause / speed controls respond to input | `send_input` key or action, then two date reads seconds apart |
 | A11 | No edits to `addons/godot_sidebar_ai/`, `.godot/` | `git status` / diff |
 
 ## What to record per run

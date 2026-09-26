@@ -20,7 +20,7 @@ const EXPOSED_TOOLS: Array[String] = [
 	"get_project_files", "search_project_assets", "analyze_project",
 	"get_scene_tree", "get_node_properties", "get_selected_nodes", "select_node", "open_scene",
 	"read_script", "validate_script",
-	"play_game", "stop_game", "restart_game",
+	"play_game", "stop_game", "restart_game", "send_input",
 	"get_runtime_errors", "inspect_runtime_tree", "inspect_runtime_node",
 	"take_editor_screenshot", "take_viewport_screenshot", "take_runtime_screenshot",
 	"inspect_ui_layout",
@@ -46,7 +46,7 @@ const SYNC_PROJECT_TOOL := {
 
 ## Dış ajana `initialize` ile verilen çalışma kuralı: üretim dosya-öncelikli, editör etkileşimi
 ## araç-öncelikli. Köprü yüzeyi normal kod / dosya üretimini kopyalayan üst düzey araçlarla büyütülmez.
-const INSTRUCTIONS := "Godot editor tools from the Godot AI Sidebar plugin. If the project has an AGENTS.md at its root, read it first: it holds the project's rules. Construction is file-first: create scripts, scenes (.tscn), resources (.tres), shaders and data files with your own file tools, prefer whole .tscn files or procedural GDScript over many single-node calls, then call sync_project (list the .tscn files in changed_files). Editor interaction is tool-first: use the scene tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) only for small, precise, undoable edits of the scene open in the editor; they need an expected_scene_path (scene_file from get_scene_tree). Verify with validate_script, play_game, get_runtime_errors (wait a few seconds after play_game), take_runtime_screenshot and inspect_runtime_tree; stop_game when done."
+const INSTRUCTIONS := "Godot editor tools from the Godot AI Sidebar plugin. If the project has an AGENTS.md at its root, read it first: it holds the project's rules. Construction is file-first: create scripts, scenes (.tscn), resources (.tres), shaders and data files with your own file tools, prefer whole .tscn files or procedural GDScript over many single-node calls, then call sync_project (list the .tscn files in changed_files). Editor interaction is tool-first: use the scene tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) only for small, precise, undoable edits of the scene open in the editor; they need an expected_scene_path (scene_file from get_scene_tree). Verify with validate_script, play_game, get_runtime_errors (wait a few seconds after play_game), take_runtime_screenshot, inspect_runtime_tree and inspect_runtime_node (includes script variables); use send_input to press keys, trigger input actions or click nodes in the running game; stop_game when done."
 
 ## Dış ajana açılan araç tanımları (MCP `tools/list` biçimi).
 static func tool_definitions() -> Array:

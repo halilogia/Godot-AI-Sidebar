@@ -231,7 +231,9 @@ graph LR
 ### 4. 🐞 Runtime Inspection Katmanı (`core/runtime/`)
 * **[`runtime_debugger.gd`](addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd):** Oyunu başlatır/durdurur, artımlı logları izler ve `RuntimeObservation` üretir.
 * **[`debugger_plugin.gd`](addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd):** `EditorDebuggerPlugin` tabanlı köprü; editör ile çalışan oyun arasında mesaj kanalı kurar.
-* **[`runtime_bridge.gd`](addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd):** Oyun tarafına autoload olarak eklenen karşı taraf; canlı sahne ağacı ve düğüm özelliklerini sorgulanabilir kılar (`inspect_runtime_tree`, `inspect_runtime_node`).
+* **[`runtime_bridge.gd`](addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd):** Oyun tarafına autoload olarak eklenen karşı taraf; canlı sahne ağacı ve düğüm özelliklerini sorgulanabilir kılar (`inspect_runtime_tree`, `inspect_runtime_node`; düğümün script değişkenleri `script_vars` olarak, JSON'a güvenli ve sınırlı), oyun görüntüsünü yakalar ve girdi isteklerini `runtime_input.gd`'ye iletir.
+* **[`runtime_input.gd`](addons/godot_sidebar_ai/core/runtime/runtime_input.gd):** Oyun tarafında girdi: tuş ve input action `Input.parse_input_event` ile (oyunun yoklamaları da görür), fare tıklaması kök viewport'a yerel koordinatla; tıklama konumu düğüm yolundan (Control merkezi, Node2D konumu, Node3D kamera izdüşümü) ya da görünüm oranından (x, y: 0..1). Basılı tutma süresi en fazla 2 sn.
+* **[`runtime_input_tools.gd`](addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd):** `send_input` aracı (editör tarafı): argüman doğrulama, oyun ve debugger hazırlık kontrolü, debugger sorgusu. Oyun kontrolüdür: yazıcı kilidine tabi değil, köprüde (MCP) açık.
 * **[`runtime_observer.gd`](addons/godot_sidebar_ai/core/runtime/runtime_observer.gd):** Çalışma zamanı hatalarını gözlemler ve `RuntimeObservation` modeline dönüştürür.
 * **[`source_mapper.gd`](addons/godot_sidebar_ai/core/runtime/source_mapper.gd):** Stack trace girdilerini projedeki gerçek kaynak dosya ve satırlara eşler; self-healing döngüsünün doğru scripti bulmasını sağlar.
 

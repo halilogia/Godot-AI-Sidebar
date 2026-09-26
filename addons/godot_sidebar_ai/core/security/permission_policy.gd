@@ -151,7 +151,7 @@ static func _init_default_risks() -> void:
 		"create_scene", "save_scene", "add_node", "instantiate_scene",
 		"rename_node", "duplicate_node", "set_node_property", "connect_signal",
 		"attach_script_to_node", "reparent_node", "select_node",
-		"play_game", "stop_game", "restart_game",
+		"play_game", "stop_game", "restart_game", "send_input",
 		"create_character_scene", "create_enemy_scene", "create_ui_hud",
 		"create_interactable", "setup_camera_follow"
 	]
