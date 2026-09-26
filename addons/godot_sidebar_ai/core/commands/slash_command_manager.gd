@@ -298,7 +298,7 @@ static func _handle_mcp(args: String, _context: Dictionary) -> Dictionary:
 	if sub == "on":
 		var res := bridge.enable()
 		if res["ok"] != true:
-			return {"action": "local_response", "message": "MCP köprüsü port %d üzerinde açılamadı (hata %d). Port başka bir süreçte kullanılıyor olabilir; config.json'daki `mcp_bridge_port` değerini değiştirip tekrar deneyin." % [res["port"], res["error"]]}
+			return {"action": "local_response", "message": "MCP köprüsü port %d üzerinde açılamadı (hata %d). Port başka bir süreçte kullanılıyor olabilir; Ayarlar → Dış Ajan (MCP) sayfasından başka bir port seçip tekrar deneyin." % [res["port"], res["error"]]}
 		text += "**MCP köprüsü açıldı.**\n\n"
 	elif sub == "off":
 		bridge.disable()

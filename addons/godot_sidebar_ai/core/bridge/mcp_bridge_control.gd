@@ -73,6 +73,18 @@ func disable() -> void:
 	set_enabled(false)
 	stop()
 
+func saved_port() -> int:
+	var p: int = gateway.read_bridge_settings()["port"]
+	return p
+
+## Portu kaydeder; köprü açıksa yeni portta yeniden başlatır. Dönüş: enable() gibi ya da {ok: true}.
+func change_port(port: int) -> Dictionary:
+	gateway.save_bridge_port(port)
+	if is_running():
+		stop()
+		return enable()
+	return {"ok": true, "port": saved_port(), "error": OK}
+
 ## Bağlantı komutu, token'ın yalnız ilk 4 karakteri görünür biçimde (sohbete / arayüze yazmak için).
 func masked_claude_add_command() -> String:
 	var token_value := bearer_token()

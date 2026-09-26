@@ -143,6 +143,13 @@ func save_bridge_enabled(enabled: bool) -> Dictionary:
 	AISidebarConfig.save_config(cfg)
 	return read_bridge_settings()
 
+## Köprü portunu kaydeder (Ayarlar → Dış Ajan). Geçersizse varsayılana döner.
+func save_bridge_port(port: int) -> Dictionary:
+	var cfg := AISidebarConfig.load_config()
+	cfg["mcp_bridge_port"] = port if port >= 1024 and port <= 65535 else DEFAULT_PORT
+	AISidebarConfig.save_config(cfg)
+	return read_bridge_settings()
+
 func server_version() -> String:
 	var cfg := ConfigFile.new()
 	if cfg.load("res://addons/godot_sidebar_ai/plugin.cfg") == OK:

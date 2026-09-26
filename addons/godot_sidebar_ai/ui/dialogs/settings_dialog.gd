@@ -37,6 +37,9 @@ var _active_category: int = 0
 
 const AISidebarSkillsView = preload("res://addons/godot_sidebar_ai/ui/components/skills_view.gd")
 const AISidebarMcpSettingsView = preload("res://addons/godot_sidebar_ai/ui/components/mcp_settings_view.gd")
+const AISidebarSettingsExtras = preload("res://addons/godot_sidebar_ai/ui/components/settings_extras.gd")
+## Sahnede olmayan ek denetimler (akış, görüntü desteği, onaylar).
+var extras: AISidebarSettingsExtras = AISidebarSettingsExtras.new()
 const CATEGORY_COUNT_BASE := 4
 const CATEGORY_SKILLS := 4
 const CATEGORY_MCP := 5
@@ -74,6 +77,8 @@ func _ready() -> void:
 	_ensure_nodes()
 	_setup_nav()
 	_add_extra_categories()
+	if page_provider and page_appearance:
+		extras.build(page_provider, page_appearance)
 	_setup_options()
 	_setup_temp()
 	_apply_styles()
@@ -226,6 +231,7 @@ func update_labels() -> void:
 	if _extra_nav.size() == 2:
 		_extra_nav[0].text = AISidebarI18n.get_text("tab_skills")
 		_extra_nav[1].text = AISidebarI18n.get_text("tab_external_agent")
+	extras.update_labels()
 
 	if provider_selector and provider_selector.item_count >= 2:
 		provider_selector.set_item_text(0, AISidebarI18n.get_text("provider_antigravity"))
@@ -310,6 +316,8 @@ func open_settings() -> void:
 		else:
 			approve_mode_selector.selected = 0
 			
+	var loaded: Dictionary = config
+	extras.load_from(loaded)
 	popup_centered(Vector2i(740, 560))
 
 func _on_provider_selected(idx: int) -> void:
@@ -378,5 +386,7 @@ func _on_confirmed() -> void:
 		var new_mode = str(approve_mode_selector.get_item_metadata(approve_mode_selector.selected))
 		config["auto_approve_mode"] = new_mode
 		
+	var to_save: Dictionary = config
+	extras.write_to(to_save)
 	AISidebarConfig.save_config(config)
 	settings_saved.emit()
