@@ -7,6 +7,7 @@ extends RefCounted
 const AISidebarMcpHttp = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_http.gd")
 const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
 const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
+const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 
 const TOKEN = "test-token-123"
 
@@ -157,5 +158,21 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T5 (loopback end-to-end) failed: port=%d statuses=%s call=%s" % [port, str(statuses), str(r_call["body"]).left(200)])
 	server.free()
+
+	# 6. eval_gdscript (keyfi kod yürütme) hiçbir yoldan ulaşılamaz: şeması yok, izin listesinde
+	# yok, köprü reddeder, ToolManager (onaylı çağrıda bile) UNKNOWN_TOOL döner.
+	var eval_in_schemas := false
+	for s in AISidebarToolManager.get_all_schemas():
+		if s["function"]["name"] == "eval_gdscript":
+			eval_in_schemas = true
+	var eval_call := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "eval_gdscript", "arguments": {"code": "1 + 1"}})))
+	var eval_direct := AISidebarToolManager.execute_tool("eval_gdscript", {"code": "1 + 1"}, true)
+	if not eval_in_schemas and not names.has("eval_gdscript") and not AISidebarMcpProtocol.is_exposed("eval_gdscript") \
+			and eval_call["reply"]["error"]["code"] == -32602 and eval_direct.get("success", true) == false \
+			and eval_direct["error"]["code"] == "UNKNOWN_TOOL":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T6 (eval_gdscript unreachable) failed: call=%s direct=%s" % [str(eval_call), str(eval_direct)])
 
 	return {"name": "McpBridgeTests", "passed": passed, "failed": failed, "errors": errors}
