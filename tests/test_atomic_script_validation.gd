@@ -55,8 +55,29 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Hata nesnesi beklenen yapısal alanları taşımıyor: " + str(res3))
 		
-	# Temizlik
-	if FileAccess.file_exists(valid_path):
-		DirAccess.remove_absolute(valid_path)
-		
+	# A validation failure must reach MCP and transcript consumers as a failure.
+	var invalid_file := FileAccess.open(invalid_path, FileAccess.WRITE)
+	invalid_file.store_string("extends RefCounted\nvar value: MissingReportType\n")
+	invalid_file.close()
+	var validation := AISidebarScriptTools.execute("validate_script", {"file_path": invalid_path})
+	if not validation.get("success", true) and validation.get("data", {}).get("error", {}).get("file_path") == invalid_path:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Validation hid an unresolved type or lost its file path: " + str(validation))
+	var missing_arg := AISidebarScriptTools.execute("validate_script", {"path": valid_path})
+	if not missing_arg.get("success", true) and missing_arg.get("error", {}).get("code") == "INVALID_ARGUMENT":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Validation must identify the required file_path argument")
+	var own_class := AISidebarScriptTools.execute("validate_script", {"file_path": "res://addons/godot_sidebar_ai/core/types/tool_result.gd"})
+	if own_class.get("success", false) and own_class.get("data", {}).get("success", false):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Validation rejected a registered class at its own path: " + str(own_class))
+	for path in [valid_path, invalid_path]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
 	return {"name": "AtomicScriptValidationTests", "passed": passed, "failed": failed, "errors": errors}

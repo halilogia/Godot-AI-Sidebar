@@ -98,7 +98,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "validate_script",
-				"description": "Checks whether a GDScript file compiles and reports syntax errors.",
+				"description": "Checks GDScript compilation in the current editor context, including statically resolved types. Does not execute the script or prove runtime behavior or a clean-cache dependency build. Sync changed files first; run headless tests for runtime and dependency verification.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -413,6 +413,8 @@ static func _open_script(args: Dictionary) -> Dictionary:
 	return AISidebarToolResult.err("EDITOR_UNAVAILABLE", "EditorInterface hazır değil.")
 
 static func _validate_script(args: Dictionary) -> Dictionary:
+	if not args.get("file_path") is String or str(args.get("file_path", "")).strip_edges().is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "Required argument: file_path (non-empty string). Read the tool schema before calling.")
 	var raw_path = args.get("file_path", "")
 	var safe_check = AISidebarPathPolicy.is_safe_to_read(raw_path)
 	if not safe_check["safe"]:
@@ -428,7 +430,13 @@ static func _validate_script(args: Dictionary) -> Dictionary:
 	var content = file.get_as_text()
 	file.close()
 	
-	var val_res = AISidebarVerificationPipeline.validate_script_source(content)
+	var val_res: Dictionary = AISidebarVerificationPipeline.validate_script_source(content, str(path))
+	val_res["validation_scope"] = "in_memory_compilation"
+	val_res["runtime_verified"] = false
+	val_res["dependency_build_verified"] = false
+	if not val_res.get("success", false):
+		var error: Dictionary = val_res.get("error", {})
+		return AISidebarToolResult.err(str(error.get("code", "SCRIPT_SYNTAX_ERROR")), str(error.get("message", "Compilation failed.")), true, val_res)
 	return AISidebarToolResult.ok(val_res)
 
 static func _eval_gdscript(args: Dictionary) -> Dictionary:
