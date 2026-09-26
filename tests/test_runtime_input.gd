@@ -7,7 +7,7 @@ extends RefCounted
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 const AISidebarRuntimeInput = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_input.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
-const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
+const AISidebarExternalAgentGateway = preload("res://addons/godot_sidebar_ai/core/bridge/external_agent_gateway.gd")
 const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
 
 static func run() -> Dictionary:
@@ -60,7 +60,8 @@ static func run() -> Dictionary:
 	for s in AISidebarToolManager.get_all_schemas():
 		if s["function"]["name"] == "send_input":
 			in_schemas = true
-	if in_schemas and AISidebarToolManager.is_async_tool("send_input") and AISidebarMcpProtocol.is_exposed("send_input") \
+	var gateway := AISidebarExternalAgentGateway.new()
+	if in_schemas and AISidebarToolManager.is_async_tool("send_input") and gateway.is_tool_exposed("send_input") \
 			and not AISidebarWriterLock.is_write_tool("send_input") and not AISidebarRuntimeInputTools.readiness_error().is_empty():
 		passed += 1
 	else:

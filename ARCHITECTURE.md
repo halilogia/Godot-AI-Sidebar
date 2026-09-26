@@ -250,16 +250,20 @@ Claude Code, Cursor, Codex gibi dış ajanlar eklentinin araçlarını **MCP (Mo
 
 ```text
 Claude Code / Cursor / Codex  ──MCP Streamable HTTP (POST /mcp, Bearer token)──▶  McpBridgeServer
-                                                                                     │ route
-                                                                                     ▼
-                                                                              McpProtocol (izin listesi)
-                                                                                     │
-                                                                                     ▼
-                                                              ToolManager → PermissionPolicy / PathPolicy / doğrulama → Godot
+                                                                                 │ HTTP request
+                                                                                 ▼
+                                                                            McpProtocol
+                                                                                 │ tools/call
+                                                                                 ▼
+                                                                      ExternalAgentGateway
+                                                                                 │
+                                                               ToolManager → PermissionPolicy / PathPolicy / doğrulama → Godot
 ```
 
-* **[`mcp_bridge_server.gd`](addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd):** Editör düğümü; yalnız `127.0.0.1`'de `TCPServer`, istek başına bir bağlantı. Bearer token zorunlu, `Origin` başlıklı (tarayıcı) istek 403, yalnız `POST /mcp`. Araç çağrılarını yürütür (async araçlar ve köprüye özgü `sync_project` dahil). Port / token / açık-kapalı `config.json`'da kalıcı.
-* **[`mcp_protocol.gd`](addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd):** JSON-RPC / MCP yönlendirmesi (`initialize`, `ping`, `tools/list`, `tools/call`, bildirimler). Dışarı yalnız `EXPOSED_TOOLS` izin listesi açılır (okuma, doğrulama, oyun kontrolü, runtime gözlemi, ekran görüntüleri) ve v3.0.1'den itibaren `MUTATION_TOOLS` (`add_node`, `set_node_property`, `instantiate_scene`, `attach_script_to_node`, `save_scene`); dosya yazan / silen araçlar kapalıdır (dış ajan dosyaları kendi araçlarıyla yazıp `sync_project` çağırır). Görsel sonuçlar MCP `image` içeriği olarak döner.
+* **[`mcp_bridge_control.gd`](addons/godot_sidebar_ai/core/bridge/mcp_bridge_control.gd):** Eklenti kompozisyonunda Gateway, Protocol ve HTTP server'ı kurar; slash komutu için lifecycle/config facade sağlar.
+* **[`mcp_bridge_server.gd`](addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd):** MCP/araç politikası bilmeyen editör HTTP transport düğümü; yalnız `127.0.0.1`'de `TCPServer`, istek başına bir bağlantı, Bearer token, Origin reddi ve `POST /mcp` denetimi.
+* **[`mcp_protocol.gd`](addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd):** JSON-RPC / MCP yönlendirmesi (`initialize`, `ping`, `tools/list`, `tools/call`, bildirimler) ve MCP yanıt biçimleme. Godot araçlarını uygulamaz; Gateway arayüzünü çağırır. Görsel sonuçlar MCP `image` içeriği olarak döner.
+* **[`external_agent_gateway.gd`](addons/godot_sidebar_ai/core/bridge/external_agent_gateway.gd):** MCP dış ajanları için Godot kabiliyet sınırı. Açık araç listesi/şemaları, araç dispatch'i, `sync_project`, zorunlu `expected_scene_path`, etkin sahne doğrulaması, tek yazıcı kilidi ve ToolManager'a geçiş burada. Yalnız read/runtime yetenekleri ile v3.0.1'den itibaren kontrollü `MUTATION_TOOLS` (`add_node`, `set_node_property`, `instantiate_scene`, `attach_script_to_node`, `save_scene`) açılır; dosya yazan/silen araçlar kapalıdır.
 * **Dış ajan sahne mutasyonları (v3.0.1):** Köprünün açılması (`/mcp on`) kullanıcının iznidir; ayrı yazma modu yoktur (v3.0.2'deki `off | ask | auto` modları kaldırıldı: yalnız nadiren kullanılan, Ctrl+Z ile geri alınabilen sahne araçlarını denetliyordu ve Claude Code'un kendi izinleriyle çift onay yaratıyordu). Sunucu her mutasyonu şu sırayla geçirir: izin listesi → köprüye özgü zorunlu `expected_scene_path` (editörde açık sahne değilse `ACTIVE_SCENE_NOT_CONFIRMED`; ToolManager'a gitmeden args'tan çıkarılır, `instantiate_scene`'in kaynak `scene_path`'iyle karışmaz) → yazıcı kilidi (`writer_lock.gd`; sidebar ajanı yazıyorsa `WRITER_BUSY`) → etkin sahne tekrar kontrolü (değiştiyse yeni alınan kilit bırakılır) → ToolManager → MutationService / Undo-Redo. Hepsi senkron: kontrol ile yürütme arasında editör karesi geçmez.
 * **[`mcp_http.gd`](addons/godot_sidebar_ai/core/bridge/mcp_http.gd):** Saf HTTP/1.1 ayrıştırma ve yanıt üretimi (Content-Length gövde, `Connection: close`).
 

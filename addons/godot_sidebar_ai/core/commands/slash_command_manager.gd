@@ -8,8 +8,7 @@ class_name AISidebarSlashCommandManager
 
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
-const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
-const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
+const AISidebarMcpBridgeControl = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_control.gd")
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 
 ## Komut Tanım Modeli
@@ -291,21 +290,21 @@ static func _init_default_commands() -> void:
 ## /mcp: köprüyü açar / kapatır, durumu ve Claude Code bağlantı komutunu gösterir.
 ## Token sohbete yazılmaz (sohbet diske kaydedilir, dışa aktarılabilir): komut panoya kopyalanır.
 static func _handle_mcp(args: String, _context: Dictionary) -> Dictionary:
-	var bridge := AISidebarMcpBridgeServer.instance
+	var bridge := AISidebarMcpBridgeControl.instance
 	if bridge == null:
 		return {"action": "local_response", "message": "MCP köprüsü yalnız eklenti editörde etkinken kullanılabilir."}
 	var sub := args.strip_edges().to_lower()
 	var text := ""
 	if sub == "on":
-		var s := AISidebarMcpBridgeServer.save_enabled(true)
+		var s := bridge.set_enabled(true)
 		var p: int = s["port"]
-		var t: String = s["token"]
+		var t: String = str(s["token"])
 		var err := bridge.start(p, t)
 		if err != OK:
 			return {"action": "local_response", "message": "MCP köprüsü port %d üzerinde açılamadı (hata %d). Port başka bir süreçte kullanılıyor olabilir; config.json'daki `mcp_bridge_port` değerini değiştirip tekrar deneyin." % [p, err]}
 		text += "**MCP köprüsü açıldı.**\n\n"
 	elif sub == "off":
-		AISidebarMcpBridgeServer.save_enabled(false)
+		bridge.set_enabled(false)
 		bridge.stop()
 		return {"action": "local_response", "message": "**MCP köprüsü kapatıldı.** Dış ajanlar artık bu editöre bağlanamaz."}
 	elif not sub.is_empty():
@@ -314,10 +313,11 @@ static func _handle_mcp(args: String, _context: Dictionary) -> Dictionary:
 		return {"action": "local_response", "message": "MCP köprüsü kapalı. Açmak için: `/mcp on`"}
 	var cmd := bridge.claude_add_command()
 	DisplayServer.clipboard_set(cmd)
-	var masked := cmd.replace(bridge.token, bridge.token.left(4) + "…")
+	var token_value := bridge.bearer_token()
+	var masked := cmd.replace(token_value, token_value.left(4) + "…")
 	text += "Uç nokta: `%s` (yalnız bu bilgisayar)\n\n" % bridge.endpoint()
 	text += "Claude Code bağlantı komutu **panoya kopyalandı**; oyun projenizin klasöründe terminale yapıştırın:\n\n```\n%s\n```\n\n" % masked
-	text += "Açılan araçlar: %d (sahne / proje okuma, script doğrulama, oyunu çalıştırma, runtime hataları ve ekran görüntüleri, `sync_project`, açık sahnede Ctrl+Z ile geri alınabilen küçük sahne değişiklikleri). Kapatmak için: `/mcp off`" % AISidebarMcpProtocol.tool_definitions().size()
+	text += "Açılan araçlar: %d (sahne / proje okuma, script doğrulama, oyunu çalıştırma, runtime hataları ve ekran görüntüleri, `sync_project`, açık sahnede Ctrl+Z ile geri alınabilen küçük sahne değişiklikleri). Kapatmak için: `/mcp off`" % bridge.tool_count()
 	return {"action": "local_response", "message": text}
 
 static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:

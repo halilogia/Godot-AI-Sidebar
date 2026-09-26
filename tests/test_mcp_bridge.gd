@@ -7,6 +7,7 @@ extends RefCounted
 const AISidebarMcpHttp = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_http.gd")
 const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
 const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
+const AISidebarExternalAgentGateway = preload("res://addons/godot_sidebar_ai/core/bridge/external_agent_gateway.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
 
@@ -56,6 +57,8 @@ static func _rpc(method: String, params: Dictionary = {}, id: Variant = 1) -> St
 	return JSON.stringify(m)
 
 static func run() -> Dictionary:
+	var gateway := AISidebarExternalAgentGateway.new()
+	var protocol := AISidebarMcpProtocol.new(gateway)
 	var passed = 0
 	var failed = 0
 	var errors: Array = []
@@ -76,16 +79,16 @@ static func run() -> Dictionary:
 		errors.append("T1 (http parse/build) failed: " + str(parsed))
 
 	# 2. Protokol: initialize sürümü yansıtır, bildirim yanıtsız, bilinmeyen metot / geçersiz istek hata
-	var init := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("initialize", {"protocolVersion": "2099-01-01", "capabilities": {}, "clientInfo": {"name": "t"}})))
-	var init_default := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("initialize", {})))
-	var notif := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("notifications/initialized", {}, null)))
-	var unknown := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("resources/list")))
-	var invalid := AISidebarMcpProtocol.route({"id": 3, "method": "ping"})
-	var batch := AISidebarMcpProtocol.route([{"jsonrpc": "2.0", "id": 1, "method": "ping"}])
+	var init := protocol.route(JSON.parse_string(_rpc("initialize", {"protocolVersion": "2099-01-01", "capabilities": {}, "clientInfo": {"name": "t"}})))
+	var init_default := protocol.route(JSON.parse_string(_rpc("initialize", {})))
+	var notif := protocol.route(JSON.parse_string(_rpc("notifications/initialized", {}, null)))
+	var unknown := protocol.route(JSON.parse_string(_rpc("resources/list")))
+	var invalid := protocol.route({"id": 3, "method": "ping"})
+	var batch := protocol.route([{"jsonrpc": "2.0", "id": 1, "method": "ping"}])
 	var ir: Dictionary = init["reply"]["result"]
 	# Dış ajana dosya-öncelikli çalışma kuralı initialize ile verilir.
-	var instr_ok: bool = ir.get("instructions") == AISidebarMcpProtocol.INSTRUCTIONS and AISidebarMcpProtocol.INSTRUCTIONS.contains("file-first") \
-			and AISidebarMcpProtocol.SYNC_PROJECT_TOOL["inputSchema"]["properties"].has("changed_files")
+	var instr_ok: bool = ir.get("instructions") == gateway.instructions() and gateway.instructions().contains("file-first") \
+			and gateway.SYNC_PROJECT_TOOL["inputSchema"]["properties"].has("changed_files")
 	if instr_ok and ir["protocolVersion"] == "2099-01-01" and ir["serverInfo"]["name"] == "godot-ai-sidebar" and ir["capabilities"].has("tools") \
 			and init_default["reply"]["result"]["protocolVersion"] == AISidebarMcpProtocol.DEFAULT_PROTOCOL_VERSION \
 			and notif.get("notification", false) and unknown["reply"]["error"]["code"] == -32601 \
@@ -96,20 +99,20 @@ static func run() -> Dictionary:
 		errors.append("T2 (protocol routing) failed: init=%s unknown=%s" % [str(init), str(unknown)])
 
 	# 3. İzin listesi: tools/list tam olarak açılan araçlar + sync_project; değiştiriciler kapalı
-	var tools: Array = AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/list")))["reply"]["result"]["tools"]
+	var tools: Array = protocol.route(JSON.parse_string(_rpc("tools/list")))["reply"]["result"]["tools"]
 	var names: Array = []
 	var schemas_ok := true
 	for t in tools:
 		names.append(t["name"])
 		if not (t.get("inputSchema") is Dictionary) or t["inputSchema"].get("type") != "object" or str(t.get("description", "")).is_empty():
 			schemas_ok = false
-	var want: Array = AISidebarMcpProtocol.EXPOSED_TOOLS.duplicate()
-	want.append_array(AISidebarMcpProtocol.MUTATION_TOOLS)
+	var want: Array = gateway.EXPOSED_TOOLS.duplicate()
+	want.append_array(gateway.MUTATION_TOOLS)
 	want.append("sync_project")
 	names.sort()
 	want.sort()
-	var blocked := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "delete_file", "arguments": {"file_path": "res://x.gd"}})))
-	var allowed := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "analyze_project", "arguments": {}}, 7)))
+	var blocked := protocol.route(JSON.parse_string(_rpc("tools/call", {"name": "delete_file", "arguments": {"file_path": "res://x.gd"}})))
+	var allowed := protocol.route(JSON.parse_string(_rpc("tools/call", {"name": "analyze_project", "arguments": {}}, 7)))
 	# Silen / dosya yazan / sahne dosyası üreten araçlar kapalı kalır (dış ajanın kendi dosya araçları var).
 	var mutating_exposed := false
 	for m in ["delete_node", "delete_file", "write_files", "create_or_update_script", "replace_file_content", "create_scene", "reparent_node", "duplicate_node", "rename_node", "connect_signal", "create_character_scene"]:
@@ -119,7 +122,7 @@ static func run() -> Dictionary:
 	# instantiate_scene'in kendi scene_path'i (kaynak sahne) korunur.
 	var guard_schema_ok := true
 	for t in tools:
-		if AISidebarMcpProtocol.MUTATION_TOOLS.has(t["name"]):
+		if gateway.MUTATION_TOOLS.has(t["name"]):
 			var req: Array = t["inputSchema"].get("required", [])
 			if not req.has("expected_scene_path") or not t["inputSchema"]["properties"].has("expected_scene_path"):
 				guard_schema_ok = false
@@ -147,7 +150,7 @@ static func run() -> Dictionary:
 		errors.append("T4 (call result content) failed: " + str(img_res))
 
 	# 5. Gerçek loopback TCP: kimlik / köken / metot / yol reddi, initialize, bildirim ve araç çağrısı
-	var server := AISidebarMcpBridgeServer.new()
+	var server := AISidebarMcpBridgeServer.new(protocol)
 	var port := 0
 	for p in [46570, 46571, 46572, 46573]:
 		if server.start(p, TOKEN) == OK:
@@ -188,9 +191,9 @@ static func run() -> Dictionary:
 	for s in AISidebarToolManager.get_all_schemas():
 		if s["function"]["name"] == "eval_gdscript":
 			eval_in_schemas = true
-	var eval_call := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "eval_gdscript", "arguments": {"code": "1 + 1"}})))
+	var eval_call := protocol.route(JSON.parse_string(_rpc("tools/call", {"name": "eval_gdscript", "arguments": {"code": "1 + 1"}})))
 	var eval_direct := AISidebarToolManager.execute_tool("eval_gdscript", {"code": "1 + 1"}, true)
-	if not eval_in_schemas and not names.has("eval_gdscript") and not AISidebarMcpProtocol.is_exposed("eval_gdscript") \
+	if not eval_in_schemas and not names.has("eval_gdscript") and not gateway.is_tool_exposed("eval_gdscript") \
 			and eval_call["reply"]["error"]["code"] == -32602 and eval_direct.get("success", true) == false \
 			and eval_direct["error"]["code"] == "UNKNOWN_TOOL":
 		passed += 1
@@ -200,7 +203,7 @@ static func run() -> Dictionary:
 
 	# 7. Mutasyon koruma sırası: expected_scene_path → etkin sahne → yazıcı kilidi → sahne tekrar → ToolManager.
 	AISidebarWriterLock.reset()
-	var ms := AISidebarMcpBridgeServer.new()
+	var ms := gateway
 	var fake_root := Node.new()
 	fake_root.scene_file_path = "res://scenes/main.tscn"
 	ms.scene_root_provider = func() -> Node: return fake_root
@@ -217,13 +220,13 @@ static func run() -> Dictionary:
 	AISidebarWriterLock.reset()
 	var m_pass := ms.run_mutation("add_node", add_args)
 	var lock_after_pass := AISidebarWriterLock.holder()
-	ms.stop()
+	gateway.release_external_writer()
 	var lock_after_stop := AISidebarWriterLock.holder()
 	var guard_codes := ["INVALID_ARGUMENT", "ACTIVE_SCENE_NOT_CONFIRMED", "WRITER_BUSY"]
 	var pass_code := str(m_pass["error"]["code"]) if m_pass.get("error") is Dictionary else ""
-	var split := AISidebarMcpProtocol.split_mutation_args({"scene_path": "res://p.tscn", "expected_scene_path": " res://scenes/main.tscn "})
+	var split := gateway.split_mutation_args({"scene_path": "res://p.tscn", "expected_scene_path": " res://scenes/main.tscn "})
 	var any_async := false
-	for mt in AISidebarMcpProtocol.MUTATION_TOOLS:
+	for mt in gateway.MUTATION_TOOLS:
 		if AISidebarToolManager.is_async_tool(mt):
 			any_async = true
 	if m_ok and m_missing["error"]["code"] == "INVALID_ARGUMENT" \
@@ -237,7 +240,7 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T7 (mutation guards) failed: ok=%s missing=%s wrong=%s busy=%s pass=%s lock=%s/%s split=%s" % [str(m_ok), str(m_missing), str(m_wrong), str(m_busy), str(m_pass), str(lock_after_pass), str(lock_after_stop), str(split)])
 	fake_root.free()
-	ms.free()
+
 	AISidebarWriterLock.reset()
 
 	return {"name": "McpBridgeTests", "passed": passed, "failed": failed, "errors": errors}

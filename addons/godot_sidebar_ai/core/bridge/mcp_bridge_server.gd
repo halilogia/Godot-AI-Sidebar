@@ -6,20 +6,12 @@ class_name AISidebarMcpBridgeServer
 ## MCP Streamable HTTP uç noktası (`POST /mcp`). Claude Code bağlanır:
 ##   claude mcp add --transport http godot http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"
 ## Varsayılan kapalı; sidebar'da `/mcp on` ile açılır. Port ve token config.json'da kalıcıdır.
-## Güvenlik: yalnız loopback, Bearer token zorunlu, `Origin` başlıklı (tarayıcı) istekler
-## reddedilir, araçlar AISidebarMcpProtocol izin listesi + ToolManager politikalarından geçer.
+## Güvenlik: yalnız loopback, Bearer token zorunlu ve `Origin` başlıklı istekler reddedilir.
 
 const AISidebarMcpHttp = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_http.gd")
 const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
-const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
-const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
-const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
-const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/scene_tools.gd")
-const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
 
-const DEFAULT_PORT := 6570
 const IDLE_TIMEOUT_MSEC := 10000
-const SYNC_TIMEOUT_MSEC := 30000
 
 ## Tek HTTP bağlantısı (istek başına bir bağlantı; yanıttan sonra kapanır).
 class Client:
@@ -32,23 +24,17 @@ class Client:
 		peer = p_peer
 		since_msec = Time.get_ticks_msec()
 
-## Editördeki tek köprü (slash komutu buradan ulaşır). Testler kendi örneklerini kurar.
-static var instance: AISidebarMcpBridgeServer = null
-
 var port: int = 0
 var token: String = ""
-## Etkin sahne kökünü verir; boşsa editör okunur (testler sahte kök enjekte eder).
-var scene_root_provider: Callable = Callable()
+var protocol: AISidebarMcpProtocol
 var _server: TCPServer = null
 var _clients: Array[Client] = []
 
-func _enter_tree() -> void:
-	instance = self
+func _init(p_protocol: AISidebarMcpProtocol = null) -> void:
+	protocol = p_protocol
 
 func _exit_tree() -> void:
 	stop()
-	if instance == self:
-		instance = null
 
 func _process(_delta: float) -> void:
 	poll()
@@ -73,7 +59,6 @@ func stop() -> void:
 	for c: Client in _clients:
 		c.peer.disconnect_from_host()
 	_clients.clear()
-	AISidebarWriterLock.release(AISidebarWriterLock.Holder.EXTERNAL)
 	if _server:
 		_server.stop()
 		_server = null
@@ -145,120 +130,21 @@ func respond(req: Dictionary) -> PackedByteArray:
 	var parsed: Variant = JSON.parse_string(str(req.get("body", "")))
 	if parsed == null:
 		return _json(400, AISidebarMcpProtocol.error_reply(null, -32700, "Parse error"))
-	var routed := AISidebarMcpProtocol.route(parsed)
+	if protocol == null:
+		return _json(500, {"error": "MCP protocol handler is unavailable"})
+	var routed := protocol.route(parsed)
 	if routed.has("notification"):
 		return AISidebarMcpHttp.build_response(202)
 	if routed.has("reply"):
 		return _json(200, routed["reply"])
 	var call: Dictionary = routed["call"]
-	var call_args: Dictionary = call["arguments"]
-	var result: Dictionary = await run_tool(str(call["name"]), call_args)
-	var ok: bool = result.get("success", false)
+	var reply: Dictionary = await protocol.complete_call(call)
+	var result_value: Variant = reply.get("result", {})
+	var result: Dictionary = result_value if result_value is Dictionary else {}
+	var is_error: Variant = result.get("isError", false)
+	var ok: bool = is_error != true
 	print("[Godot AI MCP] %s -> %s" % [call["name"], "ok" if ok else "error"])
-	return _json(200, AISidebarMcpProtocol.call_reply(call["id"], result))
-
-## İzin listesindeki aracı yürütür (sync_project köprüye özgü).
-func run_tool(tool_name: String, args: Dictionary) -> Dictionary:
-	if tool_name == "sync_project":
-		return await _sync_project(args)
-	if AISidebarMcpProtocol.is_mutation_tool(tool_name):
-		return run_mutation(tool_name, args)
-	if AISidebarMcpProtocol.is_sync_tool(tool_name):
-		return AISidebarMcpProtocol.run_sync_tool(tool_name, args)
-	return await AISidebarToolManager.execute_tool_async(tool_name, args, false)
-
-## Sahne mutasyonu: izin listesi (route) → expected_scene_path ön kontrolü → yazıcı kilidi →
-## etkin sahne tekrar kontrolü → ToolManager (PermissionPolicy, PathPolicy, MutationService /
-## Undo-Redo). Köprünün açılması (`/mcp on`) kullanıcının iznidir; ayrı yazma modu yoktur.
-func run_mutation(tool_name: String, args: Dictionary) -> Dictionary:
-	var pre := precheck_mutation(tool_name, args)
-	if not pre.is_empty():
-		return pre
-	return apply_mutation(tool_name, args)
-
-## Yürütme öncesi kontroller: mutasyon aracı mı, zorunlu expected_scene_path, etkin sahne.
-## Geçerse {} döner.
-func precheck_mutation(tool_name: String, args: Dictionary) -> Dictionary:
-	if not AISidebarMcpProtocol.is_mutation_tool(tool_name):
-		return AISidebarToolResult.err("UNKNOWN_TOOL", "Not an external scene mutation tool: " + tool_name, false)
-	var split := AISidebarMcpProtocol.split_mutation_args(args)
-	var expected: String = split["expected_scene_path"]
-	if expected.is_empty():
-		return AISidebarToolResult.err("INVALID_ARGUMENT", "expected_scene_path is required: the res:// path of the scene to change (scene_file from get_scene_tree).")
-	var scene_check := AISidebarSceneTools.confirm_active_scene(expected, 1, scene_root_provider)
-	if not scene_check.get("success", false):
-		return scene_check
-	return {}
-
-## Yürütme: yazıcı kilidi → etkin sahne tekrar kontrolü → ToolManager. Senkron: kontrol ile
-## yürütme arasında editör karesi geçmez. Sahne değişmişse yeni alınan kilit bırakılır.
-func apply_mutation(tool_name: String, args: Dictionary) -> Dictionary:
-	var split := AISidebarMcpProtocol.split_mutation_args(args)
-	var held_before := AISidebarWriterLock.holder() == AISidebarWriterLock.Holder.EXTERNAL
-	var lock_err := AISidebarWriterLock.claim(AISidebarWriterLock.Holder.EXTERNAL, tool_name)
-	if not lock_err.is_empty():
-		return lock_err
-	var expected: String = split["expected_scene_path"]
-	var scene_check := AISidebarSceneTools.confirm_active_scene(expected, 1, scene_root_provider)
-	if not scene_check.get("success", false):
-		if not held_before:
-			AISidebarWriterLock.release(AISidebarWriterLock.Holder.EXTERNAL)
-		return scene_check
-	var tool_args: Dictionary = split["args"]
-	return AISidebarToolManager.execute_tool(tool_name, tool_args, false)
-
-## Dosya sistemini taratır; `changed_files` içinde editörde açık olan .tscn varsa sidebar'ın
-## dosya araçlarıyla aynı mekanizmayla (`refresh_open_scenes`) diskten yeniden yükler.
-func _sync_project(args: Dictionary = {}) -> Dictionary:
-	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface") or not is_inside_tree():
-		return AISidebarToolResult.err("EDITOR_REQUIRED", "sync_project yalnız editör içinde çalışır.")
-	var fs := EditorInterface.get_resource_filesystem()
-	var started := Time.get_ticks_msec()
-	fs.scan()
-	await get_tree().process_frame
-	while fs.is_scanning():
-		if Time.get_ticks_msec() - started > SYNC_TIMEOUT_MSEC:
-			return AISidebarToolResult.err("SYNC_TIMEOUT", "Dosya sistemi taraması %d ms içinde bitmedi." % SYNC_TIMEOUT_MSEC)
-		await get_tree().process_frame
-	var changed: Array = args.get("changed_files", []) if args.get("changed_files", []) is Array else []
-	var refresh: Dictionary = AISidebarSceneTools.refresh_open_scenes(changed)
-	return AISidebarToolResult.ok({
-		"scanned": true,
-		"waited_ms": Time.get_ticks_msec() - started,
-		"reloaded_open_scenes": refresh.get("refreshed", []),
-	}, "Proje dosya sistemi yeniden tarandı.")
+	return _json(200, reply)
 
 func _json(status: int, body: Variant) -> PackedByteArray:
 	return AISidebarMcpHttp.build_response(status, JSON.stringify(body))
-
-## Kayıtlı köprü ayarları (config.json'a yazmaz).
-static func read_settings() -> Dictionary:
-	var cfg := AISidebarConfig.load_config()
-	var p: int = int(str(cfg.get("mcp_bridge_port", 0)).to_float())
-	var enabled: bool = cfg.get("mcp_bridge_enabled", false) == true
-	return {
-		"enabled": enabled,
-		"port": p if p > 0 else DEFAULT_PORT,
-		"token": str(cfg.get("mcp_bridge_token", "")),
-	}
-
-## Köprüyü açık / kapalı olarak kaydeder; açarken token ve port yoksa üretir.
-static func save_enabled(enabled: bool) -> Dictionary:
-	var cfg := AISidebarConfig.load_config()
-	cfg["mcp_bridge_enabled"] = enabled
-	if enabled and str(cfg.get("mcp_bridge_token", "")).is_empty():
-		cfg["mcp_bridge_token"] = Crypto.new().generate_random_bytes(24).hex_encode()
-	if int(str(cfg.get("mcp_bridge_port", 0)).to_float()) <= 0:
-		cfg["mcp_bridge_port"] = DEFAULT_PORT
-	AISidebarConfig.save_config(cfg)
-	return read_settings()
-
-## Kayıtlı ayara göre dinlemeye başlar (kapalıysa bir şey yapmaz). Dönüş Godot Error.
-func start_from_settings() -> int:
-	var s := read_settings()
-	var enabled: bool = s["enabled"]
-	if not enabled:
-		return OK
-	var p: int = s["port"]
-	var t: String = s["token"]
-	return start(p, t)
