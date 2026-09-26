@@ -105,6 +105,7 @@ func _add_extra_categories() -> void:
 	if not btn_nav_prompt or not page_prompt or not _extra_nav.is_empty():
 		return
 	customizations_view = AISidebarCustomizationsView.new()
+	customizations_view.edit_system_prompt_requested.connect(func() -> void: _select_category(3))
 	mcp_view = AISidebarMcpSettingsView.new()
 	for view: Control in [customizations_view, mcp_view]:
 		var btn := Button.new()

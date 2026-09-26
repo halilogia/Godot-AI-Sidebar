@@ -11,7 +11,11 @@ const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skill
 const AISidebarSkillsView = preload("res://addons/godot_sidebar_ai/ui/components/skills_view.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
+const COLOR_SYSTEM := Color(0.95, 0.75, 0.35)
 const COLOR_RULES := Color(0.35, 0.6, 0.95)
+
+## Kullanıcı yerleşik katmanın (sistem istemi) "Düzenle" düğmesine bastı; Ayarlar Sistem Promptu sayfasını açar.
+signal edit_system_prompt_requested
 const COLOR_SKILLS := Color(0.45, 0.8, 0.5)
 const COLOR_TOOLS := Color(0.7, 0.5, 0.9)
 
@@ -101,7 +105,7 @@ func _refresh_usage() -> void:
 	var m := AISidebarCustomizationBudget.measure()
 	var total_tokens: int = m["total_tokens"]
 	var total: int = maxi(1, total_tokens)
-	var rows := [["rules", COLOR_RULES, "custom_usage_rules"], ["skills", COLOR_SKILLS, "custom_usage_skills"], ["tools", COLOR_TOOLS, "custom_usage_tools"]]
+	var rows := [["system", COLOR_SYSTEM, "custom_usage_system"], ["rules", COLOR_RULES, "custom_usage_rules"], ["skills", COLOR_SKILLS, "custom_usage_skills"], ["tools", COLOR_TOOLS, "custom_usage_tools"]]
 	for row: Array in rows:
 		var part: Dictionary = m[row[0]]
 		var tokens: int = part["tokens"]
@@ -128,6 +132,25 @@ func _refresh_usage() -> void:
 func _refresh_rules() -> void:
 	for c: Node in _rules_list.get_children():
 		c.queue_free()
+	# Katman 0: eklentinin yerleşik kuralları (sistem istemi); global ve proje kuralları üstüne gelir.
+	var m := AISidebarCustomizationBudget.measure()
+	var sys: Dictionary = m["system"]
+	var sys_row := HBoxContainer.new()
+	var sys_badge := Label.new()
+	sys_badge.text = AISidebarI18n.get_text("custom_scope_builtin")
+	sys_badge.add_theme_font_size_override("font_size", 11)
+	sys_row.add_child(sys_badge)
+	var sys_lbl := Label.new()
+	var sys_chars: int = sys["chars"]
+	if sys.get("is_default", false) == true:
+		sys_lbl.text = AISidebarI18n.get_text("custom_system_default", {"chars": sys_chars})
+	else:
+		sys_lbl.text = AISidebarI18n.get_text("custom_system_custom", {"chars": sys_chars})
+	sys_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sys_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sys_row.add_child(sys_lbl)
+	sys_row.add_child(_button("custom_edit_system", func() -> void: edit_system_prompt_requested.emit()))
+	_rules_list.add_child(sys_row)
 	var files := AISidebarRulesRegistry.discover()
 	if files.is_empty():
 		var none := Label.new()
