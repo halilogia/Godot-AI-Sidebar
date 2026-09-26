@@ -22,13 +22,13 @@ func _notification(what: int) -> void:
 		if instance == self:
 			instance = null
 
+## Oturum kaydı kalıcıdır: editör aynı oturumu sonraki çalıştırmalarda yeniden kullanır ve
+## _setup_session'ı tekrar çağırmaz. `stopped`'da silmek ikinci çalıştırmadan itibaren runtime
+## araçlarını (ekran görüntüsü, canlı ağaç) öldürüyordu; canlılık her erişimde is_active() ile sınanır.
 func _setup_session(session_id: int) -> void:
 	var session = get_session(session_id)
 	if session:
 		_sessions[session_id] = session
-		session.stopped.connect(func():
-			_sessions.erase(session_id)
-		)
 
 ## Capture eşleşmesi (prefix-toleranslı): editör tam mesaj da geçse önek de geçse yakalar.
 static func matches_capture(capture: String) -> bool:
