@@ -23,6 +23,7 @@ Skill'ler yeni bir Godot API'si eklemez; köprünün mevcut araçlarını (okuma
 | `godot-runtime-verification` | "Bitti" demeden önce: her kabul kriteri için oyundan kanıt (hata kontrolü, ekran görüntüsü, canlı düğüm) |
 | `godot-refactor` | Davranışı değiştirmeden yeniden yapılandırma: önce / sonra karşılaştırması, `.uid` ve `res://` yolları |
 | `godot-release-workflow` | Milestone kapanışı ve sürüm: belgeler, sürüm numarası, dışa aktarma, etiket |
+| `godot-milestone-loop` | Otonom akış (v3.2): araştır → planla → uygula → sync → çalıştır → gözle → onar → doğrula → commit → sonraki madde; ne zaman durup kullanıcıya soracağı |
 
 ## Proje hafızası
 

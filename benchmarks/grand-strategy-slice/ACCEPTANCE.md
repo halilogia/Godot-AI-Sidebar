@@ -1,0 +1,25 @@
+# Acceptance criteria — grand-strategy vertical slice
+
+Each criterion names the evidence that counts. "Manual" criteria need a person to play; the agent reports them as "needs manual play test".
+
+| # | Criterion | Evidence |
+|---|---|---|
+| A1 | Project opens and the main scene runs without errors for 60 s | `get_runtime_errors` verified clean after ≥ 60 s of play |
+| A2 | ≥ 30 provinces exist, generated from a data file | data file in repo + generator script; `inspect_runtime_tree` shows ≥ 30 province nodes (or one map node with ≥ 30 entries in its state) |
+| A3 | Provinces drawn in their owner's color; 3 distinct country colors | runtime screenshot |
+| A4 | Each province has id, name, owner, neighbors, income | data file + `inspect_runtime_node` on one province (or its state) |
+| A5 | Date advances; pause and ≥ 2 speeds exist | two runtime screenshots / node reads seconds apart show different dates; code review of pause/speed |
+| A6 | Monthly income added to treasuries | top-bar treasury read before and after a month change (screenshot or node) |
+| A7 | Autoplay: an AI war starts after 30 days without input | screenshot or node state showing war / army after autoplay run |
+| A8 | Occupation changes province color | screenshot before and after occupation |
+| A9 | Clicking a province opens the info panel | **manual** |
+| A10 | Pause / speed controls respond to input | **manual** |
+| A11 | Project memory documents exist and match the result | the five documents; ROADMAP items ticked only for verified criteria |
+| A12 | No edits to `addons/godot_sidebar_ai/`, `.godot/` | `git status` / diff |
+
+## What to record per run
+
+- Claude Code and Godot versions, model, date, write mode (`off` / `ask` / `auto`).
+- Wall-clock time, number of MCP tool calls (by tool), number of user interventions and why.
+- Result per criterion (pass / fail / manual), bugs found, which ones the agent fixed itself.
+- Gaps: what the agent could not do with the current tools or skills (this is the input for later roadmap decisions, e.g. Companion).
