@@ -507,10 +507,13 @@ static func _instantiate_scene(args: Dictionary) -> Dictionary:
 	if not FileAccess.file_exists(scene_path):
 		return AISidebarToolResult.err("FILE_NOT_FOUND", "Örneklenecek sahne dosyası bulunamadı: " + scene_path)
 		
-	var packed: PackedScene = load(scene_path)
+	# Tipsiz yükleme: sahne olmayan bir kaynak (ör. .gd) tipli PackedScene atamasında
+	# script hatası verirdi; kontrollü LOAD_FAILED'a düşer.
+	var loaded: Variant = load(scene_path)
+	var packed: PackedScene = loaded if loaded is PackedScene else null
 	if not packed or not packed.can_instantiate():
 		return AISidebarToolResult.err("LOAD_FAILED", "Sahne örneği alınamadı: " + scene_path)
-		
+
 	var instance = packed.instantiate()
 	if node_name.is_empty():
 		node_name = instance.name
@@ -520,8 +523,9 @@ static func _instantiate_scene(args: Dictionary) -> Dictionary:
 		if root.has_node(parent_path):
 			parent = root.get_node(parent_path)
 		else:
+			instance.free()
 			return AISidebarToolResult.err("PARENT_NOT_FOUND", "Üst düğüm bulunamadı: " + parent_path)
-			
+
 	return AISidebarMutationService.add_node(parent, instance, node_name)
 
 static func _delete_node(args: Dictionary) -> Dictionary:
