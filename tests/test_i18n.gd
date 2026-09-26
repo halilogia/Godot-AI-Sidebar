@@ -38,7 +38,8 @@ static func _placeholders(text: String) -> Array:
 
 ## ui/ kaynaklarındaki kural ihlalleri: ["dosya|sabit", …] (saf; testte ve raporda kullanılır).
 static func literal_violations(sources: Dictionary) -> Array:
-	var assign_re = RegEx.create_from_string("\\.(?:text|tooltip_text|placeholder_text|title|dialog_text|ok_button_text|cancel_button_text)\\s*=\\s*(.*)$")
+	# Görünür metin alanına atama ya da durum rozetine yazma (set_status / set_status.call).
+	var assign_re = RegEx.create_from_string("(?:\\.(?:text|tooltip_text|placeholder_text|title|dialog_text|ok_button_text|cancel_button_text)\\s*=|(?<![A-Za-z_])set_status(?:_badge)?(?:\\.call)?\\()\\s*(.*)$")
 	var lit_re = RegEx.create_from_string("\"((?:[^\"\\\\]|\\\\.)*)\"")
 	var strip_re = RegEx.create_from_string("\\[[^\\]]*\\]|\\[/?[a-z_]+=?[^\\]]*$|%[-+0-9.]*[a-zA-Z]|\\{[a-z_]+\\}|https?://\\S+")
 	var word_re = RegEx.create_from_string("[A-Za-zÇĞİÖŞÜçğıöşü]{2,}")
@@ -75,7 +76,7 @@ static func run() -> Dictionary:
 	trace.append(["en", "__missing__", AISidebarI18n.translate("en", "__missing__")])
 	trace.append(["tr", "status_executing", AISidebarI18n.translate("tr", "status_executing", {"step": 2, "max": 5})])
 	var digest = JSON.stringify(trace).md5_text()
-	var golden = "8e88405adc113374b867845cfa8081fc"
+	var golden = "eb1ed7a15691ff43ab87bba14146fa22"
 	if trace.size() > 100 and digest == golden:
 		passed += 1
 	else:
@@ -167,8 +168,10 @@ static func run() -> Dictionary:
 		"\tlbl.text = \"Metric: \" + v  # i18n-ignore: test",
 		"\tlbl.text = t(\"x\", {\"count\": n})",
 		"\tlbl.text = AISidebarI18n.get_text(\"x\")",
+		"\tset_status.call(\"Waiting Approval\", c)",
+		"\tset_status.call(AISidebarI18n.get_text(\"status_ready\"), c)",
 	])
-	var rule_self = literal_violations({"x.gd": rule_sample}) == ["x.gd|Approve"]
+	var rule_self = literal_violations({"x.gd": rule_sample}) == ["x.gd|Approve", "x.gd|Waiting Approval"]
 	if ui_files.size() > 20 and rule_self and violations.is_empty():
 		passed += 1
 	else:

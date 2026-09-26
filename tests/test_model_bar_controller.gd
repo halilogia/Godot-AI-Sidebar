@@ -70,7 +70,7 @@ static func run() -> Dictionary:
 	var ignored_bad_index = str(AISidebarConfig.load_config().get("selected_model", "")) == "model-c"
 	badge.clear()
 	ctrl.on_models_fetched(["x", "model-c"])
-	var fetched = AISidebarConfig.load_config().get("cached_models", []) == ["x", "model-c"] and ctrl.model_selector.item_count == 2 and ctrl.model_selector.selected == 1 and badge == ["Ready"]
+	var fetched = AISidebarConfig.load_config().get("cached_models", []) == ["x", "model-c"] and ctrl.model_selector.item_count == 2 and ctrl.model_selector.selected == 1 and badge == [AISidebarI18n.get_text("status_ready")]
 	if preselected and saved_choice and ignored_bad_index and fetched:
 		passed += 1
 	else:

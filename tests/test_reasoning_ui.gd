@@ -372,7 +372,7 @@ static func run() -> Dictionary:
 	var badge_done = dock19.status_badge.text
 	var mode_btn_txt = dock19.approve_mode_btn.text
 	dock19.free()
-	if badge_idle == "Ready" and badge_done == "Completed" and not mode_btn_txt.is_empty():
+	if badge_idle == AISidebarI18n.get_text("status_ready") and badge_done == AISidebarI18n.get_text("status_completed") and not mode_btn_txt.is_empty():
 		passed += 1
 	else:
 		failed += 1

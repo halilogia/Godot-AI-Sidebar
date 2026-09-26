@@ -86,7 +86,7 @@ func on_models_fetched(models: Array) -> void:
 	AISidebarConfig.save_config(cfg)
 
 	populate_model_selector(models)
-	set_status.call("Ready", AISidebarTheme.COLOR_SUCCESS)
+	set_status.call(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
 
 func on_model_selected(index: int) -> void:
 	if index >= 0 and index < current_model_list.size():

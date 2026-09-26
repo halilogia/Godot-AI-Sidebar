@@ -360,7 +360,7 @@ func update_ui_language() -> void:
 
 func refresh_models() -> void:
 	if agent_host and agent_host.has_provider():
-		set_status_badge("Refreshing...", AISidebarTheme.COLOR_WARNING)
+		set_status_badge(AISidebarI18n.get_text("status_refreshing"), AISidebarTheme.COLOR_WARNING)
 		agent_host.fetch_models()
 
 func _on_settings_pressed() -> void:
@@ -505,7 +505,7 @@ func _on_provider_readiness_changed(state: int, _message: String) -> void:
 		set_status_badge(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
 	elif agent_runner and agent_runner.is_running():
 		# Ajan calisiyor: thinking rozetine geri don (timer zaten isliyor).
-		set_status_badge("Thinking...", AISidebarTheme.COLOR_WARNING)
+		set_status_badge(AISidebarI18n.get_text("status_thinking"), AISidebarTheme.COLOR_WARNING)
 	else:
 		# Ajan beklemede: hazirlik bitti, bos durum rozetini geri yukle.
 		set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)

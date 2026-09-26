@@ -244,5 +244,19 @@
   "export_dialog_text": "Choose an export format:",
   "settings_card_appearance": "Appearance",
   "settings_ui_animations": "Interface animations",
-  "settings_ui_animations_hint": "New cards and pages fade in briefly. Turn off to reduce motion."
+  "settings_ui_animations_hint": "New cards and pages fade in briefly. Turn off to reduce motion.",
+  "status_completed": "● Completed",
+  "status_waiting": "● Waiting for response...",
+  "status_waiting_secs": "● Waiting for response ({seconds}s)",
+  "status_thinking_secs": "● Thinking ({seconds}s)",
+  "status_waiting_approval": "● Waiting for approval",
+  "status_running_game": "● Game running",
+  "status_debugging": "● Debugging",
+  "status_typing": "● Typing...",
+  "status_step": "Step {step} / {max}",
+  "activity_auto_diagnosing": "Diagnosing runtime error: {summary}",
+  "approval_action_delete_node": "Delete node: {path}",
+  "approval_action_delete_file": "Delete file: {path}",
+  "approval_action_update_file": "Update file: {path}",
+  "approval_action_edit_file": "Surgical edit in file: {path}"
 }

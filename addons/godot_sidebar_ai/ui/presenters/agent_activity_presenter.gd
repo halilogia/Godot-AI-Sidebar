@@ -16,6 +16,7 @@ const AISidebarToolPresentation = preload("res://addons/godot_sidebar_ai/ui/pres
 const AISidebarAgentStreamPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_stream_presenter.gd")
 const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/presenters/plan_checklist_tracker.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 
@@ -229,11 +230,11 @@ func on_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 
 func on_debugging_started(summary: String) -> void:
 	var grp = ensure_group()
-	grp.add_activity("•", "Auto-diagnosing runtime error: " + summary, -1)
+	grp.add_activity("•", AISidebarI18n.get_text("activity_auto_diagnosing", {"summary": summary}), -1)
 	if context:
 		context.get_transcript().record("debugging_started", {"summary": summary.left(500)})
 
 func on_step_progress(current_step: int, max_steps: int) -> void:
-	set_status.call("Step " + str(current_step) + " / " + str(max_steps), AISidebarTheme.COLOR_ACCENT)
+	set_status.call(AISidebarI18n.get_text("status_step", {"step": current_step, "max": max_steps}), AISidebarTheme.COLOR_ACCENT)
 	if group and is_instance_valid(group):
 		group.set_step_progress(current_step, max_steps)

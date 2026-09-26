@@ -123,7 +123,7 @@ static func run() -> Dictionary:
 		errors.append("T2 (provider switch) failed: switched=%s nm=%s nm_single=%s inflight_closed=%s detached=%s stale=%s fresh=%s" % [str(switched), str(same_nm), str(nm_single), str(inflight_closed), str(old_detached), str(stale_ignored), str(fresh_shown)])
 
 	# 3. AGY hazırlık rozeti: hazır değil -> "hazırlanıyor"; hazır + boşta -> "Hazır";
-	# hazır + ajan çalışıyor -> "Thinking..."; hazırlık durumu olmayan provider rozete dokunmaz.
+	# hazır + ajan çalışıyor -> status_thinking; hazırlık durumu olmayan provider rozete dokunmaz.
 	var fake = FakeAgyProvider.new()
 	_use_provider(dock, fake)
 	fake.readiness_changed.emit(1, "")
@@ -134,7 +134,7 @@ static func run() -> Dictionary:
 	# Çalışan ajan: durum doğrudan yazılır (start_task'ın UI zamanlayıcısı bu testin konusu değil)
 	runner.current_state = AISidebarAgentRunner.AgentState.EXECUTING
 	fake.readiness_changed.emit(2, "")
-	var ready_running = runner.is_running() and dock.status_badge.text == "Thinking..."
+	var ready_running = runner.is_running() and dock.status_badge.text == AISidebarI18n.get_text("status_thinking")
 	runner.current_state = AISidebarAgentRunner.AgentState.IDLE
 	var plain = PlainProvider.new()
 	_use_provider(dock, plain)
@@ -166,7 +166,7 @@ static func run() -> Dictionary:
 	# 5. Refresh: provider varsa rozet + fetch_models; yoksa hiçbir şey olmaz
 	_use_provider(dock, fake)
 	dock.refresh_models()
-	var refreshed = fake.fetch_calls == 1 and dock.status_badge.text == "Refreshing..."
+	var refreshed = fake.fetch_calls == 1 and dock.status_badge.text == AISidebarI18n.get_text("status_refreshing")
 	_use_provider(dock, null)
 	dock.status_badge.text = "badge"
 	dock.refresh_models()

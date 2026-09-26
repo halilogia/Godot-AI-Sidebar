@@ -66,13 +66,13 @@ func _setup_ui() -> void:
 	_desc_lbl = RichTextLabel.new()
 	var action_desc = tool_name
 	if tool_name == "delete_node":
-		action_desc = "Delete node: " + args.get("node_path", "")
+		action_desc = AISidebarI18n.get_text("approval_action_delete_node", {"path": str(args.get("node_path", ""))})
 	elif tool_name == "delete_file":
-		action_desc = "Delete file: " + args.get("file_path", "")
+		action_desc = AISidebarI18n.get_text("approval_action_delete_file", {"path": str(args.get("file_path", ""))})
 	elif tool_name == "create_or_update_script":
-		action_desc = "Update file: " + args.get("file_path", "")
+		action_desc = AISidebarI18n.get_text("approval_action_update_file", {"path": str(args.get("file_path", ""))})
 	elif tool_name == "replace_file_content":
-		action_desc = "Surgically update file: " + args.get("file_path", "")
+		action_desc = AISidebarI18n.get_text("approval_action_edit_file", {"path": str(args.get("file_path", ""))})
 	elif tool_name == "add_rule":
 		action_desc = AISidebarI18n.get_text("approval_add_rule", {"scope": str(args.get("scope", "project")), "rule": str(args.get("rule", ""))})
 	_desc_lbl.text = action_desc

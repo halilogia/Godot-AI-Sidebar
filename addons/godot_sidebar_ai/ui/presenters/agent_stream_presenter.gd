@@ -53,9 +53,12 @@ func _exit_tree() -> void:
 
 func on_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	match new_state:
-		AISidebarAgentRunner.AgentState.IDLE, AISidebarAgentRunner.AgentState.COMPLETED:
+		AISidebarAgentRunner.AgentState.IDLE:
 			stop_thinking_timer()
-			set_status.call(state_desc, AISidebarTheme.COLOR_SUCCESS)
+			set_status.call(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
+		AISidebarAgentRunner.AgentState.COMPLETED:
+			stop_thinking_timer()
+			set_status.call(AISidebarI18n.get_text("status_completed"), AISidebarTheme.COLOR_SUCCESS)
 		AISidebarAgentRunner.AgentState.PLANNING:
 			# Yeni LLM turu: thinking kartı sıfırlanır (sonraki thinking yeni kart açar),
 			# rozet yanıt gelene kadar "Waiting" gösterir (thinking varsayılmaz).
@@ -63,20 +66,20 @@ func on_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: St
 			_thinking_seen_this_turn = false
 			thinking_card = null
 			start_thinking_timer()
-			set_status.call("Waiting...", AISidebarTheme.COLOR_WARNING)
+			set_status.call(AISidebarI18n.get_text("status_waiting"), AISidebarTheme.COLOR_WARNING)
 			_show_pending()
 		AISidebarAgentRunner.AgentState.WAITING_FOR_APPROVAL:
 			stop_thinking_timer()
-			set_status.call("Waiting Approval", AISidebarTheme.COLOR_WARNING)
+			set_status.call(AISidebarI18n.get_text("status_waiting_approval"), AISidebarTheme.COLOR_WARNING)
 		AISidebarAgentRunner.AgentState.WAITING_FOR_PLAN_APPROVAL:
 			stop_thinking_timer()
 			set_status.call(AISidebarI18n.get_text("status_waiting_plan"), AISidebarTheme.COLOR_WARNING)
 		AISidebarAgentRunner.AgentState.RUNNING_GAME:
 			stop_thinking_timer()
-			set_status.call("Running Game", AISidebarTheme.COLOR_ACCENT)
+			set_status.call(AISidebarI18n.get_text("status_running_game"), AISidebarTheme.COLOR_ACCENT)
 		AISidebarAgentRunner.AgentState.DEBUGGING:
 			stop_thinking_timer()
-			set_status.call("Debugging", AISidebarTheme.COLOR_ERROR)
+			set_status.call(AISidebarI18n.get_text("status_debugging"), AISidebarTheme.COLOR_ERROR)
 		AISidebarAgentRunner.AgentState.ERROR:
 			stop_thinking_timer()
 			set_status.call(state_desc, AISidebarTheme.COLOR_ERROR)
@@ -116,9 +119,9 @@ func _on_thinking_tick() -> void:
 	if agy_preparing:
 		set_status.call(AISidebarI18n.get_text("status_agy_preparing"), AISidebarTheme.COLOR_WARNING)
 	elif _thinking_seen_this_turn:
-		set_status.call("Thinking (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
+		set_status.call(AISidebarI18n.get_text("status_thinking_secs", {"seconds": _thinking_elapsed_sec}), AISidebarTheme.COLOR_WARNING)
 	else:
-		set_status.call("Waiting... (%ds)..." % _thinking_elapsed_sec, AISidebarTheme.COLOR_WARNING)
+		set_status.call(AISidebarI18n.get_text("status_waiting_secs", {"seconds": _thinking_elapsed_sec}), AISidebarTheme.COLOR_WARNING)
 	if _has_pending():
 		var phase_key = "pending_agy_preparing" if agy_preparing else "pending_waiting"
 		pending_indicator.set_phase(AISidebarI18n.get_text(phase_key), _thinking_elapsed_sec)
@@ -175,7 +178,7 @@ func on_thinking_received(thinking: String) -> void:
 		return
 	_hide_pending()
 	_thinking_seen_this_turn = true
-	set_status.call("Thinking...", AISidebarTheme.COLOR_WARNING)
+	set_status.call(AISidebarI18n.get_text("status_thinking"), AISidebarTheme.COLOR_WARNING)
 	# Stream dışı final thinking: kart boşsa doldur (delta'larla duplicate olmaz).
 	ensure_thinking_card().set_thinking_final(thinking)
 
@@ -185,7 +188,7 @@ func on_chunk_received(text_delta: String, thinking_delta: String) -> void:
 	stop_thinking_timer()
 	if thinking_delta != null and not thinking_delta.strip_edges().is_empty():
 		_thinking_seen_this_turn = true
-		set_status.call("Thinking...", AISidebarTheme.COLOR_WARNING)
+		set_status.call(AISidebarI18n.get_text("status_thinking"), AISidebarTheme.COLOR_WARNING)
 		ensure_thinking_card().append_thinking(thinking_delta)
 	if text_delta.is_empty():
 		return
@@ -211,7 +214,7 @@ func _render_stream_buffer() -> void:
 		assistant_bubble = AISidebarMessageBubble.new("assistant", visible)
 		assistant_bubble.meta_clicked.connect(on_meta_clicked)
 		add_component.call(assistant_bubble)
-	set_status.call("AI Typing...", AISidebarTheme.COLOR_WARNING)
+	set_status.call(AISidebarI18n.get_text("status_typing"), AISidebarTheme.COLOR_WARNING)
 	scroll_if_following.call()
 
 ## Akış tamponunu sıfırla (yeni metin turu / temizleme).

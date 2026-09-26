@@ -244,5 +244,19 @@
   "export_dialog_text": "Dışa aktarma biçimini seçin:",
   "settings_card_appearance": "Görünüm",
   "settings_ui_animations": "Arayüz animasyonları",
-  "settings_ui_animations_hint": "Yeni kartlar ve sayfalar kısa bir geçişle belirir. Hareketi azaltmak isterseniz kapatın."
+  "settings_ui_animations_hint": "Yeni kartlar ve sayfalar kısa bir geçişle belirir. Hareketi azaltmak isterseniz kapatın.",
+  "status_completed": "● Tamamlandı",
+  "status_waiting": "● Yanıt bekleniyor...",
+  "status_waiting_secs": "● Yanıt bekleniyor ({seconds} sn)",
+  "status_thinking_secs": "● Düşünüyor ({seconds} sn)",
+  "status_waiting_approval": "● Onay bekleniyor",
+  "status_running_game": "● Oyun çalışıyor",
+  "status_debugging": "● Hata ayıklanıyor",
+  "status_typing": "● Yazıyor...",
+  "status_step": "Adım {step} / {max}",
+  "activity_auto_diagnosing": "Çalışma zamanı hatası inceleniyor: {summary}",
+  "approval_action_delete_node": "Düğümü sil: {path}",
+  "approval_action_delete_file": "Dosyayı sil: {path}",
+  "approval_action_update_file": "Dosyayı güncelle: {path}",
+  "approval_action_edit_file": "Dosyada cerrahi değişiklik: {path}"
 }
