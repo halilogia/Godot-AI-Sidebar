@@ -85,6 +85,19 @@ Bu dosya, Godot 4.7 motor özellikleri, GDScript 2.0 kuralları, 9Router/LLM pro
 * Godot 4.7'de `TranslationDomain` vardır: `TranslationServer.get_or_add_domain("ad")` ile ana alandan yalıtılmış bir alan açılır (oyun projesinin çevirileriyle karışmaz; probe ile doğrulandı), `set_locale_override("en")` alanın dilini editör / işletim sistemi dilinden (`TranslationServer.get_locale()`, ör. `tr_TR`) bağımsız yapar, `translate_plural` mevcuttur. Gerekirse `AISidebarI18n.translate` tek giriş noktası olduğu için geçiş oradan yapılır.
 * Headless testlerde dil config'ten okunur (`config.json` git-ignored); dil bağımsız test için beklenen metin `AISidebarI18n.get_text` / `translate` ile üretilir, sabit İngilizce metin yazılmaz.
 
+## Claude Code MCP istemci davranışı (ölçüm, 26.09)
+
+Claude Code 2.1.226, eklentinin MCP köprüsüne (Streamable HTTP, `POST /mcp`) bağlanırken araya konan kayıt proxy'si ile görülen akış:
+
+1. `POST initialize` — `protocolVersion: "2025-11-25"`, `capabilities: {roots, elicitation}`, `clientInfo.name: "claude-code"`; ilk istekte `MCP-Protocol-Version` başlığı yok, `Accept: application/json, text/event-stream`. Köprü aynı sürümü yansıtır → bağlantı kurulur.
+2. `POST notifications/initialized` (id yok) → köprü 202.
+3. `GET /mcp` (`Accept: text/event-stream`, sunucudan olay akışı açma denemesi) → köprü 405; Claude Code bunu sorun etmez.
+4. `POST tools/list` — sonraki isteklerde `MCP-Protocol-Version: 2025-11-25` başlığı.
+
+Sonuç: `claude mcp list` → `✔ Connected`. Bu sürüm "stateless" yeni el sıkışmasını değil `initialize` akışını kullanıyor. Claude Code güncellemelerinde istemci davranışı değişebilir; aynı proxy yöntemiyle yeniden ölçülür (kayıt proxy'si: köprünün önüne dinleyip isteği / yanıtı loglayan birkaç satırlık yerel HTTP iletici; token loglanmaz). `claude mcp list` Anthropic API girişine ihtiyaç duymaz, yalnız MCP bağlantısını sınar; araç çağrısı ise model oturumu gerektirir.
+
+`claude mcp add --scope local` kaydı `~/.claude.json` içinde o klasöre bağlanır; proje kapsamlı `.mcp.json` sunucuları ilk kullanımda onay ister (`⏸ Pending approval`).
+
 ## İkon Sistemi (Lucide) ve Emoji Yasağı
 
 * UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.

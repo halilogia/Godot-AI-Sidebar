@@ -86,10 +86,34 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 ## 📍 v3.x: Dış Ajan Platformu (Başladı 🚧, 2026-09-26)
 
-Hedef: Claude Code gibi dış ajanlar (orkestratör) Godot editörünü eklentinin güvenli araç katmanı üzerinden kullanır; eklenti Godot'un "elleri ve gözleri" olur, terminal / web / git dış ajanda kalır. Sıra: önce köprü, sonra iş akışı (skills), en son gerçek ihtiyaç çıkarsa kendi orkestratörümüz.
+Hedef: Claude Code gibi dış ajanlar (orkestratör) Godot editörünü eklentinin güvenli araç katmanı üzerinden kullanır; eklenti Godot'un "elleri ve gözleri" olur, terminal / web / git dış ajanda kalır. Sıra: önce köprü, sonra iş akışı (skills), en son gerçek ihtiyaç çıkarsa kendi orkestratörümüz (Companion).
+
+### Çalışma modları
+
+| Mod | Kim yönetir | Ne için | Durum |
+|---|---|---|---|
+| **1. Sidebar tek başına** | Eklentinin kendi ajanı (`AgentRunner`) | Editörden çıkmadan küçük / orta Godot işleri | Var (v2.x) |
+| **2. Dış ajan (External Agent)** | Claude Code, Cursor, Codex, Antigravity… (MCP istemcisi) | Büyük projeler: araştırma, terminal, git, dosya yazımı dış ajanda; Godot'a özgü işler köprü üzerinden eklentide | **Yakın vadeli ana hedef** (v3.0 köprü var) |
+| **3. Companion** | Kendi yerel orkestratörümüz (ayrı süreç) | Dış bir AI IDE kullanmak istemeyenler için bağımsız otonom geliştirme ortamı | **Ertelendi**; yalnız mod 2 gerçek kullanımda yetersiz kalırsa |
+
+### Sorumluluk sınırı
+
+* **Godot AI Sidebar (eklenti) = Godot uzmanı / editör çalışma zamanı:** sahne ağacı, düğüm mutasyonları ve `EditorUndoRedo`, sahne kaydı, oyunu çalıştırma / durdurma, runtime ağacı ve hataları, ekran görüntüleri, editör hataları, Godot'a özgü doğrulama, izin / yol politikaları.
+* **Dış ajan (mod 2) veya Companion (mod 3) = geliştirme ortamı / orkestrasyon:** terminal, git, dosya sistemi, web ve dokümantasyon araştırması, GitHub, paket / bağımlılık işlemleri, asset indirme, uzun görev kuyruğu, proje hafızası, görev grafiği / milestone yönetimi, checkpoint / devam, LLM sağlayıcı yönetimi, MCP istemci koordinasyonu.
+* **Kural:** Genel bilgisayar yetenekleri (terminal, tarayıcı, genel indirme, paket yöneticisi) eklentiye eklenmez; eklentiye yalnızca Godot'a özgü yetenekler girer. Örnekler: "Godot 4.7'de 20.000 province nasıl render edilir?" → dış ajan / Companion araştırır. "MapRoot altına ProvinceRenderer ekle" → eklenti (Undo/Redo ile). "Testleri çalıştır, git diff'e bak" → dış ajan / Companion. "Oyunu çalıştır, runtime ağacını ve ekranı incele" → eklenti.
+
+### Companion (ertelendi — tasarım notu)
+
+Ayrı bir yerel süreç; eklentiye aynı köprü üzerinden (bugünkü MCP uç noktası ya da onun arkasındaki basit Godot köprü protokolü) bağlanır, kendisi MCP istemcisi olur. Kapsamı yukarıdaki "geliştirme ortamı / orkestrasyon" listesidir. Başlatma koşulu: mod 2 ile gerçek bir projede (v3.2 benchmark) ölçülmüş eksikler (ör. oturumlar arası görev durumu kayboluyor, yüzlerce görevlik plan yönetilemiyor, otomatik milestone devamı gerekiyor). Tahminle değil, ölçülmüş ihtiyaçla yazılır; eklentinin köprüsü değişmeden kalır.
+
+### Motor sürümü politikası
+
+Geliştirme Godot **4.7.2-stable** üzerinde sürer. Godot 4.8 **stable** çıktığında (resmi tahmin 2026 Q4) bir kez uyumluluk değerlendirmesi yapılır: özellikle editör / eklenti API'si (dock yapısındaki değişiklikler), editör içi oyun görünümü ve eklentiye yarayacak yeni API'ler. Değerliyse taşınır ve sonra motor tabanı dondurulur; sonraki sürümler (4.9+) ancak somut bir ihtiyaç için izlenir. Fork bugünkü bir hedef değildir; ürün motorda değişiklik gerektirdiği gün değerlendirilir. (4.8 içeriğine dair notlar dış kaynaklıdır ve stable sürümle doğrulanacaktır.)
+
 
 - [x] **v3.0 köprü MVP:** Editör içinde MCP Streamable HTTP uç noktası (`core/bridge/`), yalnız `127.0.0.1`, Bearer token, tarayıcı kökenli istek reddi, `/mcp on|off` komutu ve hazır `claude mcp add` komutu. Okuma, `validate_script`, `sync_project`, oyunu çalıştırma / durdurma, runtime hataları ve ağacı, ekran görüntüleri (21 araç). Her çağrı `ToolManager` + PermissionPolicy + PathPolicy'den geçer.
-- [ ] **v3.0 gerçek Claude Code doğrulaması:** Kullanıcı terminalinde `claude mcp add …` + bir oyun projesinde okuma → yazma → `sync_project` → `play_game` → `get_runtime_errors` → `take_runtime_screenshot` döngüsü.
+- [x] **v3.0 Claude Code bağlantı uyumluluğu:** Claude Code 2.1.226'nın kendi MCP istemcisi köprüye bağlandı (`claude mcp list` → ✔ Connected); `initialize` (2025-11-25) → `notifications/initialized` → `tools/list` akışı proxy kaydıyla doğrulandı (bkz. `docs/KNOWLEDGE.md`).
+- [ ] **v3.0 Claude Code uçtan uca kullanım:** Kullanıcı terminalinde Claude'un araçları gerçekten çağırması: sahne ağacı → oyunu çalıştır → runtime hataları → ekran görüntüsü; sonra bir oyun projesinde yaz → `sync_project` → çalıştır döngüsü.
 - [ ] **v3.0.x sahne araçları:** `add_node`, `set_node_property`, `instantiate_scene`, `save_scene` vb. dış ajana açılır; dış ajan için onay politikası (Full Auto'da bile değiştirici araçlarda editörde onay seçeneği) ve tek aktif yazıcı kuralı.
 - [ ] **v3.1 Godot geliştirme skill'leri:** Claude Code için `SKILL.md` paketleri (özellik geliştirme, hata ayıklama, sahne yazımı, runtime doğrulama, proje başlatma) ve oyun reposunda `GAME_SPEC.md` / `DECISIONS.md` / `KNOWN_ISSUES.md` düzeni.
 - [ ] **v3.2 benchmark:** Claude Code + köprüye tek istemle küçük bir grand strateji dikey kesiti (province haritası, 3 ülke, seçim, zaman akışı, basit ekonomi / savaş); eksikler ölçülür.
