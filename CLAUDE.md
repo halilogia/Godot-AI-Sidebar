@@ -40,6 +40,7 @@ godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör> tr all 1 light   #
 
 - Ayarlar'ın her sayfası (geniş / dar pencere) ve sohbet paneli `tools/ui_scenarios.gd`'deki her senaryoyla (normal / dar dock) çekilir. Taşmada `OVERFLOW` basılır, çıkış kodu 1 olur.
 - Yeni bir kart ya da arayüz durumu eklediysen `tools/ui_scenarios.gd`'ye senaryosunu ekle (`NAMES`).
-- Headless çekim çalışmaz. Görüntü editör temasını birebir yansıtmaz; editör içi duman testi yine gerekir.
+- Headless çekim çalışmaz. `ui_shots.gd` editör dışında çizer (Godot'nun varsayılan teması); son söz gerçek editörün görüntüsüdür.
+- **Gerçek editör:** kullanıcının editöründe MCP köprüsü açık ve bu oturuma bağlıysa (`claude mcp add … godot …`), `take_editor_screenshot` aracını `region: "sidebar"` ile çağır; panelin editördeki gerçek görüntüsü (editör teması, ölçek, yazı tipleri) döner. Arayüz işini bitirmeden önce bununla da bak; köprü bağlı değilse kullanıcıya bunu söyle ve bağlamasını iste.
 - `tests/test_ui_quality.gd` yeşil kalır: sabit / ölçeksiz yazı boyu, ölçeksiz boşluk, renk ve BBCode renk sabiti sayısı dosya başına `BASELINE`'ı (şu an boş) aşamaz; sahnelerde tema geçersiz kılması yok; her varyasyon tanımlı.
 - İş bitince önce / sonra görüntüsünü kullanıcıya gönder.

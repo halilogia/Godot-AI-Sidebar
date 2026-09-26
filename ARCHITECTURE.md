@@ -232,7 +232,7 @@ graph LR
 * **[`visual_observation.gd`](addons/godot_sidebar_ai/core/types/visual_observation.gd):** Görsel teşhis sonucu, tespit edilen sorunlar ve güven skoru modeli.
 
 ### 4. 🐞 Runtime Inspection Katmanı (`core/runtime/`)
-* **[`runtime_debugger.gd`](addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd):** Oyunu başlatır/durdurur, artımlı logları izler ve `RuntimeObservation` üretir.
+* **[`runtime_debugger.gd`](addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd):** Oyunu başlatır/durdurur, artımlı logları izler ve `RuntimeObservation` üretir. Editör ekran görüntüsü (`take_editor_screenshot`; isteğe bağlı kırpma, örn. yalnız yan panel) görüntü verisiyle döner.
 * **[`debugger_plugin.gd`](addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd):** `EditorDebuggerPlugin` tabanlı köprü; editör ile çalışan oyun arasında mesaj kanalı kurar.
 * **[`runtime_bridge.gd`](addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd):** Oyun tarafına autoload olarak eklenen karşı taraf; canlı sahne ağacı ve düğüm özelliklerini sorgulanabilir kılar (`inspect_runtime_tree`, `inspect_runtime_node`; düğümün script değişkenleri `script_vars` olarak, JSON'a güvenli ve sınırlı), oyun görüntüsünü yakalar ve girdi isteklerini `runtime_input.gd`'ye iletir.
 * **[`runtime_input.gd`](addons/godot_sidebar_ai/core/runtime/runtime_input.gd):** Oyun tarafında girdi: tuş ve input action `Input.parse_input_event` ile (oyunun yoklamaları da görür), fare tıklaması kök viewport'a yerel koordinatla; tıklama konumu düğüm yolundan (Control merkezi, Node2D konumu, Node3D kamera izdüşümü) ya da görünüm oranından (x, y: 0..1). Basılı tutma süresi en fazla 2 sn.

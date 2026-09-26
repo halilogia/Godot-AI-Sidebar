@@ -7,6 +7,7 @@ class_name AISidebarEditorTools
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarRuntimeDebugger = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_debugger.gd")
 const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd")
+const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 
 static func get_schemas() -> Array:
 	return [
@@ -141,10 +142,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "take_editor_screenshot",
-				"description": "Takes a screenshot of the Godot editor window.",
+				"description": "Takes a screenshot of the Godot editor window itself (docks, panels, the AI sidebar) and returns the image for visual analysis. region=sidebar crops to the Godot AI Sidebar panel, region=window keeps the whole editor. Use it to check how editor UI actually looks.",
 				"parameters": {
 					"type": "object",
 					"properties": {
+						"region": { "type": "string", "enum": ["window", "sidebar"], "description": "window (default): the whole editor; sidebar: only the AI sidebar panel." },
 						"save_path": { "type": "string", "description": "Where to save the image (default: user://ai_editor_snapshot.png)." }
 					}
 				}
@@ -440,7 +442,14 @@ static func _take_editor_screenshot(args: Dictionary) -> Dictionary:
 	var path_check = resolve_screenshot_path(args.get("save_path", ""), "user://ai_editor_snapshot.png")
 	if not path_check["safe"]:
 		return AISidebarToolResult.err("PERMISSION_DENIED", path_check["reason"])
-	return AISidebarRuntimeDebugger.take_editor_screenshot(path_check["path"])
+	var region := str(args.get("region", "window"))
+	var crop := Rect2i()
+	if region == "sidebar":
+		var dock := AISidebarUITelemetryTools.get_sidebar_dock()
+		if dock == null or not dock.is_visible_in_tree():
+			return AISidebarToolResult.err("SIDEBAR_NOT_VISIBLE", "The AI sidebar panel is not visible in the editor; open its dock tab or use region=window.")
+		crop = Rect2i(dock.get_global_rect())
+	return AISidebarRuntimeDebugger.take_editor_screenshot(path_check["path"], crop)
 
 static func _take_runtime_screenshot(args: Dictionary) -> Dictionary:
 	return AISidebarToolResult.err(

@@ -197,21 +197,31 @@ func observe_runtime(checkpoint_duration_msec: int = 1500) -> AISidebarRuntimeOb
 func get_current_observation(checkpoint_duration_msec: int = 1500) -> AISidebarRuntimeObservation:
 	return observe_runtime(checkpoint_duration_msec)
 
-## Editör ekran görüntüsü alma
-static func take_editor_screenshot(save_path: String = "user://ai_editor_snapshot.png") -> Dictionary:
+## Editör penceresinin görüntüsü; crop verilirse (ör. yan panelin dikdörtgeni) o bölge. Sonuç görüntü
+## verisini (base64: modele ve MCP'ye görüntü olarak gider) ve dosyanın mutlak yolunu taşır.
+static func take_editor_screenshot(save_path: String = "user://ai_editor_snapshot.png", crop: Rect2i = Rect2i()) -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
 		return AISidebarToolResult.err("EDITOR_REQUIRED", "Editör ekran görüntüsü için GUI gereklidir.")
-		
-	var vp = EditorInterface.get_base_control().get_viewport() if EditorInterface.has_method("get_base_control") else null
+	var base: Control = EditorInterface.get_base_control()
+	var vp: Viewport = base.get_viewport() if base else null
 	if not vp:
 		return AISidebarToolResult.err("VIEWPORT_NOT_FOUND", "Viewport bulunamadı.")
-		
-	var img = vp.get_texture().get_image()
-	if not img:
-		return AISidebarToolResult.err("IMAGE_EMPTY", "Görüntü verisi boş.")
-		
-	img.save_png(save_path)
-	return AISidebarToolResult.ok({"path": save_path}, "✓ Editör ekran görüntüsü alındı: " + save_path)
+	var img: Image = vp.get_texture().get_image()
+	var target := "editor_window" if crop.size == Vector2i.ZERO else "editor_region"
+	var result := build_runtime_payload(save_path, crop_image(img, crop), target)
+	if result.get("success", false) == true:
+		var data: Dictionary = result["data"]
+		data["absolute_path"] = ProjectSettings.globalize_path(save_path)
+	return result
+
+## Görüntüyü dikdörtgene kırpar (saf). Boş dikdörtgen: görüntünün kendisi; taşan kısım görüntü sınırına kısılır.
+static func crop_image(img: Image, crop: Rect2i) -> Image:
+	if img == null or img.is_empty() or crop.size == Vector2i.ZERO:
+		return img
+	var r := Rect2i(Vector2i.ZERO, img.get_size()).intersection(crop)
+	if r.size.x <= 0 or r.size.y <= 0:
+		return img
+	return img.get_region(r)
 
 ## Image -> vision payload (pure; diske kaydet + base64 + boyut).
 static func build_runtime_payload(save_path: String, img: Image, capture_target: String = "runtime_viewport") -> Dictionary:
@@ -227,7 +237,7 @@ static func build_runtime_payload(save_path: String, img: Image, capture_target:
 		"width": img.get_width(),
 		"height": img.get_height(),
 		"capture_target": capture_target
-	}, "✓ Çalışan oyun viewport görüntüsü alındı (" + str(img.get_width()) + "x" + str(img.get_height()) + ") ve diske kaydedildi.")
+	}, ("✓ Çalışan oyun viewport görüntüsü alındı (" if capture_target == "runtime_viewport" else "✓ Editör ekran görüntüsü alındı (") + str(img.get_width()) + "x" + str(img.get_height()) + ") ve diske kaydedildi.")
 
 ## Çalışan oyunun ekran görüntüsü alma (ESKİ editör-ekran yolu; async sürümü kullanın)
 static func take_runtime_screenshot(save_path: String = "user://ai_runtime_snapshot.png") -> Dictionary:
