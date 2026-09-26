@@ -7,6 +7,15 @@ param(
 # Usage: ./verify.ps1 [-GodotPath <path>] [-Live]
 # Herhangi bir adım başarısızsa sonraki adımlar koşmaz ve exit 1 döner.
 
+# Windows PowerShell 5.1 decodes native (Godot) output with [Console]::OutputEncoding,
+# i.e. the OEM code page (437/857) -> UTF-8 text turns into mojibake. Switch the console
+# to UTF-8 without BOM (code page 65001). No-op on Linux/macOS.
+if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    try { [Console]::OutputEncoding = $utf8NoBom; [Console]::InputEncoding = $utf8NoBom } catch { }
+    $OutputEncoding = $utf8NoBom
+}
+
 $ProjectPath = $PSScriptRoot
 . (Join-Path $PSScriptRoot "tools\find_godot.ps1")
 $GodotBin = Resolve-GodotBin $GodotPath
@@ -34,7 +43,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Step "Strict warnings (ratchet)"
 $warnOut = & $GodotBin --headless --path $ProjectPath -s "res://tools/warning_report.gd" 2>&1 | ForEach-Object { "$_" }
 $warnExit = $LASTEXITCODE
-$warnOut | Select-String -Pattern "^\s+-\s|WARNINGS|azaldi|azaldı|^\s+\* " | ForEach-Object { Write-Host $_.Line }
+$warnOut | Select-String -Pattern "^\s+-\s|WARNINGS|azald|^\s+\* " | ForEach-Object { Write-Host $_.Line }
 $warnOk = $warnOut | Select-String -SimpleMatch "[WARNINGS OK]" | Select-Object -Last 1
 if ($warnExit -ne 0 -or -not $warnOk) {
     Write-Host "[VERIFY FAIL] Uyari circiri basarisiz (exit=$warnExit)." -ForegroundColor Red

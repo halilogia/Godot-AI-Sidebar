@@ -5,6 +5,15 @@ param(
 # Godot GDScript Headless Compilation & Load Validator
 # Usage: ./typecheck.ps1 [-GodotPath <path_to_godot>]
 
+# Windows PowerShell 5.1 decodes native (Godot) output with [Console]::OutputEncoding,
+# i.e. the OEM code page (437/857) -> UTF-8 text turns into mojibake. Switch the console
+# to UTF-8 without BOM (code page 65001). No-op on Linux/macOS.
+if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    try { [Console]::OutputEncoding = $utf8NoBom; [Console]::InputEncoding = $utf8NoBom } catch { }
+    $OutputEncoding = $utf8NoBom
+}
+
 $ProjectPath = $PSScriptRoot
 . (Join-Path $PSScriptRoot "tools\find_godot.ps1")
 $GodotBin = Resolve-GodotBin $GodotPath
