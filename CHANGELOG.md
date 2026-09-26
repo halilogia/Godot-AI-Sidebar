@@ -11,6 +11,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ### Eklenenler
 * **Dış ajan köprüsü (MCP, v3.0 ilk sürüm):** Claude Code gibi ajanlar artık açık Godot editörünü kullanabilir. Sidebar'da `/mcp on` yazın; Claude Code bağlantı komutu panoya kopyalanır, oyun projenizin klasöründe terminale yapıştırın. Ajan sahne ağacını ve düğümleri okuyabilir, scriptleri doğrulayabilir, dosya yazdıktan sonra editöre taratabilir (`sync_project`), oyunu başlatıp durdurabilir, runtime hatalarını ve canlı ağacı görebilir, ekran görüntüsü alabilir. Köprü yalnız bu bilgisayardan erişilebilir (127.0.0.1 + gizli token) ve eklentinin güvenlik politikalarından geçer; sahne / dosya değiştiren araçlar bu sürümde dışarı açık değildir. Kapatmak için `/mcp off`.
+* **Dış ajan sahne değişiklikleri (v3.0.1):** `/mcp write auto` ile dış ajan açık sahneye düğüm ekleyebilir, özellik değiştirebilir, sahne örnekleyebilir, script bağlayabilir ve sahneyi kaydedebilir; her değişiklik Ctrl+Z ile geri alınır. Varsayılan kapalıdır ve yalnız o editör oturumu için açılır (`/mcp write off` ya da editörü yeniden açmak kapatır). Ajan her değişiklikte hangi sahneyi değiştirdiğini belirtmek zorundadır; editörde başka bir sahne açıksa değişiklik yapılmaz.
+* **Tek aktif yazıcı:** Sidebar ajanı ile dış ajan aynı anda sahne / dosya değiştiremez; sonra gelen taraf "başka bir ajan yazıyor" hatası alır. Okuma, oyunu çalıştırma ve ekran görüntüsü etkilenmez.
 
 ---
 

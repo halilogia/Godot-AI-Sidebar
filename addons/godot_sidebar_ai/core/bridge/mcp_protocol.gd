@@ -14,8 +14,8 @@ const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/to
 const SERVER_NAME := "godot-ai-sidebar"
 const DEFAULT_PROTOCOL_VERSION := "2025-06-18"
 
-## v3.0 ilk sürüm: okuma, gözlem ve oyun kontrolü. Sahne / dosya değiştiren araçlar dışarıda.
-## (Dış ajan dosyaları kendi araçlarıyla yazar, sonra `sync_project` çağırır.)
+## Okuma, gözlem ve oyun kontrolü. Dosya yazan / silen araçlar dışarıda: dış ajan dosyaları
+## kendi araçlarıyla yazar, sonra `sync_project` çağırır. Sahne mutasyonları: MUTATION_TOOLS.
 const EXPOSED_TOOLS: Array[String] = [
 	"get_project_files", "search_project_assets", "analyze_project",
 	"get_scene_tree", "get_node_properties", "get_selected_nodes", "select_node", "open_scene",
@@ -25,6 +25,15 @@ const EXPOSED_TOOLS: Array[String] = [
 	"take_editor_screenshot", "take_viewport_screenshot", "take_runtime_screenshot",
 	"inspect_ui_layout",
 ]
+
+## v3.0.1 sahne mutasyonları: kullanıcı `/mcp write auto` demedikçe WRITES_DISABLED döner.
+## Hepsi Undo/Redo'ya kayıtlı. Her çağrı köprüye özgü zorunlu `expected_scene_path` taşır
+## (değiştirilecek, editörde açık sahne); ToolManager'a gitmeden args'tan çıkarılır.
+## (`instantiate_scene`'in kendi `scene_path`'i örneklenecek kaynak sahnedir; karıştırılmaz.)
+const MUTATION_TOOLS: Array[String] = [
+	"add_node", "set_node_property", "instantiate_scene", "attach_script_to_node", "save_scene",
+]
+const EXPECTED_SCENE_ARG := "expected_scene_path"
 
 ## Köprüye özgü araçlar (ToolManager'da yok; sunucu yürütür).
 const SYNC_PROJECT_TOOL := {
@@ -46,11 +55,43 @@ static func tool_definitions() -> Array:
 				"description": str(fn.get("description", "")),
 				"inputSchema": fn.get("parameters", {"type": "object", "properties": {}}),
 			})
+		elif MUTATION_TOOLS.has(name):
+			var params: Dictionary = fn.get("parameters", {})
+			out.append(_mutation_definition(name, str(fn.get("description", "")), params))
 	out.append(SYNC_PROJECT_TOOL.duplicate(true))
 	return out
 
+## Mutasyon aracının şemasına zorunlu `expected_scene_path` eklenir (ToolManager şeması değişmez).
+static func _mutation_definition(name: String, description: String, parameters: Dictionary) -> Dictionary:
+	var schema: Dictionary = parameters.duplicate(true)
+	schema["type"] = "object"
+	var props: Dictionary = schema.get("properties", {})
+	props[EXPECTED_SCENE_ARG] = {
+		"type": "string",
+		"description": "res:// path of the scene this change is meant for (the scene_file from get_scene_tree). The call is refused if a different scene is active in the editor.",
+	}
+	schema["properties"] = props
+	var required: Array = schema.get("required", [])
+	required.append(EXPECTED_SCENE_ARG)
+	schema["required"] = required
+	return {
+		"name": name,
+		"description": description + " Scene change: undoable with Ctrl+Z in the editor; refused unless the user enabled external writes (/mcp write auto) and while another agent is writing (WRITER_BUSY).",
+		"inputSchema": schema,
+	}
+
 static func is_exposed(tool_name: String) -> bool:
-	return EXPOSED_TOOLS.has(tool_name) or tool_name == SYNC_PROJECT_TOOL["name"]
+	return EXPOSED_TOOLS.has(tool_name) or MUTATION_TOOLS.has(tool_name) or tool_name == SYNC_PROJECT_TOOL["name"]
+
+static func is_mutation_tool(tool_name: String) -> bool:
+	return MUTATION_TOOLS.has(tool_name)
+
+## Köprüye özgü `expected_scene_path`'i araç argümanlarından ayırır.
+static func split_mutation_args(args: Dictionary) -> Dictionary:
+	var tool_args := args.duplicate(true)
+	var expected := str(tool_args.get(EXPECTED_SCENE_ARG, "")).strip_edges()
+	tool_args.erase(EXPECTED_SCENE_ARG)
+	return {"expected_scene_path": expected, "args": tool_args}
 
 ## Tek JSON-RPC mesajını yönlendirir. Dönüş:
 ##   {"reply": <yanıt sözlüğü>}              → hemen gönderilir
@@ -74,7 +115,7 @@ static func route(message: Variant) -> Dictionary:
 				"protocolVersion": requested if not requested.is_empty() else DEFAULT_PROTOCOL_VERSION,
 				"capabilities": {"tools": {"listChanged": false}},
 				"serverInfo": {"name": SERVER_NAME, "version": plugin_version()},
-				"instructions": "Godot editor tools from the Godot AI Sidebar plugin. Write files with your own tools, then call sync_project before validate_script / play_game. Use get_runtime_errors and take_runtime_screenshot to verify a running game.",
+				"instructions": "Godot editor tools from the Godot AI Sidebar plugin. Write files with your own tools, then call sync_project before validate_script / play_game. Use get_runtime_errors and take_runtime_screenshot to verify a running game. Scene-changing tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) need the user to enable external writes and an expected_scene_path; call save_scene before reading the .tscn from disk.",
 			})}
 		"ping":
 			return {"reply": result_reply(id, {})}

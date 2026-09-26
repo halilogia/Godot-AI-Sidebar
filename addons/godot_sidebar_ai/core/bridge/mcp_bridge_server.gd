@@ -14,8 +14,12 @@ const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/scene_tools.gd")
+const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
 
 const DEFAULT_PORT := 6570
+const WRITE_OFF := "off"
+const WRITE_AUTO := "auto"
 const IDLE_TIMEOUT_MSEC := 10000
 const SYNC_TIMEOUT_MSEC := 30000
 
@@ -35,6 +39,11 @@ static var instance: AISidebarMcpBridgeServer = null
 
 var port: int = 0
 var token: String = ""
+## Dış ajanın sahne mutasyonları (`/mcp write off|auto`). Kalıcı DEĞİL: her editör açılışında
+## ve `/mcp off`'ta `off`'a döner; `auto` hiçbir zaman kendiliğinden açılmaz.
+var write_mode: String = WRITE_OFF
+## Etkin sahne kökünü verir; boşsa editör okunur (testler sahte kök enjekte eder).
+var scene_root_provider: Callable = Callable()
 var _server: TCPServer = null
 var _clients: Array[Client] = []
 
@@ -69,6 +78,7 @@ func stop() -> void:
 	for c: Client in _clients:
 		c.peer.disconnect_from_host()
 	_clients.clear()
+	AISidebarWriterLock.release(AISidebarWriterLock.Holder.EXTERNAL)
 	if _server:
 		_server.stop()
 		_server = null
@@ -156,9 +166,30 @@ func respond(req: Dictionary) -> PackedByteArray:
 func run_tool(tool_name: String, args: Dictionary) -> Dictionary:
 	if tool_name == "sync_project":
 		return await _sync_project()
+	if AISidebarMcpProtocol.is_mutation_tool(tool_name):
+		return run_mutation(tool_name, args)
 	if AISidebarMcpProtocol.is_sync_tool(tool_name):
 		return AISidebarMcpProtocol.run_sync_tool(tool_name, args)
 	return await AISidebarToolManager.execute_tool_async(tool_name, args, false)
+
+## Sahne mutasyonu: yazma modu → beklenen sahne → yazıcı kilidi → ToolManager (PermissionPolicy,
+## PathPolicy, MutationService / Undo-Redo). Mutasyon araçları senkron: sahne kontrolü ile
+## yürütme arasında editör karesi geçmez, kontrol yürütmenin hemen öncesidir.
+func run_mutation(tool_name: String, args: Dictionary) -> Dictionary:
+	if write_mode != WRITE_AUTO:
+		return AISidebarToolResult.err("WRITES_DISABLED", "Scene changes by external agents are turned off in this editor. The user can allow them in the Godot AI Sidebar with /mcp write auto.", false)
+	var split := AISidebarMcpProtocol.split_mutation_args(args)
+	var expected: String = split["expected_scene_path"]
+	if expected.is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "expected_scene_path is required: the res:// path of the scene to change (scene_file from get_scene_tree).")
+	var scene_check := AISidebarSceneTools.confirm_active_scene(expected, 1, scene_root_provider)
+	if not scene_check.get("success", false):
+		return scene_check
+	var lock_err := AISidebarWriterLock.claim(AISidebarWriterLock.Holder.EXTERNAL, tool_name)
+	if not lock_err.is_empty():
+		return lock_err
+	var tool_args: Dictionary = split["args"]
+	return AISidebarToolManager.execute_tool(tool_name, tool_args, false)
 
 func _sync_project() -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface") or not is_inside_tree():

@@ -8,6 +8,7 @@ const AISidebarMcpHttp = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_
 const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
 const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
+const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
 
 const TOKEN = "test-token-123"
 
@@ -100,16 +101,31 @@ static func run() -> Dictionary:
 		if not (t.get("inputSchema") is Dictionary) or t["inputSchema"].get("type") != "object" or str(t.get("description", "")).is_empty():
 			schemas_ok = false
 	var want: Array = AISidebarMcpProtocol.EXPOSED_TOOLS.duplicate()
+	want.append_array(AISidebarMcpProtocol.MUTATION_TOOLS)
 	want.append("sync_project")
 	names.sort()
 	want.sort()
 	var blocked := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "delete_file", "arguments": {"file_path": "res://x.gd"}})))
 	var allowed := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "analyze_project", "arguments": {}}, 7)))
+	# Silen / dosya yazan / sahne dosyası üreten araçlar kapalı kalır (dış ajanın kendi dosya araçları var).
 	var mutating_exposed := false
-	for m in ["add_node", "delete_node", "delete_file", "write_files", "create_or_update_script", "replace_file_content", "set_node_property", "save_scene", "create_scene"]:
+	for m in ["delete_node", "delete_file", "write_files", "create_or_update_script", "replace_file_content", "create_scene", "reparent_node", "duplicate_node", "rename_node", "connect_signal", "create_character_scene"]:
 		if names.has(m):
 			mutating_exposed = true
-	if names == want and schemas_ok and not mutating_exposed and blocked["reply"]["error"]["code"] == -32602 \
+	# Mutasyon araçları köprüye özgü zorunlu expected_scene_path taşır; ToolManager şeması değişmez;
+	# instantiate_scene'in kendi scene_path'i (kaynak sahne) korunur.
+	var guard_schema_ok := true
+	for t in tools:
+		if AISidebarMcpProtocol.MUTATION_TOOLS.has(t["name"]):
+			var req: Array = t["inputSchema"].get("required", [])
+			if not req.has("expected_scene_path") or not t["inputSchema"]["properties"].has("expected_scene_path"):
+				guard_schema_ok = false
+			if t["name"] == "instantiate_scene" and not (req.has("scene_path") and t["inputSchema"]["properties"].has("scene_path")):
+				guard_schema_ok = false
+	for s in AISidebarToolManager.get_all_schemas():
+		if s["function"]["parameters"].get("properties", {}).has("expected_scene_path"):
+			guard_schema_ok = false
+	if names == want and schemas_ok and guard_schema_ok and not mutating_exposed and blocked["reply"]["error"]["code"] == -32602 \
 			and allowed.has("call") and allowed["call"]["name"] == "analyze_project" and allowed["call"]["id"] == 7:
 		passed += 1
 	else:
@@ -144,7 +160,11 @@ static func run() -> Dictionary:
 	var r_init := _roundtrip(server, _req("POST", "/mcp", _rpc("initialize", {"protocolVersion": "2025-06-18"}), auth))
 	var r_notif := _roundtrip(server, _req("POST", "/mcp", _rpc("notifications/initialized", {}, null), auth))
 	var r_call := _roundtrip(server, _req("POST", "/mcp", _rpc("tools/call", {"name": "analyze_project", "arguments": {}}, 9), auth))
+	# Varsayılan yazma modu kapalı: mutasyon tel üzerinden isError + WRITES_DISABLED döner.
+	var r_mut := _roundtrip(server, _req("POST", "/mcp", _rpc("tools/call", {"name": "add_node", "arguments": {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://a.tscn"}}, 10), auth))
 	server.stop()
+	var mut_json: Variant = JSON.parse_string(str(r_mut["body"]))
+	var mut_ok: bool = mut_json is Dictionary and mut_json["result"]["isError"] == true and str(r_mut["body"]).contains("WRITES_DISABLED")
 	var init_json: Variant = JSON.parse_string(str(r_init["body"]))
 	var call_json: Variant = JSON.parse_string(str(r_call["body"]))
 	# id tel üzerinde tam sayı olarak dönmeli ("id":9, "9.0" değil)
@@ -152,7 +172,7 @@ static func run() -> Dictionary:
 			and str(call_json["result"]["content"][0]["text"]).contains("project_name")
 	var statuses := [r_noauth["status"], r_badauth["status"], r_origin["status"], r_get["status"], r_path["status"], r_parse["status"], r_init["status"], r_notif["status"], r_call["status"]]
 	if port > 0 and statuses == [401, 401, 403, 405, 404, 400, 200, 202, 200] \
-			and init_json is Dictionary and init_json["result"]["serverInfo"]["name"] == "godot-ai-sidebar" and call_ok and not server.is_running():
+			and init_json is Dictionary and init_json["result"]["serverInfo"]["name"] == "godot-ai-sidebar" and call_ok and mut_ok and not server.is_running():
 		passed += 1
 	else:
 		failed += 1
@@ -174,5 +194,45 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T6 (eval_gdscript unreachable) failed: call=%s direct=%s" % [str(eval_call), str(eval_direct)])
+
+	# 7. Mutasyon koruma sırası: yazma modu → expected_scene_path → etkin sahne → yazıcı kilidi → ToolManager.
+	AISidebarWriterLock.reset()
+	var ms := AISidebarMcpBridgeServer.new()
+	var fake_root := Node.new()
+	fake_root.scene_file_path = "res://scenes/main.tscn"
+	ms.scene_root_provider = func() -> Node: return fake_root
+	var add_args := {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://scenes/main.tscn"}
+	var m_default_off := ms.write_mode == AISidebarMcpBridgeServer.WRITE_OFF
+	var m_off := ms.run_mutation("add_node", add_args)
+	ms.write_mode = AISidebarMcpBridgeServer.WRITE_AUTO
+	var m_missing := ms.run_mutation("add_node", {"node_type": "Node2D", "node_name": "X"})
+	var m_wrong := ms.run_mutation("add_node", {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://scenes/other.tscn"})
+	var lock_after_wrong := AISidebarWriterLock.holder()
+	AISidebarWriterLock.try_acquire(AISidebarWriterLock.Holder.SIDEBAR)
+	var m_busy := ms.run_mutation("add_node", add_args)
+	AISidebarWriterLock.reset()
+	var m_pass := ms.run_mutation("add_node", add_args)
+	var lock_after_pass := AISidebarWriterLock.holder()
+	ms.stop()
+	var lock_after_stop := AISidebarWriterLock.holder()
+	var guard_codes := ["WRITES_DISABLED", "INVALID_ARGUMENT", "ACTIVE_SCENE_NOT_CONFIRMED", "WRITER_BUSY"]
+	var pass_code := str(m_pass["error"]["code"]) if m_pass.get("error") is Dictionary else ""
+	var split := AISidebarMcpProtocol.split_mutation_args({"scene_path": "res://p.tscn", "expected_scene_path": " res://scenes/main.tscn "})
+	var any_async := false
+	for mt in AISidebarMcpProtocol.MUTATION_TOOLS:
+		if AISidebarToolManager.is_async_tool(mt):
+			any_async = true
+	if m_default_off and m_off["error"]["code"] == "WRITES_DISABLED" and m_missing["error"]["code"] == "INVALID_ARGUMENT" \
+			and m_wrong["error"]["code"] == "ACTIVE_SCENE_NOT_CONFIRMED" and lock_after_wrong == AISidebarWriterLock.Holder.NONE \
+			and m_busy["error"]["code"] == "WRITER_BUSY" and not guard_codes.has(pass_code) \
+			and lock_after_pass == AISidebarWriterLock.Holder.EXTERNAL and lock_after_stop == AISidebarWriterLock.Holder.NONE \
+			and split["expected_scene_path"] == "res://scenes/main.tscn" and split["args"] == {"scene_path": "res://p.tscn"} and not any_async:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T7 (mutation guards) failed: off=%s missing=%s wrong=%s busy=%s pass=%s lock=%s/%s split=%s" % [str(m_off), str(m_missing), str(m_wrong), str(m_busy), str(m_pass), str(lock_after_pass), str(lock_after_stop), str(split)])
+	fake_root.free()
+	ms.free()
+	AISidebarWriterLock.reset()
 
 	return {"name": "McpBridgeTests", "passed": passed, "failed": failed, "errors": errors}
