@@ -57,12 +57,13 @@ static func run() -> Dictionary:
 	var e1 := AISidebarWriterLock.try_acquire(H.EXTERNAL)
 	var side_busy := AISidebarWriterLock.claim(H.SIDEBAR, "set_node_property")
 	var side_msg := str(side_busy["error"]["message"]) if side_busy.get("error") is Dictionary else ""
+	var ext_msg := str(AISidebarWriterLock.busy_error(H.EXTERNAL)["error"]["message"])
 	OS.delay_msec(80)
 	var expired := AISidebarWriterLock.holder() == H.NONE
 	var side_after := AISidebarWriterLock.try_acquire(H.SIDEBAR)
 	AISidebarWriterLock.reset()
 	if e1 and side_busy.get("success", true) == false and side_msg.begins_with("Holder: EXTERNAL") \
-			and side_msg.contains("expires 1 s") and expired and side_after:
+			and side_msg.contains("was NOT made") and side_msg.contains("Do not retry") and ext_msg.contains("expires 1 s") and ext_msg.contains("retry after that") and expired and side_after:
 		passed += 1
 	else:
 		failed += 1
@@ -84,7 +85,7 @@ static func run() -> Dictionary:
 	var add_res := _tool_result(ctx3, "add_node")
 	var read_res := _tool_result(ctx3, "get_scene_tree")
 	# Model hem kodu hem nedeni görmeli (yalnız çıplak veri değil).
-	if add_res.contains("WRITER_BUSY") and add_res.contains("Holder: EXTERNAL") and not read_res.is_empty() and not read_res.contains("WRITER_BUSY") \
+	if add_res.contains("WRITER_BUSY") and add_res.contains("Holder: EXTERNAL") and add_res.contains("Do not retry") and not read_res.is_empty() and not read_res.contains("WRITER_BUSY") \
 			and AISidebarWriterLock.holder() == H.EXTERNAL:
 		passed += 1
 	else:

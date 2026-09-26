@@ -53,11 +53,16 @@ static func release(who: Holder) -> void:
 static func claim(who: Holder, tool_name: String) -> Dictionary:
 	if not is_write_tool(tool_name) or try_acquire(who):
 		return {}
-	return busy_error()
+	return busy_error(who)
 
 ## Bilgi `data` yerine mesajda: runner, `data` taşıyan sonuçta hata kodunu / mesajını modele iletmez.
-static func busy_error() -> Dictionary:
+## Mesaj soran tarafa göre: sidebar modeli bekleyemez (görev içinde tekrar denemesi DUPLICATE_CALL'a,
+## ardından uydurulmuş "yapıldı" cevabına yol açıyordu); ona tekrar denememesi ve kullanıcıya
+## söyleyip bitirmesi söylenir. Dış ajan kira bitince tekrar deneyebilir.
+static func busy_error(who: Holder = Holder.EXTERNAL) -> Dictionary:
 	if holder() == Holder.EXTERNAL:
+		if who == Holder.SIDEBAR:
+			return AISidebarToolResult.err("WRITER_BUSY", "Holder: EXTERNAL. An external agent connected over MCP is changing this project right now, so this change was NOT made. Do not retry it in this task: tell the user that another agent is writing and that nothing was changed, then finish.", false)
 		var wait_s := ceili(maxf(0.0, float(_lease_until_msec - Time.get_ticks_msec())) / 1000.0)
 		return AISidebarToolResult.err("WRITER_BUSY", "Holder: EXTERNAL. An external agent connected over MCP is changing this project; only one agent may change scenes or files at a time. Its lock expires %d s after its last change; retry after that." % wait_s)
 	return AISidebarToolResult.err("WRITER_BUSY", "Holder: SIDEBAR. The Godot AI Sidebar agent is running a task that changes this project; only one agent may change scenes or files at a time. Retry after that task ends.")
