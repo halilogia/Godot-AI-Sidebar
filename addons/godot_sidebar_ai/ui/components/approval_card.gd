@@ -19,9 +19,6 @@ var tool_name: String = ""
 var args: Dictionary = {}
 var change_set: AISidebarChangeSet = null
 var is_resolved: bool = false
-## Doluysa varsayılan başlık / işlem açıklaması yerine kullanılır (ör. dış ajan onayı).
-var title_text: String = ""
-var description_text: String = ""
 
 var _vbox: VBoxContainer
 var _title_lbl: Label
@@ -68,7 +65,7 @@ func _setup_ui() -> void:
 	_title_icon.set_icon("shield-alert", Color(1.0, 0.75, 0.3))
 	title_row.add_child(_title_icon)
 	_title_lbl = Label.new()
-	_title_lbl.text = title_text if not title_text.is_empty() else AISidebarI18n.get_text("approval_title")
+	_title_lbl.text = AISidebarI18n.get_text("approval_title")
 	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
 	_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.3))
 	_title_lbl.add_theme_font_size_override("font_size", 12)
@@ -84,8 +81,6 @@ func _setup_ui() -> void:
 		action_desc = "Update file: " + args.get("file_path", "")
 	elif tool_name == "replace_file_content":
 		action_desc = "Surgically update file: " + args.get("file_path", "")
-	if not description_text.is_empty():
-		action_desc = description_text
 	_desc_lbl.text = action_desc
 	_desc_lbl.bbcode_enabled = true
 	_desc_lbl.fit_content = true
@@ -149,20 +144,6 @@ func mark_rejected() -> void:
 		_title_lbl.text = AISidebarI18n.get_text("approval_rejected")
 		_title_lbl.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
 		_title_icon.set_icon("x", Color(0.9, 0.4, 0.4))
-	if _approve_btn:
-		_approve_btn.disabled = true
-		_approve_btn.visible = false
-	if _reject_btn:
-		_reject_btn.disabled = true
-		_reject_btn.visible = false
-
-## Karar verilmeden kapandı (süre doldu, istemci koptu vb.): düğmeler gizlenir.
-func mark_cancelled(reason_text: String) -> void:
-	is_resolved = true
-	if _title_lbl:
-		_title_lbl.text = reason_text
-		_title_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
-		_title_icon.set_icon("minus", Color(0.6, 0.6, 0.65))
 	if _approve_btn:
 		_approve_btn.disabled = true
 		_approve_btn.visible = false

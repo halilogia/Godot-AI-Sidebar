@@ -26,7 +26,7 @@ const EXPOSED_TOOLS: Array[String] = [
 	"inspect_ui_layout",
 ]
 
-## Sahne mutasyonları: kullanıcı `/mcp write ask|auto` demedikçe WRITES_DISABLED döner.
+## Sahne mutasyonları: köprü açıksa (`/mcp on`) kullanılabilir; tek aktif yazıcı kilidi geçerlidir.
 ## Hepsi Undo/Redo'ya kayıtlı. Her çağrı köprüye özgü zorunlu `expected_scene_path` taşır
 ## (değiştirilecek, editörde açık sahne); ToolManager'a gitmeden args'tan çıkarılır.
 ## (`instantiate_scene`'in kendi `scene_path`'i örneklenecek kaynak sahnedir; karıştırılmaz.)
@@ -46,7 +46,7 @@ const SYNC_PROJECT_TOOL := {
 
 ## Dış ajana `initialize` ile verilen çalışma kuralı: üretim dosya-öncelikli, editör etkileşimi
 ## araç-öncelikli. Köprü yüzeyi normal kod / dosya üretimini kopyalayan üst düzey araçlarla büyütülmez.
-const INSTRUCTIONS := "Godot editor tools from the Godot AI Sidebar plugin. Construction is file-first: create scripts, scenes (.tscn), resources (.tres), shaders and data files with your own file tools, prefer whole .tscn files or procedural GDScript over many single-node calls, then call sync_project (list the .tscn files in changed_files). Editor interaction is tool-first: use the scene tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) only for small, precise, undoable edits of the scene open in the editor; they need the user to enable external writes and an expected_scene_path. Verify with validate_script, play_game, get_runtime_errors (wait a few seconds after play_game), take_runtime_screenshot and inspect_runtime_tree; stop_game when done."
+const INSTRUCTIONS := "Godot editor tools from the Godot AI Sidebar plugin. Construction is file-first: create scripts, scenes (.tscn), resources (.tres), shaders and data files with your own file tools, prefer whole .tscn files or procedural GDScript over many single-node calls, then call sync_project (list the .tscn files in changed_files). Editor interaction is tool-first: use the scene tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) only for small, precise, undoable edits of the scene open in the editor; they need an expected_scene_path (scene_file from get_scene_tree). Verify with validate_script, play_game, get_runtime_errors (wait a few seconds after play_game), take_runtime_screenshot and inspect_runtime_tree; stop_game when done."
 
 ## Dış ajana açılan araç tanımları (MCP `tools/list` biçimi).
 static func tool_definitions() -> Array:
@@ -82,7 +82,7 @@ static func _mutation_definition(name: String, description: String, parameters: 
 	schema["required"] = required
 	return {
 		"name": name,
-		"description": description + " For small, precise edits of the scene open in the editor; to build a scene or many nodes, write the .tscn / GDScript yourself and call sync_project instead. Call save_scene before reading the .tscn from disk. Undoable with Ctrl+Z in the editor; refused unless the user enabled external writes (/mcp write ask or auto) and while another agent is writing (WRITER_BUSY). In ask mode the call waits until the user approves or rejects it in the editor (USER_DENIED, APPROVAL_TIMEOUT).",
+		"description": description + " For small, precise edits of the scene open in the editor; to build a scene or many nodes, write the .tscn / GDScript yourself and call sync_project instead. Call save_scene before reading the .tscn from disk. Undoable with Ctrl+Z in the editor; refused while another agent is writing (WRITER_BUSY) or when a different scene is open (ACTIVE_SCENE_NOT_CONFIRMED).",
 		"inputSchema": schema,
 	}
 

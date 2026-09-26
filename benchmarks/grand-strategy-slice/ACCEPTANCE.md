@@ -19,7 +19,7 @@ Each criterion names the evidence that counts. "Manual" criteria need a person t
 
 ## What to record per run
 
-- Claude Code and Godot versions, model, date, write mode (`off` / `ask` / `auto`).
+- Claude Code and Godot versions, model, date.
 - Wall-clock time, number of MCP tool calls (by tool), number of user interventions and why.
 - Result per criterion (pass / fail / manual), bugs found, which ones the agent fixed itself.
 - Gaps: what the agent could not do with the current tools or skills (this is the input for later roadmap decisions, e.g. Companion).

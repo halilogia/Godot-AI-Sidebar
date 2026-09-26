@@ -5,7 +5,7 @@
 # Kullanım:
 #   powershell -ExecutionPolicy Bypass -File .\benchmarks\grand-strategy-slice\new_benchmark_project.ps1 -Path C:\Users\<siz>\Documents\gs-benchmark
 # Sonra: projeyi Godot 4.7'de açın, sidebar'da /mcp on, kopyalanan `claude mcp add ...` komutunu proje klasöründe çalıştırın,
-# `/mcp write auto` (ya da ask) ve PROMPT.md içeriğini Claude Code'a verin. Kayıt: ACCEPTANCE.md "What to record per run".
+# ve PROMPT.md içeriğini Claude Code'a verin. Kayıt: ACCEPTANCE.md "What to record per run".
 
 param(
     [Parameter(Mandatory = $true)][string]$Path,
@@ -60,4 +60,4 @@ try {
 }
 
 Write-Host "Ready: $Path"
-Write-Host "1) open it in Godot 4.7  2) sidebar: /mcp on  3) in the project folder: claude mcp add ... (from clipboard)  4) sidebar: /mcp write auto  5) give PROMPT.md to Claude Code"
+Write-Host "1) open it in Godot 4.7  2) sidebar: /mcp on  3) in the project folder: claude mcp add ... (from clipboard)  4) give PROMPT.md to Claude Code"

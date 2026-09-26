@@ -9,7 +9,6 @@ const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/
 const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
-const AISidebarExternalApprovals = preload("res://addons/godot_sidebar_ai/core/bridge/external_approvals.gd")
 
 const TOKEN = "test-token-123"
 
@@ -164,11 +163,11 @@ static func run() -> Dictionary:
 	var r_init := _roundtrip(server, _req("POST", "/mcp", _rpc("initialize", {"protocolVersion": "2025-06-18"}), auth))
 	var r_notif := _roundtrip(server, _req("POST", "/mcp", _rpc("notifications/initialized", {}, null), auth))
 	var r_call := _roundtrip(server, _req("POST", "/mcp", _rpc("tools/call", {"name": "analyze_project", "arguments": {}}, 9), auth))
-	# Varsayılan yazma modu kapalı: mutasyon tel üzerinden isError + WRITES_DISABLED döner.
+	# Mutasyon tel üzerinden sahne korumasına ulaşır (headless: editör yok → EDITOR_REQUIRED, isError).
 	var r_mut := _roundtrip(server, _req("POST", "/mcp", _rpc("tools/call", {"name": "add_node", "arguments": {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://a.tscn"}}, 10), auth))
 	server.stop()
 	var mut_json: Variant = JSON.parse_string(str(r_mut["body"]))
-	var mut_ok: bool = mut_json is Dictionary and mut_json["result"]["isError"] == true and str(r_mut["body"]).contains("WRITES_DISABLED")
+	var mut_ok: bool = mut_json is Dictionary and mut_json["result"]["isError"] == true and str(r_mut["body"]).contains("EDITOR_REQUIRED")
 	var init_json: Variant = JSON.parse_string(str(r_init["body"]))
 	var call_json: Variant = JSON.parse_string(str(r_call["body"]))
 	# id tel üzerinde tam sayı olarak dönmeli ("id":9, "9.0" değil)
@@ -199,73 +198,46 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T6 (eval_gdscript unreachable) failed: call=%s direct=%s" % [str(eval_call), str(eval_direct)])
 
-	# 7. Mutasyon koruma sırası: yazma modu → expected_scene_path → etkin sahne → yazıcı kilidi → ToolManager.
+	# 7. Mutasyon koruma sırası: expected_scene_path → etkin sahne → yazıcı kilidi → sahne tekrar → ToolManager.
 	AISidebarWriterLock.reset()
 	var ms := AISidebarMcpBridgeServer.new()
 	var fake_root := Node.new()
 	fake_root.scene_file_path = "res://scenes/main.tscn"
 	ms.scene_root_provider = func() -> Node: return fake_root
 	var add_args := {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://scenes/main.tscn"}
-	var m_default_off := ms.write_mode == AISidebarMcpBridgeServer.WRITE_OFF
-	var m_off := ms.precheck_mutation("add_node", add_args)
-	ms.write_mode = AISidebarMcpBridgeServer.WRITE_AUTO
+	var m_ok := ms.precheck_mutation("add_node", add_args).is_empty()
 	var m_missing := ms.precheck_mutation("add_node", {"node_type": "Node2D", "node_name": "X"})
 	var wrong_args := {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://scenes/other.tscn"}
 	var m_wrong := ms.precheck_mutation("add_node", wrong_args)
-	# Onaydan sonra sahne değişmiş olabilir: apply tekrar kontrol eder ve yeni aldığı kilidi bırakır.
+	# apply de sahneyi kilidin ardından tekrar kontrol eder ve yeni aldığı kilidi bırakır.
 	var m_wrong_apply := ms.apply_mutation("add_node", wrong_args)
 	var lock_after_wrong := AISidebarWriterLock.holder()
-	ms.write_mode = AISidebarMcpBridgeServer.WRITE_ASK
-	var m_ask_ok := ms.precheck_mutation("add_node", add_args).is_empty()
 	AISidebarWriterLock.try_acquire(AISidebarWriterLock.Holder.SIDEBAR)
 	var m_busy := ms.apply_mutation("add_node", add_args)
 	AISidebarWriterLock.reset()
-	var m_pass := ms.apply_mutation("add_node", add_args)
+	var m_pass := ms.run_mutation("add_node", add_args)
 	var lock_after_pass := AISidebarWriterLock.holder()
 	ms.stop()
 	var lock_after_stop := AISidebarWriterLock.holder()
-	var guard_codes := ["WRITES_DISABLED", "INVALID_ARGUMENT", "ACTIVE_SCENE_NOT_CONFIRMED", "WRITER_BUSY"]
+	var guard_codes := ["INVALID_ARGUMENT", "ACTIVE_SCENE_NOT_CONFIRMED", "WRITER_BUSY"]
 	var pass_code := str(m_pass["error"]["code"]) if m_pass.get("error") is Dictionary else ""
 	var split := AISidebarMcpProtocol.split_mutation_args({"scene_path": "res://p.tscn", "expected_scene_path": " res://scenes/main.tscn "})
 	var any_async := false
 	for mt in AISidebarMcpProtocol.MUTATION_TOOLS:
 		if AISidebarToolManager.is_async_tool(mt):
 			any_async = true
-	if m_default_off and m_off["error"]["code"] == "WRITES_DISABLED" and m_missing["error"]["code"] == "INVALID_ARGUMENT" \
+	if m_ok and m_missing["error"]["code"] == "INVALID_ARGUMENT" \
 			and m_wrong["error"]["code"] == "ACTIVE_SCENE_NOT_CONFIRMED" and m_wrong_apply["error"]["code"] == "ACTIVE_SCENE_NOT_CONFIRMED" \
-			and lock_after_wrong == AISidebarWriterLock.Holder.NONE and m_ask_ok \
+			and lock_after_wrong == AISidebarWriterLock.Holder.NONE \
 			and m_busy["error"]["code"] == "WRITER_BUSY" and not guard_codes.has(pass_code) \
 			and lock_after_pass == AISidebarWriterLock.Holder.EXTERNAL and lock_after_stop == AISidebarWriterLock.Holder.NONE \
 			and split["expected_scene_path"] == "res://scenes/main.tscn" and split["args"] == {"scene_path": "res://p.tscn"} and not any_async:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T7 (mutation guards) failed: off=%s missing=%s wrong=%s busy=%s pass=%s lock=%s/%s split=%s" % [str(m_off), str(m_missing), str(m_wrong), str(m_busy), str(m_pass), str(lock_after_pass), str(lock_after_stop), str(split)])
+		errors.append("T7 (mutation guards) failed: ok=%s missing=%s wrong=%s busy=%s pass=%s lock=%s/%s split=%s" % [str(m_ok), str(m_missing), str(m_wrong), str(m_busy), str(m_pass), str(lock_after_pass), str(lock_after_stop), str(split)])
 	fake_root.free()
 	ms.free()
 	AISidebarWriterLock.reset()
-
-	# 8. ask modu onay kaydı: istek sinyali, karar, geç tıklama etkisiz, köprü kapanınca iptal.
-	var ap := AISidebarExternalApprovals.new()
-	var seen: Array = []
-	ap.requested.connect(func(id: int, tool: String, _a: Dictionary, scene: String) -> void: seen.append([id, tool, scene]))
-	ap.resolved.connect(func(id: int, outcome: String) -> void: seen.append([id, outcome]))
-	var id1 := ap.request("add_node", {"node_name": "X"}, "res://a.tscn")
-	var pending1 := ap.is_pending(id1)
-	ap.resolve(id1, true)
-	ap.resolve(id1, false)  # geç tıklama: sonucu değiştirmez
-	var out1 := ap.outcome(id1)
-	var sb := AISidebarMcpBridgeServer.new()
-	var id2 := sb.approvals.request("save_scene", {}, "res://a.tscn")
-	sb.stop()
-	var out2 := sb.approvals.outcome(id2)
-	sb.free()
-	if pending1 and out1 == AISidebarExternalApprovals.APPROVED and seen[0] == [id1, "add_node", "res://a.tscn"] \
-			and seen[1] == [id1, AISidebarExternalApprovals.APPROVED] and seen.size() == 2 \
-			and out2 == AISidebarExternalApprovals.BRIDGE_STOPPED and ap.pending_count() == 0:
-		passed += 1
-	else:
-		failed += 1
-		errors.append("T8 (approval registry) failed: seen=%s out1=%s out2=%s" % [str(seen), out1, out2])
 
 	return {"name": "McpBridgeTests", "passed": passed, "failed": failed, "errors": errors}
