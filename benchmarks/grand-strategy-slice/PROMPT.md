@@ -1,6 +1,6 @@
 # Benchmark prompt (give this to Claude Code as a single message)
 
-Build a small grand-strategy vertical slice in this Godot 4 project, in the spirit of Europa Universalis / Hearts of Iron, using the godot MCP tools and the Godot skills. Work autonomously through bootstrap and milestones; ask me only when the skills tell you to stop.
+Build a small grand-strategy vertical slice in this Godot 4 project, in the spirit of Europa Universalis / Hearts of Iron, using the godot MCP tools (follow the working rules the server gives you at connection). Work autonomously through setup and milestones; ask me only when a decision is really mine (unclear design, destructive change, repeated failure).
 
 Required:
 

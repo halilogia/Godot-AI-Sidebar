@@ -1,7 +1,7 @@
 # Grand-strategy benchmark için boş bir Godot oyun projesi hazırlar:
 #   - klasör + git deposu, en küçük project.godot (eklenti etkin)
 #   - addons/godot_sidebar_ai -> bu depodaki eklentiye junction (kopya değil; eklenti güncellemesi anında görünür)
-#   - Claude Code skill'leri .claude/skills/ altına kopyalanır, ACCEPTANCE.md projeye kopyalanır
+#   - ACCEPTANCE.md projeye kopyalanır
 # Kullanım:
 #   powershell -ExecutionPolicy Bypass -File .\benchmarks\grand-strategy-slice\new_benchmark_project.ps1 -Path C:\Users\<siz>\Documents\gs-benchmark
 # Sonra: projeyi Godot 4.7'de açın, sidebar'da /mcp on, kopyalanan `claude mcp add ...` komutunu proje klasöründe çalıştırın,
@@ -15,7 +15,6 @@ param(
 $ErrorActionPreference = "Stop"
 $repo = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $addonSrc = Join-Path $repo "addons\godot_sidebar_ai"
-$skillsSrc = Join-Path $repo "integrations\claude-code\skills"
 
 if (Test-Path $Path) {
     if ((Get-ChildItem -Force $Path | Measure-Object).Count -gt 0) {
@@ -45,9 +44,6 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 New-Item -ItemType Directory -Path (Join-Path $Path "addons") | Out-Null
 New-Item -ItemType Junction -Path (Join-Path $Path "addons\godot_sidebar_ai") -Target $addonSrc | Out-Null
 
-$skillsDst = Join-Path $Path ".claude\skills"
-New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null
-Copy-Item -Path (Join-Path $skillsSrc "*") -Destination $skillsDst -Recurse
 Copy-Item -Path (Join-Path $PSScriptRoot "ACCEPTANCE.md") -Destination $Path
 
 # Eklenti junction'ı ve Godot önbelleği oyun deposuna girmez; eklentinin kişisel config.json'ı zaten eklenti tarafında.

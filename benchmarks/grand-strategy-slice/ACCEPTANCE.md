@@ -22,7 +22,7 @@ Each criterion names the evidence that counts. "Manual" criteria need a person t
 - Claude Code and Godot versions, model, date.
 - Wall-clock time, number of MCP tool calls (by tool), number of user interventions and why.
 - Result per criterion (pass / fail / manual), bugs found, which ones the agent fixed itself.
-- Gaps: what the agent could not do with the current tools or skills (this is the input for later roadmap decisions, e.g. Companion).
+- Gaps: what the agent could not do with the current tools (this is the input for later roadmap decisions, e.g. Companion).
 - Project context / memory (decides whether an episodic memory or retrieval layer is ever needed):
   - Did the agent contradict or forget a decision already in `DECISIONS.md`?
   - Did it solve the same bug twice, or miss an entry in `KNOWN_ISSUES.md`?

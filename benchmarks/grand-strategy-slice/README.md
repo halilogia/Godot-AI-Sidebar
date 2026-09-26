@@ -1,6 +1,6 @@
 # Benchmark: grand strateji dikey kesiti (v3.2)
 
-Amaç: Claude Code + Godot AI Sidebar köprüsü + skill'lerin **tek istemle** küçük ama gerçek bir oyunu (province haritası, 3 ülke, seçim, zaman akışı, ekonomi, savaş) ne kadar otonom kurabildiğini **ölçmek**. Sonuçlar sonraki yol haritası kararlarının girdisidir (eksik araç, eksik skill, Companion gerekir mi).
+Amaç: Claude Code ile Godot AI Sidebar köprüsünün **tek istemle** küçük ama gerçek bir oyunu (province haritası, 3 ülke, seçim, zaman akışı, ekonomi, savaş) ne kadar otonom kurabildiğini **ölçmek**. Sonuçlar sonraki yol haritası kararlarının girdisidir (eksik araç, eksik skill, Companion gerekir mi).
 
 ## Dosyalar
 
@@ -8,7 +8,7 @@ Amaç: Claude Code + Godot AI Sidebar köprüsü + skill'lerin **tek istemle** k
 |---|---|
 | `PROMPT.md` | Claude Code'a tek mesaj olarak verilen istek |
 | `ACCEPTANCE.md` | Kabul kriterleri, her birinin hangi kanıtla sayılacağı ve her koşuda kaydedilecekler |
-| `new_benchmark_project.ps1` | Boş oyun projesi kurar: `project.godot` (eklenti etkin), eklentiye junction, skill'ler `.claude/skills/`, `ACCEPTANCE.md`, git |
+| `new_benchmark_project.ps1` | Boş oyun projesi kurar: `project.godot` (eklenti etkin), eklentiye junction, `ACCEPTANCE.md`, git |
 
 ## Koşu
 
