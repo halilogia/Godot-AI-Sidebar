@@ -1,0 +1,161 @@
+@tool
+extends RefCounted
+
+## MCP dış ajan köprüsü (v3.0): HTTP ayrıştırma, JSON-RPC / MCP yönlendirmesi, araç izin
+## listesi ve gerçek loopback TCP üzerinden uçtan uca istekler (kimlik doğrulama dahil).
+
+const AISidebarMcpHttp = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_http.gd")
+const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
+const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
+
+const TOKEN = "test-token-123"
+
+static func _req(method: String, path: String, body: String, headers: Dictionary) -> PackedByteArray:
+	var head := "%s %s HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: %d\r\n" % [method, path, body.to_utf8_buffer().size()]
+	for k in headers.keys():
+		head += "%s: %s\r\n" % [k, headers[k]]
+	var out := (head + "\r\n").to_utf8_buffer()
+	out.append_array(body.to_utf8_buffer())
+	return out
+
+## Sunucuya gerçek TCP ile bir istek gönderir, yanıtı {status, body} olarak döner.
+static func _roundtrip(server: AISidebarMcpBridgeServer, raw: PackedByteArray) -> Dictionary:
+	var client := StreamPeerTCP.new()
+	client.connect_to_host("127.0.0.1", server.port)
+	var sent := false
+	var got := PackedByteArray()
+	for _i in 400:
+		server.poll()
+		client.poll()
+		var st := client.get_status()
+		if st == StreamPeerTCP.STATUS_CONNECTED:
+			if not sent:
+				client.put_data(raw)
+				sent = true
+			var n := client.get_available_bytes()
+			if n > 0:
+				var r: Array = client.get_partial_data(n)
+				got.append_array(r[1])
+		elif sent and (st == StreamPeerTCP.STATUS_NONE or st == StreamPeerTCP.STATUS_ERROR):
+			break
+		OS.delay_msec(5)
+	client.disconnect_from_host()
+	var text := got.get_string_from_utf8()
+	var sep := text.find("\r\n\r\n")
+	if sep < 0:
+		return {"status": 0, "body": text}
+	var status := text.get_slice(" ", 1).to_int()
+	return {"status": status, "body": text.substr(sep + 4)}
+
+static func _rpc(method: String, params: Dictionary = {}, id: Variant = 1) -> String:
+	var m := {"jsonrpc": "2.0", "method": method, "params": params}
+	if id != null:
+		m["id"] = id
+	return JSON.stringify(m)
+
+static func run() -> Dictionary:
+	var passed = 0
+	var failed = 0
+	var errors: Array = []
+
+	# 1. HTTP ayrıştırma: eksik başlık / eksik gövde beklenir, tam istek ayrışır, chunked reddedilir
+	var full := _req("POST", "/mcp", "{\"a\":1}", {"Authorization": "Bearer x"})
+	var partial_head := AISidebarMcpHttp.parse_request(full.slice(0, 20))
+	var partial_body := AISidebarMcpHttp.parse_request(full.slice(0, full.size() - 2))
+	var parsed := AISidebarMcpHttp.parse_request(full)
+	var chunked := AISidebarMcpHttp.parse_request("POST /mcp HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n".to_utf8_buffer())
+	var resp_text := AISidebarMcpHttp.build_response(202).get_string_from_utf8()
+	if not partial_head["complete"] and not partial_body["complete"] and parsed["complete"] and parsed["method"] == "POST" \
+			and parsed["path"] == "/mcp" and parsed["body"] == "{\"a\":1}" and parsed["headers"].get("authorization") == "Bearer x" \
+			and chunked.get("error_status") == 411 and resp_text.begins_with("HTTP/1.1 202 Accepted\r\n") and resp_text.contains("Content-Length: 0\r\n") and resp_text.contains("Connection: close\r\n\r\n"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T1 (http parse/build) failed: " + str(parsed))
+
+	# 2. Protokol: initialize sürümü yansıtır, bildirim yanıtsız, bilinmeyen metot / geçersiz istek hata
+	var init := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("initialize", {"protocolVersion": "2099-01-01", "capabilities": {}, "clientInfo": {"name": "t"}})))
+	var init_default := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("initialize", {})))
+	var notif := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("notifications/initialized", {}, null)))
+	var unknown := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("resources/list")))
+	var invalid := AISidebarMcpProtocol.route({"id": 3, "method": "ping"})
+	var batch := AISidebarMcpProtocol.route([{"jsonrpc": "2.0", "id": 1, "method": "ping"}])
+	var ir: Dictionary = init["reply"]["result"]
+	if ir["protocolVersion"] == "2099-01-01" and ir["serverInfo"]["name"] == "godot-ai-sidebar" and ir["capabilities"].has("tools") \
+			and init_default["reply"]["result"]["protocolVersion"] == AISidebarMcpProtocol.DEFAULT_PROTOCOL_VERSION \
+			and notif.get("notification", false) and unknown["reply"]["error"]["code"] == -32601 \
+			and invalid["reply"]["error"]["code"] == -32600 and batch["reply"]["error"]["code"] == -32600:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T2 (protocol routing) failed: init=%s unknown=%s" % [str(init), str(unknown)])
+
+	# 3. İzin listesi: tools/list tam olarak açılan araçlar + sync_project; değiştiriciler kapalı
+	var tools: Array = AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/list")))["reply"]["result"]["tools"]
+	var names: Array = []
+	var schemas_ok := true
+	for t in tools:
+		names.append(t["name"])
+		if not (t.get("inputSchema") is Dictionary) or t["inputSchema"].get("type") != "object" or str(t.get("description", "")).is_empty():
+			schemas_ok = false
+	var want: Array = AISidebarMcpProtocol.EXPOSED_TOOLS.duplicate()
+	want.append("sync_project")
+	names.sort()
+	want.sort()
+	var blocked := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "delete_file", "arguments": {"file_path": "res://x.gd"}})))
+	var allowed := AISidebarMcpProtocol.route(JSON.parse_string(_rpc("tools/call", {"name": "analyze_project", "arguments": {}}, 7)))
+	var mutating_exposed := false
+	for m in ["add_node", "delete_node", "delete_file", "write_files", "create_or_update_script", "replace_file_content", "set_node_property", "save_scene", "create_scene"]:
+		if names.has(m):
+			mutating_exposed = true
+	if names == want and schemas_ok and not mutating_exposed and blocked["reply"]["error"]["code"] == -32602 \
+			and allowed.has("call") and allowed["call"]["name"] == "analyze_project" and allowed["call"]["id"] == 7:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T3 (tool allowlist) failed: names=%s blocked=%s" % [str(names), str(blocked)])
+
+	# 4. Araç sonucu: base64 görsel ayrı "image" içeriği olur ve metinden çıkar; hata isError
+	var img_res := AISidebarMcpProtocol.to_call_result({"success": true, "data": {"path": "user://a.png", "base64": "QUJD"}, "message": "ok"})
+	var err_res := AISidebarMcpProtocol.to_call_result({"success": false, "error": {"code": "X", "message": "boom"}})
+	var content: Array = img_res["content"]
+	if content.size() == 2 and content[0]["type"] == "text" and not str(content[0]["text"]).contains("QUJD") and str(content[0]["text"]).contains("user://a.png") \
+			and content[1] == {"type": "image", "data": "QUJD", "mimeType": "image/png"} and img_res["isError"] == false and err_res["isError"] == true:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T4 (call result content) failed: " + str(img_res))
+
+	# 5. Gerçek loopback TCP: kimlik / köken / metot / yol reddi, initialize, bildirim ve araç çağrısı
+	var server := AISidebarMcpBridgeServer.new()
+	var port := 0
+	for p in [46570, 46571, 46572, 46573]:
+		if server.start(p, TOKEN) == OK:
+			port = p
+			break
+	var auth := {"Authorization": "Bearer " + TOKEN}
+	var r_noauth := _roundtrip(server, _req("POST", "/mcp", _rpc("ping"), {}))
+	var r_badauth := _roundtrip(server, _req("POST", "/mcp", _rpc("ping"), {"Authorization": "Bearer nope"}))
+	var r_origin := _roundtrip(server, _req("POST", "/mcp", _rpc("ping"), {"Authorization": "Bearer " + TOKEN, "Origin": "http://evil.example"}))
+	var r_get := _roundtrip(server, _req("GET", "/mcp", "", auth))
+	var r_path := _roundtrip(server, _req("POST", "/other", _rpc("ping"), auth))
+	var r_parse := _roundtrip(server, _req("POST", "/mcp", "{not json", auth))
+	var r_init := _roundtrip(server, _req("POST", "/mcp", _rpc("initialize", {"protocolVersion": "2025-06-18"}), auth))
+	var r_notif := _roundtrip(server, _req("POST", "/mcp", _rpc("notifications/initialized", {}, null), auth))
+	var r_call := _roundtrip(server, _req("POST", "/mcp", _rpc("tools/call", {"name": "analyze_project", "arguments": {}}, 9), auth))
+	server.stop()
+	var init_json: Variant = JSON.parse_string(str(r_init["body"]))
+	var call_json: Variant = JSON.parse_string(str(r_call["body"]))
+	# id tel üzerinde tam sayı olarak dönmeli ("id":9, "9.0" değil)
+	var call_ok: bool = call_json is Dictionary and str(r_call["body"]).contains("\"id\":9,") and call_json["result"]["isError"] == false \
+			and str(call_json["result"]["content"][0]["text"]).contains("project_name")
+	var statuses := [r_noauth["status"], r_badauth["status"], r_origin["status"], r_get["status"], r_path["status"], r_parse["status"], r_init["status"], r_notif["status"], r_call["status"]]
+	if port > 0 and statuses == [401, 401, 403, 405, 404, 400, 200, 202, 200] \
+			and init_json is Dictionary and init_json["result"]["serverInfo"]["name"] == "godot-ai-sidebar" and call_ok and not server.is_running():
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T5 (loopback end-to-end) failed: port=%d statuses=%s call=%s" % [port, str(statuses), str(r_call["body"]).left(200)])
+	server.free()
+
+	return {"name": "McpBridgeTests", "passed": passed, "failed": failed, "errors": errors}

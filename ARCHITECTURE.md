@@ -241,6 +241,26 @@ graph LR
 * **[`diagnosis_context.gd`](addons/godot_sidebar_ai/core/state/diagnosis_context.gd):** Editör durumu, runtime logları, görsel gözlem ve son değişiklikleri birleştirerek teşhis bağlamı kurar.
 * **[`editor_state_snapshot.gd`](addons/godot_sidebar_ai/core/state/editor_state_snapshot.gd) / [`context_collector.gd`](addons/godot_sidebar_ai/core/state/context_collector.gd):** Aktif sahne, seçili düğüm ve açık script gibi editör durumunu toplayıp prompt bağlamına (grounding) ekler.
 
+### 6. 🔌 Dış Ajan Köprüsü (`core/bridge/`, v3.0)
+
+Claude Code, Cursor, Codex gibi dış ajanlar eklentinin araçlarını **MCP (Model Context Protocol)** üzerinden kullanır. Köprü editör içinde çalışır, ayrı süreç yoktur; `plugin.gd` kurar, varsayılan kapalıdır, sidebar'da `/mcp on` ile açılır.
+
+```text
+Claude Code / Cursor / Codex  ──MCP Streamable HTTP (POST /mcp, Bearer token)──▶  McpBridgeServer
+                                                                                     │ route
+                                                                                     ▼
+                                                                              McpProtocol (izin listesi)
+                                                                                     │
+                                                                                     ▼
+                                                              ToolManager → PermissionPolicy / PathPolicy / doğrulama → Godot
+```
+
+* **[`mcp_bridge_server.gd`](addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd):** Editör düğümü; yalnız `127.0.0.1`'de `TCPServer`, istek başına bir bağlantı. Bearer token zorunlu, `Origin` başlıklı (tarayıcı) istek 403, yalnız `POST /mcp`. Araç çağrılarını yürütür (async araçlar ve köprüye özgü `sync_project` dahil). Port / token / açık-kapalı `config.json`'da kalıcı.
+* **[`mcp_protocol.gd`](addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd):** JSON-RPC / MCP yönlendirmesi (`initialize`, `ping`, `tools/list`, `tools/call`, bildirimler). Dışarı yalnız `EXPOSED_TOOLS` izin listesi açılır (okuma, doğrulama, oyun kontrolü, runtime gözlemi, ekran görüntüleri); sahne / dosya değiştiren araçlar v3.0'da kapalıdır. Görsel sonuçlar MCP `image` içeriği olarak döner.
+* **[`mcp_http.gd`](addons/godot_sidebar_ai/core/bridge/mcp_http.gd):** Saf HTTP/1.1 ayrıştırma ve yanıt üretimi (Content-Length gövde, `Connection: close`).
+
+**İlke:** Köprü ikinci bir arka kapı değildir. Dış ajanın her çağrısı iç ajanınkiyle aynı `ToolManager` → PermissionPolicy → PathPolicy → doğrulama hattından geçer. Dış ajan dosyaları kendi araçlarıyla yazar, sonra `sync_project` ile editöre taratır.
+
 ---
 
 ## 🧪 Test Mimarisi

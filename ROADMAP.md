@@ -80,7 +80,20 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 - [ ] **AnimationPlayer Araçları:** Kodla animasyon anahtarları ve blend tree kurulumu.
 - [ ] **Shader Composer:** Canlı `.gdshader` üretimi, hata denetimi ve görsel materyal oluşturma.
 - [ ] **Headless CI/CD Agent:** CLI üzerinden otonom oyun testi ve kod refaktörü.
-- [ ] **Editör köprüsü + CLI / MCP:** Eklenti `127.0.0.1` üzerinde token korumalı yerel bir köprü açar; ince bir CLI ve bir MCP sunucusu (Claude Code, Copilot CLI vb. için) ajan olaylarını ve araçları bu köprüden kullanır. Undo/Redo editörde kalır. Önkoşul: Refactor Faz 2 (AgentRunner).
+- [x] **Editör köprüsü + MCP:** v3.0'a taşındı (aşağıda).
+
+---
+
+## 📍 v3.x: Dış Ajan Platformu (Başladı 🚧, 2026-09-26)
+
+Hedef: Claude Code gibi dış ajanlar (orkestratör) Godot editörünü eklentinin güvenli araç katmanı üzerinden kullanır; eklenti Godot'un "elleri ve gözleri" olur, terminal / web / git dış ajanda kalır. Sıra: önce köprü, sonra iş akışı (skills), en son gerçek ihtiyaç çıkarsa kendi orkestratörümüz.
+
+- [x] **v3.0 köprü MVP:** Editör içinde MCP Streamable HTTP uç noktası (`core/bridge/`), yalnız `127.0.0.1`, Bearer token, tarayıcı kökenli istek reddi, `/mcp on|off` komutu ve hazır `claude mcp add` komutu. Okuma, `validate_script`, `sync_project`, oyunu çalıştırma / durdurma, runtime hataları ve ağacı, ekran görüntüleri (21 araç). Her çağrı `ToolManager` + PermissionPolicy + PathPolicy'den geçer.
+- [ ] **v3.0 gerçek Claude Code doğrulaması:** Kullanıcı terminalinde `claude mcp add …` + bir oyun projesinde okuma → yazma → `sync_project` → `play_game` → `get_runtime_errors` → `take_runtime_screenshot` döngüsü.
+- [ ] **v3.0.x sahne araçları:** `add_node`, `set_node_property`, `instantiate_scene`, `save_scene` vb. dış ajana açılır; dış ajan için onay politikası (Full Auto'da bile değiştirici araçlarda editörde onay seçeneği) ve tek aktif yazıcı kuralı.
+- [ ] **v3.1 Godot geliştirme skill'leri:** Claude Code için `SKILL.md` paketleri (özellik geliştirme, hata ayıklama, sahne yazımı, runtime doğrulama, proje başlatma) ve oyun reposunda `GAME_SPEC.md` / `DECISIONS.md` / `KNOWN_ISSUES.md` düzeni.
+- [ ] **v3.2 benchmark:** Claude Code + köprüye tek istemle küçük bir grand strateji dikey kesiti (province haritası, 3 ülke, seçim, zaman akışı, basit ekonomi / savaş); eksikler ölçülür.
+- [ ] **Sonra:** Claude Code plugin paketi (MCP + skills), diğer MCP istemcileri (Cursor, Codex, Antigravity), gerekirse kendi orkestratörümüz ve alt ajanlar (Faz 10).
 
 ---
 

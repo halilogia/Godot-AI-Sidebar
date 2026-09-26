@@ -35,8 +35,9 @@
    * Godot CLI ortamında global `class_name` dizini belleğe yüklenmediği için tüm scriptler birbirini **`const MyClass = preload("res://...")`** ile bağlar.
 4. **Cerrahi Dosya Düzenleme (`replace_file_content`):**
    * Büyük dosyalarda gereksiz tam dosya yazımı yerine hedef blok cerrahi olarak değiştirilir ve diske yazılmadan önce `VerificationPipeline` ile doğrulanır.
-5. **Arayüz metni i18n'den geçer:** `ui/` altında kullanıcıya görünen her metin `AISidebarI18n.get_text("anahtar", {param})` ile alınır; anahtar iki dile birlikte eklenir (`addons/godot_sidebar_ai/i18n/tr.json`, `en.json`; çoğul için `_one` / `_other`). `tests/test_i18n.gd` sabit `.text` / `.tooltip_text` / `.placeholder_text` atamasını, dil eşitsizliğini ve tanımsız anahtarı kırmızı yapar. Bilinçli istisna yalnızca satır sonunda `# i18n-ignore: <neden>` ile.
-6. **Context Compaction:**
+5. **Dış ajan köprüsü arka kapı değildir:** `core/bridge/` üzerinden gelen her MCP çağrısı `ToolManager` → PermissionPolicy → PathPolicy → doğrulama hattından geçer; `EditorInterface`'e doğrudan erişmez. Dışarı açılan araçlar `AISidebarMcpProtocol.EXPOSED_TOOLS` izin listesindedir; listeye eklenen her araç `tests/test_mcp_bridge.gd` ile ve güvenlik etkisi (değiştirici mi, onay gerekir mi) düşünülerek eklenir. Köprü yalnız `127.0.0.1`'de, token ile çalışır; token sohbete / loglara yazılmaz.
+6. **Arayüz metni i18n'den geçer:** `ui/` altında kullanıcıya görünen her metin `AISidebarI18n.get_text("anahtar", {param})` ile alınır; anahtar iki dile birlikte eklenir (`addons/godot_sidebar_ai/i18n/tr.json`, `en.json`; çoğul için `_one` / `_other`). `tests/test_i18n.gd` sabit `.text` / `.tooltip_text` / `.placeholder_text` atamasını, dil eşitsizliğini ve tanımsız anahtarı kırmızı yapar. Bilinçli istisna yalnızca satır sonunda `# i18n-ignore: <neden>` ile.
+7. **Context Compaction:**
    * Çok adımlı görevlerde 2 adımdan eski araç çıktıları `AISidebarContextCompactor` ile 1-2 satırlık özetlere dönüştürülür; son 2 araç (`keep_recent_tools: 2`) tam korunur.
 
 ---
