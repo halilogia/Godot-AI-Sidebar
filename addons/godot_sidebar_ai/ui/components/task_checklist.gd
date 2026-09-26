@@ -9,6 +9,7 @@ class_name AISidebarTaskChecklist
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
@@ -145,7 +146,7 @@ func _ready() -> void:
 
 func _setup_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_SM))
+	theme_type_variation = AISidebarThemeBuilder.LIST_ITEM
 
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -161,7 +162,7 @@ func _setup_ui() -> void:
 	# Tek satır: dar dock'ta "…" ile kesilir, tam metin tooltip'te.
 	_header_btn.clip_text = true
 	_header_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
+	_header_btn.theme_type_variation = AISidebarThemeBuilder.EXPAND_HEADER
 	_header_btn.pressed.connect(func():
 		_user_toggled = true
 		set_expanded(not is_expanded)
@@ -228,7 +229,7 @@ func _render_row(idx: int) -> void:
 	title_lbl.focus_mode = Control.FOCUS_CLICK
 	title_lbl.deselect_on_focus_loss_enabled = false
 	title_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	title_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
+	title_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
 	title_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	row.add_child(title_lbl)
 	entry["title"] = title_lbl

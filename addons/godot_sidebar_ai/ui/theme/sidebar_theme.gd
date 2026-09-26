@@ -16,6 +16,15 @@ static func fs(size: int) -> int:
 static func px(value: int) -> int:
 	return roundi(float(value) * ui_scale)
 
+static var _mono_font: SystemFont = null
+
+## İşletim sisteminin eş genişlikli yazı tipi (Windows / macOS / Linux sırasıyla denenir).
+static func mono_font() -> Font:
+	if _mono_font == null:
+		_mono_font = SystemFont.new()
+		_mono_font.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "JetBrains Mono", "SF Mono", "Menlo", "DejaVu Sans Mono", "Liberation Mono", "monospace"])
+	return _mono_font
+
 ## BBCode [color=...] için belirteç rengi ("#rrggbb"); metin içinde sabit onaltılık renk yazılmaz.
 static func bb(color: Color) -> String:
 	return "#" + color.to_html(false)

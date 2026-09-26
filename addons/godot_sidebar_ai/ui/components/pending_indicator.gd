@@ -6,6 +6,7 @@ extends MarginContainer
 ## Yalnızca gerçekten bilinen durumu yazar; ağ aşaması tahmin edilmez.
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
@@ -45,16 +46,14 @@ func _init() -> void:
 	row.add_child(texts)
 
 	_label = Label.new()
-	_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+	_label.theme_type_variation = AISidebarThemeBuilder.HINT
 	texts.add_child(_label)
 
 	_hint = Label.new()
 	_hint.visible = false
 	_hint.text = AISidebarI18n.get_text("pending_slow_hint")
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_MICRO))
-	_hint.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	_hint.theme_type_variation = AISidebarThemeBuilder.MICRO
 	texts.add_child(_hint)
 
 	set_phase(AISidebarI18n.get_text("pending_waiting"), 0)

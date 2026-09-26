@@ -1,6 +1,7 @@
 @tool
 extends RefCounted
 
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
@@ -162,11 +163,14 @@ static func run() -> Dictionary:
 	# Test 9: MessageBubble Tema Entegrasyonu (User / Assistant / Command)
 	var u_bubble = AISidebarMessageBubble.new("user", "Hello AI")
 	u_bubble._ready()
-	var u_panel = u_bubble.get_theme_stylebox("panel")
 	var a_bubble = AISidebarMessageBubble.new("assistant", "Hello User")
 	a_bubble._ready()
-	var a_panel = a_bubble.get_theme_stylebox("panel")
-	if u_panel != null and a_panel != null and u_bubble._role_label.get_theme_color("font_color") == AISidebarTheme.COLOR_ACCENT:
+	# Görünüm tema varyasyonundan: balon ve rol etiketi doğru varyasyonu alır, tema onları çözer.
+	var bubble_theme := AISidebarThemeBuilder.build()
+	var u_panel = bubble_theme.get_stylebox("panel", u_bubble.theme_type_variation)
+	var a_panel = bubble_theme.get_stylebox("panel", a_bubble.theme_type_variation)
+	var role_color := bubble_theme.get_color("font_color", u_bubble._role_label.theme_type_variation)
+	if u_bubble.theme_type_variation == AISidebarThemeBuilder.BUBBLE_USER and a_bubble.theme_type_variation == AISidebarThemeBuilder.BUBBLE_ASSISTANT and u_panel is StyleBoxFlat and a_panel is StyleBoxFlat and role_color == AISidebarTheme.COLOR_ACCENT:
 		passed += 1
 	else:
 		failed += 1
@@ -179,8 +183,10 @@ static func run() -> Dictionary:
 	if dock_scene:
 		var dock = dock_scene.instantiate()
 		dock._ready()
-		var root_panel = dock.get_theme_stylebox("panel")
-		var is_themed = root_panel is StyleBoxFlat and dock.title_label.get_theme_font_size("font_size") == AISidebarTheme.FONT_SIZE_HEADER and dock.send_btn.has_theme_stylebox_override("normal")
+		# Tema köke verilir; iskelet düğümleri varyasyonlarını alır ve tema onları çözer.
+		var root_panel = dock.theme.get_stylebox("panel", dock.theme_type_variation) if dock.theme else null
+		var title_size = dock.theme.get_font_size("font_size", dock.title_label.theme_type_variation) if dock.theme else -1
+		var is_themed = root_panel is StyleBoxFlat and title_size == AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_HEADER) and dock.send_btn.theme_type_variation == AISidebarThemeBuilder.SEND_BUTTON
 		if is_themed:
 			passed += 1
 		else:

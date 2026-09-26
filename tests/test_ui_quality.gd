@@ -10,6 +10,9 @@ extends RefCounted
 ##      literal_spacing     add_theme_constant_override("separation", 6)         → AISidebarTheme.px(SPACE_*)
 ##      unscaled_spacing    ..., AISidebarTheme.SPACE_SM)                         → AISidebarTheme.px(...)
 ##      literal_icon_size   apply_tinted_icon(b, "x", c, 12)                      → AISidebarTheme.ICON_SIZE_*
+##      font_size_override  add_theme_font_size_override(...) herhangi biri        → tip varyasyonu (yazı boyu temada)
+##      stylebox_override   add_theme_stylebox_override(...) herhangi biri         → tip varyasyonu (istisna: veriden
+##                          gelen renkli haplar, BASELINE'da gerekçesiyle)
 ##   T2 Ayarlar sayfaları ortak setle (settings_ui_kit.gd) kurulur, kendi yazı boyunu seçmez ve açılır
 ##      listeyi setten alır (en uzun seçeneğe göre genişleyip pencereyi ekran dışına itmesin).
 ##   T3 Sayaç kendini doğrular.
@@ -37,8 +40,13 @@ const VARIATIONS: Array[String] = [
 ]
 const KIT := "res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd"
 
-## Standarttan önce yazılmış dosyaların izinli sayıları; yalnız aşağı çekilir. Tüm arayüz temizlendi: boş.
-const BASELINE := {}
+## İzinli sayılar; yalnız aşağı çekilir. Kalan istisnalar veriden gelen renkli haplardır (rengi moda /
+## riske / kapsama göre çalışma anında seçilir, tema varyasyonu olamaz).
+const BASELINE := {
+	"components/approval_card.gd": {"stylebox_override": 1},
+	"components/settings_ui_kit.gd": {"stylebox_override": 1},
+	"controllers/model_bar_controller.gd": {"stylebox_override": 3},
+}
 
 const PATTERNS := {
 	"fixed_font_size": "font_size\"\\s*,\\s*\\d",
@@ -47,7 +55,9 @@ const PATTERNS := {
 	"bbcode_hex_color": "\\[color=#[0-9a-fA-F]",
 	"literal_spacing": "constant_override\\(\"[a-z_]+\",\\s*\\d",
 	"unscaled_spacing": "constant_override\\(\"[a-z_]+\",\\s*AISidebarTheme\\.SPACE",
-	"literal_icon_size": "(?:tinted_icon|make_icon_rect|set_rect_icon|StatusIcon\\.new|get_status_icon)\\([^)]*[ (]\\d+\\)",
+	"font_size_override": "add_theme_font_size_override\\(",
+	"stylebox_override": "add_theme_stylebox_override\\(",
+	"literal_icon_size":"(?:tinted_icon|make_icon_rect|set_rect_icon|StatusIcon\\.new|get_status_icon)\\([^)]*[ (]\\d+\\)",
 }
 
 const SETTINGS_PAGES: Array[String] = [
@@ -138,11 +148,14 @@ static func run() -> Dictionary:
 		"c = AISidebarTheme.bb(AISidebarTheme.COLOR_ACCENT)",
 		"AISidebarIconHelper.apply_tinted_icon(b, \"x\", AISidebarTheme.COLOR_ERROR, 12)",
 		"AISidebarIconHelper.apply_tinted_icon(b, \"x\", AISidebarTheme.COLOR_ERROR, AISidebarTheme.ICON_SIZE_SM)",
+		"p.add_theme_stylebox_override(\"panel\", s)",
 		"# Color(1, 1, 1)",
 	])))
+	# Yazı boyu geçersiz kılması iki örnek satırda geçer; her tür en az bir kez yakalanır.
+	var expected := {"font_size_override": 2}
 	var all_one := true
 	for kind: String in PATTERNS.keys():
-		if int(probe[kind]) != 1:
+		if int(probe[kind]) != int(expected.get(kind, 1)):
 			all_one = false
 	if all_one:
 		passed += 1

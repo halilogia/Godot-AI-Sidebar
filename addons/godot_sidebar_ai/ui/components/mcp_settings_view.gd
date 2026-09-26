@@ -45,11 +45,13 @@ func _init() -> void:
 
 	var connect := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("mcp_settings_connect_title"), AISidebarI18n.get_text("mcp_settings_connect_hint"))
 	_connect_card = connect.get_parent() as Control
-	_command = AISidebarSettingsUi.hint_label("")
+	var command_box := PanelContainer.new()
+	command_box.theme_type_variation = AISidebarThemeBuilder.CODE_BOX
+	connect.add_child(command_box)
+	_command = AISidebarSettingsUi.body_label("")
 	_command.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	_command.theme_type_variation = AISidebarThemeBuilder.BODY
-	_command.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
-	connect.add_child(_command)
+	_command.add_theme_font_override("font", AISidebarTheme.mono_font())
+	command_box.add_child(_command)
 	var copy_row := AISidebarSettingsUi.row(connect)
 	copy_row.add_child(AISidebarSettingsUi.spacer())
 	copy_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("mcp_settings_copy"), _on_copy))

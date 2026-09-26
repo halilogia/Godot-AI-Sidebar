@@ -10,6 +10,7 @@ class_name AISidebarReasoningCard
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 ## Chat alanını ele geçirmemesi için display sınırı.
@@ -71,7 +72,7 @@ func _ready() -> void:
 
 func _setup_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
+	theme_type_variation = AISidebarThemeBuilder.CARD_COMPACT
 
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -84,8 +85,7 @@ func _setup_ui() -> void:
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
-	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	_header_btn.theme_type_variation = AISidebarThemeBuilder.EXPAND_HEADER_SMALL
 	_header_btn.pressed.connect(func(): set_expanded(not is_expanded))
 	_vbox.add_child(_header_btn)
 
@@ -100,8 +100,7 @@ func _setup_ui() -> void:
 	_content_lbl.focus_mode = Control.FOCUS_CLICK
 	_content_lbl.deselect_on_focus_loss_enabled = false
 	_content_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	_content_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	_content_lbl.add_theme_color_override("default_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	_content_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_MUTED
 	_content_lbl.visible = is_expanded
 	_content_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_lbl)

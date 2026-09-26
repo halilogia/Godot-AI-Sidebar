@@ -8,6 +8,7 @@ class_name AISidebarScreenshotCard
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
@@ -42,7 +43,7 @@ func status_text() -> String:
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
+	theme_type_variation = AISidebarThemeBuilder.CARD_COMPACT
 
 	var hbox = HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -82,8 +83,7 @@ func _ready() -> void:
 		dims = " (%dx%d)" % [vision.width, vision.height]
 	src_lbl.text = source_label(source_kind) + dims
 	src_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	src_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
-	src_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	src_lbl.theme_type_variation = AISidebarThemeBuilder.BODY
 	src_row.add_child(src_lbl)
 
 	var st_color = AISidebarTheme.COLOR_SUCCESS if sent_to_model else AISidebarTheme.COLOR_WARNING
@@ -97,7 +97,7 @@ func _ready() -> void:
 	var st_lbl = Label.new()
 	st_lbl.text = status_text()
 	st_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	st_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
+	st_lbl.theme_type_variation = AISidebarThemeBuilder.HINT
 	st_lbl.add_theme_color_override("font_color", st_color)
 	st_row.add_child(st_lbl)
 

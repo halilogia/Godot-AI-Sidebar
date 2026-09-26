@@ -8,6 +8,7 @@ extends RefCounted
 signal send_requested
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
@@ -45,7 +46,7 @@ func setup_attachment_ui() -> void:
 	attachment_container = PanelContainer.new()
 	attachment_container.name = "AttachmentContainer"
 	attachment_container.visible = false
-	attachment_container.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XXS))
+	attachment_container.theme_type_variation = AISidebarThemeBuilder.CARD_COMPACT
 
 	var hbox = HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
@@ -58,8 +59,7 @@ func setup_attachment_ui() -> void:
 
 	_attachment_label = Label.new()
 	_attachment_label.text = AISidebarI18n.get_text("attach_clipboard_image")
-	_attachment_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	_attachment_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_attachment_label.theme_type_variation = AISidebarThemeBuilder.LABEL_SMALL
 	_attachment_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_attachment_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_attachment_label.clip_text = true
@@ -69,8 +69,7 @@ func setup_attachment_ui() -> void:
 	AISidebarIconHelper.apply_tinted_icon(_attachment_remove_btn, "x", AISidebarTheme.COLOR_ERROR)
 	_attachment_remove_btn.flat = true
 	_attachment_remove_btn.focus_mode = Control.FOCUS_NONE
-	_attachment_remove_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	_attachment_remove_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
+	_attachment_remove_btn.theme_type_variation = AISidebarThemeBuilder.DANGER_LINK_BUTTON
 	_attachment_remove_btn.tooltip_text = AISidebarI18n.get_text("attach_remove_tooltip")
 	_attachment_remove_btn.pressed.connect(clear_attached_image)
 	hbox.add_child(_attachment_remove_btn)

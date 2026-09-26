@@ -44,22 +44,19 @@ func _build_content() -> void:
 	var title_lbl = Label.new()
 	title_lbl.text = AISidebarI18n.get_text("welcome_title")
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_HEADER))
-	title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	title_lbl.theme_type_variation = AISidebarThemeBuilder.HEADER_TITLE
 	header.add_child(title_lbl)
 	
 	var badge_lbl = Label.new()
 	badge_lbl.text = AISidebarI18n.get_text("status_ready")
-	badge_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	badge_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
+	badge_lbl.theme_type_variation = AISidebarThemeBuilder.STATUS_TEXT
 	header.add_child(badge_lbl)
 	
 	# Açıklama
 	var desc_lbl = Label.new()
 	desc_lbl.text = AISidebarI18n.get_text("welcome_desc")
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	desc_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	desc_lbl.theme_type_variation = AISidebarThemeBuilder.HINT_MUTED
 	_vbox.add_child(desc_lbl)
 	
 	# Öneri Çipleri (Suggestion Chips)
@@ -83,12 +80,7 @@ func _build_content() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.focus_mode = Control.FOCUS_NONE
-		btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-		btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
-		btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
-		btn.add_theme_stylebox_override("normal", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
-		btn.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XS))
-		btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_card_active_style(AISidebarTheme.SPACE_XS))
+		btn.theme_type_variation = AISidebarThemeBuilder.CHIP_BUTTON
 		var p_txt = s["prompt"]
 		btn.pressed.connect(func(): prompt_selected.emit(p_txt))
 		chips_vbox.add_child(btn)

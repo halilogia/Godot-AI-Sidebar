@@ -17,7 +17,7 @@ var _clear_btn: Button = null
 func _init() -> void:
 	name = "QueueContainer"
 	visible = false
-	add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
+	theme_type_variation = AISidebarThemeBuilder.CARD_COMPACT
 
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
@@ -25,8 +25,7 @@ func _init() -> void:
 	var header = HBoxContainer.new()
 	_title_label = Label.new()
 	_title_label.text = AISidebarI18n.get_text("queue_title", {"count": 0})
-	_title_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	_title_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_title_label.theme_type_variation = AISidebarThemeBuilder.LABEL_SMALL
 	header.add_child(_title_label)
 
 	var spacer = Control.new()
@@ -37,10 +36,7 @@ func _init() -> void:
 	_clear_btn.text = AISidebarI18n.get_text("btn_clear_all")
 	_clear_btn.flat = true
 	_clear_btn.focus_mode = Control.FOCUS_NONE
-	_clear_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
-	_clear_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
-	_clear_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	_clear_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
+	_clear_btn.theme_type_variation = AISidebarThemeBuilder.DANGER_LINK_BUTTON
 	_clear_btn.pressed.connect(clear_all)
 	header.add_child(_clear_btn)
 	vbox.add_child(header)
@@ -126,7 +122,7 @@ func _refresh() -> void:
 		AISidebarIconHelper.apply_tinted_icon(cancel_btn, "x", AISidebarTheme.COLOR_ERROR, AISidebarTheme.ICON_SIZE_SM)
 		cancel_btn.flat = true
 		cancel_btn.focus_mode = Control.FOCUS_NONE
-		cancel_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
+		cancel_btn.theme_type_variation = AISidebarThemeBuilder.DANGER_LINK_BUTTON
 		cancel_btn.tooltip_text = AISidebarI18n.get_text("queue_cancel_tooltip")
 		var item_id = item.get("id", "")
 		cancel_btn.pressed.connect(func(): cancel(item_id))

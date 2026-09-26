@@ -41,19 +41,9 @@ static func _compile() -> void:
 ## Markdown gösteren etikette tüm yazı stillerini aynı boyuta sabitler. Yalnızca
 ## normal_font_size ayarlanırsa kalın / italik / kod tema varsayılanında (daha büyük) kalır.
 ## Kod blokları için eş genişlikli yazı tipi de burada atanır (ağaç / hizalı çıktılar bozulmasın).
-static func apply_font_sizes(label: RichTextLabel, size: int) -> void:
-	for key in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
-		label.add_theme_font_size_override(key, AISidebarTheme.fs(size))
-	label.add_theme_font_override("mono_font", mono_font())
-
-static var _mono_font: SystemFont = null
-
-## İşletim sisteminin eş genişlikli yazı tipi (Windows / macOS / Linux sırasıyla denenir).
+## Eş genişlikli yazı tipi (tema belirteci; kod blokları ve yollar).
 static func mono_font() -> Font:
-	if _mono_font == null:
-		_mono_font = SystemFont.new()
-		_mono_font.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "JetBrains Mono", "SF Mono", "Menlo", "DejaVu Sans Mono", "Liberation Mono", "monospace"])
-	return _mono_font
+	return AISidebarTheme.mono_font()
 
 ## Köşeli parantezleri RichTextLabel kaçış etiketlerine çevirir.
 static func escape_bbcode(text: String) -> String:

@@ -80,7 +80,6 @@ func _setup_ui() -> void:
 	_plan_lbl.deselect_on_focus_loss_enabled = false
 	_plan_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	_plan_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
-	AISidebarMarkdownRenderer.apply_font_sizes(_plan_lbl, AISidebarTheme.FONT_SIZE_BODY)
 	_plan_lbl.text = AISidebarMarkdownRenderer.to_bbcode(_build_display_text())
 	_vbox.add_child(_plan_lbl)
 

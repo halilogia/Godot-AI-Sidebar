@@ -37,7 +37,6 @@ func _build() -> void:
 	title = AISidebarI18n.get_text("help_title")
 	ok_button_text = AISidebarI18n.get_text("help_close")
 	theme = AISidebarSettingsUi.form_theme()
-	add_theme_stylebox_override("panel", AISidebarTheme.create_dialog_style())
 	get_ok_button().theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	if _scroll != null:
 		_scroll.queue_free()

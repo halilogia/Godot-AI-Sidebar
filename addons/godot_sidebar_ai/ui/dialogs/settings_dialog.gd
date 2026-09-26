@@ -58,7 +58,6 @@ func _build() -> void:
 	title = AISidebarI18n.get_text("settings_title")
 	ok_button_text = AISidebarI18n.get_text("btn_save_close")
 	theme = AISidebarSettingsUi.form_theme()
-	add_theme_stylebox_override("panel", AISidebarTheme.create_dialog_style())
 	get_ok_button().theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	if _root != null:
 		_root.queue_free()

@@ -10,6 +10,7 @@ signal copy_code_requested(code_text: String)
 
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
@@ -209,56 +210,51 @@ static func _drop_incomplete_fence_tail(txt: String) -> String:
 	return txt
 
 func _setup_ui() -> void:
-	var style: StyleBoxFlat
 	if role == "user":
-		style = AISidebarTheme.create_bubble_user_style()
+		theme_type_variation = AISidebarThemeBuilder.BUBBLE_USER
 	elif role == "command" or role == "slash_command":
-		style = AISidebarTheme.create_bubble_command_style()
+		theme_type_variation = AISidebarThemeBuilder.BUBBLE_COMMAND
 	else:
-		style = AISidebarTheme.create_bubble_assistant_style()
-		
+		theme_type_variation = AISidebarThemeBuilder.BUBBLE_ASSISTANT
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", style)
-	
+
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	add_child(_vbox)
-	
+
 	# Header
 	_header_bar = HBoxContainer.new()
 	_header_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	_vbox.add_child(_header_bar)
-	
+
 	_role_label = Label.new()
 	_role_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_role_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_role_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	
+
 	if role == "user":
 		_role_label.text = AISidebarI18n.get_text("sender_user")
-		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_ACCENT)
+		_role_label.theme_type_variation = AISidebarThemeBuilder.ROLE_USER
 	elif role == "command" or role == "slash_command":
 		_role_label.text = AISidebarI18n.get_text("sender_slash")
-		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_ROLE_COMMAND)
+		_role_label.theme_type_variation = AISidebarThemeBuilder.ROLE_COMMAND
 	else:
 		_role_label.text = AISidebarI18n.get_text("sender_assistant")
-		_role_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
-		
+		_role_label.theme_type_variation = AISidebarThemeBuilder.ROLE_ASSISTANT
+
 	_header_bar.add_child(_role_label)
-	
+
 	_copy_btn = Button.new()
 	_copy_btn.flat = true
 	_copy_btn.focus_mode = Control.FOCUS_NONE
 	_copy_btn.tooltip_text = AISidebarI18n.get_text("tooltip_copy_text")
-	_copy_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
-	_copy_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
+	_copy_btn.theme_type_variation = AISidebarThemeBuilder.ICON_BUTTON
 	AISidebarIconHelper.apply_icon(_copy_btn, "copy")
 	_copy_btn.pressed.connect(_on_copy_pressed)
 	_header_bar.add_child(_copy_btn)
-	
+
 	# İçerik
 	_content_label = RichTextLabel.new()
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -271,11 +267,10 @@ func _setup_ui() -> void:
 	_content_label.focus_mode = Control.FOCUS_CLICK
 	_content_label.deselect_on_focus_loss_enabled = false
 	_content_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	AISidebarMarkdownRenderer.apply_font_sizes(_content_label, AISidebarTheme.FONT_SIZE_BODY)
-	_content_label.add_theme_color_override("default_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_content_label.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
 	_content_label.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_content_label)
-	
+
 	# Görsel Ekleri (Attached Images)
 	if vision_inputs.size() > 0:
 		for vi in vision_inputs:
@@ -306,7 +301,7 @@ func _on_copy_pressed() -> void:
 	var t = get_tree()
 	if t:
 		var timer = t.create_timer(1.2)
-		timer.timeout.connect(func(): 
+		timer.timeout.connect(func():
 			if is_instance_valid(_copy_btn):
 				AISidebarIconHelper.apply_icon(_copy_btn, "copy")
 		)
@@ -314,7 +309,7 @@ func _on_copy_pressed() -> void:
 func _render_content() -> void:
 	if not _content_label:
 		return
-		
+
 	var formatted = _format_text_with_links_and_code(text_content)
 	_content_label.text = formatted
 
@@ -326,7 +321,7 @@ func _format_text_with_links_and_code(raw: String) -> String:
 	var regex = RegEx.new()
 	regex.compile("(res://[a-zA-Z0-9_/\\.\\-]+)")
 	result = regex.sub(result, "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_INFO_TEXT) + "][url=file:$1]$1[/url][/color]", true)
-	
+
 	# Node mention'larını vurgula (@Node:...)
 	var node_regex = RegEx.new()
 	node_regex.compile("(@Node:[a-zA-Z0-9_/\\.\\-]+)")

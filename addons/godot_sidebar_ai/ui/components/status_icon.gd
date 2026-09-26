@@ -6,6 +6,7 @@ extends HBoxContainer
 ## yalnızca görünüm eşlenir. Tanınmayan glif metin olarak görünür (sessiz kayıp yok).
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 ## Gösterilen glif (veri).
@@ -26,7 +27,7 @@ func _init(p_size: int = AISidebarIconHelper.STATUS_ICON_SIZE) -> void:
 	_fallback = Label.new()
 	_fallback.mouse_filter = Control.MOUSE_FILTER_PASS
 	_fallback.visible = false
-	_fallback.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
+	_fallback.theme_type_variation = AISidebarThemeBuilder.BODY
 	add_child(_fallback)
 
 ## Tanınmayan glifte metin rengi fallback_color olur.

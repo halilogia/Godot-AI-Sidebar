@@ -4,6 +4,7 @@ extends RefCounted
 ## Markdown → BBCode dönüştürücü testleri: biçimler, BBCode enjeksiyonu, dosya yolları,
 ## kod içinin korunması ve balon / plan kartı entegrasyonu.
 
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const R = preload("res://addons/godot_sidebar_ai/ui/presenters/markdown_renderer.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarPlanCard = preload("res://addons/godot_sidebar_ai/ui/components/plan_card.gd")
@@ -85,15 +86,17 @@ static func run() -> Dictionary:
 	# 7. Kalın / italik / kod gövde metniyle aynı boyutta (tema varsayılanına düşmez)
 	var bb = AISidebarMessageBubble.new("assistant", "**a** `b`")
 	bb._ready()
+	# Boylar tema varyasyonundan gelir (AISidebarRichBody): bütün yazı türleri aynı boyda.
 	var lbl = bb._content_label
-	var same = true
+	var rich_theme := AISidebarThemeBuilder.build()
+	var same = lbl.theme_type_variation == AISidebarThemeBuilder.RICH_BODY
 	for key in ["bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
-		if not lbl.has_theme_font_size_override(key) or lbl.get_theme_font_size(key) != lbl.get_theme_font_size("normal_font_size"):
+		if rich_theme.get_font_size(key, AISidebarThemeBuilder.RICH_BODY) != rich_theme.get_font_size("normal_font_size", AISidebarThemeBuilder.RICH_BODY):
 			same = false
 	bb.free()
 	var card7 = AISidebarPlanCard.new(AISidebarImplementationPlan.new({"goal": "G", "steps": ["s"], "verification": ["v"]}))
 	card7._ready()
-	var same_plan = card7._plan_lbl.get_theme_font_size("bold_font_size") == card7._plan_lbl.get_theme_font_size("normal_font_size")
+	var same_plan = card7._plan_lbl.theme_type_variation == AISidebarThemeBuilder.RICH_BODY
 	card7.free()
 	if same and same_plan:
 		passed += 1
@@ -106,7 +109,7 @@ static func run() -> Dictionary:
 	var b8 = R.to_bbcode("### Tree\n```\nMain3D (Node3D)\n├── Ground\n```")
 	var bub8 = AISidebarMessageBubble.new("assistant", "x")
 	bub8._ready()
-	var mono_ok = bub8._content_label.has_theme_font_override("mono_font") and bub8._content_label.get_theme_font("mono_font") is SystemFont
+	var mono_ok = bub8._content_label.theme_type_variation == AISidebarThemeBuilder.RICH_BODY and AISidebarThemeBuilder.build().get_font("mono_font", AISidebarThemeBuilder.RICH_BODY) is SystemFont
 	bub8.free()
 	if not "[bgcolor" in b8 and "[table=1][cell bg=" in b8 and "Main3D (Node3D)" in _plain(b8) and mono_ok:
 		passed += 1

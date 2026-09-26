@@ -8,6 +8,7 @@ class_name AISidebarActivityGroup
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
@@ -33,7 +34,7 @@ func _ready() -> void:
 
 func _setup_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_SM))
+	theme_type_variation = AISidebarThemeBuilder.LIST_ITEM
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -46,7 +47,7 @@ func _setup_ui() -> void:
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
-	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
+	_header_btn.theme_type_variation = AISidebarThemeBuilder.EXPAND_HEADER
 	_header_btn.pressed.connect(_on_header_pressed)
 	_vbox.add_child(_header_btn)
 	
@@ -220,15 +221,14 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	title_lbl.focus_mode = Control.FOCUS_CLICK
 	title_lbl.deselect_on_focus_loss_enabled = false
 	title_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	title_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
+	title_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
 	title_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	row.add_child(title_lbl)
 	entry["title"] = title_lbl
 
 	var dur_lbl = Label.new()
 	dur_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	dur_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	dur_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	dur_lbl.theme_type_variation = AISidebarThemeBuilder.HINT_MUTED
 	row.add_child(dur_lbl)
 	entry["duration"] = dur_lbl
 
@@ -236,8 +236,7 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	details_btn.flat = true
 	details_btn.focus_mode = Control.FOCUS_NONE
 	details_btn.visible = false
-	details_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
-	details_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
+	details_btn.theme_type_variation = AISidebarThemeBuilder.EXPAND_HEADER_SMALL
 	outer.add_child(details_btn)
 	entry["details_btn"] = details_btn
 
@@ -248,7 +247,7 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	details_lbl.scroll_active = false
 	details_lbl.selection_enabled = true
 	details_lbl.visible = false
-	details_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
+	details_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_SMALL
 	outer.add_child(details_lbl)
 	entry["details_lbl"] = details_lbl
 
