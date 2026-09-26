@@ -84,7 +84,10 @@ static func run() -> Dictionary:
 	var invalid := AISidebarMcpProtocol.route({"id": 3, "method": "ping"})
 	var batch := AISidebarMcpProtocol.route([{"jsonrpc": "2.0", "id": 1, "method": "ping"}])
 	var ir: Dictionary = init["reply"]["result"]
-	if ir["protocolVersion"] == "2099-01-01" and ir["serverInfo"]["name"] == "godot-ai-sidebar" and ir["capabilities"].has("tools") \
+	# Dış ajana dosya-öncelikli çalışma kuralı initialize ile verilir.
+	var instr_ok: bool = ir.get("instructions") == AISidebarMcpProtocol.INSTRUCTIONS and AISidebarMcpProtocol.INSTRUCTIONS.contains("file-first") \
+			and AISidebarMcpProtocol.SYNC_PROJECT_TOOL["inputSchema"]["properties"].has("changed_files")
+	if instr_ok and ir["protocolVersion"] == "2099-01-01" and ir["serverInfo"]["name"] == "godot-ai-sidebar" and ir["capabilities"].has("tools") \
 			and init_default["reply"]["result"]["protocolVersion"] == AISidebarMcpProtocol.DEFAULT_PROTOCOL_VERSION \
 			and notif.get("notification", false) and unknown["reply"]["error"]["code"] == -32601 \
 			and invalid["reply"]["error"]["code"] == -32600 and batch["reply"]["error"]["code"] == -32600:

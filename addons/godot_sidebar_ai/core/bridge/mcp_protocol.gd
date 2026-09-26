@@ -38,9 +38,15 @@ const EXPECTED_SCENE_ARG := "expected_scene_path"
 ## Köprüye özgü araçlar (ToolManager'da yok; sunucu yürütür).
 const SYNC_PROJECT_TOOL := {
 	"name": "sync_project",
-	"description": "Dış bir araç (ör. ajanın kendi dosya yazma aracı) projede dosya oluşturduktan veya değiştirdikten sonra Godot editörüne dosya sistemini yeniden taratır ve tarama bitene kadar bekler. Script / sahne yazdıktan sonra, validate_script veya play_game çağırmadan önce kullanın.",
-	"inputSchema": {"type": "object", "properties": {}},
+	"description": "Call after you create or change project files with your own file tools (GDScript, .tscn, .tres, .gdshader, data files) and before validate_script, play_game or any scene tool. Rescans the Godot editor's file system and waits until the scan ends. List every .tscn you wrote in changed_files: if one of them is the scene open in the editor, it is reloaded from disk so a later save_scene does not overwrite your file with the editor's stale copy.",
+	"inputSchema": {"type": "object", "properties": {
+		"changed_files": {"type": "array", "items": {"type": "string"}, "description": "res:// paths you created or changed (at least every .tscn)."},
+	}},
 }
+
+## Dış ajana `initialize` ile verilen çalışma kuralı: üretim dosya-öncelikli, editör etkileşimi
+## araç-öncelikli. Köprü yüzeyi normal kod / dosya üretimini kopyalayan üst düzey araçlarla büyütülmez.
+const INSTRUCTIONS := "Godot editor tools from the Godot AI Sidebar plugin. Construction is file-first: create scripts, scenes (.tscn), resources (.tres), shaders and data files with your own file tools, prefer whole .tscn files or procedural GDScript over many single-node calls, then call sync_project (list the .tscn files in changed_files). Editor interaction is tool-first: use the scene tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) only for small, precise, undoable edits of the scene open in the editor; they need the user to enable external writes and an expected_scene_path. Verify with validate_script, play_game, get_runtime_errors (wait a few seconds after play_game), take_runtime_screenshot and inspect_runtime_tree; stop_game when done."
 
 ## Dış ajana açılan araç tanımları (MCP `tools/list` biçimi).
 static func tool_definitions() -> Array:
@@ -76,7 +82,7 @@ static func _mutation_definition(name: String, description: String, parameters: 
 	schema["required"] = required
 	return {
 		"name": name,
-		"description": description + " Scene change: undoable with Ctrl+Z in the editor; refused unless the user enabled external writes (/mcp write ask or auto) and while another agent is writing (WRITER_BUSY). In ask mode the call waits until the user approves or rejects it in the editor (USER_DENIED, APPROVAL_TIMEOUT).",
+		"description": description + " For small, precise edits of the scene open in the editor; to build a scene or many nodes, write the .tscn / GDScript yourself and call sync_project instead. Call save_scene before reading the .tscn from disk. Undoable with Ctrl+Z in the editor; refused unless the user enabled external writes (/mcp write ask or auto) and while another agent is writing (WRITER_BUSY). In ask mode the call waits until the user approves or rejects it in the editor (USER_DENIED, APPROVAL_TIMEOUT).",
 		"inputSchema": schema,
 	}
 
@@ -115,7 +121,7 @@ static func route(message: Variant) -> Dictionary:
 				"protocolVersion": requested if not requested.is_empty() else DEFAULT_PROTOCOL_VERSION,
 				"capabilities": {"tools": {"listChanged": false}},
 				"serverInfo": {"name": SERVER_NAME, "version": plugin_version()},
-				"instructions": "Godot editor tools from the Godot AI Sidebar plugin. Write files with your own tools, then call sync_project before validate_script / play_game. Use get_runtime_errors and take_runtime_screenshot to verify a running game. Scene-changing tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) need the user to enable external writes and an expected_scene_path; call save_scene before reading the .tscn from disk.",
+				"instructions": INSTRUCTIONS,
 			})}
 		"ping":
 			return {"reply": result_reply(id, {})}

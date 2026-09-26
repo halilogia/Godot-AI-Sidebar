@@ -177,7 +177,7 @@ func respond(req: Dictionary, alive: Callable = Callable()) -> PackedByteArray:
 ## İzin listesindeki aracı yürütür (sync_project köprüye özgü).
 func run_tool(tool_name: String, args: Dictionary, alive: Callable = Callable()) -> Dictionary:
 	if tool_name == "sync_project":
-		return await _sync_project()
+		return await _sync_project(args)
 	if AISidebarMcpProtocol.is_mutation_tool(tool_name):
 		return await run_mutation(tool_name, args, alive)
 	if AISidebarMcpProtocol.is_sync_tool(tool_name):
@@ -259,7 +259,9 @@ func _approval_failure(decision: String) -> Dictionary:
 			return AISidebarToolResult.err("CLIENT_DISCONNECTED", "The MCP client disconnected while waiting for approval; the change was not made.")
 	return AISidebarToolResult.err("BRIDGE_STOPPED", "The MCP bridge was stopped while waiting for approval; the change was not made.", false)
 
-func _sync_project() -> Dictionary:
+## Dosya sistemini taratır; `changed_files` içinde editörde açık olan .tscn varsa sidebar'ın
+## dosya araçlarıyla aynı mekanizmayla (`refresh_open_scenes`) diskten yeniden yükler.
+func _sync_project(args: Dictionary = {}) -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface") or not is_inside_tree():
 		return AISidebarToolResult.err("EDITOR_REQUIRED", "sync_project yalnız editör içinde çalışır.")
 	var fs := EditorInterface.get_resource_filesystem()
@@ -270,7 +272,13 @@ func _sync_project() -> Dictionary:
 		if Time.get_ticks_msec() - started > SYNC_TIMEOUT_MSEC:
 			return AISidebarToolResult.err("SYNC_TIMEOUT", "Dosya sistemi taraması %d ms içinde bitmedi." % SYNC_TIMEOUT_MSEC)
 		await get_tree().process_frame
-	return AISidebarToolResult.ok({"scanned": true, "waited_ms": Time.get_ticks_msec() - started}, "Proje dosya sistemi yeniden tarandı.")
+	var changed: Array = args.get("changed_files", []) if args.get("changed_files", []) is Array else []
+	var refresh: Dictionary = AISidebarSceneTools.refresh_open_scenes(changed)
+	return AISidebarToolResult.ok({
+		"scanned": true,
+		"waited_ms": Time.get_ticks_msec() - started,
+		"reloaded_open_scenes": refresh.get("refreshed", []),
+	}, "Proje dosya sistemi yeniden tarandı.")
 
 func _json(status: int, body: Variant) -> PackedByteArray:
 	return AISidebarMcpHttp.build_response(status, JSON.stringify(body))
