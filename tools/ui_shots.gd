@@ -17,6 +17,7 @@ extends SceneTree
 const SettingsScene = preload("res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn")
 const AISidebarHelpDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
 const AISidebarUiScenarios = preload("res://tools/ui_scenarios.gd")
@@ -47,7 +48,10 @@ func _run() -> void:
 	var raw_cfg := FileAccess.get_file_as_bytes(AISidebarConfig.CONFIG_PATH) if had_cfg else PackedByteArray()
 	var cfg: Dictionary = AISidebarConfig.load_config()
 	cfg["language"] = _lang
+	# Geçiş animasyonları kapalı: görüntü geçişin ortasında yakalanmasın (karşılaştırma kararlı kalsın).
+	cfg["ui_animations"] = false
 	AISidebarConfig.save_config(cfg)
+	AISidebarMotion.enabled = false
 
 	if _what == "all" or _what == "settings":
 		for size_name: String in SETTINGS_SIZES.keys():

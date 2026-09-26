@@ -152,6 +152,16 @@ godot --path . -s res://tools/ui_shots.gd -- <mutlak-klasör> tr dock 1.5
 
 Taşma bulunursa `OVERFLOW` basılır ve çıkış kodu 1 olur. `config.json` yalnız dil için geçici değişir; varsa bayt bayt geri yazılır, yoksa silinir; senaryoların açtığı sohbet oturumları silinir. Yeni kart ya da arayüz durumu eklenince `tools/ui_scenarios.gd`'ye senaryosu eklenir (README görselleri de aynı senaryoları kullanır). Sabit yazı boyu / boşluk / ikon boyu, tema dışı renk ve sahnedeki tema geçersiz kılmaları `tests/test_ui_quality.gd` ile `verify.ps1`'de denetlenir.
 
+* **Sürüm arşivi ve karşılaştırma:** Arayüz değişikliğinden önce o anki sürümün görüntüleri arşivlenir, sonra yenisi, sonra ikisi karşılaştırılır:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\ui_snapshot.ps1                        # ui_snapshots\<commit>\ (tr, en, açık tema)
+powershell -ExecutionPolicy Bypass -File .\tools\ui_snapshot.ps1 -Label yeni-kart        # adla arşivle
+powershell -ExecutionPolicy Bypass -File .\tools\ui_snapshot.ps1 -Compare <önce> -With <sonra>
+```
+
+Karşılaştırma `ui_snapshots\compare_<önce>_vs_<sonra>\` klasörüne değişen her ekranı yan yana (farklı bölge kırmızı çerçeveli) ve `report.md` yazar. Test değil rapordur; farkların istenip istenmediğine gözle bakılır. `ui_snapshots\` git'e girmez.
+
 ## 11. GitHub Actions (CI)
 
 `.github/workflows/verify.yml`: her `main` push'unda ve her PR'da, ubuntu-latest üzerinde:

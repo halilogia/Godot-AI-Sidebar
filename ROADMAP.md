@@ -145,6 +145,23 @@ Geliştirme Godot **4.7.2-stable** üzerinde sürer. Godot 4.8 **stable** çıkt
 
 ---
 
+## 📍 Faz 9b: Arayüz Tasarım Sistemi 2.0 (Tamamlandı ✅, 2026-09-27)
+
+Tailwind'in Godot karşılığı: belirteçler → Godot `Theme` → adlı tip varyasyonları. Ayrıntı: `ARCHITECTURE.md` (tema), `CLAUDE.md` (geliştirici kuralı), `docs/KNOWLEDGE.md` (Godot tuzakları).
+
+- [x] **Belirteçler ve tema üreticisi:** `AISidebarTheme` (renk, boşluk, köşe, yazı ve ikon boyu) ve `AISidebarThemeBuilder` (adlı varyasyonlar: kartlar tona göre, başlık / gövde / ipucu, düğme türleri, girişler, balonlar, listeler); iki yoğunluk (dock COMPACT, pencereler FORM).
+- [x] **Bütün arayüz temada:** dock iskeleti, balonlar, bütün kartlar, geçmiş paneli, Ayarlar / Skills / Yardım / fark pencereleri; tek tek stil ya da yazı boyu yok (istisna: veriden renklenen haplar).
+- [x] **Editör ölçeği:** yazı, boşluk, ikon `ui_scale` ile (yüksek DPI).
+- [x] **Açık / koyu editör teması:** iki palet, editör teması değişince panel yeniden boyanır.
+- [x] **Klavye ve kontrast (temel):** eylem düğmeleri odak alır, görünür odak halkası; `FOCUS_NONE` yalnız gerekçeyle; iki palette WCAG AA kontrast testi.
+- [x] **Hareket:** yeni kart ve Ayarlar sayfası kısa saydamlık geçişi (Ayarlar → Genel'den kapatılabilir).
+- [x] **Premium onay kartı**, Ayarlar yeniden tasarımı, Yardım penceresi.
+- [x] **Görsel doğrulama altyapısı:** `tools/ui_shots.gd` (Ayarlar, Yardım, dock senaryoları; iki dil, geniş / dar, ölçek, açık tema; taşma denetimi), `tools/ui_snapshot.ps1` + `tools/ui_compare.gd` (sürüm arşivi ve yan yana karşılaştırma raporu), `take_editor_screenshot(region=sidebar)` ile gerçek editör görüntüsü (MCP).
+- [x] **Kalite testi:** `tests/test_ui_quality.gd` (sabit değer, tema dışı renk, sahnede geçersiz kılma, varyasyon tanımı, iki palet, kontrast, gerekçesiz `FOCUS_NONE`).
+- [ ] **Sonra:** gerçek editörde köprü ile uçtan uca görsel doğrulama; açılır kartlarda yükseklik animasyonu ve durum geçişleri; piksel karşılaştırmayı teste çevirmek yalnız ihtiyaç ölçülürse (şimdilik rapor).
+
+---
+
 ## 📍 Faz 10: Alt Ajanlar (Subagents) (Planlandı 🗓️)
 
 Ana ajan, bir alt görevi kendi bağlamı, adım bütçesi ve kısıtlı araç seti olan bir alt ajana devreder; alt ajan ana ajana yalnızca kısa bir özet döner.

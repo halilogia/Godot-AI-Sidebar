@@ -113,6 +113,13 @@ Ortam: Godot 4.7.2 GUI editör, boş bir oyun projesi (eklenti klasörü repoya 
 * Kullanıcı ortamında `ANTHROPIC_BASE_URL` başka bir sağlayıcıya ayarlıysa (ör. eski bir deneme) terminaldeki `claude` model isteğini oraya gönderir; belirti "Please run /login" + alakasız bir HTTP hata sayfası (ör. CloudFront 403). MCP bağlantısı (`claude mcp list`) bundan etkilenmez, çünkü o model çağırmaz. Çözüm: o oturumda `Remove-Item Env:ANTHROPIC_BASE_URL` (ya da değişkeni kalıcı olarak silmek).
 * Claude masaüstü uygulamasının Code oturumundan alt süreç olarak `claude -p` çalıştırmak başarısız olabilir (daha önce "API key is invalid" ya da yanıtsız bekleme). `ANTHROPIC_BASE_URL` ve oturuma ait `CLAUDECODE` / `CLAUDE_CODE_*` değişkenleri temizlenince (kullanıcı terminalde `/login` yaptıktan sonra) `claude -p` çalıştı. Hangi değişkenin tek başına sebep olduğu ayrıştırılmadı.
 
+## Tema varyasyonları ve arayüz görüntüleri (Godot 4.7.2, 27.09)
+
+- **Varyasyonun eksik öğesi başka temalardan temel tipten aranmaz.** Bir `Theme`'de `set_type_variation("AISidebarRichBody", "RichTextLabel")` tanımlayıp yalnız bazı öğeleri verirseniz, varyasyonda olmayan öğe (ör. `bold_font`) varsayılan / editör temasındaki `RichTextLabel` girdisinden bulunmaz; `ThemeDB` yedek yazı tipine düşer. Belirti: kalın metin düz görünür. Çözüm: varyasyonun tanımlamadığı öğeleri temel tipten kaynak temadan açıkça kopyalamak (`AISidebarThemeBuilder._complete_variations`; editörde kaynak `EditorInterface.get_editor_theme()`). Ölçüm: aynı `RichTextLabel` varyasyonsuzken `FontVariation` (kalın), varyasyonluyken `FontFile` (düz) döndürüyordu.
+- **Editör dışı çizim varsayılan temayı kullanır.** `tools/ui_shots.gd` gibi `-s` betikleri editör teması olmadan çizer: onay kutusu kutucuğu ve pencere kapatma ikonu Godot'nun koyu varsayılan temasından gelir, açık palette görünmeyebilir. Editörde editörün kendi teması doğru ikonları verir. Kesin söz için gerçek editör görüntüsü: `take_editor_screenshot(region="sidebar")`.
+- **Animasyon görüntüleri kararsız yapar.** Saydamlık geçişi sürerken alınan görüntü her çalıştırmada farklıdır; görüntü araçları `ui_animations` kapalı çeker (aynı kodun iki arşivi 123/123 aynı çıkar).
+- **`Theme.has_font` ve editör ölçeği:** yazı boyları sabit piksel değil `AISidebarTheme.fs()` ile editör ölçeğiyle çarpılır; `EditorInterface.get_editor_scale()` `plugin.gd`'de okunur. SVG ikonlar ölçekle yeniden rasterleştirilir (import önbelleğine bağlı değil).
+
 ## İkon Sistemi (Lucide) ve Emoji Yasağı
 
 * UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.

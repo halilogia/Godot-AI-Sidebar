@@ -38,6 +38,7 @@ godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör> tr all 1.5   # yü
 godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör> tr all 1 light   # açık editör teması
 ```
 
+- **Önce arşivle, sonra karşılaştır:** arayüz işine başlamadan `tools/ui_snapshot.ps1` ile o anki sürümü arşivle; bitince yeniden arşivle ve `-Compare <önce> -With <sonra>` çalıştır. Değişen ekranların yan yana görüntülerini kullanıcıya gönder; beklenmeyen her farkı açıkla ya da düzelt.
 - Ayarlar'ın her sayfası (geniş / dar pencere) ve sohbet paneli `tools/ui_scenarios.gd`'deki her senaryoyla (normal / dar dock) çekilir. Taşmada `OVERFLOW` basılır, çıkış kodu 1 olur.
 - Yeni bir kart ya da arayüz durumu eklediysen `tools/ui_scenarios.gd`'ye senaryosunu ekle (`NAMES`).
 - Headless çekim çalışmaz. `ui_shots.gd` editör dışında çizer (Godot'nun varsayılan teması); son söz gerçek editörün görüntüsüdür.
