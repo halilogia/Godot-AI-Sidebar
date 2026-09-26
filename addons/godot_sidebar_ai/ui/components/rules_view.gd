@@ -15,10 +15,6 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 
-const COLOR_SYSTEM := AISidebarTheme.COLOR_LAYER_SYSTEM
-const COLOR_RULES := AISidebarTheme.COLOR_LAYER_RULES
-const COLOR_SKILLS := AISidebarTheme.COLOR_LAYER_SKILLS
-const COLOR_TOOLS := AISidebarTheme.COLOR_LAYER_TOOLS
 
 var prompt_edit: TextEdit
 var _prompt_badge: Label
@@ -44,7 +40,7 @@ func _init() -> void:
 	_legend.add_theme_constant_override("h_separation", AISidebarTheme.px(AISidebarTheme.SPACE_LG))
 	usage.add_child(_legend)
 
-	_prompt_badge = AISidebarSettingsUi.badge("", COLOR_SYSTEM)
+	_prompt_badge = AISidebarSettingsUi.badge("", AISidebarTheme.COLOR_LAYER_SYSTEM)
 	var builtin := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("rules_builtin_title"), AISidebarI18n.get_text("rules_builtin_hint"), _prompt_badge)
 	prompt_edit = TextEdit.new()
 	prompt_edit.name = "SysPromptEdit"
@@ -111,7 +107,7 @@ func _refresh_usage() -> void:
 	var m := AISidebarCustomizationBudget.measure()
 	var total_tokens: int = m["total_tokens"]
 	var total: int = maxi(1, total_tokens)
-	var rows := [["system", COLOR_SYSTEM, "custom_usage_system"], ["rules", COLOR_RULES, "custom_usage_rules"], ["skills", COLOR_SKILLS, "custom_usage_skills"], ["tools", COLOR_TOOLS, "custom_usage_tools"]]
+	var rows := [["system", AISidebarTheme.COLOR_LAYER_SYSTEM, "custom_usage_system"], ["rules", AISidebarTheme.COLOR_LAYER_RULES, "custom_usage_rules"], ["skills", AISidebarTheme.COLOR_LAYER_SKILLS, "custom_usage_skills"], ["tools", AISidebarTheme.COLOR_LAYER_TOOLS, "custom_usage_tools"]]
 	for row: Array in rows:
 		var part: Dictionary = m[row[0]]
 		var tokens: int = part["tokens"]
@@ -144,9 +140,9 @@ func _refresh_rules() -> void:
 	for f: Dictionary in files:
 		var row := AISidebarSettingsUi.row(_rules_list)
 		if str(f["scope"]) == AISidebarRulesRegistry.SCOPE_GLOBAL:
-			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_global"), COLOR_TOOLS))
+			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_global"), AISidebarTheme.COLOR_LAYER_TOOLS))
 		else:
-			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_project"), COLOR_RULES))
+			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_project"), AISidebarTheme.COLOR_LAYER_RULES))
 		var chars: int = f["chars"]
 		var p := str(f["path"])
 		var path := AISidebarSettingsUi.body_label(AISidebarI18n.get_text("custom_rule_file", {"path": p, "chars": chars}))

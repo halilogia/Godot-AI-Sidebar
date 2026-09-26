@@ -19,7 +19,7 @@ Eklentinin arayüzünde (`addons/godot_sidebar_ai/ui/`) yaptığın her değişi
 | Ölçek / yoğunluk | `AISidebarTheme.ui_scale` (editör ölçeği) ve `Density.COMPACT` (dock) / `Density.FORM` (pencereler) |
 
 1. **Önce varyasyon.** Yeni denetim görünümünü `theme_type_variation` ile alır. Uygun varyasyon yoksa önce `AISidebarThemeBuilder`'a ekle (ve `tests/test_ui_quality.gd` → `VARIATIONS` listesine), sonra kullan. Tema kökte verilir: dock (`chat_dock_theme.gd`), Ayarlar / Skills / diff pencereleri (`form_theme()` ya da `build(FORM)`). Denetime tek tek `add_theme_font_size_override` / `add_theme_stylebox_override` yazılmaz (test engeller); tek istisna rengi çalışma anında veriden seçilen haplardır. Varyasyon yalnız farklı olan öğeleri tanımlar, gerisini üretici temel tipten kaynak temadan kopyalar (`_complete_variations`).
-2. **Sabit değer yok.** Renk yalnız `AISidebarTheme` belirteci; BBCode rengi `AISidebarTheme.bb(belirteç)`. Yazı boyu, boşluk ve ikon boyu ölçekli: `AISidebarTheme.fs(FONT_SIZE_*)`, `AISidebarTheme.px(SPACE_*)`, ikonlar `ICON_SIZE_SM / MD / LG`. Sahnelerde (`.tscn`) tema geçersiz kılması yazılmaz; kodda ölçekli verilir. Yeni renk gerekiyorsa temaya anlamlı adla eklenir (ör. `COLOR_TONE_WARNING_TEXT`).
+2. **Sabit değer yok.** Renk yalnız `AISidebarTheme` belirteci (açık ve koyu palette ikisine de değer verilir: `PALETTE_DARK`, `PALETTE_LIGHT`); BBCode rengi `AISidebarTheme.bb(belirteç)`. Yazı boyu, boşluk ve ikon boyu ölçekli: `AISidebarTheme.fs(FONT_SIZE_*)`, `AISidebarTheme.px(SPACE_*)`, ikonlar `ICON_SIZE_SM / MD / LG`. Sahnelerde (`.tscn`) tema geçersiz kılması yazılmaz; kodda ölçekli verilir. Yeni renk gerekiyorsa temaya anlamlı adla eklenir (ör. `COLOR_TONE_WARNING_TEXT`).
 3. **Ton ile anlam.** Kart tonu içeriğin anlamını söyler: soru / onay `CARD_QUESTION` / `CARD_WARNING`, hata `CARD_ERROR`, plan / bilgi `CARD_INFO`, değişiklik `CARD_NEUTRAL`, yardımcı bilgi `CARD_SUBTLE`. Sayfada tek birincil eylem (`PRIMARY_BUTTON`), diğerleri `BUTTON` / `GHOST_BUTTON`.
 4. **Form ekranları** (`AISidebarSettingsUi`, `ui/components/settings_ui_kit.gd`): kart, ipucu, rozet, düğme, form satırı, açılır liste (`option_button()`, en uzun seçeneğe göre genişlemez). Aynı iş için ikinci bir stil yazma.
 5. **Durumlar eksiksiz.** Normal / üzerinde / basılı / seçili / devre dışı ayrı görünür. Düğmeler dikeyde uzamaz. Uzun metin sarılır ya da üç noktayla kesilir. Kaydırma çubuğu içeriğe binmez. Pencere dar ekranda, kartlar dar dock'ta (320 px) sığar.
@@ -34,6 +34,7 @@ Değişiklikten önce ve sonra görüntü al ve PNG'lere gerçekten bak, iki dil
 godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör, repo dışı> tr
 godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör, repo dışı> en
 godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör> tr all 1.5   # yüksek DPI editör ölçeği
+godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör> tr all 1 light   # açık editör teması
 ```
 
 - Ayarlar'ın her sayfası (geniş / dar pencere) ve sohbet paneli `tools/ui_scenarios.gd`'deki her senaryoyla (normal / dar dock) çekilir. Taşmada `OVERFLOW` basılır, çıkış kodu 1 olur.

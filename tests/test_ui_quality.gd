@@ -189,4 +189,24 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T5 theme variations without a base type: " + ", ".join(PackedStringArray(missing)))
 
+	# T6 Açık / koyu palet: iki palet aynı renk adlarını tanımlar, açık palette yazı koyu / zemin açık,
+	# koyu palette tersi; tema iki palette de kurulur ve varyasyonlar paletin rengini alır.
+	var AISidebarTheme: GDScript = load("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+	var dark: Dictionary = AISidebarTheme.get("PALETTE_DARK")
+	var light: Dictionary = AISidebarTheme.get("PALETTE_LIGHT")
+	var same_keys := dark.keys().size() == light.keys().size() and dark.keys().all(func(k: Variant) -> bool: return light.has(k))
+	AISidebarTheme.call("use_palette", true)
+	var light_text: Color = AISidebarTheme.get("COLOR_TEXT_PRIMARY")
+	var light_bg: Color = AISidebarTheme.get("COLOR_BG_APP")
+	var light_theme := AISidebarThemeBuilder.build()
+	var light_body: Color = light_theme.get_color("font_color", AISidebarThemeBuilder.BODY)
+	AISidebarTheme.call("use_palette", false)
+	var dark_text: Color = AISidebarTheme.get("COLOR_TEXT_PRIMARY")
+	var dark_bg: Color = AISidebarTheme.get("COLOR_BG_APP")
+	if same_keys and light_text.get_luminance() < 0.3 and light_bg.get_luminance() > 0.8 and dark_text.get_luminance() > 0.7 and dark_bg.get_luminance() < 0.2 and light_body == light_text:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T6 palettes: keys=%s light=%s/%s dark=%s/%s body=%s" % [same_keys, light_text, light_bg, dark_text, dark_bg, light_body])
+
 	return {"name": "UiQualityTests", "passed": passed, "failed": failed, "errors": errors}

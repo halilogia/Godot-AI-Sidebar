@@ -235,11 +235,15 @@ static func run() -> Dictionary:
 	# Test 13 (bulgu #4): kuyruk satırlarındaki renkler tema token'ıdır (sabit Color yok)
 	var theme_colors: Array = []
 	var theme_script: Script = AISidebarTheme
+	# Renk belirteçleri palet sözlüklerindedir (açık / koyu); sabitler de sayılır.
 	var theme_consts: Dictionary = theme_script.get_script_constant_map()
 	for c_name in theme_consts.keys():
 		var c_val = theme_consts[c_name]
 		if c_val is Color:
 			theme_colors.append(c_val)
+		elif c_val is Dictionary and str(c_name).begins_with("PALETTE_"):
+			for pc in (c_val as Dictionary).values():
+				theme_colors.append(pc)
 	var tq = AISidebarMessageQueuePanel.new()
 	tq.enqueue("Renk", "Renk")
 	var off_theme: Array = []

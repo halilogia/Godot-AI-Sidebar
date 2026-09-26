@@ -98,7 +98,7 @@ func _setup_ui() -> void:
 		_risk_badge.text = risk_text
 		_risk_badge.theme_type_variation = AISidebarThemeBuilder.MICRO
 		_risk_badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_risk_badge.add_theme_color_override("font_color", tone.lightened(0.2))
+		_risk_badge.add_theme_color_override("font_color", AISidebarTheme.emphasize(tone, 0.2))
 		_risk_badge.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(tone))
 		head.add_child(_risk_badge)
 
@@ -159,7 +159,7 @@ func _setup_ui() -> void:
 	_approve_btn = Button.new()
 	_approve_btn.text = AISidebarI18n.get_text("btn_approve_delete") if _is_danger else AISidebarI18n.get_text("btn_approve")
 	_approve_btn.theme_type_variation = AISidebarThemeBuilder.APPROVE_DANGER_BUTTON if _is_danger else AISidebarThemeBuilder.APPROVE_BUTTON
-	AISidebarIconHelper.apply_tinted_icon(_approve_btn, "check", tone.lightened(0.35), AISidebarTheme.ICON_SIZE_SM)
+	AISidebarIconHelper.apply_tinted_icon(_approve_btn, "check", AISidebarTheme.emphasize(tone), AISidebarTheme.ICON_SIZE_SM)
 	_approve_btn.pressed.connect(_on_approve)
 	_buttons_bar.add_child(_approve_btn)
 

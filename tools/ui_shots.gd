@@ -8,7 +8,7 @@ extends SceneTree
 ## Arayüz değişikliğinden önce ve sonra çalıştırıp görüntüleri karşılaştırın; iki dilde bakın. Ölçek
 ## verilirse (ör. 1.5) editörün yüksek DPI ölçeği taklit edilir.
 ##
-##   godot --path . -s res://tools/ui_shots.gd -- <çıktı klasörü (mutlak)> <tr|en> [all|settings|dock] [ölçek]
+##   godot --path . -s res://tools/ui_shots.gd -- <çıktı klasörü (mutlak)> <tr|en> [all|settings|dock] [ölçek] [dark|light]
 ##
 ## Taşma bulunursa (pencere ekrana sığmaz ya da bir kart dock'tan geniş) "OVERFLOW" basılır, çıkış kodu 1.
 ## Headless değil (görüntü için pencere gerekir). config.json yalnız dil için geçici değişir; varsa bayt
@@ -37,6 +37,8 @@ func _initialize() -> void:
 	_what = args[2] if args.size() > 2 else "all"
 	if args.size() > 3:
 		AISidebarTheme.ui_scale = maxf(0.5, args[3].to_float())
+	if args.size() > 4 and args[4] == "light":
+		AISidebarTheme.use_palette(true)
 	DirAccess.make_dir_recursive_absolute(_out)
 	_run.call_deferred()
 

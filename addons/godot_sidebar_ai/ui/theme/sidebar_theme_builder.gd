@@ -128,6 +128,15 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 	if density == Density.FORM:
 		t.default_font_size = body
 		t.set_stylebox("panel", "AcceptDialog", AISidebarTheme.create_dialog_style())
+		# Pencere çerçevesi ve başlık çubuğu da paletten (açık temada koyu çerçeve kalmasın).
+		for frame_item: String in ["embedded_border", "embedded_unfocused_border"]:
+			var base_frame: StyleBox = source_theme().get_stylebox(frame_item, "Window")
+			if base_frame is StyleBoxFlat:
+				var frame: StyleBoxFlat = base_frame.duplicate()
+				frame.bg_color = AISidebarTheme.COLOR_BG_CARD_HOVER if frame_item == "embedded_border" else AISidebarTheme.COLOR_BG_CARD
+				frame.border_color = AISidebarTheme.COLOR_BORDER_HOVER
+				t.set_stylebox(frame_item, "Window", frame)
+		t.set_color("title_color", "Window", AISidebarTheme.COLOR_TEXT_PRIMARY)
 
 	_label(t, TITLE, title, AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_label(t, BODY, body, AISidebarTheme.COLOR_TEXT_PRIMARY)
@@ -169,8 +178,8 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 	_button(t, DANGER_BUTTON, button, _filled(AISidebarTheme.COLOR_ERROR), _filled(AISidebarTheme.COLOR_ERROR_HOVER), _filled(AISidebarTheme.COLOR_ERROR), AISidebarTheme.COLOR_WHITE)
 	_button(t, GHOST_BUTTON, button, AISidebarTheme.create_ghost_button_style(), AISidebarTheme.create_ghost_button_style(true), AISidebarTheme.create_ghost_button_style(true), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, OPTION_BUTTON, button, _option(false), _option(true), _option(true), AISidebarTheme.COLOR_TEXT_PRIMARY)
-	_button(t, APPROVE_BUTTON, button, _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, false), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), AISidebarTheme.COLOR_TONE_WARNING_TEXT.lightened(0.35))
-	_button(t, APPROVE_DANGER_BUTTON, button, _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, false), _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, true), _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, true), AISidebarTheme.COLOR_TONE_ERROR_TEXT.lightened(0.35))
+	_button(t, APPROVE_BUTTON, button, _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, false), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), AISidebarTheme.emphasize(AISidebarTheme.COLOR_TONE_WARNING_TEXT))
+	_button(t, APPROVE_DANGER_BUTTON, button, _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, false), _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, true), _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, true), AISidebarTheme.emphasize(AISidebarTheme.COLOR_TONE_ERROR_TEXT))
 	_button(t, LINK_BUTTON, hint, StyleBoxEmpty.new(), StyleBoxEmpty.new(), StyleBoxEmpty.new(), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, NAV_BUTTON, body, _nav(false, false), _nav(false, true), _nav(false, true), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, NAV_BUTTON_ACTIVE, body, _nav(true, false), _nav(true, true), _nav(true, true), AISidebarTheme.COLOR_TEXT_PRIMARY)
@@ -251,8 +260,37 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 		t.set_font_size("font_size", v, body)
 		t.set_color("font_color", v, AISidebarTheme.COLOR_TEXT_PRIMARY)
 		t.set_color("font_placeholder_color", v, AISidebarTheme.COLOR_TEXT_MUTED)
+	_base_types(t, body)
 	_complete_variations(t, source_theme())
 	return t
+
+## Varyasyonsuz denetimler (onay kutusu, açılır liste, sayı kutusu, açılır menü …) de paletin yazı
+## rengini ve giriş stilini alır; açık / koyu temada okunur kalır.
+static func _base_types(t: Theme, body: int) -> void:
+	for type_name: String in ["Label", "Button", "CheckBox", "CheckButton", "OptionButton", "MenuButton", "LinkButton", "LineEdit", "TextEdit", "ItemList", "PopupMenu", "Tree"]:
+		t.set_color("font_color", type_name, AISidebarTheme.COLOR_TEXT_PRIMARY)
+		t.set_color("font_hover_color", type_name, AISidebarTheme.COLOR_TEXT_PRIMARY)
+		t.set_color("font_pressed_color", type_name, AISidebarTheme.COLOR_TEXT_PRIMARY)
+		t.set_color("font_hover_pressed_color", type_name, AISidebarTheme.COLOR_TEXT_PRIMARY)
+		t.set_color("font_focus_color", type_name, AISidebarTheme.COLOR_TEXT_PRIMARY)
+		t.set_color("font_disabled_color", type_name, AISidebarTheme.COLOR_TEXT_MUTED)
+	t.set_color("default_color", "RichTextLabel", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	t.set_color("font_placeholder_color", "LineEdit", AISidebarTheme.COLOR_TEXT_MUTED)
+	t.set_color("font_placeholder_color", "TextEdit", AISidebarTheme.COLOR_TEXT_MUTED)
+	for type_name: String in ["LineEdit", "TextEdit"]:
+		t.set_stylebox("normal", type_name, AISidebarTheme.create_input_style())
+		t.set_stylebox("focus", type_name, AISidebarTheme.create_input_focus_style())
+		t.set_stylebox("read_only", type_name, AISidebarTheme.create_input_style())
+	t.set_stylebox("normal", "OptionButton", AISidebarTheme.create_input_style())
+	t.set_stylebox("hover", "OptionButton", AISidebarTheme.create_card_hover_style())
+	t.set_stylebox("pressed", "OptionButton", AISidebarTheme.create_card_active_style())
+	var popup := AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS)
+	t.set_stylebox("panel", "PopupMenu", popup)
+	t.set_stylebox("hover", "PopupMenu", AISidebarTheme.create_card_active_style(AISidebarTheme.SPACE_XS))
+	t.set_color("font_color", "TooltipLabel", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	t.set_stylebox("panel", "TooltipPanel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
+	if body > 0:
+		t.set_font_size("font_size", "TooltipLabel", body)
 
 ## Varyasyonların devraldığı kaynak tema: editörde editör teması (yazı tipleri, ikonlar editörle aynı),
 ## editör dışında Godot'nun varsayılan teması.
@@ -371,7 +409,7 @@ static func _filled(color: Color) -> StyleBoxFlat:
 
 static func _option(hover: bool) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
-	s.bg_color = AISidebarTheme.COLOR_OPTION_BG.lightened(0.08) if hover else AISidebarTheme.COLOR_OPTION_BG
+	s.bg_color = AISidebarTheme.emphasize(AISidebarTheme.COLOR_OPTION_BG, 0.08) if hover else AISidebarTheme.COLOR_OPTION_BG
 	s.border_color = AISidebarTheme.COLOR_BORDER_FOCUS if hover else AISidebarTheme.COLOR_OPTION_BORDER
 	s.set_border_width_all(1)
 	s.set_corner_radius_all(AISidebarTheme.RADIUS_MD)

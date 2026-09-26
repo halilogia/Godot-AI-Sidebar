@@ -60,65 +60,240 @@ const ICON_SIZE_MD: int = 14
 const ICON_SIZE_LG: int = 16
 
 # 4. Color Palette Tokens (Modern Slate & Midnight Dark)
-const COLOR_BG_APP = Color(0.07, 0.08, 0.11, 1.0)
-const COLOR_BG_CARD = Color(0.11, 0.13, 0.17, 0.98)
-const COLOR_BG_CARD_HOVER = Color(0.16, 0.18, 0.24, 0.98)
-const COLOR_BG_INPUT = Color(0.12, 0.14, 0.18, 1.0)
-const COLOR_BG_ACTIVE = Color(0.15, 0.22, 0.34, 0.98)
+static var COLOR_BG_APP: Color = Color(0.07, 0.08, 0.11, 1.0)
+static var COLOR_BG_CARD: Color = Color(0.11, 0.13, 0.17, 0.98)
+static var COLOR_BG_CARD_HOVER: Color = Color(0.16, 0.18, 0.24, 0.98)
+static var COLOR_BG_INPUT: Color = Color(0.12, 0.14, 0.18, 1.0)
+static var COLOR_BG_ACTIVE: Color = Color(0.15, 0.22, 0.34, 0.98)
 
-const COLOR_BORDER_SUBTLE = Color(0.18, 0.21, 0.28, 1.0)
-const COLOR_BORDER_HOVER = Color(0.28, 0.33, 0.44, 1.0)
-const COLOR_BORDER_FOCUS = Color(0.35, 0.60, 0.95, 1.0)
+static var COLOR_BORDER_SUBTLE: Color = Color(0.18, 0.21, 0.28, 1.0)
+static var COLOR_BORDER_HOVER: Color = Color(0.28, 0.33, 0.44, 1.0)
+static var COLOR_BORDER_FOCUS: Color = Color(0.35, 0.60, 0.95, 1.0)
 
-const COLOR_TEXT_PRIMARY = Color(0.90, 0.92, 0.96, 1.0)
-const COLOR_TEXT_SECONDARY = Color(0.65, 0.70, 0.78, 1.0)
-const COLOR_TEXT_MUTED = Color(0.45, 0.48, 0.55, 1.0)
+static var COLOR_TEXT_PRIMARY: Color = Color(0.90, 0.92, 0.96, 1.0)
+static var COLOR_TEXT_SECONDARY: Color = Color(0.65, 0.70, 0.78, 1.0)
+static var COLOR_TEXT_MUTED: Color = Color(0.45, 0.48, 0.55, 1.0)
 
-const COLOR_SUCCESS = Color(0.25, 0.80, 0.45, 1.0)
-const COLOR_WARNING = Color(0.90, 0.70, 0.25, 1.0)
-const COLOR_ERROR = Color(0.90, 0.35, 0.35, 1.0)
-const COLOR_ERROR_HOVER = Color(1.0, 0.45, 0.45, 1.0)
-const COLOR_ACCENT = Color(0.30, 0.55, 0.95, 1.0)
-const COLOR_ACCENT_HOVER = Color(0.38, 0.62, 0.98, 1.0)
-const COLOR_ACCENT_PRESSED = Color(0.20, 0.45, 0.80, 1.0)
+static var COLOR_SUCCESS: Color = Color(0.25, 0.80, 0.45, 1.0)
+static var COLOR_WARNING: Color = Color(0.90, 0.70, 0.25, 1.0)
+static var COLOR_ERROR: Color = Color(0.90, 0.35, 0.35, 1.0)
+static var COLOR_ERROR_HOVER: Color = Color(1.0, 0.45, 0.45, 1.0)
+static var COLOR_ACCENT: Color = Color(0.30, 0.55, 0.95, 1.0)
+static var COLOR_ACCENT_HOVER: Color = Color(0.38, 0.62, 0.98, 1.0)
+static var COLOR_ACCENT_PRESSED: Color = Color(0.20, 0.45, 0.80, 1.0)
 
 # Semantik Renk ve Balon Tokenları (Design Tokens)
-const COLOR_BUBBLE_USER = Color(0.14, 0.20, 0.30, 0.95)
-const COLOR_BUBBLE_USER_BORDER = Color(0.25, 0.38, 0.55, 0.75)
-const COLOR_BUBBLE_ASSISTANT = Color(0.11, 0.13, 0.17, 0.98)
-const COLOR_BUBBLE_COMMAND = Color(0.15, 0.14, 0.22, 0.95)
-const COLOR_BUBBLE_COMMAND_BORDER = Color(0.35, 0.30, 0.55, 0.7)
-const COLOR_ROLE_COMMAND = Color(0.75, 0.55, 0.95, 1.0)
-const COLOR_MODE_FULL_AUTO = Color(0.85, 0.55, 0.95, 1.0)
+static var COLOR_BUBBLE_USER: Color = Color(0.14, 0.20, 0.30, 0.95)
+static var COLOR_BUBBLE_USER_BORDER: Color = Color(0.25, 0.38, 0.55, 0.75)
+static var COLOR_BUBBLE_ASSISTANT: Color = Color(0.11, 0.13, 0.17, 0.98)
+static var COLOR_BUBBLE_COMMAND: Color = Color(0.15, 0.14, 0.22, 0.95)
+static var COLOR_BUBBLE_COMMAND_BORDER: Color = Color(0.35, 0.30, 0.55, 0.7)
+static var COLOR_ROLE_COMMAND: Color = Color(0.75, 0.55, 0.95, 1.0)
+static var COLOR_MODE_FULL_AUTO: Color = Color(0.85, 0.55, 0.95, 1.0)
 const COLOR_WHITE = Color(1.0, 1.0, 1.0, 1.0)
 # Ton renkleri (kartların anlamı): uyarı / soru (kehribar), hata (kırmızı), bilgi / plan (mavi), başarı (yeşil)
-const COLOR_TONE_WARNING_BG = Color(0.20, 0.16, 0.10, 0.95)
-const COLOR_TONE_WARNING_BORDER = Color(0.90, 0.65, 0.20, 0.70)
-const COLOR_TONE_WARNING_TEXT = Color(1.00, 0.75, 0.30, 1.0)
-const COLOR_TONE_QUESTION_BG = Color(0.13, 0.16, 0.22, 0.95)
-const COLOR_TONE_ERROR_BG = Color(0.22, 0.12, 0.12, 0.90)
-const COLOR_TONE_ERROR_BORDER = Color(0.80, 0.30, 0.30, 0.70)
-const COLOR_TONE_ERROR_TEXT = Color(0.95, 0.42, 0.42, 1.0)
-const COLOR_TONE_INFO_BG = Color(0.12, 0.16, 0.24, 0.95)
-const COLOR_TONE_INFO_BORDER = Color(0.35, 0.65, 0.90, 0.80)
-const COLOR_TONE_INFO_TEXT = Color(0.60, 0.85, 1.00, 1.0)
-const COLOR_TONE_SUCCESS_TEXT = Color(0.40, 0.85, 0.50, 1.0)
-const COLOR_TONE_NEUTRAL_BG = Color(0.14, 0.16, 0.20, 0.95)
-const COLOR_TONE_NEUTRAL_BORDER = Color(0.30, 0.40, 0.55, 0.60)
-const COLOR_TONE_SUBTLE_BG = Color(0.12, 0.14, 0.18, 0.80)
-const COLOR_TONE_SUBTLE_BORDER = Color(0.22, 0.27, 0.34, 0.45)
-const COLOR_OPTION_BG = Color(0.20, 0.25, 0.35, 0.90)
-const COLOR_OPTION_BORDER = Color(0.40, 0.55, 0.75, 0.80)
-const COLOR_SHADOW = Color(0.0, 0.0, 0.0, 0.28)
+static var COLOR_TONE_WARNING_BG: Color = Color(0.20, 0.16, 0.10, 0.95)
+static var COLOR_TONE_WARNING_BORDER: Color = Color(0.90, 0.65, 0.20, 0.70)
+static var COLOR_TONE_WARNING_TEXT: Color = Color(1.00, 0.75, 0.30, 1.0)
+static var COLOR_TONE_QUESTION_BG: Color = Color(0.13, 0.16, 0.22, 0.95)
+static var COLOR_TONE_ERROR_BG: Color = Color(0.22, 0.12, 0.12, 0.90)
+static var COLOR_TONE_ERROR_BORDER: Color = Color(0.80, 0.30, 0.30, 0.70)
+static var COLOR_TONE_ERROR_TEXT: Color = Color(0.95, 0.42, 0.42, 1.0)
+static var COLOR_TONE_INFO_BG: Color = Color(0.12, 0.16, 0.24, 0.95)
+static var COLOR_TONE_INFO_BORDER: Color = Color(0.35, 0.65, 0.90, 0.80)
+static var COLOR_TONE_INFO_TEXT: Color = Color(0.60, 0.85, 1.00, 1.0)
+static var COLOR_TONE_SUCCESS_TEXT: Color = Color(0.40, 0.85, 0.50, 1.0)
+static var COLOR_TONE_NEUTRAL_BG: Color = Color(0.14, 0.16, 0.20, 0.95)
+static var COLOR_TONE_NEUTRAL_BORDER: Color = Color(0.30, 0.40, 0.55, 0.60)
+static var COLOR_TONE_SUBTLE_BG: Color = Color(0.12, 0.14, 0.18, 0.80)
+static var COLOR_TONE_SUBTLE_BORDER: Color = Color(0.22, 0.27, 0.34, 0.45)
+static var COLOR_OPTION_BG: Color = Color(0.20, 0.25, 0.35, 0.90)
+static var COLOR_OPTION_BORDER: Color = Color(0.40, 0.55, 0.75, 0.80)
+static var COLOR_SHADOW: Color = Color(0.0, 0.0, 0.0, 0.28)
 
 # Bağlam katmanları (sistem istemi / kurallar / skill'ler / araçlar) ve kapsam rozetleri
-const COLOR_LAYER_SYSTEM = Color(0.95, 0.75, 0.35, 1.0)
-const COLOR_LAYER_RULES = Color(0.35, 0.60, 0.95, 1.0)
-const COLOR_LAYER_SKILLS = Color(0.45, 0.80, 0.50, 1.0)
-const COLOR_LAYER_TOOLS = Color(0.70, 0.50, 0.90, 1.0)
+static var COLOR_LAYER_SYSTEM: Color = Color(0.95, 0.75, 0.35, 1.0)
+static var COLOR_LAYER_RULES: Color = Color(0.35, 0.60, 0.95, 1.0)
+static var COLOR_LAYER_SKILLS: Color = Color(0.45, 0.80, 0.50, 1.0)
+static var COLOR_LAYER_TOOLS: Color = Color(0.70, 0.50, 0.90, 1.0)
 # Devre dışı bir bölümü soluklaştırma (modulate)
 const MODULATE_DISABLED = Color(1.0, 1.0, 1.0, 0.45)
 const COLOR_TRANSPARENT = Color(0, 0, 0, 0)
+
+# 4b. Palet: renkler editörün açık / koyu temasına göre seçilir (plugin.gd use_editor_palette çağırır).
+# Yukarıdaki değerler koyu palettir; açık palet aşağıda. Renkler sabit değil değişkendir, ama yalnız
+# use_palette ile değişir.
+static var is_light: bool = false
+
+const PALETTE_DARK := {
+	"COLOR_BG_APP": Color(0.07, 0.08, 0.11, 1.0),
+	"COLOR_BG_CARD": Color(0.11, 0.13, 0.17, 0.98),
+	"COLOR_BG_CARD_HOVER": Color(0.16, 0.18, 0.24, 0.98),
+	"COLOR_BG_INPUT": Color(0.12, 0.14, 0.18, 1.0),
+	"COLOR_BG_ACTIVE": Color(0.15, 0.22, 0.34, 0.98),
+	"COLOR_BORDER_SUBTLE": Color(0.18, 0.21, 0.28, 1.0),
+	"COLOR_BORDER_HOVER": Color(0.28, 0.33, 0.44, 1.0),
+	"COLOR_BORDER_FOCUS": Color(0.35, 0.60, 0.95, 1.0),
+	"COLOR_TEXT_PRIMARY": Color(0.90, 0.92, 0.96, 1.0),
+	"COLOR_TEXT_SECONDARY": Color(0.65, 0.70, 0.78, 1.0),
+	"COLOR_TEXT_MUTED": Color(0.45, 0.48, 0.55, 1.0),
+	"COLOR_SUCCESS": Color(0.25, 0.80, 0.45, 1.0),
+	"COLOR_WARNING": Color(0.90, 0.70, 0.25, 1.0),
+	"COLOR_ERROR": Color(0.90, 0.35, 0.35, 1.0),
+	"COLOR_ERROR_HOVER": Color(1.0, 0.45, 0.45, 1.0),
+	"COLOR_ACCENT": Color(0.30, 0.55, 0.95, 1.0),
+	"COLOR_ACCENT_HOVER": Color(0.38, 0.62, 0.98, 1.0),
+	"COLOR_ACCENT_PRESSED": Color(0.20, 0.45, 0.80, 1.0),
+	"COLOR_BUBBLE_USER": Color(0.14, 0.20, 0.30, 0.95),
+	"COLOR_BUBBLE_USER_BORDER": Color(0.25, 0.38, 0.55, 0.75),
+	"COLOR_BUBBLE_ASSISTANT": Color(0.11, 0.13, 0.17, 0.98),
+	"COLOR_BUBBLE_COMMAND": Color(0.15, 0.14, 0.22, 0.95),
+	"COLOR_BUBBLE_COMMAND_BORDER": Color(0.35, 0.30, 0.55, 0.7),
+	"COLOR_ROLE_COMMAND": Color(0.75, 0.55, 0.95, 1.0),
+	"COLOR_MODE_FULL_AUTO": Color(0.85, 0.55, 0.95, 1.0),
+	"COLOR_TONE_WARNING_BG": Color(0.20, 0.16, 0.10, 0.95),
+	"COLOR_TONE_WARNING_BORDER": Color(0.90, 0.65, 0.20, 0.70),
+	"COLOR_TONE_WARNING_TEXT": Color(1.00, 0.75, 0.30, 1.0),
+	"COLOR_TONE_QUESTION_BG": Color(0.13, 0.16, 0.22, 0.95),
+	"COLOR_TONE_ERROR_BG": Color(0.22, 0.12, 0.12, 0.90),
+	"COLOR_TONE_ERROR_BORDER": Color(0.80, 0.30, 0.30, 0.70),
+	"COLOR_TONE_ERROR_TEXT": Color(0.95, 0.42, 0.42, 1.0),
+	"COLOR_TONE_INFO_BG": Color(0.12, 0.16, 0.24, 0.95),
+	"COLOR_TONE_INFO_BORDER": Color(0.35, 0.65, 0.90, 0.80),
+	"COLOR_TONE_INFO_TEXT": Color(0.60, 0.85, 1.00, 1.0),
+	"COLOR_TONE_SUCCESS_TEXT": Color(0.40, 0.85, 0.50, 1.0),
+	"COLOR_TONE_NEUTRAL_BG": Color(0.14, 0.16, 0.20, 0.95),
+	"COLOR_TONE_NEUTRAL_BORDER": Color(0.30, 0.40, 0.55, 0.60),
+	"COLOR_TONE_SUBTLE_BG": Color(0.12, 0.14, 0.18, 0.80),
+	"COLOR_TONE_SUBTLE_BORDER": Color(0.22, 0.27, 0.34, 0.45),
+	"COLOR_OPTION_BG": Color(0.20, 0.25, 0.35, 0.90),
+	"COLOR_OPTION_BORDER": Color(0.40, 0.55, 0.75, 0.80),
+	"COLOR_SHADOW": Color(0.0, 0.0, 0.0, 0.28),
+	"COLOR_LAYER_SYSTEM": Color(0.95, 0.75, 0.35, 1.0),
+	"COLOR_LAYER_RULES": Color(0.35, 0.60, 0.95, 1.0),
+	"COLOR_LAYER_SKILLS": Color(0.45, 0.80, 0.50, 1.0),
+	"COLOR_LAYER_TOOLS": Color(0.70, 0.50, 0.90, 1.0),
+}
+
+const PALETTE_LIGHT := {
+	"COLOR_BG_APP": Color(0.95, 0.96, 0.97, 1.0),
+	"COLOR_BG_CARD": Color(1.0, 1.0, 1.0, 1.0),
+	"COLOR_BG_CARD_HOVER": Color(0.93, 0.95, 0.97, 1.0),
+	"COLOR_BG_INPUT": Color(0.98, 0.98, 0.99, 1.0),
+	"COLOR_BG_ACTIVE": Color(0.86, 0.92, 1.0, 1.0),
+	"COLOR_BORDER_SUBTLE": Color(0.82, 0.85, 0.89, 1.0),
+	"COLOR_BORDER_HOVER": Color(0.68, 0.73, 0.80, 1.0),
+	"COLOR_BORDER_FOCUS": Color(0.20, 0.45, 0.88, 1.0),
+	"COLOR_TEXT_PRIMARY": Color(0.10, 0.12, 0.16, 1.0),
+	"COLOR_TEXT_SECONDARY": Color(0.28, 0.32, 0.39, 1.0),
+	"COLOR_TEXT_MUTED": Color(0.40, 0.44, 0.50, 1.0),
+	"COLOR_SUCCESS": Color(0.10, 0.50, 0.26, 1.0),
+	"COLOR_WARNING": Color(0.62, 0.40, 0.02, 1.0),
+	"COLOR_ERROR": Color(0.75, 0.18, 0.18, 1.0),
+	"COLOR_ERROR_HOVER": Color(0.84, 0.26, 0.26, 1.0),
+	"COLOR_ACCENT": Color(0.18, 0.42, 0.86, 1.0),
+	"COLOR_ACCENT_HOVER": Color(0.25, 0.50, 0.92, 1.0),
+	"COLOR_ACCENT_PRESSED": Color(0.13, 0.35, 0.75, 1.0),
+	"COLOR_BUBBLE_USER": Color(0.90, 0.94, 1.0, 1.0),
+	"COLOR_BUBBLE_USER_BORDER": Color(0.62, 0.74, 0.92, 1.0),
+	"COLOR_BUBBLE_ASSISTANT": Color(1.0, 1.0, 1.0, 1.0),
+	"COLOR_BUBBLE_COMMAND": Color(0.95, 0.93, 1.0, 1.0),
+	"COLOR_BUBBLE_COMMAND_BORDER": Color(0.74, 0.66, 0.92, 1.0),
+	"COLOR_ROLE_COMMAND": Color(0.44, 0.26, 0.74, 1.0),
+	"COLOR_MODE_FULL_AUTO": Color(0.52, 0.22, 0.68, 1.0),
+	"COLOR_TONE_WARNING_BG": Color(1.0, 0.97, 0.90, 1.0),
+	"COLOR_TONE_WARNING_BORDER": Color(0.86, 0.60, 0.16, 0.80),
+	"COLOR_TONE_WARNING_TEXT": Color(0.58, 0.36, 0.0, 1.0),
+	"COLOR_TONE_QUESTION_BG": Color(0.97, 0.97, 1.0, 1.0),
+	"COLOR_TONE_ERROR_BG": Color(1.0, 0.95, 0.95, 1.0),
+	"COLOR_TONE_ERROR_BORDER": Color(0.84, 0.34, 0.34, 0.75),
+	"COLOR_TONE_ERROR_TEXT": Color(0.70, 0.14, 0.14, 1.0),
+	"COLOR_TONE_INFO_BG": Color(0.95, 0.97, 1.0, 1.0),
+	"COLOR_TONE_INFO_BORDER": Color(0.34, 0.58, 0.88, 0.80),
+	"COLOR_TONE_INFO_TEXT": Color(0.10, 0.36, 0.68, 1.0),
+	"COLOR_TONE_SUCCESS_TEXT": Color(0.08, 0.46, 0.22, 1.0),
+	"COLOR_TONE_NEUTRAL_BG": Color(0.98, 0.98, 0.99, 1.0),
+	"COLOR_TONE_NEUTRAL_BORDER": Color(0.72, 0.78, 0.86, 1.0),
+	"COLOR_TONE_SUBTLE_BG": Color(0.97, 0.97, 0.98, 1.0),
+	"COLOR_TONE_SUBTLE_BORDER": Color(0.84, 0.86, 0.90, 1.0),
+	"COLOR_OPTION_BG": Color(0.93, 0.95, 0.99, 1.0),
+	"COLOR_OPTION_BORDER": Color(0.58, 0.68, 0.86, 1.0),
+	"COLOR_SHADOW": Color(0.0, 0.0, 0.0, 0.10),
+	"COLOR_LAYER_SYSTEM": Color(0.72, 0.48, 0.04, 1.0),
+	"COLOR_LAYER_RULES": Color(0.18, 0.42, 0.84, 1.0),
+	"COLOR_LAYER_SKILLS": Color(0.16, 0.56, 0.28, 1.0),
+	"COLOR_LAYER_TOOLS": Color(0.48, 0.28, 0.74, 1.0),
+}
+
+static func use_palette(light: bool) -> void:
+	is_light = light
+	var p: Dictionary = PALETTE_LIGHT if light else PALETTE_DARK
+	COLOR_BG_APP = p["COLOR_BG_APP"]
+	COLOR_BG_CARD = p["COLOR_BG_CARD"]
+	COLOR_BG_CARD_HOVER = p["COLOR_BG_CARD_HOVER"]
+	COLOR_BG_INPUT = p["COLOR_BG_INPUT"]
+	COLOR_BG_ACTIVE = p["COLOR_BG_ACTIVE"]
+	COLOR_BORDER_SUBTLE = p["COLOR_BORDER_SUBTLE"]
+	COLOR_BORDER_HOVER = p["COLOR_BORDER_HOVER"]
+	COLOR_BORDER_FOCUS = p["COLOR_BORDER_FOCUS"]
+	COLOR_TEXT_PRIMARY = p["COLOR_TEXT_PRIMARY"]
+	COLOR_TEXT_SECONDARY = p["COLOR_TEXT_SECONDARY"]
+	COLOR_TEXT_MUTED = p["COLOR_TEXT_MUTED"]
+	COLOR_SUCCESS = p["COLOR_SUCCESS"]
+	COLOR_WARNING = p["COLOR_WARNING"]
+	COLOR_ERROR = p["COLOR_ERROR"]
+	COLOR_ERROR_HOVER = p["COLOR_ERROR_HOVER"]
+	COLOR_ACCENT = p["COLOR_ACCENT"]
+	COLOR_ACCENT_HOVER = p["COLOR_ACCENT_HOVER"]
+	COLOR_ACCENT_PRESSED = p["COLOR_ACCENT_PRESSED"]
+	COLOR_BUBBLE_USER = p["COLOR_BUBBLE_USER"]
+	COLOR_BUBBLE_USER_BORDER = p["COLOR_BUBBLE_USER_BORDER"]
+	COLOR_BUBBLE_ASSISTANT = p["COLOR_BUBBLE_ASSISTANT"]
+	COLOR_BUBBLE_COMMAND = p["COLOR_BUBBLE_COMMAND"]
+	COLOR_BUBBLE_COMMAND_BORDER = p["COLOR_BUBBLE_COMMAND_BORDER"]
+	COLOR_ROLE_COMMAND = p["COLOR_ROLE_COMMAND"]
+	COLOR_MODE_FULL_AUTO = p["COLOR_MODE_FULL_AUTO"]
+	COLOR_TONE_WARNING_BG = p["COLOR_TONE_WARNING_BG"]
+	COLOR_TONE_WARNING_BORDER = p["COLOR_TONE_WARNING_BORDER"]
+	COLOR_TONE_WARNING_TEXT = p["COLOR_TONE_WARNING_TEXT"]
+	COLOR_TONE_QUESTION_BG = p["COLOR_TONE_QUESTION_BG"]
+	COLOR_TONE_ERROR_BG = p["COLOR_TONE_ERROR_BG"]
+	COLOR_TONE_ERROR_BORDER = p["COLOR_TONE_ERROR_BORDER"]
+	COLOR_TONE_ERROR_TEXT = p["COLOR_TONE_ERROR_TEXT"]
+	COLOR_TONE_INFO_BG = p["COLOR_TONE_INFO_BG"]
+	COLOR_TONE_INFO_BORDER = p["COLOR_TONE_INFO_BORDER"]
+	COLOR_TONE_INFO_TEXT = p["COLOR_TONE_INFO_TEXT"]
+	COLOR_TONE_SUCCESS_TEXT = p["COLOR_TONE_SUCCESS_TEXT"]
+	COLOR_TONE_NEUTRAL_BG = p["COLOR_TONE_NEUTRAL_BG"]
+	COLOR_TONE_NEUTRAL_BORDER = p["COLOR_TONE_NEUTRAL_BORDER"]
+	COLOR_TONE_SUBTLE_BG = p["COLOR_TONE_SUBTLE_BG"]
+	COLOR_TONE_SUBTLE_BORDER = p["COLOR_TONE_SUBTLE_BORDER"]
+	COLOR_OPTION_BG = p["COLOR_OPTION_BG"]
+	COLOR_OPTION_BORDER = p["COLOR_OPTION_BORDER"]
+	COLOR_SHADOW = p["COLOR_SHADOW"]
+	COLOR_LAYER_SYSTEM = p["COLOR_LAYER_SYSTEM"]
+	COLOR_LAYER_RULES = p["COLOR_LAYER_RULES"]
+	COLOR_LAYER_SKILLS = p["COLOR_LAYER_SKILLS"]
+	COLOR_LAYER_TOOLS = p["COLOR_LAYER_TOOLS"]
+
+## Editörün temasından (Ayarlar → Arayüz → Tema → Temel renk) açık / koyu paleti seçer. Editör dışında
+## hiçbir şey yapmaz. Palet değiştiyse true döner.
+static func use_editor_palette() -> bool:
+	if not Engine.is_editor_hint():
+		return false
+	var es: EditorSettings = EditorInterface.get_editor_settings()
+	if es == null or not es.has_setting("interface/theme/base_color"):
+		return false
+	var base: Color = es.get_setting("interface/theme/base_color")
+	var light := base.get_luminance() > 0.5
+	if light == is_light:
+		return false
+	use_palette(light)
+	return true
+
+## Tonlu zeminde okunacak vurgu yazısı: koyu temada açılır, açık temada koyulaşır.
+static func emphasize(c: Color, amount: float = 0.35) -> Color:
+	return c.darkened(amount * 0.6) if is_light else c.lightened(amount)
 
 # 5. Factory Metotları
 static func create_app_bg_style() -> StyleBoxFlat:

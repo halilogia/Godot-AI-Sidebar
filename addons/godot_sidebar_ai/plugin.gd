@@ -24,6 +24,11 @@ func _enter_tree() -> void:
 	
 	# 2. Sidebar Dock (arayüz editörün ölçeğiyle büyür: yazı, boşluk, ikon)
 	AISidebarTheme.ui_scale = EditorInterface.get_editor_scale()
+	# Açık / koyu editör teması: palet editörün temel renginden seçilir, tema değişince panel yeniden boyanır.
+	AISidebarTheme.use_editor_palette()
+	var es := EditorInterface.get_editor_settings()
+	if es and not es.settings_changed.is_connected(_on_editor_settings_changed):
+		es.settings_changed.connect(_on_editor_settings_changed)
 	if ResourceLoader.exists(DOCK_SCENE_PATH):
 		var dock_scene: PackedScene = load(DOCK_SCENE_PATH)
 		if dock_scene:
@@ -42,7 +47,14 @@ func _enter_tree() -> void:
 	mcp_bridge.name = "GodotAIMcpBridge"
 	add_child(mcp_bridge)
 
+func _on_editor_settings_changed() -> void:
+	if AISidebarTheme.use_editor_palette() and chat_dock and chat_dock.has_method("refresh_theme"):
+		chat_dock.call("refresh_theme")
+
 func _exit_tree() -> void:
+	var es := EditorInterface.get_editor_settings()
+	if es and es.settings_changed.is_connected(_on_editor_settings_changed):
+		es.settings_changed.disconnect(_on_editor_settings_changed)
 	if mcp_bridge:
 		mcp_bridge.stop()
 		mcp_bridge.queue_free()

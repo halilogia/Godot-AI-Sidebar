@@ -350,6 +350,12 @@ func _setup_skills_button() -> void:
 	add_child(help_dialog)
 	help_btn.pressed.connect(func() -> void: help_dialog.open_help())
 
+## Editör teması (açık / koyu) değişince: tema yeniden üretilir, varyasyonlu bütün düğümler kendiliğinden
+## yeni renkleri alır; boyalı ikonlar yeniden çizilir.
+func refresh_theme() -> void:
+	AISidebarChatDockTheme.apply(self)
+	update_ui_language()
+
 func update_ui_language() -> void:
 	if welcome_card and is_instance_valid(welcome_card):
 		welcome_card.refresh_texts()

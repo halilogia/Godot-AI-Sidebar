@@ -86,7 +86,7 @@ static func badge(text: String, accent: Color) -> Label:
 
 static func set_badge(l: Label, text: String, accent: Color) -> void:
 	l.text = text
-	l.add_theme_color_override("font_color", accent.lightened(0.25))
+	l.add_theme_color_override("font_color", AISidebarTheme.emphasize(accent, 0.25))
 	l.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(accent))
 
 ## İkincil düğme (kenarlıklı, dikeyde uzamaz).
