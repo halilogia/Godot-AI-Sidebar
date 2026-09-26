@@ -6,18 +6,38 @@ Genel proje kuralları için `AGENTS.md`'yi de oku.
 
 ## Arayüz grafik kalitesi standardı
 
-Eklentinin arayüzünde (`addons/godot_sidebar_ai/ui/`) yaptığın her değişiklikte:
+Eklentinin arayüzünde (`addons/godot_sidebar_ai/ui/`) yaptığın her değişiklikte uy.
 
-1. **Yalnız tema belirteçleri.** Renk, boşluk, köşe ve yazı boyu `AISidebarTheme` (`ui/theme/sidebar_theme.gd`) belirteçlerinden gelir. Sabit piksel yazı boyu (`add_theme_font_size_override("font_size", 11)`) ve tema dışı renk sabiti (`Color(0.9, …)`) yazma; yeni renk gerekiyorsa önce temaya adlı belirteç olarak ekle.
-2. **Ortak bileşen seti.** Ayarlar sayfaları ve benzeri formlar `ui/components/settings_ui_kit.gd` (`AISidebarSettingsUi`) ile kurulur: kart, ipucu, rozet, birincil / ikincil düğme, form satırı, açılır liste (`option_button()`), menü stilleri. Aynı iş için ikinci bir stil yazma. Yazı boyu editörün yazı boyundan türetilir.
-3. **Durumlar eksiksiz.** Düğme ve menü öğelerinde normal / üzerinde / basılı / seçili ayrı görünür. Düğmeler dikeyde uzamaz. Uzun metin sarılır ya da üç noktayla kesilir. Açılır listeler en uzun seçeneğe göre genişlemez. Kaydırma çubuğu içeriğe binmez. Pencere dar ekranda da sığar.
-4. **Görmeden bitti deme.** Değişiklikten önce ve sonra görüntü al ve PNG'lere gerçekten bak, iki dilde, geniş ve dar pencerede:
+### Tasarım sistemi (Tailwind'in buradaki karşılığı)
 
-   ```bash
-   godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör, repo dışı> tr
-   godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör, repo dışı> en
-   ```
+| Tailwind | Bu depo |
+|---|---|
+| `tailwind.config` (renk, boşluk, yazı ölçeği) | `ui/theme/sidebar_theme.gd` → `AISidebarTheme` belirteçleri |
+| `@apply` ile bileşen sınıfı | `ui/theme/sidebar_theme_builder.gd` → adlı tip varyasyonu (`AISidebarCard`, `AISidebarTitle`, `AISidebarPrimaryButton` …) |
+| `className="…"` | `node.theme_type_variation = AISidebarThemeBuilder.CARD` |
+| `hover:` / `focus:` | Varyasyonun `hover` / `pressed` / `focus` stilleri (üretici tanımlar) |
+| Ölçek / yoğunluk | `AISidebarTheme.ui_scale` (editör ölçeği) ve `Density.COMPACT` (dock) / `Density.FORM` (pencereler) |
 
-   Araç pencere ekrana sığmazsa `OVERFLOW` basıp 1 ile çıkar. Dock görselleri için `tools/readme_shots.gd`. Headless çekim çalışmaz. Görüntü editör temasını birebir yansıtmaz; editör içi duman testi yine gerekir.
-5. **Cırcırı yeşil tut.** `tests/test_ui_quality.gd` sabit yazı boyu ve renk sabiti sayısını `ui/` dosyası başına tutar. Yeni dosya sıfırla başlar. Eski bir kartı temizlediysen `BASELINE`'daki sayısını düşür, asla yükseltme.
-6. **Kullanıcıya kanıt göster.** Arayüz işini bitirdiğinde önce / sonra görüntüsünü kullanıcıya gönder.
+1. **Önce varyasyon.** Yeni denetim görünümünü `theme_type_variation` ile alır. Uygun varyasyon yoksa önce `AISidebarThemeBuilder`'a ekle (ve `tests/test_ui_quality.gd` → `VARIATIONS` listesine), sonra kullan. Tema kökte verilir: dock (`chat_dock_theme.gd`), Ayarlar / Skills / diff pencereleri (`form_theme()` ya da `build(FORM)`).
+2. **Sabit değer yok.** Renk yalnız `AISidebarTheme` belirteci; BBCode rengi `AISidebarTheme.bb(belirteç)`. Yazı boyu, boşluk ve ikon boyu ölçekli: `AISidebarTheme.fs(FONT_SIZE_*)`, `AISidebarTheme.px(SPACE_*)`, ikonlar `ICON_SIZE_SM / MD / LG`. Sahnelerde (`.tscn`) tema geçersiz kılması yazılmaz; kodda ölçekli verilir. Yeni renk gerekiyorsa temaya anlamlı adla eklenir (ör. `COLOR_TONE_WARNING_TEXT`).
+3. **Ton ile anlam.** Kart tonu içeriğin anlamını söyler: soru / onay `CARD_QUESTION` / `CARD_WARNING`, hata `CARD_ERROR`, plan / bilgi `CARD_INFO`, değişiklik `CARD_NEUTRAL`, yardımcı bilgi `CARD_SUBTLE`. Sayfada tek birincil eylem (`PRIMARY_BUTTON`), diğerleri `BUTTON` / `GHOST_BUTTON`.
+4. **Form ekranları** (`AISidebarSettingsUi`, `ui/components/settings_ui_kit.gd`): kart, ipucu, rozet, düğme, form satırı, açılır liste (`option_button()`, en uzun seçeneğe göre genişlemez). Aynı iş için ikinci bir stil yazma.
+5. **Durumlar eksiksiz.** Normal / üzerinde / basılı / seçili / devre dışı ayrı görünür. Düğmeler dikeyde uzamaz. Uzun metin sarılır ya da üç noktayla kesilir. Kaydırma çubuğu içeriğe binmez. Pencere dar ekranda, kartlar dar dock'ta (320 px) sığar.
+6. **Hareket ölçülü.** Geçişler `AISidebarMotion` ile (120–180 ms, yalnız saydamlık); yerleşimi oynatan animasyon yok. Kullanıcı Ayarlar → Genel'den kapatabilir; kapalıyken hiçbir şey oynamaz.
+7. **Metin i18n'den.** Görünen her metin, pencere başlığı ve düğme metni `AISidebarI18n.get_text` ile, iki dilde.
+
+### Görmeden bitti deme
+
+Değişiklikten önce ve sonra görüntü al ve PNG'lere gerçekten bak, iki dilde:
+
+```bash
+godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör, repo dışı> tr
+godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör, repo dışı> en
+godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör> tr all 1.5   # yüksek DPI editör ölçeği
+```
+
+- Ayarlar'ın her sayfası (geniş / dar pencere) ve sohbet paneli `tools/ui_scenarios.gd`'deki her senaryoyla (normal / dar dock) çekilir. Taşmada `OVERFLOW` basılır, çıkış kodu 1 olur.
+- Yeni bir kart ya da arayüz durumu eklediysen `tools/ui_scenarios.gd`'ye senaryosunu ekle (`NAMES`).
+- Headless çekim çalışmaz. Görüntü editör temasını birebir yansıtmaz; editör içi duman testi yine gerekir.
+- `tests/test_ui_quality.gd` yeşil kalır: sabit / ölçeksiz yazı boyu, ölçeksiz boşluk, renk ve BBCode renk sabiti sayısı dosya başına `BASELINE`'ı (şu an boş) aşamaz; sahnelerde tema geçersiz kılması yok; her varyasyon tanımlı.
+- İş bitince önce / sonra görüntüsünü kullanıcıya gönder.

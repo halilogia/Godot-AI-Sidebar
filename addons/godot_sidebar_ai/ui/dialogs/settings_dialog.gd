@@ -3,7 +3,7 @@ extends AcceptDialog
 
 ## Ayarlar penceresi: sol menü + sayfa. Sayfalar kodla ve ortak bileşenlerle (AISidebarSettingsUi)
 ## kurulur; her açılışta yeniden kurulur, böylece dil ve editör yazı boyu değişiklikleri hemen görünür.
-##   0 Sağlayıcı, 1 Model & Parametreler, 2 Dil & Onaylar  → AISidebarSettingsGeneralPages
+##   0 Sağlayıcı, 1 Model & Parametreler, 2 Genel (dil, görünüm, onaylar)  → AISidebarSettingsGeneralPages
 ##   3 Kurallar (bağlam yükü, yerleşik kurallar = sistem istemi, global / proje kuralları) → AISidebarRulesView
 ##   4 Skill'ler → AISidebarSkillsView
 ##   5 Dış Ajan (MCP) → AISidebarMcpSettingsView
@@ -13,6 +13,8 @@ extends AcceptDialog
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 const AISidebarSettingsGeneralPages = preload("res://addons/godot_sidebar_ai/ui/components/settings_general_pages.gd")
 const AISidebarRulesView = preload("res://addons/godot_sidebar_ai/ui/components/rules_view.gd")
@@ -48,22 +50,16 @@ func open_settings() -> void:
 	rules_view.load_from(cfg)
 	_select_category(0)
 	# Editör yazı boyuyla büyür, ekranın (editör penceresinin) %90'ını aşmaz.
-	var scale := maxf(1.0, float(AISidebarSettingsUi.base_size) / 14.0)
+	var scale := maxf(1.0, AISidebarTheme.ui_scale)
 	var avail := Vector2(get_tree().root.size) * 0.9
 	popup_centered(Vector2i((BASE_SIZE * scale).min(avail)))
 
 func _build() -> void:
 	title = AISidebarI18n.get_text("settings_title")
 	ok_button_text = AISidebarI18n.get_text("btn_save_close")
-	AISidebarSettingsUi.base_size = get_theme_default_font_size()
+	theme = AISidebarSettingsUi.form_theme()
 	add_theme_stylebox_override("panel", AISidebarTheme.create_dialog_style())
-	var ok := get_ok_button()
-	ok.add_theme_stylebox_override("normal", AISidebarTheme.create_accent_button_style())
-	ok.add_theme_stylebox_override("hover", AISidebarTheme.create_accent_button_style(true))
-	ok.add_theme_stylebox_override("pressed", AISidebarTheme.create_accent_button_style(false, true))
-	ok.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	ok.add_theme_color_override("font_color", AISidebarTheme.COLOR_WHITE)
-	ok.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_WHITE)
+	get_ok_button().theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	if _root != null:
 		_root.queue_free()
 	_nav_buttons.clear()
@@ -71,17 +67,15 @@ func _build() -> void:
 
 	_root = HBoxContainer.new()
 	_root.name = "MainHBox"
-	_root.add_theme_constant_override("separation", AISidebarTheme.SPACE_MD)
+	_root.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 	add_child(_root)
 
 	var nav_panel := PanelContainer.new()
 	nav_panel.custom_minimum_size = Vector2(float(AISidebarSettingsUi.base_size) * 13.0, 0)
-	var nav_style := AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_SM)
-	nav_style.bg_color = AISidebarTheme.COLOR_BG_APP
-	nav_panel.add_theme_stylebox_override("panel", nav_style)
+	nav_panel.theme_type_variation = AISidebarThemeBuilder.CARD_INSET
 	_root.add_child(nav_panel)
 	var nav := VBoxContainer.new()
-	nav.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	nav.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	nav_panel.add_child(nav)
 
 	_scroll = ScrollContainer.new()
@@ -92,7 +86,7 @@ func _build() -> void:
 	# Sağ boşluk: kaydırma çubuğu kartların kenarına binmesin.
 	var gutter := MarginContainer.new()
 	gutter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	gutter.add_theme_constant_override("margin_right", AISidebarTheme.SPACE_MD)
+	gutter.add_theme_constant_override("margin_right", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 	_scroll.add_child(gutter)
 	var pages := VBoxContainer.new()
 	pages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -129,6 +123,8 @@ func _select_category(idx: int) -> void:
 	_active = idx
 	for i in _pages.size():
 		_pages[i].visible = i == idx
+		if i == idx:
+			AISidebarMotion.fade_in(_pages[i], AISidebarMotion.DURATION_FAST)
 		AISidebarSettingsUi.style_nav_button(_nav_buttons[i], i == idx)
 	if idx == CATEGORY_RULES:
 		rules_view.refresh()

@@ -9,6 +9,8 @@ signal response_submitted(answer: String)
 
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
 var question_text: String = ""
 var quick_options: Array = []
@@ -31,31 +33,21 @@ func _init(p_question: String = "", p_options: Array = []) -> void:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(6)
-	style.bg_color = Color(0.13, 0.16, 0.22, 0.95)
-	style.border_color = Color(0.85, 0.65, 0.2, 0.85) # Amber/Gold accent for question
-	style.set_border_width_all(1)
-	style.content_margin_left = 12
-	style.content_margin_top = 10
-	style.content_margin_right = 12
-	style.content_margin_bottom = 10
-	add_theme_stylebox_override("panel", style)
+	theme_type_variation = AISidebarThemeBuilder.CARD_QUESTION
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
+	vbox.add_theme_constant_override("separation", AISidebarTheme.px(8))
 	
 	# 1. Başlık & Soru
 	var header_hbox = HBoxContainer.new()
-	header_hbox.add_theme_constant_override("separation", 6)
-	var header_icon = AISidebarStatusIcon.new(16)
-	header_icon.set_icon("message-circle-question-mark", Color(0.95, 0.75, 0.3))
+	header_hbox.add_theme_constant_override("separation", AISidebarTheme.px(6))
+	var header_icon = AISidebarStatusIcon.new(AISidebarTheme.ICON_SIZE_LG)
+	header_icon.set_icon("message-circle-question-mark", AISidebarTheme.COLOR_TONE_WARNING_TEXT)
 	header_hbox.add_child(header_icon)
 	
 	var title_lbl = Label.new()
 	title_lbl.text = AISidebarI18n.get_text("clarification_title")
-	title_lbl.add_theme_font_size_override("font_size", 12)
-	title_lbl.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3))
+	title_lbl.theme_type_variation = AISidebarThemeBuilder.TITLE_WARNING
 	header_hbox.add_child(title_lbl)
 	vbox.add_child(header_hbox)
 	
@@ -66,8 +58,7 @@ func _ready() -> void:
 	_question_lbl.selection_enabled = true
 	_question_lbl.context_menu_enabled = true
 	_question_lbl.focus_mode = Control.FOCUS_CLICK
-	_question_lbl.add_theme_font_size_override("normal_font_size", 12)
-	_question_lbl.add_theme_color_override("default_color", Color(0.9, 0.9, 0.95))
+	_question_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_TITLE
 	vbox.add_child(_question_lbl)
 	
 	# 2. Hızlı Seçenek Butonları (Quick Choices)
@@ -76,7 +67,7 @@ func _ready() -> void:
 		# kaydıran butonlar en dar hallerine sıkışıyordu; kaydırmayanlar ise dar dock'u taşırıyordu.)
 		_options_container = VBoxContainer.new()
 		_options_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_options_container.add_theme_constant_override("separation", 6)
+		_options_container.add_theme_constant_override("separation", AISidebarTheme.px(6))
 		
 		for opt in quick_options:
 			var opt_str = str(opt)
@@ -87,18 +78,7 @@ func _ready() -> void:
 			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			btn.focus_mode = Control.FOCUS_NONE
-			btn.add_theme_font_size_override("font_size", 11)
-			
-			var btn_style = StyleBoxFlat.new()
-			btn_style.set_corner_radius_all(4)
-			btn_style.bg_color = Color(0.2, 0.25, 0.35, 0.9)
-			btn_style.border_color = Color(0.4, 0.55, 0.75, 0.8)
-			btn_style.set_border_width_all(1)
-			btn_style.content_margin_left = 10
-			btn_style.content_margin_top = 4
-			btn_style.content_margin_right = 10
-			btn_style.content_margin_bottom = 4
-			btn.add_theme_stylebox_override("normal", btn_style)
+			btn.theme_type_variation = AISidebarThemeBuilder.OPTION_BUTTON
 			
 			btn.pressed.connect(func(): _on_option_selected(opt_str))
 			_options_container.add_child(btn)
@@ -107,18 +87,18 @@ func _ready() -> void:
 		
 	# 3. Serbest Metin Girişi (Free Text Response)
 	var input_hbox = HBoxContainer.new()
-	input_hbox.add_theme_constant_override("separation", 4)
+	input_hbox.add_theme_constant_override("separation", AISidebarTheme.px(4))
 	
 	_input_line = LineEdit.new()
 	_input_line.placeholder_text = AISidebarI18n.get_text("clarification_placeholder")
 	_input_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_input_line.add_theme_font_size_override("font_size", 11)
+	_input_line.theme_type_variation = AISidebarThemeBuilder.LINE_EDIT
 	_input_line.text_submitted.connect(_on_text_submitted)
 	input_hbox.add_child(_input_line)
 	
 	_send_btn = Button.new()
 	_send_btn.text = AISidebarI18n.get_text("btn_send")
-	_send_btn.add_theme_font_size_override("font_size", 11)
+	_send_btn.theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	_send_btn.pressed.connect(func(): _on_text_submitted(_input_line.text))
 	input_hbox.add_child(_send_btn)
 	
@@ -128,15 +108,14 @@ func _ready() -> void:
 	# 4. Yanıtlandı Durum Etiketi
 	var status_row = HBoxContainer.new()
 	status_row.visible = false
-	status_row.add_theme_constant_override("separation", 4)
+	status_row.add_theme_constant_override("separation", AISidebarTheme.px(4))
 	vbox.add_child(status_row)
 	_status_icon = AISidebarStatusIcon.new()
-	_status_icon.set_icon("check", Color(0.4, 0.85, 0.5))
+	_status_icon.set_icon("check", AISidebarTheme.COLOR_TONE_SUCCESS_TEXT)
 	status_row.add_child(_status_icon)
 	_status_lbl = Label.new()
 	_status_lbl.visible = false
-	_status_lbl.add_theme_font_size_override("font_size", 11)
-	_status_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.5))
+	_status_lbl.theme_type_variation = AISidebarThemeBuilder.TEXT_SUCCESS
 	status_row.add_child(_status_lbl)
 	
 	add_child(vbox)

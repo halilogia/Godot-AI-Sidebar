@@ -21,12 +21,12 @@ func _init(p_size: int = AISidebarIconHelper.STATUS_ICON_SIZE) -> void:
 	# Çok satırlı başlıklarda ikon ilk satırla hizalı kalır.
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_rect = AISidebarIconHelper.make_icon_rect(_size)
-	_rect.custom_minimum_size = Vector2(_size, _size + 4)
+	_rect.custom_minimum_size = Vector2(AISidebarTheme.px(_size), AISidebarTheme.px(_size + 4))
 	add_child(_rect)
 	_fallback = Label.new()
 	_fallback.mouse_filter = Control.MOUSE_FILTER_PASS
 	_fallback.visible = false
-	_fallback.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_fallback.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	add_child(_fallback)
 
 ## Tanınmayan glifte metin rengi fallback_color olur.

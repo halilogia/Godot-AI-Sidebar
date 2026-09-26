@@ -9,6 +9,7 @@ class_name AISidebarMcpSettingsView
 const AISidebarMcpBridgeControl = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_control.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 
 var _badge: Label
@@ -22,7 +23,7 @@ var _port_row: Control
 
 func _init() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_theme_constant_override("separation", AISidebarTheme.SPACE_MD)
+	add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 
 	_badge = AISidebarSettingsUi.badge("", AISidebarTheme.COLOR_TEXT_MUTED)
 	var bridge_card := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("mcp_settings_title"), AISidebarI18n.get_text("mcp_settings_hint"), _badge)
@@ -46,7 +47,7 @@ func _init() -> void:
 	_connect_card = connect.get_parent() as Control
 	_command = AISidebarSettingsUi.hint_label("")
 	_command.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	_command.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_command.theme_type_variation = AISidebarThemeBuilder.BODY
 	_command.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
 	connect.add_child(_command)
 	var copy_row := AISidebarSettingsUi.row(connect)

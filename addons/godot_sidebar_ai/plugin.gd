@@ -1,6 +1,7 @@
 @tool
 extends EditorPlugin
 
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const DOCK_SCENE_PATH: String = "res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn"
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd")
@@ -21,7 +22,8 @@ func _enter_tree() -> void:
 	add_debugger_plugin(debugger_plugin)
 	add_autoload_singleton("GodotAIRuntimeBridge", "res://addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd")
 	
-	# 2. Sidebar Dock
+	# 2. Sidebar Dock (arayüz editörün ölçeğiyle büyür: yazı, boşluk, ikon)
+	AISidebarTheme.ui_scale = EditorInterface.get_editor_scale()
 	if ResourceLoader.exists(DOCK_SCENE_PATH):
 		var dock_scene: PackedScene = load(DOCK_SCENE_PATH)
 		if dock_scene:

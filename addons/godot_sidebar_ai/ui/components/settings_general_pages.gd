@@ -5,11 +5,12 @@ class_name AISidebarSettingsGeneralPages
 ## Ayarlar penceresinin genel sayfaları (kodla, AISidebarSettingsUi ile kurulur):
 ##   Sağlayıcı: sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable)
 ##   Model & Parametreler: temperature, max_agent_steps (max_iterations aynı denetim)
-##   Dil & Onaylar: language, auto_approve_mode, require_delete_approval, require_overwrite_approval
+##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval
 ## Pencere açılırken config'ten yüklenir (load_from), "Kaydet ve Kapat"ta config'e yazılır (write_to).
 
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 
 const DEFAULT_TEMPERATURE := 0.20
@@ -31,6 +32,7 @@ var lang_opt: OptionButton
 var mode_opt: OptionButton
 var delete_check: CheckBox
 var overwrite_check: CheckBox
+var animations_check: CheckBox
 
 func build_provider_page() -> VBoxContainer:
 	var page := AISidebarSettingsUi.page()
@@ -95,6 +97,12 @@ func build_language_page() -> VBoxContainer:
 	lang_opt.add_item("English (EN)", 1)  # i18n-ignore: dil adı kendi dilinde yazılır
 	lang.add_child(lang_opt)
 
+	var look := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_appearance"))
+	animations_check = CheckBox.new()
+	animations_check.text = AISidebarI18n.get_text("settings_ui_animations")
+	look.add_child(animations_check)
+	look.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_ui_animations_hint")))
+
 	var appr := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_approval"), AISidebarI18n.get_text("hint_approval_mode"))
 	mode_opt = AISidebarSettingsUi.option_button()
 	for mode: String in MODES:
@@ -129,6 +137,7 @@ func load_from(cfg: Dictionary) -> void:
 	var steps: float = cfg.get("max_agent_steps", cfg.get("max_iterations", 20))
 	steps_spin.value = steps
 	lang_opt.selected = maxi(0, LANGUAGES.find(str(cfg.get("language", "tr"))))
+	animations_check.button_pressed = cfg.get("ui_animations", true) == true
 	mode_opt.selected = maxi(0, MODES.find(str(cfg.get("auto_approve_mode", "MANUAL"))))
 	delete_check.button_pressed = cfg.get("require_delete_approval", true) == true
 	overwrite_check.button_pressed = cfg.get("require_overwrite_approval", true) == true
@@ -144,6 +153,8 @@ func write_to(cfg: Dictionary) -> void:
 	cfg["max_agent_steps"] = steps
 	cfg["max_iterations"] = steps
 	cfg["language"] = LANGUAGES[lang_opt.selected]
+	cfg["ui_animations"] = animations_check.button_pressed
+	AISidebarMotion.enabled = animations_check.button_pressed
 	cfg["auto_approve_mode"] = MODES[mode_opt.selected]
 	cfg["require_delete_approval"] = delete_check.button_pressed
 	cfg["require_overwrite_approval"] = overwrite_check.button_pressed

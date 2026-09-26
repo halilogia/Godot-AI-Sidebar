@@ -137,7 +137,7 @@ func _ensure_export_file_dialog() -> void:
 	if _export_file_dialog and is_instance_valid(_export_file_dialog):
 		return
 	_export_file_dialog = FileDialog.new()
-	_export_file_dialog.title = "Export Chat"
+	_export_file_dialog.title = AISidebarI18n.get_text("export_dialog_title")
 	_export_file_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	_export_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	_export_file_dialog.file_selected.connect(_on_export_file_chosen)

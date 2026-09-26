@@ -2,48 +2,44 @@
 extends RefCounted
 class_name AISidebarSettingsUi
 
-## Ayarlar penceresinin ortak görsel parçaları: sayfa, kart (başlık + açıklama), ipucu, rozet, düğme,
-## form satırı. Bütün sayfalar (sahneden değil kodla kurulur) bu birimi kullanır; böylece kartlar,
-## yazı boyları ve düğmeler her sayfada aynıdır. Yazı boyu editörün yazı boyuna göre ölçeklenir
-## (sabit piksel yok): base_size pencere açılırken temadan alınır.
+## Ayarlar penceresinin ve form benzeri görünümlerin ortak parçaları: sayfa, kart (başlık + açıklama),
+## ipucu, rozet, düğme, form satırı, açılır liste. Görünüm AISidebarThemeBuilder'ın tip varyasyonlarından
+## gelir (kökteki tema, FORM yoğunluğu); bu birim yalnız düzeni kurar ve varyasyon adını atar. Yazı boyu
+## ve boşluk editör ölçeğiyle büyür; burada sabit piksel ya da renk yoktur.
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
-static var base_size: int = 14
+## Gövde yazı boyu (ölçekli); en küçük genişlik / yükseklik hesaplarının birimi.
+static var base_size: int = AISidebarTheme.FONT_SIZE_FORM_BODY
 
-static func title_size() -> int:
-	return base_size + 1
-
-static func hint_size() -> int:
-	return maxi(9, base_size - 2)
-
-static func badge_size() -> int:
-	return maxi(8, base_size - 3)
+## Kökte kullanılacak tema (Ayarlar penceresi, Skills penceresi); base_size'ı da günceller.
+static func form_theme() -> Theme:
+	var sz := AISidebarThemeBuilder.sizes(AISidebarThemeBuilder.Density.FORM)
+	base_size = sz["body"]
+	return AISidebarThemeBuilder.build(AISidebarThemeBuilder.Density.FORM)
 
 static func page() -> VBoxContainer:
 	var p := VBoxContainer.new()
 	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	p.add_theme_constant_override("separation", AISidebarTheme.SPACE_MD)
+	p.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 	return p
 
 ## Başlıklı kart; içerik kutusunu döndürür. hint boşsa açıklama satırı eklenmez.
 static func card(parent: Control, title: String, hint: String = "", accessory: Control = null) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_MD))
+	panel.theme_type_variation = AISidebarThemeBuilder.CARD
 	parent.add_child(panel)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	box.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	panel.add_child(box)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
-	box.add_child(head)
+	var head := row(box)
 	var t := Label.new()
 	t.text = title
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	t.add_theme_font_size_override("font_size", title_size())
-	t.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	t.theme_type_variation = AISidebarThemeBuilder.TITLE
 	head.add_child(t)
 	if accessory != null:
 		accessory.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -57,8 +53,7 @@ static func hint_label(text: String) -> Label:
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	l.add_theme_font_size_override("font_size", hint_size())
-	l.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+	l.theme_type_variation = AISidebarThemeBuilder.HINT
 	return l
 
 static func body_label(text: String) -> Label:
@@ -66,7 +61,7 @@ static func body_label(text: String) -> Label:
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	l.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	l.theme_type_variation = AISidebarThemeBuilder.BODY
 	return l
 
 ## Durum bildirimi (işlem sonucu); boşken yer kaplamaz.
@@ -78,16 +73,15 @@ static func status_label() -> Label:
 static func set_status(l: Label, text: String, is_error: bool = false) -> void:
 	l.text = text
 	l.visible = not text.is_empty()
-	l.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR if is_error else AISidebarTheme.COLOR_SUCCESS)
+	l.theme_type_variation = AISidebarThemeBuilder.TEXT_ERROR if is_error else AISidebarThemeBuilder.TEXT_SUCCESS
 
-## Küçük renkli hap (kapsam, durum): "Yerleşik", "Proje", "Açık" gibi.
+## Küçük renkli hap (kapsam, durum): "Yerleşik", "Proje", "Açık" gibi. Renk veriden geldiği için
+## stil burada, tema belirteçleriyle üretilir.
 static func badge(text: String, accent: Color) -> Label:
 	var l := Label.new()
-	l.text = text
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	l.add_theme_font_size_override("font_size", badge_size())
-	l.add_theme_color_override("font_color", accent.lightened(0.25))
-	l.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(accent))
+	l.theme_type_variation = AISidebarThemeBuilder.MICRO
+	set_badge(l, text, accent)
 	return l
 
 static func set_badge(l: Label, text: String, accent: Color) -> void:
@@ -101,12 +95,7 @@ static func button(text: String, on_press: Callable) -> Button:
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	b.add_theme_stylebox_override("normal", _outline_style(false))
-	b.add_theme_stylebox_override("hover", _outline_style(true))
-	b.add_theme_stylebox_override("pressed", _outline_style(true))
-	b.add_theme_stylebox_override("disabled", _outline_style(false))
-	b.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
-	b.add_theme_font_size_override("font_size", hint_size() + 1)
+	b.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	if on_press.is_valid():
 		b.pressed.connect(on_press)
 	return b
@@ -114,30 +103,8 @@ static func button(text: String, on_press: Callable) -> Button:
 ## Birincil düğme (vurgu rengi): sayfadaki asıl eylem.
 static func primary_button(text: String, on_press: Callable) -> Button:
 	var b := button(text, on_press)
-	b.add_theme_stylebox_override("normal", AISidebarTheme.create_accent_button_style())
-	b.add_theme_stylebox_override("hover", AISidebarTheme.create_accent_button_style(true))
-	b.add_theme_stylebox_override("pressed", AISidebarTheme.create_accent_button_style(false, true))
-	b.add_theme_color_override("font_color", AISidebarTheme.COLOR_WHITE)
-	b.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_WHITE)
+	b.theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	return b
-
-static func _outline_style(hover: bool) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = AISidebarTheme.COLOR_BG_CARD_HOVER if hover else AISidebarTheme.COLOR_BG_INPUT
-	s.border_color = AISidebarTheme.COLOR_BORDER_HOVER if hover else AISidebarTheme.COLOR_BORDER_SUBTLE
-	s.set_border_width_all(1)
-	s.set_corner_radius_all(AISidebarTheme.RADIUS_SM)
-	s.content_margin_left = AISidebarTheme.SPACE_MD
-	s.content_margin_right = AISidebarTheme.SPACE_MD
-	s.content_margin_top = AISidebarTheme.SPACE_XS
-	s.content_margin_bottom = AISidebarTheme.SPACE_XS
-	return s
-
-## Metin kutusu stilleri (LineEdit / TextEdit / SpinBox'ın satırı).
-static func style_input(c: Control) -> void:
-	c.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
-	c.add_theme_stylebox_override("focus", AISidebarTheme.create_input_focus_style())
-	c.add_theme_stylebox_override("read_only", AISidebarTheme.create_input_style())
 
 ## Açılır liste: en uzun seçeneğe göre genişlemez (uzun seçenek pencereyi ekran dışına itmesin), sığmayan
 ## metin üç noktayla kesilir.
@@ -148,6 +115,10 @@ static func option_button() -> OptionButton:
 	o.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	return o
 
+## Metin kutusu stilleri (LineEdit / TextEdit).
+static func style_input(c: Control) -> void:
+	c.theme_type_variation = AISidebarThemeBuilder.TEXT_EDIT if c is TextEdit else AISidebarThemeBuilder.LINE_EDIT
+
 static func line_edit(placeholder: String = "") -> LineEdit:
 	var e := LineEdit.new()
 	e.placeholder_text = placeholder
@@ -157,21 +128,19 @@ static func line_edit(placeholder: String = "") -> LineEdit:
 
 ## "Etiket: [denetim]" satırı; etiket sabit genişlikte olduğu için satırlar hizalı durur.
 static func form_row(parent: Control, label: String, control: Control) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
-	parent.add_child(row)
+	var r := row(parent)
 	var l := Label.new()
 	l.text = label
 	l.custom_minimum_size = Vector2(float(base_size) * 9.0, 0)
-	l.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
-	row.add_child(l)
+	l.theme_type_variation = AISidebarThemeBuilder.HINT
+	r.add_child(l)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(control)
-	return row
+	r.add_child(control)
+	return r
 
 static func row(parent: Control) -> HBoxContainer:
 	var r := HBoxContainer.new()
-	r.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	r.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	parent.add_child(r)
 	return r
 
@@ -180,30 +149,6 @@ static func spacer() -> Control:
 	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return s
 
-## Sol menü düğmesi: normal / üzerinde / seçili hepsi ayrı; yalnız seçili olan vurgulu görünür.
+## Sol menü düğmesi: yalnız seçili olan vurgulu; üzerine gelme ayrı görünür.
 static func style_nav_button(b: Button, active: bool) -> void:
-	b.add_theme_stylebox_override("normal", _nav_style(active, false))
-	b.add_theme_stylebox_override("hover", _nav_style(active, true))
-	b.add_theme_stylebox_override("pressed", _nav_style(active, true))
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	var color := AISidebarTheme.COLOR_TEXT_PRIMARY if active else AISidebarTheme.COLOR_TEXT_SECONDARY
-	b.add_theme_color_override("font_color", color)
-	b.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
-	b.add_theme_color_override("font_pressed_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
-
-static func _nav_style(active: bool, hover: bool) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	if active:
-		s.bg_color = AISidebarTheme.COLOR_BG_ACTIVE
-	elif hover:
-		s.bg_color = AISidebarTheme.COLOR_BG_CARD_HOVER
-	else:
-		s.bg_color = AISidebarTheme.COLOR_TRANSPARENT
-	s.border_color = AISidebarTheme.COLOR_ACCENT
-	s.border_width_left = 3 if active else 0
-	s.set_corner_radius_all(AISidebarTheme.RADIUS_SM)
-	s.content_margin_left = AISidebarTheme.SPACE_MD
-	s.content_margin_right = AISidebarTheme.SPACE_SM
-	s.content_margin_top = AISidebarTheme.SPACE_SM - 2
-	s.content_margin_bottom = AISidebarTheme.SPACE_SM - 2
-	return s
+	b.theme_type_variation = AISidebarThemeBuilder.NAV_BUTTON_ACTIVE if active else AISidebarThemeBuilder.NAV_BUTTON

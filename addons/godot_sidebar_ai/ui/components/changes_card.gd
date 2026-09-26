@@ -14,6 +14,8 @@ signal file_clicked(file_path: String)
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
 var change_set: AISidebarChangeSet
 var is_expanded: bool = true
@@ -35,22 +37,13 @@ func _ready() -> void:
 		render_changes(change_set)
 
 func _setup_ui() -> void:
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(6)
-	style.bg_color = Color(0.14, 0.16, 0.20, 0.95)
-	style.border_color = Color(0.3, 0.4, 0.55, 0.6)
-	style.set_border_width_all(1)
-	style.content_margin_left = 10
-	style.content_margin_top = 8
-	style.content_margin_right = 10
-	style.content_margin_bottom = 8
+	theme_type_variation = AISidebarThemeBuilder.CARD_NEUTRAL
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", 6)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(6))
 	add_child(_vbox)
 	
 	_header_lbl = RichTextLabel.new()
@@ -64,26 +57,26 @@ func _setup_ui() -> void:
 	_header_lbl.focus_mode = Control.FOCUS_CLICK
 	_header_lbl.deselect_on_focus_loss_enabled = false
 	_header_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	_header_lbl.add_theme_font_size_override("normal_font_size", 12)
+	_header_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_TITLE
 	_header_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	_vbox.add_child(_header_lbl)
 	
 	_files_list = VBoxContainer.new()
 	_files_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_files_list.mouse_filter = Control.MOUSE_FILTER_PASS
-	_files_list.add_theme_constant_override("separation", 3)
+	_files_list.add_theme_constant_override("separation", AISidebarTheme.px(3))
 	_vbox.add_child(_files_list)
 	
 	_actions_bar = HBoxContainer.new()
 	_actions_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_actions_bar.add_theme_constant_override("separation", 8)
+	_actions_bar.add_theme_constant_override("separation", AISidebarTheme.px(8))
 	_vbox.add_child(_actions_bar)
 	
 	_diff_btn = Button.new()
 	_diff_btn.text = AISidebarI18n.get_text("btn_view_diff")
 	AISidebarIconHelper.apply_icon(_diff_btn, "diff")
 	_diff_btn.focus_mode = Control.FOCUS_NONE
-	_diff_btn.add_theme_font_size_override("font_size", 11)
+	_diff_btn.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	_diff_btn.pressed.connect(_on_diff_pressed)
 	_actions_bar.add_child(_diff_btn)
 	
@@ -91,7 +84,7 @@ func _setup_ui() -> void:
 	_undo_btn.text = AISidebarI18n.get_text("btn_undo")
 	AISidebarIconHelper.apply_icon(_undo_btn, "undo")
 	_undo_btn.focus_mode = Control.FOCUS_NONE
-	_undo_btn.add_theme_font_size_override("font_size", 11)
+	_undo_btn.theme_type_variation = AISidebarThemeBuilder.GHOST_BUTTON
 	_undo_btn.pressed.connect(_on_undo_pressed)
 	_actions_bar.add_child(_undo_btn)
 
@@ -106,13 +99,13 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 	var deltas = cs.get_file_deltas()
 	var total_files = deltas.size()
 	
-	_header_lbl.text = "[color=#88c0d0][b]▾ " + AISidebarI18n.get_text("changes_header", {"count": total_files}) + "[/b][/color]"
+	_header_lbl.text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_INFO_TEXT) + "][b]▾ " + AISidebarI18n.get_text("changes_header", {"count": total_files}) + "[/b][/color]"
 	
 	for d in deltas:
 		var row = HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.mouse_filter = Control.MOUSE_FILTER_PASS
-		row.add_theme_constant_override("separation", 6)
+		row.add_theme_constant_override("separation", AISidebarTheme.px(6))
 		
 		var name_lbl = RichTextLabel.new()
 		name_lbl.bbcode_enabled = true
@@ -126,7 +119,7 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 		name_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_lbl.add_theme_font_size_override("normal_font_size", 11)
+		name_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
 		var p = str(d["path"])
 		name_lbl.text = "• [url=file:" + p + "]" + p + "[/url]"
 		name_lbl.meta_clicked.connect(func(m): 
@@ -146,8 +139,8 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 		delta_lbl.deselect_on_focus_loss_enabled = false
 		delta_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 		delta_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-		delta_lbl.add_theme_font_size_override("normal_font_size", 11)
-		delta_lbl.text = "[color=#a3be8c]+" + str(d["added"]) + "[/color] [color=#bf616a]-" + str(d["removed"]) + "[/color]"
+		delta_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
+		delta_lbl.text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_SUCCESS_TEXT) + "]+" + str(d["added"]) + "[/color] [color=#" + AISidebarTheme.COLOR_TONE_ERROR_TEXT.to_html(false) + "]-" + str(d["removed"]) + "[/color]"
 		row.add_child(delta_lbl)
 		
 		_files_list.add_child(row)

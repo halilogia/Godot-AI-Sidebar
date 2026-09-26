@@ -10,7 +10,7 @@ const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_t
 
 const ICON_DIR = "res://addons/godot_sidebar_ai/assets/icons/"
 ## Satır içi durum ikonlarının varsayılan boyutu (px).
-const STATUS_ICON_SIZE: int = 14
+const STATUS_ICON_SIZE: int = AISidebarTheme.ICON_SIZE_MD
 
 static var _icon_cache: Dictionary = {}
 static var _tint_cache: Dictionary = {}
@@ -18,32 +18,33 @@ static var _color_attr_re: RegEx = null
 static var _width_re: RegEx = null
 
 static func get_icon(name: String) -> Texture2D:
-	if _icon_cache.has(name):
-		return _icon_cache[name]
+	var key := "%s@%.2f" % [name, AISidebarTheme.ui_scale]
+	if _icon_cache.has(key):
+		return _icon_cache[key]
 
 	var path = ICON_DIR + name + ".svg"
 
-	# 1. Doğrudan SVG dosyasından ImageTexture üret (Import cache ve headless bağımlılığı olmadan temiz yükleme)
+	# 1. SVG'yi editör ölçeğinde rasterleştir (yüksek DPI'da keskin; import önbelleğine bağlı değil)
 	if FileAccess.file_exists(path):
-		var abs_path = ProjectSettings.globalize_path(path)
-		var img = Image.load_from_file(abs_path)
-		if img and not img.is_empty():
+		var svg := FileAccess.get_file_as_string(path)
+		var img := Image.new()
+		if not svg.is_empty() and img.load_svg_from_string(svg, maxf(0.25, AISidebarTheme.ui_scale)) == OK and not img.is_empty():
 			var tex = ImageTexture.create_from_image(img)
-			_icon_cache[name] = tex
+			_icon_cache[key] = tex
 			return tex
 
 	# 2. Alternatif: ResourceLoader üzerinden yükleme
 	if ResourceLoader.exists(path):
 		var res = ResourceLoader.load(path)
 		if res is Texture2D:
-			_icon_cache[name] = res
+			_icon_cache[key] = res
 			return res
 
 	return null
 
 ## İkonu tek renge boyayıp `size` px genişlikte üretir (SVG'deki stroke/fill renkleri ve
 ## currentColor değiştirilir; fill="none" korunur). Bulunamazsa null.
-static func get_tinted_icon(name: String, color: Color, size: int = 16) -> Texture2D:
+static func get_tinted_icon(name: String, color: Color, size: int = AISidebarTheme.ICON_SIZE_LG) -> Texture2D:
 	var key = "%s|%s|%d" % [name, color.to_html(false), size]
 	if _tint_cache.has(key):
 		return _tint_cache[key]
@@ -62,7 +63,8 @@ static func get_tinted_icon(name: String, color: Color, size: int = 16) -> Textu
 	if m:
 		base_w = maxf(1.0, m.get_string(1).to_float())
 	var img = Image.new()
-	if img.load_svg_from_string(svg, float(size) / base_w) != OK or img.is_empty():
+	# Editör ölçeğinde keskin kalsın: raster boyu ölçekle büyür.
+	if img.load_svg_from_string(svg, float(AISidebarTheme.px(size)) / base_w) != OK or img.is_empty():
 		return null
 	var tex = ImageTexture.create_from_image(img)
 	_tint_cache[key] = tex
@@ -100,7 +102,7 @@ static func get_status_icon(glyph: String, size: int = STATUS_ICON_SIZE) -> Text
 static func make_icon_rect(size: int = STATUS_ICON_SIZE) -> TextureRect:
 	var rect = TextureRect.new()
 	rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	rect.custom_minimum_size = Vector2(size, size)
+	rect.custom_minimum_size = Vector2(AISidebarTheme.px(size), AISidebarTheme.px(size))
 	rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	rect.mouse_filter = Control.MOUSE_FILTER_PASS
 	rect.visible = false

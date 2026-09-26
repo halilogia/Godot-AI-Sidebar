@@ -223,7 +223,7 @@ func _setup_ui() -> void:
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	add_child(_vbox)
 	
 	# Header
@@ -235,7 +235,7 @@ func _setup_ui() -> void:
 	_role_label = Label.new()
 	_role_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_role_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_role_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_role_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	
 	if role == "user":
 		_role_label.text = AISidebarI18n.get_text("sender_user")
@@ -325,10 +325,10 @@ func _format_text_with_links_and_code(raw: String) -> String:
 	# Dosya yollarını tıklanabilir linke dönüştür (res://...)
 	var regex = RegEx.new()
 	regex.compile("(res://[a-zA-Z0-9_/\\.\\-]+)")
-	result = regex.sub(result, "[color=#88c0d0][url=file:$1]$1[/url][/color]", true)
+	result = regex.sub(result, "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_INFO_TEXT) + "][url=file:$1]$1[/url][/color]", true)
 	
 	# Node mention'larını vurgula (@Node:...)
 	var node_regex = RegEx.new()
 	node_regex.compile("(@Node:[a-zA-Z0-9_/\\.\\-]+)")
-	result = node_regex.sub(result, "[color=#e5c07b][b]$1[/b][/color]", true)
+	result = node_regex.sub(result, "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_WARNING_TEXT) + "][b]$1[/b][/color]", true)
 	return result

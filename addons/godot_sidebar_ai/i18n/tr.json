@@ -54,7 +54,7 @@
   "btn_reset_temp": "0.20 (Varsayılan)",
   "tab_provider": "Sağlayıcı",
   "tab_parameters": "Model & Parametreler",
-  "tab_appearance": "Dil & Onaylar",
+  "tab_appearance": "Genel",
   "label_language": "Arayüz Dili (Language):",
   "btn_reset_prompt": "Varsayılanı geri yükle",
   "history_title": "Sohbet Geçmişi",
@@ -234,5 +234,15 @@
   "mcp_settings_badge_off": "Kapalı",
   "mcp_settings_connect_title": "Claude Code'a bağla",
   "mcp_settings_connect_hint": "Komutu oyun projenizin klasöründe bir terminalde çalıştırın. Token burada maskelidir; kopyalanan komutta tamdır.",
-  "custom_show_in_folder": "Klasörde göster"
+  "custom_show_in_folder": "Klasörde göster",
+  "plan_status_applied": "Plan onaylandı, uygulanıyor",
+  "plan_status_cancelled": "Plan iptal edildi",
+  "plan_no_data": "(Plan verisi alınamadı.)",
+  "dialog_diff_title": "Değişiklik onayı ve fark görünümü",
+  "checklist_title": "Görevler",
+  "export_dialog_title": "Sohbeti dışa aktar",
+  "export_dialog_text": "Dışa aktarma biçimini seçin:",
+  "settings_card_appearance": "Görünüm",
+  "settings_ui_animations": "Arayüz animasyonları",
+  "settings_ui_animations_hint": "Yeni kartlar ve sayfalar kısa bir geçişle belirir. Hareketi azaltmak isterseniz kapatın."
 }

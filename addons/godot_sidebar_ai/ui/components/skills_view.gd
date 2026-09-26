@@ -22,12 +22,12 @@ var _pending_delete: Dictionary = {}
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_theme_constant_override("separation", AISidebarTheme.SPACE_MD)
+	add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 
 	var list_card := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("custom_skills_title"), AISidebarI18n.get_text("skills_hint"))
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	_list.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	list_card.add_child(_list)
 
 	var create_card := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("skills_manage_title"))
@@ -89,7 +89,7 @@ func _scope_color(scope: String) -> Color:
 
 func _skill_row(s: Dictionary, enabled: bool) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	box.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	var row := AISidebarSettingsUi.row(box)
 	var name := str(s.get("name", ""))
 	var toggle := CheckBox.new()

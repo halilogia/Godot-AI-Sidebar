@@ -20,14 +20,9 @@ offset_right = -8.0
 offset_bottom = -49.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
 
 [node name="VBox" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="HeaderLabel" type="RichTextLabel" parent="Margin/VBox"]
 layout_mode = 2
@@ -53,7 +48,6 @@ vertical_scroll_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_font_sizes/normal_font_size = 12
 bbcode_enabled = true
 text = "Diff çıktısı..."
 fit_content = true

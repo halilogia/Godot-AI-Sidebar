@@ -5,6 +5,7 @@ extends PanelContainer
 ## Veri ve görünüm birlikte tutulur; ne zaman dispatch edileceğine TaskController karar verir.
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
@@ -19,12 +20,12 @@ func _init() -> void:
 	add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
 
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 
 	var header = HBoxContainer.new()
 	_title_label = Label.new()
 	_title_label.text = AISidebarI18n.get_text("queue_title", {"count": 0})
-	_title_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_title_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	_title_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	header.add_child(_title_label)
 
@@ -38,14 +39,14 @@ func _init() -> void:
 	_clear_btn.focus_mode = Control.FOCUS_NONE
 	_clear_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_ghost_button_style(false))
 	_clear_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_ghost_button_style(true))
-	_clear_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_clear_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	_clear_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
 	_clear_btn.pressed.connect(clear_all)
 	header.add_child(_clear_btn)
 	vbox.add_child(header)
 
 	_items_vbox = VBoxContainer.new()
-	_items_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	_items_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	vbox.add_child(_items_vbox)
 
 	add_child(vbox)
@@ -109,8 +110,7 @@ func _refresh() -> void:
 
 		var num_label = Label.new()
 		num_label.text = str(i + 1) + "."
-		num_label.add_theme_font_size_override("font_size", 10)
-		num_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+		num_label.theme_type_variation = AISidebarThemeBuilder.HINT
 		item_row.add_child(num_label)
 
 		var prompt_label = Label.new()
@@ -119,14 +119,13 @@ func _refresh() -> void:
 		prompt_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prompt_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		prompt_label.clip_text = true
-		prompt_label.add_theme_font_size_override("font_size", 10)
+		prompt_label.theme_type_variation = AISidebarThemeBuilder.HINT
 		item_row.add_child(prompt_label)
 
 		var cancel_btn = Button.new()
-		AISidebarIconHelper.apply_tinted_icon(cancel_btn, "x", AISidebarTheme.COLOR_ERROR, 12)
+		AISidebarIconHelper.apply_tinted_icon(cancel_btn, "x", AISidebarTheme.COLOR_ERROR, AISidebarTheme.ICON_SIZE_SM)
 		cancel_btn.flat = true
 		cancel_btn.focus_mode = Control.FOCUS_NONE
-		cancel_btn.add_theme_font_size_override("font_size", 10)
 		cancel_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ERROR)
 		cancel_btn.tooltip_text = AISidebarI18n.get_text("queue_cancel_tooltip")
 		var item_id = item.get("id", "")

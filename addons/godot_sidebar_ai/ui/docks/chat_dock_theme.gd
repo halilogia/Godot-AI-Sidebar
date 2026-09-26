@@ -5,24 +5,32 @@ extends RefCounted
 ## Mantık içermez; ChatDock `_ready` ve durum değişimlerinde çağırır.
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 static func apply(dock: Control) -> void:
+	# 0. Tema: adlı tip varyasyonları (kartlar, başlıklar, düğmeler) bütün alt düğümlere geçer.
+	dock.theme = AISidebarThemeBuilder.build(AISidebarThemeBuilder.Density.COMPACT)
+	AISidebarMotion.enabled = AISidebarConfig.load_config().get("ui_animations", true) == true
 	# 1. Root PanelContainer & Background
 	dock.add_theme_stylebox_override("panel", AISidebarTheme.create_app_bg_style())
 
 	# 2. MainLayout & Container Gaps
 	for path in ["MainLayout", "MainLayout/HeaderBar", "MainLayout/ModelBar", "MainLayout/InputArea", "MainLayout/InputArea/ButtonsBar"]:
 		if dock.has_node(path):
-			var sep = AISidebarTheme.SPACE_SM if path == "MainLayout" else AISidebarTheme.SPACE_XS
-			dock.get_node(path).add_theme_constant_override("separation", sep)
+			var sep: int = AISidebarTheme.SPACE_SM if path == "MainLayout" else AISidebarTheme.SPACE_XS
+			dock.get_node(path).add_theme_constant_override("separation", AISidebarTheme.px(sep))
 
 	# 3. HeaderBar Typography & Buttons
 	if dock.title_label:
-		dock.title_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_HEADER)
+		dock.title_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_HEADER))
 		dock.title_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
-	if dock.status_badge:
-		dock.status_badge.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	var badge: Label = dock.status_badge
+	if badge:
+		badge.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
+		badge.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	for btn in [dock.new_chat_btn, dock.history_btn, dock.export_btn, dock.copy_task_btn]:
 		_style_ghost_text_button(btn, AISidebarTheme.FONT_SIZE_SMALL)
 
@@ -31,39 +39,39 @@ static func apply(dock: Control) -> void:
 		dock.model_selector.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
 		dock.model_selector.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style())
 		dock.model_selector.add_theme_stylebox_override("pressed", AISidebarTheme.create_card_active_style())
-		dock.model_selector.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+		dock.model_selector.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 		dock.model_selector.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	if dock.approve_mode_btn:
 		# Renkli pill stili ve ikon moda göre ModelBarController.update_approve_mode_ui'da atanır.
-		dock.approve_mode_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
-		dock.approve_mode_btn.add_theme_constant_override("h_separation", AISidebarTheme.SPACE_XXS + 1)
+		dock.approve_mode_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
+		dock.approve_mode_btn.add_theme_constant_override("h_separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS + 1))
 	for btn in [dock.refresh_models_btn, dock.settings_btn]:
 		_style_ghost_boxes(btn)
 
 	# 5. Message Stream
 	if dock.message_stream:
-		dock.message_stream.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+		dock.message_stream.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 
 	# 6. Mention Popup
 	if dock.mention_container:
 		dock.mention_container.add_theme_stylebox_override("panel", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
 	if dock.mention_list:
-		dock.mention_list.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+		dock.mention_list.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 
 	# 7. Input Area & Buttons
 	if dock.input_field:
 		dock.input_field.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
 		dock.input_field.add_theme_stylebox_override("focus", AISidebarTheme.create_input_focus_style())
-		dock.input_field.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+		dock.input_field.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 		dock.input_field.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 		dock.input_field.add_theme_color_override("font_placeholder_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	_style_ghost_text_button(dock.clear_btn, AISidebarTheme.FONT_SIZE_BODY)
 	if dock.jump_to_bottom_btn:
 		dock.jump_to_bottom_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XXS))
 		dock.jump_to_bottom_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_card_hover_style(AISidebarTheme.SPACE_XXS))
-		dock.jump_to_bottom_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		dock.jump_to_bottom_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 		dock.jump_to_bottom_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
-		AISidebarIconHelper.apply_tinted_icon(dock.jump_to_bottom_btn, "arrow-down", AISidebarTheme.COLOR_TEXT_SECONDARY, 12)
+		AISidebarIconHelper.apply_tinted_icon(dock.jump_to_bottom_btn, "arrow-down", AISidebarTheme.COLOR_TEXT_SECONDARY, AISidebarTheme.ICON_SIZE_SM)
 
 	apply_send_button(dock.send_btn, dock.agent_runner != null and dock.agent_runner.is_running())
 
@@ -92,7 +100,7 @@ static func apply_send_button(send_btn: Button, is_running: bool) -> void:
 	send_btn.add_theme_color_override("icon_normal_color", Color.WHITE)
 	send_btn.add_theme_color_override("icon_hover_color", Color.WHITE)
 	send_btn.add_theme_color_override("icon_pressed_color", Color.WHITE)
-	send_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	send_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 
 static func _style_ghost_boxes(btn: Button) -> void:
 	if not btn:
@@ -105,6 +113,6 @@ static func _style_ghost_text_button(btn: Button, font_size: int) -> void:
 	if not btn:
 		return
 	_style_ghost_boxes(btn)
-	btn.add_theme_font_size_override("font_size", font_size)
+	btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(font_size))
 	btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 	btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)

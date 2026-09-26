@@ -38,7 +38,7 @@ func _setup_ui() -> void:
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	add_child(_vbox)
 	
 	_header_btn = Button.new()
@@ -46,14 +46,14 @@ func _setup_ui() -> void:
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
-	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	_header_btn.pressed.connect(_on_header_pressed)
 	_vbox.add_child(_header_btn)
 	
 	_items_container = VBoxContainer.new()
 	_items_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_items_container.mouse_filter = Control.MOUSE_FILTER_PASS
-	_items_container.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	_items_container.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	_items_container.visible = is_expanded
 	_vbox.add_child(_items_container)
 	
@@ -196,13 +196,13 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	var outer = VBoxContainer.new()
 	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	outer.mouse_filter = Control.MOUSE_FILTER_PASS
-	outer.add_theme_constant_override("separation", 0)
+	outer.add_theme_constant_override("separation", AISidebarTheme.px(0))
 	_items_container.add_child(outer)
 	entry["outer"] = outer
 	var row = HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	row.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	outer.add_child(row)
 
 	var status_icon = AISidebarStatusIcon.new()
@@ -220,14 +220,14 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	title_lbl.focus_mode = Control.FOCUS_CLICK
 	title_lbl.deselect_on_focus_loss_enabled = false
 	title_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	title_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.FONT_SIZE_BODY)
+	title_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	title_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	row.add_child(title_lbl)
 	entry["title"] = title_lbl
 
 	var dur_lbl = Label.new()
 	dur_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	dur_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	dur_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	dur_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	row.add_child(dur_lbl)
 	entry["duration"] = dur_lbl
@@ -236,7 +236,7 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	details_btn.flat = true
 	details_btn.focus_mode = Control.FOCUS_NONE
 	details_btn.visible = false
-	details_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	details_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	details_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	outer.add_child(details_btn)
 	entry["details_btn"] = details_btn
@@ -248,7 +248,7 @@ func _render_item(item: Dictionary, idx: int) -> void:
 	details_lbl.scroll_active = false
 	details_lbl.selection_enabled = true
 	details_lbl.visible = false
-	details_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	details_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	outer.add_child(details_lbl)
 	entry["details_lbl"] = details_lbl
 
@@ -266,7 +266,7 @@ func _refresh_item(idx: int) -> void:
 		return
 	entry["icon"].set_status(str(item.get("icon", "•")))
 	var safe_title = str(item.get("title", "")).replace("[", "［").replace("]", "］").replace("\n", "\n")
-	(entry["title"] as RichTextLabel).text = "[color=#c0caf5]" + safe_title + "[/color]"
+	(entry["title"] as RichTextLabel).text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TEXT_PRIMARY) + "]" + safe_title + "[/color]"
 	var dur = int(item.get("duration", -1))
 	if dur >= 0:
 		(entry["duration"] as Label).text = "%.1fs" % (dur / 1000.0)

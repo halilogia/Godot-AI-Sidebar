@@ -4,6 +4,7 @@ extends Control
 ## Godot AI Sidebar - Profesyonel AI IDE Sohbet ve Orkestrasyon Paneli (SRP).
 ## Cursor / Claude Code tarzı doğal konuşma, katlanabilir aktivite kartları, diff ve geri alma sunar.
 
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd")
 const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
@@ -225,6 +226,7 @@ func _ready() -> void:
 		chat_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	if message_stream:
 		message_stream.mouse_filter = Control.MOUSE_FILTER_PASS
+		AISidebarMotion.fade_children_of(message_stream)
 
 	# 5. Başlangıç Yüklemesi
 	update_ui_language()

@@ -47,7 +47,7 @@ func _ready() -> void:
 	var hbox = HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	hbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	hbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	add_child(hbox)
 
 	_thumb_btn = Button.new()
@@ -66,12 +66,12 @@ func _ready() -> void:
 	var vbox = VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	vbox.add_theme_constant_override("separation", 2)
+	vbox.add_theme_constant_override("separation", AISidebarTheme.px(2))
 	hbox.add_child(vbox)
 
 	var src_row = HBoxContainer.new()
 	src_row.mouse_filter = Control.MOUSE_FILTER_PASS
-	src_row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	src_row.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	vbox.add_child(src_row)
 	var src_icon = AISidebarStatusIcon.new()
 	src_icon.set_icon(source_icon(source_kind), AISidebarTheme.COLOR_TEXT_SECONDARY)
@@ -82,22 +82,22 @@ func _ready() -> void:
 		dims = " (%dx%d)" % [vision.width, vision.height]
 	src_lbl.text = source_label(source_kind) + dims
 	src_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	src_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	src_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	src_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	src_row.add_child(src_lbl)
 
 	var st_color = AISidebarTheme.COLOR_SUCCESS if sent_to_model else AISidebarTheme.COLOR_WARNING
 	var st_row = HBoxContainer.new()
 	st_row.mouse_filter = Control.MOUSE_FILTER_PASS
-	st_row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	st_row.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	vbox.add_child(st_row)
-	var st_icon = AISidebarStatusIcon.new(12)
+	var st_icon = AISidebarStatusIcon.new(AISidebarTheme.ICON_SIZE_SM)
 	st_icon.set_icon("check" if sent_to_model else "triangle-alert", st_color)
 	st_row.add_child(st_icon)
 	var st_lbl = Label.new()
 	st_lbl.text = status_text()
 	st_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	st_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	st_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	st_lbl.add_theme_color_override("font_color", st_color)
 	st_row.add_child(st_lbl)
 

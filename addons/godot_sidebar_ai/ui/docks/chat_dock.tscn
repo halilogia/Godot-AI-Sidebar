@@ -18,18 +18,15 @@ script = ExtResource("1_chat_dock")
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 4
 
 [node name="HeaderBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 4
 
 [node name="TitleLabel" type="Label" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 0
-theme_override_font_sizes/font_size = 12
 text = "Godot AI"
 text_overrun_behavior = 3
 clip_text = true
@@ -37,8 +34,6 @@ clip_text = true
 [node name="StatusBadge" type="Label" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.4, 0.8, 0.4, 1)
-theme_override_font_sizes/font_size = 10
 text = "Ready"
 horizontal_alignment = 2
 text_overrun_behavior = 3
@@ -47,14 +42,12 @@ clip_text = true
 [node name="NewChatBtn" type="Button" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 10
 text = "+ New"
 flat = true
 
 [node name="HistoryBtn" type="Button" parent="MainLayout/HeaderBar"]
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 10
 flat = true
 
 [node name="ExportBtn" type="Button" parent="MainLayout/HeaderBar"]
@@ -72,13 +65,11 @@ flat = true
 [node name="ModelBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 4
 
 [node name="ModelSelector" type="OptionButton" parent="MainLayout/ModelBar"]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
-theme_override_font_sizes/font_size = 11
 text_overrun_behavior = 3
 clip_text = true
 fit_to_longest_item = false
@@ -86,7 +77,6 @@ fit_to_longest_item = false
 [node name="ApproveModeBtn" type="Button" parent="MainLayout/ModelBar"]
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 11
 text = "Manual"
 size_flags_vertical = 4
 
@@ -111,12 +101,10 @@ vertical_scroll_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 6
 
 [node name="InputArea" type="VBoxContainer" parent="MainLayout"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 3
 
 [node name="MentionContainer" type="PanelContainer" parent="MainLayout/InputArea"]
 visible = false
@@ -127,26 +115,22 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 11
 same_column_width = true
 
 [node name="InputField" type="TextEdit" parent="MainLayout/InputArea"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 11
 placeholder_text = "Ask Godot AI... (@ to mention file or node, Ctrl+Enter to send)"
 wrap_mode = 1
 
 [node name="ButtonsBar" type="HBoxContainer" parent="MainLayout/InputArea"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 4
 
 [node name="ClearBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 11
 text = "Clear"
 flat = true
 
@@ -158,14 +142,12 @@ size_flags_horizontal = 3
 visible = false
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 10
 text = "Latest"
 flat = true
 
 [node name="SendBtn" type="Button" parent="MainLayout/InputArea/ButtonsBar"]
 layout_mode = 2
 focus_mode = 0
-theme_override_font_sizes/font_size = 11
 text = "Send"
 
 [node name="SettingsDialog" parent="." instance=ExtResource("2_settings_dlg")]

@@ -150,7 +150,7 @@ func _setup_ui() -> void:
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	add_child(_vbox)
 
 	_header_btn = Button.new()
@@ -161,7 +161,7 @@ func _setup_ui() -> void:
 	# Tek satır: dar dock'ta "…" ile kesilir, tam metin tooltip'te.
 	_header_btn.clip_text = true
 	_header_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	_header_btn.pressed.connect(func():
 		_user_toggled = true
 		set_expanded(not is_expanded)
@@ -171,7 +171,7 @@ func _setup_ui() -> void:
 	_items_container = VBoxContainer.new()
 	_items_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_items_container.mouse_filter = Control.MOUSE_FILTER_PASS
-	_items_container.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	_items_container.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	_items_container.visible = is_expanded
 	_vbox.add_child(_items_container)
 
@@ -194,7 +194,7 @@ func _update_header() -> void:
 		_header_btn.text = arrow + AISidebarI18n.get_text("checklist_completed", {"done": done, "total": total})
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	else:
-		var title = "Tasks"
+		var title = AISidebarI18n.get_text("checklist_title")
 		if not goal.is_empty():
 			title = goal.left(60)
 		_header_btn.text = arrow + " " + title + " · %d/%d" % [done, total]
@@ -210,7 +210,7 @@ func _render_row(idx: int) -> void:
 	var row = HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	row.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	_items_container.add_child(row)
 
 	var status_icon = AISidebarStatusIcon.new()
@@ -228,7 +228,7 @@ func _render_row(idx: int) -> void:
 	title_lbl.focus_mode = Control.FOCUS_CLICK
 	title_lbl.deselect_on_focus_loss_enabled = false
 	title_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	title_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.FONT_SIZE_BODY)
+	title_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	title_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	row.add_child(title_lbl)
 	entry["title"] = title_lbl
@@ -248,4 +248,4 @@ func _refresh_row(idx: int) -> void:
 	var err = str(_steps[idx].get("error", ""))
 	if not err.is_empty():
 		safe_title += "\nError: " + err.replace("[", "［").replace("]", "］")
-	(entry["title"] as RichTextLabel).text = "[color=#c0caf5]" + safe_title + "[/color]"
+	(entry["title"] as RichTextLabel).text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TEXT_PRIMARY) + "]" + safe_title + "[/color]"

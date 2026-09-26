@@ -7,6 +7,8 @@ class_name AISidebarChangeSetDialog
 
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
 signal action_approved()
 signal action_rejected()
@@ -18,10 +20,22 @@ signal action_rejected()
 var current_change_set: AISidebarChangeSet = null
 
 func _ready() -> void:
-	title = "AI Değişiklik Onayı & Diff Görünümü"
-	ok_button_text = "Uygula (Approve)"
-	cancel_button_text = "Reddet (Reject)"
+	title = AISidebarI18n.get_text("dialog_diff_title")
+	ok_button_text = AISidebarI18n.get_text("btn_approve")
+	cancel_button_text = AISidebarI18n.get_text("btn_reject")
 	unresizable = false
+	theme = AISidebarThemeBuilder.build(AISidebarThemeBuilder.Density.FORM)
+	get_ok_button().theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
+	get_cancel_button().theme_type_variation = AISidebarThemeBuilder.BUTTON
+	var margin := get_node_or_null("Margin") as MarginContainer
+	if margin:
+		for side: String in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+			margin.add_theme_constant_override(side, AISidebarTheme.px(AISidebarTheme.SPACE_XS + 2))
+		var box := margin.get_node_or_null("VBox") as VBoxContainer
+		if box:
+			box.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
+	if diff_rich_text:
+		diff_rich_text.theme_type_variation = AISidebarThemeBuilder.RICH_TITLE
 	
 	confirmed.connect(_on_confirmed)
 	canceled.connect(_on_canceled)
@@ -76,18 +90,18 @@ func show_change_set(tool_name: String, args: Dictionary, cs: AISidebarChangeSet
 	# 2. İçerik ve Diff Doldurma
 	if cs:
 		var deltas = cs.get_file_deltas()
-		header_label.text = "[b][color=#88c0d0]" + AISidebarI18n.get_text("changes_header", {"count": deltas.size()}) + "[/color][/b]"
+		header_label.text = "[b][color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_INFO_TEXT) + "]" + AISidebarI18n.get_text("changes_header", {"count": deltas.size()}) + "[/color][/b]"
 		
 		var sum_lines: PackedStringArray = []
 		for d in deltas:
-			sum_lines.append("  • [b]" + d["file_name"] + "[/b] [color=#a3be8c]+" + str(d["added"]) + "[/color] [color=#bf616a]-" + str(d["removed"]) + "[/color]")
+			sum_lines.append("  • [b]" + d["file_name"] + "[/b] [color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_SUCCESS_TEXT) + "]+" + str(d["added"]) + "[/color] [color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_ERROR_TEXT) + "]-" + str(d["removed"]) + "[/color]")
 		summary_label.text = "\n".join(sum_lines)
 		
 		diff_rich_text.text = cs.get_bbcode_diff()
 	else:
-		header_label.text = "[b][color=#d08770]" + AISidebarI18n.get_text("dialog_approval_header", {"tool": tool_name}) + "[/color][/b]"
+		header_label.text = "[b][color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_WARNING_TEXT) + "]" + AISidebarI18n.get_text("dialog_approval_header", {"tool": tool_name}) + "[/color][/b]"
 		summary_label.text = AISidebarI18n.get_text("dialog_params", {"args": JSON.stringify(args)})
-		diff_rich_text.text = "[color=#9399b2]" + AISidebarI18n.get_text("dialog_permanent_warning") + "[/color]"
+		diff_rich_text.text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TEXT_SECONDARY) + "]" + AISidebarI18n.get_text("dialog_permanent_warning") + "[/color]"
 		
 	popup_centered(Vector2i(target_w, target_h))
 

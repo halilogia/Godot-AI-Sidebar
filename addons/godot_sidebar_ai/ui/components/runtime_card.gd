@@ -9,6 +9,8 @@ signal meta_clicked(meta: Variant)
 
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
 var is_expanded: bool = true
 
@@ -21,22 +23,13 @@ func _ready() -> void:
 	_setup_ui()
 
 func _setup_ui() -> void:
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(6)
-	style.bg_color = Color(0.13, 0.15, 0.20, 0.85)
-	style.border_color = Color(0.3, 0.5, 0.7, 0.4)
-	style.set_border_width_all(1)
-	style.content_margin_left = 8
-	style.content_margin_top = 6
-	style.content_margin_right = 8
-	style.content_margin_bottom = 6
+	theme_type_variation = AISidebarThemeBuilder.CARD_SUBTLE
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", 4)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(4))
 	add_child(_vbox)
 	
 	_header_btn = Button.new()
@@ -44,8 +37,8 @@ func _setup_ui() -> void:
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
-	_header_btn.add_theme_font_size_override("font_size", 11)
-	_header_btn.add_theme_color_override("font_color", Color(0.5, 0.75, 1.0))
+	_header_btn.theme_type_variation = AISidebarThemeBuilder.LINK_BUTTON
+	_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TONE_INFO_TEXT)
 	_header_btn.text = "▾ " + AISidebarI18n.get_text("runtime_testing")
 	_header_btn.pressed.connect(_on_header_pressed)
 	_vbox.add_child(_header_btn)
@@ -53,7 +46,7 @@ func _setup_ui() -> void:
 	_status_list = VBoxContainer.new()
 	_status_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status_list.mouse_filter = Control.MOUSE_FILTER_PASS
-	_status_list.add_theme_constant_override("separation", 2)
+	_status_list.add_theme_constant_override("separation", AISidebarTheme.px(2))
 	_vbox.add_child(_status_list)
 
 func _on_header_pressed() -> void:
@@ -85,7 +78,7 @@ func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> vo
 	lbl.focus_mode = Control.FOCUS_CLICK
 	lbl.deselect_on_focus_loss_enabled = false
 	lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	lbl.add_theme_font_size_override("normal_font_size", 11)
+	lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
 	lbl.text = "[color=" + color_hex + "]" + text + "[/color]"
 	lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	row.add_child(lbl)

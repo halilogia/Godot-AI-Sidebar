@@ -1,29 +1,41 @@
 extends SceneTree
 
-## Arayüz görsel kontrolü (CLAUDE.md → Arayüz grafik kalitesi standardı): Ayarlar penceresini GERÇEK bileşenleriyle açar ve her sayfanın
-## PNG'sini alır; uzun sayfaların alt kısmı da ayrıca çekilir. İki pencere boyutunda (geniş, dar) çekildiği
-## için sığma / kırpılma sorunları da görünür. Arayüz değişikliğinden önce ve sonra çalıştırıp görüntüleri
-## karşılaştırın; iki dilde de bakın.
+## Arayüz görsel kontrolü (CLAUDE.md → Arayüz grafik kalitesi standardı). Eklentinin GERÇEK bileşenlerini
+## açar ve PNG kaydeder:
+##   settings  Ayarlar penceresinin her sayfası (uzun sayfanın alt kısmı ayrıca), geniş ve dar pencerede
+##   dock      Sohbet paneli, tools/ui_scenarios.gd'deki her senaryoyla (karşılama, soru, onay, plan,
+##             runtime, hata, kuyruk …), normal ve dar dock genişliğinde
+## Arayüz değişikliğinden önce ve sonra çalıştırıp görüntüleri karşılaştırın; iki dilde bakın. Ölçek
+## verilirse (ör. 1.5) editörün yüksek DPI ölçeği taklit edilir.
 ##
-##   godot --path . -s res://tools/ui_shots.gd -- <çıktı klasörü (mutlak)> <dil: tr|en>
+##   godot --path . -s res://tools/ui_shots.gd -- <çıktı klasörü (mutlak)> <tr|en> [all|settings|dock] [ölçek]
 ##
-## Pencere ekrana sığmazsa (ör. uzun metin bir denetimi genişletirse) "OVERFLOW" satırı basılır, çıkış kodu 1 olur.
-## Headless değil (görüntü için pencere gerekir). config.json yalnız dil için geçici değişir; varsa
-## bayt bayt geri yazılır, yoksa silinir.
+## Taşma bulunursa (pencere ekrana sığmaz ya da bir kart dock'tan geniş) "OVERFLOW" basılır, çıkış kodu 1.
+## Headless değil (görüntü için pencere gerekir). config.json yalnız dil için geçici değişir; varsa bayt
+## bayt geri yazılır, yoksa silinir. Senaryoların açtığı sohbet oturumları sonunda silinir.
 
 const SettingsScene = preload("res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
+const AISidebarUiScenarios = preload("res://tools/ui_scenarios.gd")
 
-const SIZES := {"wide": Vector2i(1280, 800), "narrow": Vector2i(900, 620)}
+const SETTINGS_SIZES := {"wide": Vector2i(1280, 800), "narrow": Vector2i(900, 620)}
+const DOCK_SIZES := {"dock": Vector2i(460, 900), "dock_narrow": Vector2i(320, 900)}
 
 var _out := ""
 var _lang := "tr"
+var _what := "all"
 var _overflows: Array[String] = []
+var _sessions: Array[String] = []
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	_out = args[0] if args.size() > 0 else OS.get_user_data_dir().path_join("ui_shots")
 	_lang = args[1] if args.size() > 1 else "tr"
+	_what = args[2] if args.size() > 2 else "all"
+	if args.size() > 3:
+		AISidebarTheme.ui_scale = maxf(0.5, args[3].to_float())
 	DirAccess.make_dir_recursive_absolute(_out)
 	_run.call_deferred()
 
@@ -34,13 +46,17 @@ func _run() -> void:
 	cfg["language"] = _lang
 	AISidebarConfig.save_config(cfg)
 
-	for size_name: String in SIZES.keys():
-		var size: Vector2i = SIZES[size_name]
-		DisplayServer.window_set_size(size)
-		root.size = size
-		# Yeni boyut birkaç kare sonra etkin olur; pencere ona göre sığdırılsın.
-		await _frames(4)
-		await _shoot(size_name, size)
+	if _what == "all" or _what == "settings":
+		for size_name: String in SETTINGS_SIZES.keys():
+			await _resize(_scaled(SETTINGS_SIZES[size_name]))
+			await _shoot_settings(size_name, _scaled(SETTINGS_SIZES[size_name]))
+	if _what == "all" or _what == "dock":
+		# Araç süreleri geriye tarihlenir; işlem sayacı en uzun süreyi geçene kadar bekle.
+		while Time.get_ticks_msec() < 4000:
+			await process_frame
+		for size_name: String in DOCK_SIZES.keys():
+			await _resize(_scaled(DOCK_SIZES[size_name]))
+			await _shoot_dock(size_name, _scaled(DOCK_SIZES[size_name]))
 
 	if had_cfg:
 		var f := FileAccess.open(AISidebarConfig.CONFIG_PATH, FileAccess.WRITE)
@@ -48,14 +64,26 @@ func _run() -> void:
 		f.close()
 	else:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(AISidebarConfig.CONFIG_PATH))
+	for id: String in _sessions:
+		AISidebarChatManager.delete_session(id)
 	print("[ui_shots] %s" % _out)
 	for o: String in _overflows:
 		printerr("[ui_shots] OVERFLOW " + o)
 	quit(1 if not _overflows.is_empty() else 0)
 
-func _shoot(size_name: String, size: Vector2i) -> void:
+## Pencere boyutları 1.0 ölçek içindir; ölçek verilince aynı mantıksal alan için büyütülür.
+func _scaled(size: Vector2i) -> Vector2i:
+	return Vector2i(Vector2(size) * AISidebarTheme.ui_scale)
+
+func _resize(size: Vector2i) -> void:
+	DisplayServer.window_set_size(size)
+	root.size = size
+	# Yeni boyut birkaç kare sonra etkin olur; pencere ona göre sığdırılsın.
+	await _frames(4)
+
+func _shoot_settings(size_name: String, size: Vector2i) -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.1, 0.1, 0.12)
+	bg.color = AISidebarTheme.COLOR_BG_APP
 	bg.size = Vector2(size)
 	root.add_child(bg)
 	var dlg: AcceptDialog = SettingsScene.instantiate()
@@ -78,6 +106,39 @@ func _shoot(size_name: String, size: Vector2i) -> void:
 	dlg.queue_free()
 	bg.queue_free()
 	await _frames(2)
+
+func _shoot_dock(size_name: String, size: Vector2i) -> void:
+	for scenario: String in AISidebarUiScenarios.NAMES:
+		var scenarios := AISidebarUiScenarios.new(_lang)
+		var made: Dictionary = await scenarios.create_dock(root)
+		var dock: Control = made["dock"]
+		scenarios.play(scenario, dock, made["runner"])
+		await _frames(12)
+		_save("%s_%s_%s" % [_lang, size_name, scenario])
+		_check_dock_overflow(dock, "%s %s" % [size_name, scenario], size)
+		_sessions.append(str(dock.get("sessions").call("current_id")))
+		dock.free()
+		var host: Node = made["host"]
+		host.free()
+		await _frames(2)
+
+## Dock içindeki görünür bir denetim dock'un sağ kenarını aşıyorsa taşmadır (dar dock'ta en sık hata).
+func _check_dock_overflow(dock: Control, label: String, size: Vector2i) -> void:
+	var limit := float(size.x) + 1.0
+	var widest := _widest_right(dock)
+	if widest > limit:
+		_overflows.append("%s: content reaches x=%d, dock is %d wide" % [label, int(widest), size.x])
+
+func _widest_right(n: Node) -> float:
+	var right := 0.0
+	if n is Control:
+		var c: Control = n
+		if not c.is_visible_in_tree():
+			return 0.0
+		right = c.get_global_rect().end.x
+	for ch: Node in n.get_children():
+		right = maxf(right, _widest_right(ch))
+	return right
 
 func _frames(n: int) -> void:
 	for _f in n:

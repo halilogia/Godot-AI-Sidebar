@@ -32,16 +32,16 @@ var _status: Label
 
 func _init() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_theme_constant_override("separation", AISidebarTheme.SPACE_MD)
+	add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 
 	var usage := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("custom_usage_title"), AISidebarI18n.get_text("custom_usage_hint"))
 	_bar = HBoxContainer.new()
 	_bar.custom_minimum_size = Vector2(0, 8)
-	_bar.add_theme_constant_override("separation", 2)
+	_bar.add_theme_constant_override("separation", AISidebarTheme.px(2))
 	usage.add_child(_bar)
 	_legend = GridContainer.new()
 	_legend.columns = 2
-	_legend.add_theme_constant_override("h_separation", AISidebarTheme.SPACE_LG)
+	_legend.add_theme_constant_override("h_separation", AISidebarTheme.px(AISidebarTheme.SPACE_LG))
 	usage.add_child(_legend)
 
 	_prompt_badge = AISidebarSettingsUi.badge("", COLOR_SYSTEM)
@@ -60,7 +60,7 @@ func _init() -> void:
 
 	var files := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("rules_files_title"), AISidebarI18n.get_text("custom_rules_hint"))
 	_rules_list = VBoxContainer.new()
-	_rules_list.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	_rules_list.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	files.add_child(_rules_list)
 	var open_row := AISidebarSettingsUi.row(files)
 	open_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("custom_open_project_rules"), func() -> void: _open_rule_file(AISidebarRulesRegistry.PROJECT_LEARN_FILE)))

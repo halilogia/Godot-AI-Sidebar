@@ -61,17 +61,17 @@ func _setup_ui() -> void:
 	var main_vbox = VBoxContainer.new()
 	main_vbox.size_flags_horizontal = SIZE_EXPAND_FILL
 	main_vbox.size_flags_vertical = SIZE_EXPAND_FILL
-	main_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	main_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	add_child(main_vbox)
 	
 	# 1. Başlık Çubuğu
 	var header_hbox = HBoxContainer.new()
 	header_hbox.size_flags_horizontal = SIZE_EXPAND_FILL
-	header_hbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	header_hbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	
 	var title_lbl = Label.new()
 	title_lbl.text = AISidebarI18n.get_text("history_title")
-	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SUBHEADER)
+	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SUBHEADER))
 	title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	title_lbl.size_flags_horizontal = SIZE_EXPAND_FILL
 	header_hbox.add_child(title_lbl)
@@ -81,7 +81,7 @@ func _setup_ui() -> void:
 	new_btn.tooltip_text = AISidebarI18n.get_text("history_btn_new")
 	new_btn.flat = true
 	new_btn.focus_mode = FOCUS_NONE
-	new_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	new_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	new_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_ACCENT)
 	new_btn.pressed.connect(func(): new_chat_requested.emit())
 	header_hbox.add_child(new_btn)
@@ -91,7 +91,7 @@ func _setup_ui() -> void:
 	close_btn.tooltip_text = AISidebarI18n.get_text("history_btn_close_tooltip")
 	close_btn.flat = true
 	close_btn.focus_mode = FOCUS_NONE
-	close_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	close_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	close_btn.pressed.connect(func(): close_requested.emit())
 	header_hbox.add_child(close_btn)
 	
@@ -101,7 +101,7 @@ func _setup_ui() -> void:
 	_search_input = LineEdit.new()
 	_search_input.placeholder_text = AISidebarI18n.get_text("history_search_placeholder")
 	_search_input.clear_button_enabled = true
-	_search_input.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_search_input.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	_search_input.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
 	_search_input.text_changed.connect(_on_search_text_changed)
 	main_vbox.add_child(_search_input)
@@ -116,7 +116,7 @@ func _setup_ui() -> void:
 	_items_vbox = VBoxContainer.new()
 	_items_vbox.size_flags_horizontal = SIZE_EXPAND_FILL
 	_items_vbox.size_flags_vertical = SIZE_EXPAND_FILL
-	_items_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	_items_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	scroll.add_child(_items_vbox)
 	
 	main_vbox.add_child(scroll)
@@ -135,11 +135,11 @@ func _setup_dialogs() -> void:
 	var dlg_vbox = VBoxContainer.new()
 	var dlg_lbl = Label.new()
 	dlg_lbl.text = AISidebarI18n.get_text("history_rename_prompt")
-	dlg_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	dlg_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	dlg_vbox.add_child(dlg_lbl)
 	
 	_rename_input = LineEdit.new()
-	_rename_input.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_rename_input.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	_rename_input.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
 	dlg_vbox.add_child(_rename_input)
 	_rename_dialog.add_child(dlg_vbox)
@@ -148,10 +148,10 @@ func _setup_dialogs() -> void:
 
 	# Dışa Aktarma Format Dialogu
 	_export_dialog = ConfirmationDialog.new()
-	_export_dialog.title = "Export Chat"
-	_export_dialog.dialog_text = "Dışa aktarma formatını seçin:"
+	_export_dialog.title = AISidebarI18n.get_text("export_dialog_title")
+	_export_dialog.dialog_text = AISidebarI18n.get_text("export_dialog_text")
 	_export_format = OptionButton.new()
-	_export_format.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	_export_format.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	_export_format.add_item("Markdown (.md)", 0)
 	_export_format.add_item("JSON (.json)", 1)
 	_export_dialog.add_child(_export_format)
@@ -189,7 +189,7 @@ func _render_items() -> void:
 		var empty_lbl = Label.new()
 		empty_lbl.text = AISidebarI18n.get_text("history_empty") if query.is_empty() else AISidebarI18n.get_text("history_not_found")
 		empty_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
-		empty_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		empty_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_items_vbox.add_child(empty_lbl)
 		return
@@ -213,7 +213,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	var hbox = HBoxContainer.new()
 	hbox.size_flags_horizontal = SIZE_EXPAND_FILL
 	hbox.size_flags_vertical = SIZE_EXPAND_FILL
-	hbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	hbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	hbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	card.add_child(hbox)
 	
@@ -232,12 +232,12 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	var info_vbox = VBoxContainer.new()
 	info_vbox.size_flags_horizontal = SIZE_EXPAND_FILL
 	info_vbox.size_flags_vertical = SIZE_SHRINK_CENTER
-	info_vbox.add_theme_constant_override("separation", 2)
+	info_vbox.add_theme_constant_override("separation", AISidebarTheme.px(2))
 	info_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
 	var title_lbl = Label.new()
 	title_lbl.text = s.get("title", AISidebarI18n.get_text("history_untitled"))
-	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
+	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_BODY))
 	title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY if is_active else AISidebarTheme.COLOR_TEXT_SECONDARY)
 	title_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -248,7 +248,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	dt_str = dt_str.replace("T", " ").left(16)
 	meta_lbl.text = AISidebarI18n.get_text("history_meta", {"date": dt_str, "count": s.get("message_count", 0)})
 	meta_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
-	meta_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_MICRO)
+	meta_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_MICRO))
 	meta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info_vbox.add_child(meta_lbl)
 	
@@ -257,7 +257,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	# Aksiyon Butonları (Yeniden Adlandır / Sil)
 	var actions_hbox = HBoxContainer.new()
 	actions_hbox.size_flags_vertical = SIZE_SHRINK_CENTER
-	actions_hbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	actions_hbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	
 	# Yeniden Adlandırma Butonu
 	var ren_btn = Button.new()
@@ -268,7 +268,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	AISidebarIconHelper.apply_icon(ren_btn, "edit")
 	if not ren_btn.icon:
 		ren_btn.text = "✎"
-		ren_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		ren_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	ren_btn.pressed.connect(func(): _prompt_rename(sid, s.get("title", "")))
 	actions_hbox.add_child(ren_btn)
 	
@@ -281,7 +281,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	AISidebarIconHelper.apply_icon(del_btn, "trash")
 	if not del_btn.icon:
 		del_btn.text = "×"
-		del_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SUBHEADER)
+		del_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SUBHEADER))
 	del_btn.pressed.connect(func(): _prompt_delete(sid))
 	actions_hbox.add_child(del_btn)
 
@@ -294,7 +294,7 @@ func _build_session_card(s: Dictionary, is_active: bool) -> PanelContainer:
 	AISidebarIconHelper.apply_icon(exp_btn, "download")
 	if not exp_btn.icon:
 		exp_btn.text = "⤓"
-		exp_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		exp_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	exp_btn.pressed.connect(func(): _prompt_export(sid))
 	actions_hbox.add_child(exp_btn)
 	

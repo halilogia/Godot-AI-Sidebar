@@ -23,6 +23,8 @@ const AISidebarMarkdownRenderer = preload("res://addons/godot_sidebar_ai/ui/pres
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
 var plan: AISidebarImplementationPlan = null
 var is_resolved: bool = false
@@ -44,36 +46,26 @@ func _ready() -> void:
 	_setup_ui()
 
 func _setup_ui() -> void:
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(6)
-	style.bg_color = Color(0.12, 0.16, 0.24, 0.95)
-	style.border_color = Color(0.35, 0.65, 0.9, 0.8) # Mavi accent: plan/niyet
-	style.set_border_width_all(1)
-	style.content_margin_left = 12
-	style.content_margin_top = 10
-	style.content_margin_right = 12
-	style.content_margin_bottom = 10
+	theme_type_variation = AISidebarThemeBuilder.CARD_INFO
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", style)
 
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", 6)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(6))
 	add_child(_vbox)
 
 	var header_hbox = HBoxContainer.new()
-	header_hbox.add_theme_constant_override("separation", 6)
+	header_hbox.add_theme_constant_override("separation", AISidebarTheme.px(6))
 
-	var header_icon = AISidebarStatusIcon.new(16)
-	header_icon.set_icon("list-checks", Color(0.6, 0.85, 1.0))
+	var header_icon = AISidebarStatusIcon.new(AISidebarTheme.ICON_SIZE_LG)
+	header_icon.set_icon("list-checks", AISidebarTheme.COLOR_TONE_INFO_TEXT)
 	header_hbox.add_child(header_icon)
 
 	_title_lbl = Label.new()
 	_title_lbl.text = AISidebarI18n.get_text("plan_title")
 	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	_title_lbl.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
-	_title_lbl.add_theme_font_size_override("font_size", 12)
+	_title_lbl.theme_type_variation = AISidebarThemeBuilder.TITLE_INFO
 	header_hbox.add_child(_title_lbl)
 	_vbox.add_child(header_hbox)
 
@@ -87,21 +79,21 @@ func _setup_ui() -> void:
 	_plan_lbl.focus_mode = Control.FOCUS_CLICK
 	_plan_lbl.deselect_on_focus_loss_enabled = false
 	_plan_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	AISidebarMarkdownRenderer.apply_font_sizes(_plan_lbl, 11)
-	_plan_lbl.add_theme_color_override("default_color", Color(0.88, 0.92, 0.96))
+	_plan_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
+	AISidebarMarkdownRenderer.apply_font_sizes(_plan_lbl, AISidebarTheme.FONT_SIZE_BODY)
 	_plan_lbl.text = AISidebarMarkdownRenderer.to_bbcode(_build_display_text())
 	_vbox.add_child(_plan_lbl)
 
 	_buttons_bar = HBoxContainer.new()
 	_buttons_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_buttons_bar.add_theme_constant_override("separation", 8)
+	_buttons_bar.add_theme_constant_override("separation", AISidebarTheme.px(8))
 	_vbox.add_child(_buttons_bar)
 
 	_apply_btn = Button.new()
 	_apply_btn.text = AISidebarI18n.get_text("btn_plan_apply")
 	AISidebarIconHelper.apply_icon(_apply_btn, "check")
 	_apply_btn.focus_mode = Control.FOCUS_NONE
-	_apply_btn.add_theme_font_size_override("font_size", 11)
+	_apply_btn.theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	_apply_btn.pressed.connect(_on_apply)
 	_buttons_bar.add_child(_apply_btn)
 
@@ -109,36 +101,35 @@ func _setup_ui() -> void:
 	_cancel_btn.text = AISidebarI18n.get_text("btn_plan_cancel")
 	AISidebarIconHelper.apply_icon(_cancel_btn, "x")
 	_cancel_btn.focus_mode = Control.FOCUS_NONE
-	_cancel_btn.add_theme_font_size_override("font_size", 11)
+	_cancel_btn.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	_cancel_btn.pressed.connect(_on_cancel)
 	_buttons_bar.add_child(_cancel_btn)
 
 	var status_row = HBoxContainer.new()
 	status_row.visible = false
-	status_row.add_theme_constant_override("separation", 4)
+	status_row.add_theme_constant_override("separation", AISidebarTheme.px(4))
 	_vbox.add_child(status_row)
 	_status_icon = AISidebarStatusIcon.new()
 	status_row.add_child(_status_icon)
 	_status_lbl = Label.new()
 	_status_lbl.visible = false
-	_status_lbl.add_theme_font_size_override("font_size", 11)
-	_status_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.5))
+	_status_lbl.theme_type_variation = AISidebarThemeBuilder.TEXT_SUCCESS
 	status_row.add_child(_status_lbl)
 
 func _build_display_text() -> String:
 	if plan == null:
-		return "(Plan verisi alınamadı.)"
+		return AISidebarI18n.get_text("plan_no_data")
 	return plan.to_markdown()
 
 func mark_applied() -> void:
 	is_resolved = true
 	_set_buttons_visible(false)
-	_set_status("Plan onaylandı, uygulanıyor", Color(0.4, 0.85, 0.5), "check")
+	_set_status(AISidebarI18n.get_text("plan_status_applied"), AISidebarTheme.COLOR_TONE_SUCCESS_TEXT, "check")
 
 func mark_cancelled() -> void:
 	is_resolved = true
 	_set_buttons_visible(false)
-	_set_status("Plan iptal edildi", Color(0.9, 0.5, 0.4), "x")
+	_set_status(AISidebarI18n.get_text("plan_status_cancelled"), AISidebarTheme.COLOR_TONE_ERROR_TEXT, "x")
 
 func _set_buttons_visible(vis: bool) -> void:
 	if _apply_btn:

@@ -12,7 +12,8 @@ const COLOR_CODE_BLOCK := "#a9b1d6"
 const COLOR_CODE_BG := "#151922"
 const COLOR_QUOTE := "#8a93a6"
 const COLOR_RULE := "#3b4252"
-const HEADER_FONT_SIZE := 13
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const HEADER_FONT_SIZE := AISidebarTheme.FONT_SIZE_HEADER
 
 static var _re_header: RegEx = null
 static var _re_bullet: RegEx = null
@@ -42,7 +43,7 @@ static func _compile() -> void:
 ## Kod blokları için eş genişlikli yazı tipi de burada atanır (ağaç / hizalı çıktılar bozulmasın).
 static func apply_font_sizes(label: RichTextLabel, size: int) -> void:
 	for key in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
-		label.add_theme_font_size_override(key, size)
+		label.add_theme_font_size_override(key, AISidebarTheme.fs(size))
 	label.add_theme_font_override("mono_font", mono_font())
 
 static var _mono_font: SystemFont = null
@@ -96,7 +97,7 @@ static func _block_line(line: String) -> String:
 		var level = m.get_string(1).length()
 		var title = _inline(m.get_string(2))
 		if level <= 2:
-			return "[font_size=%d][b]%s[/b][/font_size]" % [HEADER_FONT_SIZE, title]
+			return "[font_size=%d][b]%s[/b][/font_size]" % [AISidebarTheme.fs(HEADER_FONT_SIZE), title]
 		return "[b]%s[/b]" % title
 	m = _re_bullet.search(line)
 	if m:

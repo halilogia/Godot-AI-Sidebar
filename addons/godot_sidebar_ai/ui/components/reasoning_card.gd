@@ -76,7 +76,7 @@ func _setup_ui() -> void:
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	add_child(_vbox)
 
 	_header_btn = Button.new()
@@ -84,7 +84,7 @@ func _setup_ui() -> void:
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
-	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	_header_btn.pressed.connect(func(): set_expanded(not is_expanded))
 	_vbox.add_child(_header_btn)
@@ -100,7 +100,7 @@ func _setup_ui() -> void:
 	_content_lbl.focus_mode = Control.FOCUS_CLICK
 	_content_lbl.deselect_on_focus_loss_enabled = false
 	_content_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	_content_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_content_lbl.add_theme_font_size_override("normal_font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	_content_lbl.add_theme_color_override("default_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	_content_lbl.visible = is_expanded
 	_content_lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))

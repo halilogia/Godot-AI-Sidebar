@@ -40,7 +40,7 @@ func update_approve_mode_ui() -> void:
 	approve_mode_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(color, false))
 	approve_mode_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_pill_style(color, true))
 	approve_mode_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_pill_style(color, true))
-	AISidebarIconHelper.apply_tinted_icon(approve_mode_btn, spec["icon"], color, 12)
+	AISidebarIconHelper.apply_tinted_icon(approve_mode_btn, spec["icon"], color, AISidebarTheme.ICON_SIZE_SM)
 
 func on_approve_mode_pressed() -> void:
 	var current_mode = AISidebarPermissionPolicy.get_auto_approve_mode()

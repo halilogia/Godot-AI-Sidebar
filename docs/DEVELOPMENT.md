@@ -142,14 +142,15 @@ godot --path . -s res://tools/readme_shots.gd -- docs/media tr
 
 Pencere birkaç saniye açılıp kapanır; `config.json` dili geçici değiştirilir ve dosya birebir geri yazılır. Üretilen PNG'leri commit'lemeden önce gözle kontrol et.
 
-* **Arayüz görsel kontrolü (CLAUDE.md):** Ayarlar penceresinin her sayfası gerçek bileşenleriyle, geniş (1280x800) ve dar (900x620) pencerede çekilir; uzun sayfaların alt kısmı ayrıca. Arayüz değişikliğinden önce ve sonra iki dilde çalıştır, görüntüleri karşılaştır. Çıktı klasörü repo dışında olsun (mutlak yol):
+* **Arayüz görsel kontrolü (CLAUDE.md):** Eklentinin gerçek bileşenleri çekilir: Ayarlar'ın her sayfası (geniş 1280x800 ve dar 900x620 pencerede; uzun sayfaların alt kısmı ayrıca) ve sohbet paneli `tools/ui_scenarios.gd`'deki her senaryoyla (karşılama, soru, onay, plan, runtime, hata, kuyruk; 460 ve 320 px dock). Arayüz değişikliğinden önce ve sonra iki dilde çalıştır, görüntüleri karşılaştır. Dördüncü argüman editörün yüksek DPI ölçeğini taklit eder. Çıktı klasörü repo dışında olsun (mutlak yol):
 
 ```bash
 godot --path . -s res://tools/ui_shots.gd -- <mutlak-klasör> tr
 godot --path . -s res://tools/ui_shots.gd -- <mutlak-klasör> en
+godot --path . -s res://tools/ui_shots.gd -- <mutlak-klasör> tr dock 1.5
 ```
 
-`config.json` yalnız dil için geçici değişir; varsa bayt bayt geri yazılır, yoksa silinir. Sabit yazı boyu ve tema dışı renk sabitleri `tests/test_ui_quality.gd` cırcırıyla `verify.ps1`'de denetlenir.
+Taşma bulunursa `OVERFLOW` basılır ve çıkış kodu 1 olur. `config.json` yalnız dil için geçici değişir; varsa bayt bayt geri yazılır, yoksa silinir; senaryoların açtığı sohbet oturumları silinir. Yeni kart ya da arayüz durumu eklenince `tools/ui_scenarios.gd`'ye senaryosu eklenir (README görselleri de aynı senaryoları kullanır). Sabit yazı boyu / boşluk / ikon boyu, tema dışı renk ve sahnedeki tema geçersiz kılmaları `tests/test_ui_quality.gd` ile `verify.ps1`'de denetlenir.
 
 ## 11. GitHub Actions (CI)
 

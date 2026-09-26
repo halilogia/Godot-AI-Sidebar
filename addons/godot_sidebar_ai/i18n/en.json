@@ -54,7 +54,7 @@
   "btn_reset_temp": "0.20 (Default)",
   "tab_provider": "Provider",
   "tab_parameters": "Model & Parameters",
-  "tab_appearance": "Language & Approvals",
+  "tab_appearance": "General",
   "label_language": "Interface Language:",
   "btn_reset_prompt": "Restore default",
   "history_title": "Chat History",
@@ -234,5 +234,15 @@
   "mcp_settings_badge_off": "Off",
   "mcp_settings_connect_title": "Connect Claude Code",
   "mcp_settings_connect_hint": "Run the command in a terminal in your game project folder. The token is masked here; the copied command has it in full.",
-  "custom_show_in_folder": "Show in folder"
+  "custom_show_in_folder": "Show in folder",
+  "plan_status_applied": "Plan approved, applying",
+  "plan_status_cancelled": "Plan cancelled",
+  "plan_no_data": "(Plan data unavailable.)",
+  "dialog_diff_title": "Change approval and diff view",
+  "checklist_title": "Tasks",
+  "export_dialog_title": "Export chat",
+  "export_dialog_text": "Choose an export format:",
+  "settings_card_appearance": "Appearance",
+  "settings_ui_animations": "Interface animations",
+  "settings_ui_animations_hint": "New cards and pages fade in briefly. Turn off to reduce motion."
 }

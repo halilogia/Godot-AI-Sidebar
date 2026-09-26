@@ -21,13 +21,13 @@ func _init() -> void:
 	name = "PendingIndicator"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_theme_constant_override("margin_left", AISidebarTheme.SPACE_MD)
-	add_theme_constant_override("margin_top", AISidebarTheme.SPACE_XS)
-	add_theme_constant_override("margin_bottom", AISidebarTheme.SPACE_XS)
+	add_theme_constant_override("margin_left", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
+	add_theme_constant_override("margin_top", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
+	add_theme_constant_override("margin_bottom", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 
 	var row = HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	row.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	add_child(row)
 
 	_spinner = TextureRect.new()
@@ -41,11 +41,11 @@ func _init() -> void:
 	var texts = VBoxContainer.new()
 	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	texts.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	texts.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS))
 	row.add_child(texts)
 
 	_label = Label.new()
-	_label.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	_label.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	_label.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 	texts.add_child(_label)
 
@@ -53,7 +53,7 @@ func _init() -> void:
 	_hint.visible = false
 	_hint.text = AISidebarI18n.get_text("pending_slow_hint")
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_MICRO)
+	_hint.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_MICRO))
 	_hint.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	texts.add_child(_hint)
 

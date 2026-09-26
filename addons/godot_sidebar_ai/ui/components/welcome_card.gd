@@ -9,6 +9,7 @@ class_name AISidebarWelcomeCard
 signal prompt_selected(prompt_text: String)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
@@ -19,16 +20,7 @@ func _ready() -> void:
 	_setup_ui()
 
 func _setup_ui() -> void:
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(AISidebarTheme.RADIUS_LG)
-	style.bg_color = Color(0.11, 0.13, 0.17, 0.90)
-	style.border_color = Color(0.24, 0.28, 0.35, 0.45)
-	style.set_border_width_all(1)
-	style.content_margin_left = AISidebarTheme.SPACE_MD
-	style.content_margin_top = AISidebarTheme.SPACE_MD
-	style.content_margin_right = AISidebarTheme.SPACE_MD
-	style.content_margin_bottom = AISidebarTheme.SPACE_MD
-	add_theme_stylebox_override("panel", style)
+	theme_type_variation = AISidebarThemeBuilder.CARD
 	_build_content()
 
 ## Dil değişince metinleri seçili dilde yeniden kurar (dock `update_ui_language` çağırır).
@@ -41,7 +33,7 @@ func _build_content() -> void:
 		_vbox.free()
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	add_child(_vbox)
 	
 	# Başlık ve Rozet
@@ -52,13 +44,13 @@ func _build_content() -> void:
 	var title_lbl = Label.new()
 	title_lbl.text = AISidebarI18n.get_text("welcome_title")
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_HEADER)
+	title_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_HEADER))
 	title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 	header.add_child(title_lbl)
 	
 	var badge_lbl = Label.new()
 	badge_lbl.text = AISidebarI18n.get_text("status_ready")
-	badge_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	badge_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	badge_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_SUCCESS)
 	header.add_child(badge_lbl)
 	
@@ -66,7 +58,7 @@ func _build_content() -> void:
 	var desc_lbl = Label.new()
 	desc_lbl.text = AISidebarI18n.get_text("welcome_desc")
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+	desc_lbl.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 	desc_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_MUTED)
 	_vbox.add_child(desc_lbl)
 	
@@ -79,19 +71,19 @@ func _build_content() -> void:
 		})
 	
 	var chips_vbox = VBoxContainer.new()
-	chips_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)
+	chips_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	_vbox.add_child(chips_vbox)
 	
 	for s in suggestions:
 		var btn = Button.new()
 		btn.text = s["title"]
-		AISidebarIconHelper.apply_tinted_icon(btn, "arrow-up-right", AISidebarTheme.COLOR_TEXT_MUTED, 12)
+		AISidebarIconHelper.apply_tinted_icon(btn, "arrow-up-right", AISidebarTheme.COLOR_TEXT_MUTED, AISidebarTheme.ICON_SIZE_SM)
 		btn.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.focus_mode = Control.FOCUS_NONE
-		btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
+		btn.add_theme_font_size_override("font_size", AISidebarTheme.fs(AISidebarTheme.FONT_SIZE_SMALL))
 		btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
 		btn.add_theme_color_override("font_hover_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
 		btn.add_theme_stylebox_override("normal", AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))

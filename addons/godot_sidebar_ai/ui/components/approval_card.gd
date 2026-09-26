@@ -14,6 +14,8 @@ const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/cha
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
 var tool_name: String = ""
 var args: Dictionary = {}
@@ -39,36 +41,26 @@ func _ready() -> void:
 	_setup_ui()
 
 func _setup_ui() -> void:
-	var style = StyleBoxFlat.new()
-	style.set_corner_radius_all(6)
-	style.bg_color = Color(0.20, 0.16, 0.10, 0.95)
-	style.border_color = Color(0.9, 0.65, 0.2, 0.7)
-	style.set_border_width_all(1)
-	style.content_margin_left = 10
-	style.content_margin_top = 8
-	style.content_margin_right = 10
-	style.content_margin_bottom = 8
+	theme_type_variation = AISidebarThemeBuilder.CARD_WARNING
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	add_theme_stylebox_override("panel", style)
 	
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	_vbox.add_theme_constant_override("separation", 6)
+	_vbox.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS + 2))
 	add_child(_vbox)
 	
 	var title_row = HBoxContainer.new()
 	title_row.mouse_filter = Control.MOUSE_FILTER_PASS
-	title_row.add_theme_constant_override("separation", 6)
+	title_row.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS + 2))
 	_vbox.add_child(title_row)
-	_title_icon = AISidebarStatusIcon.new(16)
-	_title_icon.set_icon("shield-alert", Color(1.0, 0.75, 0.3))
+	_title_icon = AISidebarStatusIcon.new(AISidebarTheme.ICON_SIZE_LG)
+	_title_icon.set_icon("shield-alert", AISidebarTheme.COLOR_TONE_WARNING_TEXT)
 	title_row.add_child(_title_icon)
 	_title_lbl = Label.new()
 	_title_lbl.text = AISidebarI18n.get_text("approval_title")
 	_title_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-	_title_lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.3))
-	_title_lbl.add_theme_font_size_override("font_size", 12)
+	_title_lbl.theme_type_variation = AISidebarThemeBuilder.TITLE_WARNING
 	title_row.add_child(_title_lbl)
 	
 	_desc_lbl = RichTextLabel.new()
@@ -93,20 +85,19 @@ func _setup_ui() -> void:
 	_desc_lbl.focus_mode = Control.FOCUS_CLICK
 	_desc_lbl.deselect_on_focus_loss_enabled = false
 	_desc_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	_desc_lbl.add_theme_font_size_override("normal_font_size", 11)
-	_desc_lbl.add_theme_color_override("default_color", Color(0.85, 0.9, 0.95))
+	_desc_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
 	_vbox.add_child(_desc_lbl)
 	
 	_buttons_bar = HBoxContainer.new()
 	_buttons_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_buttons_bar.add_theme_constant_override("separation", 8)
+	_buttons_bar.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
 	_vbox.add_child(_buttons_bar)
 	
 	_approve_btn = Button.new()
 	_approve_btn.text = AISidebarI18n.get_text("btn_approve")
 	AISidebarIconHelper.apply_icon(_approve_btn, "check")
 	_approve_btn.focus_mode = Control.FOCUS_NONE
-	_approve_btn.add_theme_font_size_override("font_size", 11)
+	_approve_btn.theme_type_variation = AISidebarThemeBuilder.PRIMARY_BUTTON
 	_approve_btn.pressed.connect(_on_approve)
 	_buttons_bar.add_child(_approve_btn)
 	
@@ -114,7 +105,7 @@ func _setup_ui() -> void:
 	_reject_btn.text = AISidebarI18n.get_text("btn_reject")
 	AISidebarIconHelper.apply_icon(_reject_btn, "x")
 	_reject_btn.focus_mode = Control.FOCUS_NONE
-	_reject_btn.add_theme_font_size_override("font_size", 11)
+	_reject_btn.theme_type_variation = AISidebarThemeBuilder.BUTTON
 	_reject_btn.pressed.connect(_on_reject)
 	_buttons_bar.add_child(_reject_btn)
 	
@@ -123,7 +114,7 @@ func _setup_ui() -> void:
 		_diff_btn.text = AISidebarI18n.get_text("btn_view_diff")
 		AISidebarIconHelper.apply_icon(_diff_btn, "diff")
 		_diff_btn.focus_mode = Control.FOCUS_NONE
-		_diff_btn.add_theme_font_size_override("font_size", 11)
+		_diff_btn.theme_type_variation = AISidebarThemeBuilder.GHOST_BUTTON
 		_diff_btn.pressed.connect(func(): view_diff_requested.emit(change_set))
 		_buttons_bar.add_child(_diff_btn)
 
@@ -131,8 +122,8 @@ func mark_approved() -> void:
 	is_resolved = true
 	if _title_lbl:
 		_title_lbl.text = AISidebarI18n.get_text("approval_approved")
-		_title_lbl.add_theme_color_override("font_color", Color(0.4, 0.85, 0.4))
-		_title_icon.set_icon("check", Color(0.4, 0.85, 0.4))
+		_title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TONE_SUCCESS_TEXT)
+		_title_icon.set_icon("check", AISidebarTheme.COLOR_TONE_SUCCESS_TEXT)
 	if _approve_btn:
 		_approve_btn.disabled = true
 		_approve_btn.visible = false
@@ -144,8 +135,8 @@ func mark_rejected() -> void:
 	is_resolved = true
 	if _title_lbl:
 		_title_lbl.text = AISidebarI18n.get_text("approval_rejected")
-		_title_lbl.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
-		_title_icon.set_icon("x", Color(0.9, 0.4, 0.4))
+		_title_lbl.add_theme_color_override("font_color", AISidebarTheme.COLOR_TONE_ERROR_TEXT)
+		_title_icon.set_icon("x", AISidebarTheme.COLOR_TONE_ERROR_TEXT)
 	if _approve_btn:
 		_approve_btn.disabled = true
 		_approve_btn.visible = false
