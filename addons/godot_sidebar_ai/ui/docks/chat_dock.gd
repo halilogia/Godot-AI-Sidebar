@@ -29,6 +29,7 @@ const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/u
 const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd")
 const AISidebarModelBarController = preload("res://addons/godot_sidebar_ai/ui/controllers/model_bar_controller.gd")
 const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/controllers/task_controller.gd")
+const AISidebarSkillsPanel = preload("res://addons/godot_sidebar_ai/ui/components/skills_panel.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -87,6 +88,9 @@ var activity: AISidebarAgentActivityPresenter = AISidebarAgentActivityPresenter.
 var checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
 ## Soru, onay, plan ve değişiklik kartları (kararlar AgentRunner'a iletilir).
 var interaction: AISidebarAgentInteractionPresenter = AISidebarAgentInteractionPresenter.new()
+## Skill yönetimi (başlıktaki Skills düğmesi).
+var skills_btn: Button = null
+var skills_panel: AISidebarSkillsPanel = null
 var auto_scroll_enabled: bool = true
 var welcome_card: AISidebarWelcomeCard = null
 
@@ -183,6 +187,7 @@ func _ready() -> void:
 		new_chat_btn.pressed.connect(_on_new_chat_pressed)
 	if history_btn:
 		history_btn.pressed.connect(_on_toggle_history_pressed)
+		_setup_skills_button()
 	if clear_btn:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
@@ -288,9 +293,24 @@ func _setup_queue_ui() -> void:
 	input_area.add_child(queue_panel)
 	input_area.move_child(queue_panel, 0)
 
+## Başlıkta geçmiş düğmesinin yanına Skills düğmesi ve yönetim paneli.
+func _setup_skills_button() -> void:
+	skills_btn = Button.new()
+	skills_btn.flat = history_btn.flat
+	skills_btn.focus_mode = Control.FOCUS_NONE
+	history_btn.get_parent().add_child(skills_btn)
+	history_btn.get_parent().move_child(skills_btn, history_btn.get_index())
+	skills_panel = AISidebarSkillsPanel.new()
+	add_child(skills_panel)
+	skills_btn.pressed.connect(func() -> void: skills_panel.popup_centered())
+
 func update_ui_language() -> void:
 	if welcome_card and is_instance_valid(welcome_card):
 		welcome_card.refresh_texts()
+	if skills_btn:
+		AISidebarIconHelper.apply_icon(skills_btn, "sparkles")
+		skills_btn.text = "" if skills_btn.icon else AISidebarI18n.get_text("skills_btn_short")
+		skills_btn.tooltip_text = AISidebarI18n.get_text("skills_title")
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
 		export_btn.tooltip_text = AISidebarI18n.get_text("tooltip_export_chat")

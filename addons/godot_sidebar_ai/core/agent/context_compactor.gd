@@ -31,8 +31,10 @@ static func compact_messages(raw_messages: Array, keep_recent_tools: int = 2) ->
 			# Eğer bu tool sonucu son keep_recent_tools içinde değilse sıkıştır
 			if cutoff_index != -1 and i < cutoff_index:
 				var tool_name = str(msg.get("name", ""))
-				var content_str = str(msg.get("content", ""))
-				msg["content"] = compact_tool_content(tool_name, content_str)
+				# Skill talimatları kalıcı yönergedir: sıkıştırılmaz (sessizce kaybolursa ajan yöntemi unutur).
+				if tool_name != "activate_skill":
+					var content_str = str(msg.get("content", ""))
+					msg["content"] = compact_tool_content(tool_name, content_str)
 		compacted.append(msg)
 		
 	return compacted

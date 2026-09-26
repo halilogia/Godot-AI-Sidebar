@@ -10,6 +10,7 @@ const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/se
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
 const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
+const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 
 ## Komut Tanım Modeli
 static var _commands: Dictionary = {}
@@ -267,6 +268,15 @@ static func _init_default_commands() -> void:
 		Callable(AISidebarSlashCommandManager, "_handle_explain")
 	)
 
+	# 10b. /skill
+	register_command(
+		"skill",
+		"Skill'ler (Agent Skills standardı): listeler ya da seçilen skill'in talimatlarını yükleyip görevi onunla başlatır. Yönetim: başlıktaki Skills düğmesi.",
+		"/skill [ad] [istek]",
+		AISidebarPermissionPolicy.RiskLevel.READ_ONLY,
+		Callable(AISidebarSlashCommandManager, "_handle_skill")
+	)
+
 	# 11. /mcp
 	register_command(
 		"mcp",
@@ -383,6 +393,26 @@ static func _handle_test(args: String, _context: Dictionary) -> Dictionary:
 		"prompt": prompt,
 		"display_prompt": "/test " + target if not target.is_empty() else "/test"
 	}
+
+## /skill: argümansız açık skill'leri listeler; `/skill ad [istek]` skill talimatlarını isteğin
+## başına ekleyip ajanı çalıştırır (kullanıcı tetiklemeli etkinleştirme; model kendisi de
+## activate_skill ile yükleyebilir).
+static func _handle_skill(args: String, _context: Dictionary) -> Dictionary:
+	var skills := AISidebarSkillRegistry.enabled_skills()
+	var parts := args.strip_edges().split(" ", false, 1)
+	if parts.is_empty():
+		if skills.is_empty():
+			return {"action": "local_response", "message": "Açık skill yok. Başlıktaki **Skills** düğmesinden skill ekleyebilir ya da açabilirsiniz."}
+		var text := "**Açık skill'ler** (kullanım: `/skill ad istek`):\n\n"
+		for s: Dictionary in skills:
+			text += "* `%s` (%s): %s\n" % [str(s["name"]), str(s["scope"]), str(s["description"])]
+		return {"action": "local_response", "message": text}
+	var skill := AISidebarSkillRegistry.find(parts[0], skills)
+	if skill.is_empty():
+		return {"action": "local_response", "message": "`%s` adında açık bir skill yok. Liste için: `/skill`" % parts[0]}
+	var request := parts[1] if parts.size() > 1 else "Bu skill'i şu anki projeye uygula."
+	var prompt := "The user activated this skill; follow its instructions for the request below.\n\n" + AISidebarSkillRegistry.activation_content(skill) + "\n\nRequest: " + request
+	return {"action": "run_agent", "prompt": prompt, "display_prompt": "/skill " + args.strip_edges()}
 
 static func _handle_run(_args: String, _context: Dictionary) -> Dictionary:
 	var prompt = "Godot oyun projesini play_game aracıyla çalıştır. Çalışma zamanı (runtime) gözlemlerini ve hata loglarını alıp durumu raporla."

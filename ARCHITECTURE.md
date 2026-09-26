@@ -263,6 +263,18 @@ Claude Code / Cursor / Codex  ──MCP Streamable HTTP (POST /mcp, Bearer token
 
 **İlke:** Köprü ikinci bir arka kapı değildir. Dış ajanın her çağrısı iç ajanınkiyle aynı `ToolManager` → PermissionPolicy → PathPolicy → doğrulama hattından geçer. Dış ajan dosyaları kendi araçlarıyla yazar, sonra `sync_project` ile editöre taratır.
 
+### 7. 📚 Skill'ler ve Proje Kuralları (`core/skills/`, v3.1)
+
+İki açık standart, eklentinin kendi özelliği olarak (MCP'ye özgü değil): **Agent Skills** (agentskills.io, `SKILL.md`) ve **AGENTS.md** (agents.md). Aynı dosyaları standardı destekleyen başka araçlar (Codex, Cursor, Copilot, Claude Code …) de kendileri okur.
+
+* **[`skill_parser.gd`](addons/godot_sidebar_ai/core/skills/skill_parser.gd):** `SKILL.md` ön bilgi (YAML alt kümesi: düz, tırnaklı, `>` / `|` blok, iç içe harita) + gövde. Hoşgörülü: kozmetik sorunda uyarı, açıklama yoksa ya da ön bilgi okunamıyorsa skill atlanır.
+* **[`skill_registry.gd`](addons/godot_sidebar_ai/core/skills/skill_registry.gd):** Keşif ve öncelik (proje `res://.agents/skills` + `res://.claude/skills` > kullanıcı `~/.agents/skills` > yerleşik `addons/godot_sidebar_ai/skills`); açık / kapalı tercihi kişisel `config.json` → `skills_enabled` (proje skill'leri depodan geldiği için kullanıcı açana kadar kapalı: güven onayı budur); katalog (katman 1: ad + açıklama), etkinleştirme içeriği (katman 2: ön bilgisiz gövde + ek dosya listesi), skill klasörüyle sınırlı ek dosya okuma (katman 3), oluşturma / içe aktarma / silme.
+* **[`project_instructions.gd`](addons/godot_sidebar_ai/core/skills/project_instructions.gd):** Oyun projesinin kök `AGENTS.md`'si (en fazla 12 000 karakter). Ayrı bir proje hafızası biçimi yoktur.
+* **[`skill_tools.gd`](addons/godot_sidebar_ai/core/tools/primitive/skill_tools.gd):** `activate_skill(name, file?)` (salt okunur; ad açık skill adlarıyla sınırlı enum; açık skill yoksa araç sunulmaz). Köprüde (MCP) açılmaz.
+* **[`skills_panel.gd`](addons/godot_sidebar_ai/ui/components/skills_panel.gd):** Başlıktaki Skills düğmesinin paneli: liste, aç / kapa, SKILL.md'yi aç, sil (yerleşik silinmez), yeni iskelet, klasör içe aktar, kullanıcı skill klasörünü aç.
+
+**Akış:** `AgentContext.get_messages_for_api` her turda editör zemin mesajına `AGENTS.md` ve açık skill kataloğunu ekler. Model uygun skill'i `activate_skill` ile yükler; kullanıcı `/skill ad istek` ile kendisi başlatabilir. `activate_skill` sonuçları `ContextCompactor`'da özetlenmez (kalıcı yönerge). Yerleşik skill'ler: `godot-feature-development`, `godot-scene-authoring`, `godot-debug-and-repair`, `godot-runtime-verification`, `godot-refactor`.
+
 ---
 
 ## 🧪 Test Mimarisi

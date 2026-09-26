@@ -16,6 +16,7 @@ const AISidebarEditorTools = preload("res://addons/godot_sidebar_ai/core/tools/p
 const AISidebarGameIntentTools = preload("res://addons/godot_sidebar_ai/core/tools/intent/game_intent_tools.gd")
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
+const AISidebarSkillTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/skill_tools.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -88,7 +89,9 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarEditorTools.get_schemas())
 	schemas.append_array(AISidebarGameIntentTools.get_schemas())
 	schemas.append_array(AISidebarUITelemetryTools.get_schemas())
-	
+	# Skill'ler: açık skill yoksa activate_skill hiç sunulmaz.
+	schemas.append_array(AISidebarSkillTools.get_schemas())
+
 	return schemas
 
 ## Kullanıcı isteği veya konuşma bağlamına göre yalnızca ilgili araç şemalarını filtreler.
@@ -100,7 +103,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	var active_tool_names: Dictionary = {}
 	
 	# 1. Çekirdek Araçlar (Core Discovery, Clarification, Planning & Inspection - Daima Erişilebilir)
-	var core_tools = ["search_tools", "ask_user", "propose_plan", "analyze_project", "read_script"]
+	var core_tools = ["search_tools", "ask_user", "propose_plan", "analyze_project", "read_script", "activate_skill"]
 	for ct in core_tools:
 		active_tool_names[ct] = true
 		
@@ -285,6 +288,9 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 		if s["function"]["name"] == tool_name:
 			return AISidebarUITelemetryTools.execute(tool_name, args)
 			
+	if tool_name == AISidebarSkillTools.TOOL_NAME:
+		return AISidebarSkillTools.execute(tool_name, args)
+
 	# 6. Yüksek Seviyeli Intent Araçları
 	for s in AISidebarGameIntentTools.get_schemas():
 		if s["function"]["name"] == tool_name:

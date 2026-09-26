@@ -11,6 +11,8 @@ const AISidebarContextCompactor = preload("res://addons/godot_sidebar_ai/core/ag
 
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
+const AISidebarProjectInstructions = preload("res://addons/godot_sidebar_ai/core/skills/project_instructions.gd")
+const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 
 var messages: Array = []
 var recent_actions: Array = []
@@ -190,6 +192,10 @@ func get_messages_for_api(keep_recent_tools: int = 2) -> Array:
 	
 	# Dinamik Editör Durumu (Aktif Sahne, Seçili Düğüm, Açık Script)
 	var grounding = AISidebarEditorStateSnapshot.get_grounding_prompt_text()
+	# Proje kuralları (AGENTS.md) ve açık skill'lerin kataloğu aynı zemin mesajına eklenir.
+	for extra: String in [AISidebarProjectInstructions.prompt_text(), AISidebarSkillRegistry.catalog_prompt(AISidebarSkillRegistry.enabled_skills())]:
+		if not extra.is_empty():
+			grounding += "\n\n" + extra
 	api_messages.append({
 		"role": "user",
 		"content": grounding
