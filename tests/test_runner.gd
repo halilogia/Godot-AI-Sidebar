@@ -236,7 +236,13 @@ func _init() -> void:
 	var total_failed = 0
 	
 	for suite in suites:
-		var res: Dictionary = suite.run()
+		# Derlenemeyen paket `run()` taşımaz; çağırmak _init'i yarıda keser, runner quit()'e ve
+		# config geri yüklemesine hiç ulaşmaz. Böyle paket boş sonuç sayılır (aşağıda FAIL olur).
+		var runnable := false
+		for m in (suite as Script).get_script_method_list():
+			if str(m.get("name", "")) == "run":
+				runnable = true
+		var res: Dictionary = suite.run() if runnable else {}
 		var s_name = res.get("name", "Unknown")
 		var s_pass = res.get("passed", 0)
 		var s_fail = res.get("failed", 0)
