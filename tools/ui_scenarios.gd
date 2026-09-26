@@ -15,7 +15,7 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 
 ## Bütün senaryolar (ui_shots hepsini çeker).
-const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "plan", "runtime", "error", "queue"]
+const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "plan", "runtime", "error", "queue", "goal"]
 
 class SilentProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
@@ -55,6 +55,15 @@ func _scenario_welcome(dock, _r) -> void:
 func _scenario_error(dock, r) -> void:
 	r.text_received.emit("user", _t("Run the game", "Oyunu çalıştır"))
 	r.error_occurred.emit(_t("Provider error: connection refused (127.0.0.1:20128). Check the endpoint in Settings > Provider.", "Sağlayıcı hatası: bağlantı reddedildi (127.0.0.1:20128). Ayarlar > Sağlayıcı'da uç noktayı kontrol edin."))
+
+func _scenario_goal(dock, r) -> void:
+	var objective = _t("The player can double jump and the HUD shows the jump count", "Oyuncu çift zıplayabilsin ve HUD zıplama sayısını göstersin")
+	r.text_received.emit("user", "/goal " + objective)
+	_tool(dock, r, "replace_file_content", {"file_path": "res://player/player.gd"}, _t("Added double jump to player.gd", "player.gd'ye çift zıplama eklendi"), 900)
+	_tool(dock, r, "play_game", {}, _t("Game ran with no runtime errors", "Oyun çalıştı, runtime hatası yok"), 2400)
+	_tool(dock, r, "report_goal", {"status": "in_progress"}, _t("Goal: in progress, next: HUD label", "Hedef: sürüyor, sıradaki: HUD etiketi"), 40)
+	dock.goal_banner.show_goal(objective, 2, 10)
+	_expand_activity(dock)
 
 func _scenario_queue(dock, r) -> void:
 	r.text_received.emit("user", _t("Add a pause menu", "Duraklatma menüsü ekle"))

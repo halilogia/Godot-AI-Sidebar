@@ -4,12 +4,13 @@ class_name AISidebarSettingsGeneralPages
 
 ## Ayarlar penceresinin genel sayfaları (kodla, AISidebarSettingsUi ile kurulur):
 ##   Sağlayıcı: sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable)
-##   Model & Parametreler: temperature, max_agent_steps (max_iterations aynı denetim)
+##   Model & Parametreler: temperature, max_agent_steps (max_iterations aynı denetim), goal_max_rounds (/goal)
 ##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval
 ## Pencere açılırken config'ten yüklenir (load_from), "Kaydet ve Kapat"ta config'e yazılır (write_to).
 
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarGoalSession = preload("res://addons/godot_sidebar_ai/core/agent/goal_session.gd")
 const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 
@@ -28,6 +29,7 @@ var vision_opt: OptionButton
 var temp_slider: HSlider
 var temp_badge: Label
 var steps_spin: SpinBox
+var goal_rounds_spin: SpinBox
 var lang_opt: OptionButton
 var mode_opt: OptionButton
 var delete_check: CheckBox
@@ -87,6 +89,14 @@ func build_model_page() -> VBoxContainer:
 	steps_spin.step = 1
 	var steps_row := AISidebarSettingsUi.row(steps)
 	steps_row.add_child(steps_spin)
+
+	var goal := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_goal"), AISidebarI18n.get_text("settings_goal_hint"))
+	goal_rounds_spin = SpinBox.new()
+	goal_rounds_spin.min_value = 1
+	goal_rounds_spin.max_value = AISidebarGoalSession.MAX_ROUNDS_LIMIT
+	goal_rounds_spin.step = 1
+	AISidebarSettingsUi.form_row(goal, AISidebarI18n.get_text("settings_goal_max_rounds"), goal_rounds_spin)
+	goal_rounds_spin.size_flags_horizontal = Control.SIZE_FILL
 	return page
 
 func build_language_page() -> VBoxContainer:
@@ -136,6 +146,8 @@ func load_from(cfg: Dictionary) -> void:
 	_on_temp_changed(temp_slider.value)
 	var steps: float = cfg.get("max_agent_steps", cfg.get("max_iterations", 20))
 	steps_spin.value = steps
+	var goal_rounds: float = cfg.get("goal_max_rounds", AISidebarGoalSession.DEFAULT_MAX_ROUNDS)
+	goal_rounds_spin.value = goal_rounds
 	lang_opt.selected = maxi(0, LANGUAGES.find(str(cfg.get("language", "tr"))))
 	animations_check.button_pressed = cfg.get("ui_animations", true) == true
 	mode_opt.selected = maxi(0, MODES.find(str(cfg.get("auto_approve_mode", "MANUAL"))))
@@ -152,6 +164,7 @@ func write_to(cfg: Dictionary) -> void:
 	var steps := int(steps_spin.value)
 	cfg["max_agent_steps"] = steps
 	cfg["max_iterations"] = steps
+	cfg["goal_max_rounds"] = int(goal_rounds_spin.value)
 	cfg["language"] = LANGUAGES[lang_opt.selected]
 	cfg["ui_animations"] = animations_check.button_pressed
 	AISidebarMotion.enabled = animations_check.button_pressed

@@ -258,5 +258,22 @@
   "approval_action_delete_node": "Delete node: {path}",
   "approval_action_delete_file": "Delete file: {path}",
   "approval_action_update_file": "Update file: {path}",
-  "approval_action_edit_file": "Surgical edit in file: {path}"
+  "approval_action_edit_file": "Surgical edit in file: {path}",
+  "settings_card_goal": "Goal mode (/goal)",
+  "settings_goal_hint": "With a goal set by /goal, the agent reports its status at the end of every round and keeps going on its own until the goal is met with evidence, it is blocked, or this round limit is reached. Each round uses its own step limit (the setting above).",
+  "settings_goal_max_rounds": "Maximum rounds",
+  "goal_banner_goal": "Goal: {objective}",
+  "goal_banner_round": "Round {round} / {max}",
+  "goal_banner_stop": "Stop",
+  "goal_banner_stop_tooltip": "Ends the goal and stops the running round.",
+  "goal_none": "No active goal. To start one: `/goal your goal` (e.g. `/goal the player can jump and dies when falling`).",
+  "goal_usage": "Usage: `/goal goal` (start), `/goal` (status), `/goal stop` (stop).",
+  "goal_status_active": "**Active goal:** {objective}\n\nRound {round} / {max}. To stop: `/goal stop` or Stop on the goal strip.",
+  "goal_already_active": "A goal is already active: {objective}. Stop it with `/goal stop` before starting a new one.",
+  "goal_busy": "A new goal cannot start while the agent is running. Wait for the task to finish or stop it.",
+  "goal_round_display": "/goal · round {round} / {max}",
+  "goal_achieved": "**Goal achieved** (in {rounds} rounds).\n\nEvidence: {evidence}",
+  "goal_blocked": "**Goal on hold:** the agent needs something from you.\n\n{reason}\n\nReply, then restart the goal with `/goal` to continue.",
+  "goal_exhausted": "**Round limit reached** ({max} rounds) before the goal was met.\n\nNext step: {next}\n\nRestart the goal with `/goal` to continue, or raise the limit in Settings > Model & Parameters.",
+  "goal_stopped": "Goal stopped."
 }

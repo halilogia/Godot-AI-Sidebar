@@ -30,6 +30,9 @@ const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/u
 const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd")
 const AISidebarModelBarController = preload("res://addons/godot_sidebar_ai/ui/controllers/model_bar_controller.gd")
 const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/controllers/task_controller.gd")
+const AISidebarGoalController = preload("res://addons/godot_sidebar_ai/ui/controllers/goal_controller.gd")
+const AISidebarGoalBanner = preload("res://addons/godot_sidebar_ai/ui/components/goal_banner.gd")
+const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarSkillsPanel = preload("res://addons/godot_sidebar_ai/ui/components/skills_panel.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
@@ -78,6 +81,9 @@ var queue_panel: AISidebarMessageQueuePanel = AISidebarMessageQueuePanel.new()
 
 ## Görev akışı: gönder, slash, kuyruk, devam et, task bitişi/hata; _ready'de kurulur.
 var tasks: AISidebarTaskController = null
+## /goal: hedef denetleyicisi ve giriş alanının üstündeki hedef şeridi.
+var goals: AISidebarGoalController = null
+var goal_banner: AISidebarGoalBanner = AISidebarGoalBanner.new()
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
 var composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
@@ -104,6 +110,8 @@ func _notification(what: int) -> void:
 	# InputArea yoksa kuyruk paneli ağaca hiç eklenmez; sahipsiz kalmasın.
 	if what == NOTIFICATION_PREDELETE and is_instance_valid(queue_panel) and queue_panel.get_parent() == null:
 		queue_panel.free()
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(goal_banner) and goal_banner.get_parent() == null:
+		goal_banner.free()
 
 ## Provider'ı config'e göre yeniden kurdurur; eski provider'dan kalan hazırlık durumu sıfırlanır.
 ## Çalışan görev önce kullanıcı adına durdurulur (Paused; "devam et" ile yeni provider'da sürer):
@@ -171,6 +179,17 @@ func _ready() -> void:
 	tasks.save_session = _save_current_session
 	tasks.clear_chat = _on_clear_pressed
 	add_child(tasks)
+	goals = AISidebarGoalController.new()
+	goals.banner = goal_banner
+	goals.start_prompt = func(p: String, d: String) -> void: tasks.start_task_prompt(p, d, [])
+	goals.post_message = _post_assistant_message
+	goals.is_busy = func() -> bool: return agent_runner != null and agent_runner.is_running()
+	goals.stop_run = func() -> void:
+		tasks.stop_by_user()
+		update_ui_language()
+	add_child(goals)
+	tasks.goal = goals
+	goal_banner.stop_requested.connect(goals.stop)
 	AISidebarChatDockTheme.apply(self)
 	if not Engine.is_editor_hint():
 		return
@@ -230,6 +249,7 @@ func _ready() -> void:
 
 	# 5. Başlangıç Yüklemesi
 	update_ui_language()
+	set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
 	model_bar_controller.load_cached_models()
 	if agent_host and agent_host.has_provider():
 		agent_host.fetch_models()
@@ -245,6 +265,8 @@ func attach_agent_host(host: AISidebarAgentHost) -> void:
 	activity.context = agent_context
 	interaction.context = agent_context
 	tasks.context = agent_context
+	if goals:
+		goals.context = agent_context
 	host.models_fetched.connect(model_bar_controller.on_models_fetched)
 	host.readiness_changed.connect(_on_provider_readiness_changed)
 	agent_runner = host.runner
@@ -260,6 +282,8 @@ func _connect_agent_runner() -> void:
 	agent_runner.text_received.connect(stream.on_text_received)
 	agent_runner.tool_executing.connect(activity.on_tool_executing)
 	agent_runner.tool_completed.connect(activity.on_tool_completed)
+	if goals:
+		agent_runner.tool_completed.connect(goals.on_tool_completed)
 	agent_runner.approval_requested.connect(interaction.on_approval_requested)
 	agent_runner.clarification_requested.connect(interaction.on_clarification_requested)
 	agent_runner.plan_proposed.connect(interaction.on_plan_proposed)
@@ -294,6 +318,14 @@ func _setup_queue_ui() -> void:
 	var input_area = $MainLayout/InputArea
 	input_area.add_child(queue_panel)
 	input_area.move_child(queue_panel, 0)
+	input_area.add_child(goal_banner)
+	input_area.move_child(goal_banner, 0)
+
+## Sohbete asistan mesajı ekler (hedef sonucu gibi yerel bildirimler).
+func _post_assistant_message(text: String) -> void:
+	var bubble := AISidebarMessageBubble.new("assistant", text)
+	bubble.meta_clicked.connect(_on_meta_clicked)
+	add_stream_component(bubble)
 
 ## Başlıkta geçmiş düğmesinin yanına Skills düğmesi ve yönetim paneli.
 func _setup_skills_button() -> void:
@@ -423,6 +455,8 @@ func _start_new_chat_session() -> void:
 	sessions.start_new()
 		
 	queue_panel.clear_all()
+	if goals:
+		goals.reset()
 	_clear_ui_stream()
 	_show_welcome_card_if_empty()
 	_update_header_title()
@@ -447,6 +481,8 @@ func _load_session_by_id(session_id: String) -> void:
 	var loaded = sessions.current
 		
 	queue_panel.clear_all()
+	if goals:
+		goals.reset()
 	_clear_ui_stream()
 	rebuild_stream_from_session(loaded)
 	_show_welcome_card_if_empty()
@@ -527,6 +563,8 @@ func _on_clear_pressed() -> void:
 	tasks.stop_by_user()
 	sessions.clear_contents()
 	queue_panel.clear_all()
+	if goals:
+		goals.reset()
 	_clear_ui_stream()
 	_update_header_title()
 

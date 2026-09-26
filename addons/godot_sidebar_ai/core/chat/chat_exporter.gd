@@ -630,12 +630,24 @@ static func _append_transcript_event(e: Dictionary, buckets: Dictionary) -> void
 			(buckets["system"] as Array).append("⚠️ Image saved (" + ", ".join(vpaths).left(300) + ") but NOT sent to model (provider has no vision support).")
 		"activity":
 			(buckets["activity"] as Array).append(_step_tag(e) + str(d.get("icon", "•")) + " " + _rx(str(d.get("title", ""))))
+		"goal_round_finished", "goal_finished":
+			var goal_data: Dictionary = d
+			var sys_lines: Array = buckets["system"]
+			sys_lines.append(_goal_line(str(t), goal_data))
 		"task_started", "task_ended", "checklist_snapshot":
 			pass
 		"task_resumed":
 			(buckets["system"] as Array).append(_step_tag(e) + "▶ Task resumed (same task, continuation — no new task_id)")
 		_:
 			(buckets["system"] as Array).append("[" + ts + "] " + t)
+
+## /goal olayları: tur sonu (durum ve kanıt / sıradaki adım) ve hedefin sonucu.
+static func _goal_line(kind: String, d: Dictionary) -> String:
+	var rnd: int = d.get("round", 0)
+	if kind == "goal_finished":
+		return "🎯 Goal %s after %d round(s): %s" % [str(d.get("outcome", "")), rnd, _rx(str(d.get("objective", "")))]
+	var max_rounds: int = d.get("max_rounds", 0)
+	return "🎯 Goal round %d/%d: %s — %s" % [rnd, max_rounds, str(d.get("status", "")), _rx(str(d.get("detail", "")))]
 
 static func _append_plan_args_to_bucket(args_json: Variant, buckets: Dictionary) -> void:
 	var parsed = JSON.parse_string(str(args_json))

@@ -294,6 +294,15 @@ static func _init_default_commands() -> void:
 		Callable(AISidebarSlashCommandManager, "_handle_mcp")
 	)
 
+	# 12. /goal
+	register_command(
+		"goal",
+		"Hedef modu: ajan verdiğiniz hedef kanıtla tamamlanana kadar tur tur çalışır (her tur sonunda durumu bildirir; engellenirse size sorar). `/goal` durumu gösterir, `/goal stop` durdurur. En çok tur sayısı: Ayarlar → Model & Parametreler.",
+		"/goal [hedef | stop]",
+		AISidebarPermissionPolicy.RiskLevel.WRITE,
+		Callable(AISidebarSlashCommandManager, "_handle_goal")
+	)
+
 ## --- KOMUT İŞLEYİCİLERİ (COMMAND HANDLERS) ---
 
 ## /mcp: köprüyü açar / kapatır, durumu ve Claude Code bağlantı komutunu gösterir.
@@ -322,6 +331,17 @@ static func _handle_mcp(args: String, _context: Dictionary) -> Dictionary:
 	text += "Claude Code bağlantı komutu **panoya kopyalandı**; oyun projenizin klasöründe terminale yapıştırın:\n\n```\n%s\n```\n\n" % masked
 	text += "Açılan araçlar: %d (sahne / proje okuma, script doğrulama, oyunu çalıştırma, runtime hataları ve ekran görüntüleri, `sync_project`, açık sahnede Ctrl+Z ile geri alınabilen küçük sahne değişiklikleri). Kapatmak için: `/mcp off`" % bridge.tool_count()
 	return {"action": "local_response", "message": text}
+
+## /goal: hedef başlatır / durdurur / durumunu sorar. Hedef oturumunu arayüzdeki hedef denetleyicisi
+## yürütür (action "goal"); burası yalnız argümanı ayrıştırır.
+static func _handle_goal(args: String, _context: Dictionary) -> Dictionary:
+	var text := args.strip_edges()
+	var sub := text.to_lower()
+	if text.is_empty():
+		return {"action": "goal", "goal_command": "status"}
+	if sub in ["stop", "clear", "off", "durdur", "iptal"]:
+		return {"action": "goal", "goal_command": "stop"}
+	return {"action": "goal", "goal_command": "start", "objective": text, "display_prompt": "/goal " + text}
 
 static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 	var cmds = get_commands()

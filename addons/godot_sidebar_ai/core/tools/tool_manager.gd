@@ -19,6 +19,7 @@ const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agen
 const AISidebarSkillTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/skill_tools.gd")
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 const AISidebarRulesTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/rules_tools.gd")
+const AISidebarGoalTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/goal_tools.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -93,6 +94,7 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarUITelemetryTools.get_schemas())
 	schemas.append_array(AISidebarRuntimeInputTools.get_schemas())
 	schemas.append_array(AISidebarRulesTools.get_schemas())
+	schemas.append_array(AISidebarGoalTools.get_schemas())
 	# Skill'ler: açık skill yoksa activate_skill hiç sunulmaz.
 	schemas.append_array(AISidebarSkillTools.get_schemas())
 
@@ -213,6 +215,10 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names["add_rule"] = true
 			break
 
+	# Hedef modu (/goal): tur istemi aracın adını içerir.
+	if AISidebarGoalTools.TOOL_NAME in text:
+		active_tool_names[AISidebarGoalTools.TOOL_NAME] = true
+
 	# 4. Hiçbir kategori eşleşmediyse varsayılan temel araç kümesini sun
 	if not has_script_intent and not has_scene_intent and not has_runtime_intent and not has_vision_intent:
 		var default_tools = [
@@ -302,6 +308,8 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 		return AISidebarSkillTools.execute(tool_name, args)
 	if tool_name == AISidebarRulesTools.TOOL_NAME:
 		return AISidebarRulesTools.execute(tool_name, args)
+	if tool_name == AISidebarGoalTools.TOOL_NAME:
+		return AISidebarGoalTools.execute(tool_name, args)
 
 	# 6. Yüksek Seviyeli Intent Araçları
 	for s in AISidebarGameIntentTools.get_schemas():

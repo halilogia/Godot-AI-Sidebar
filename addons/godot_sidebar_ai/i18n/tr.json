@@ -258,5 +258,22 @@
   "approval_action_delete_node": "Düğümü sil: {path}",
   "approval_action_delete_file": "Dosyayı sil: {path}",
   "approval_action_update_file": "Dosyayı güncelle: {path}",
-  "approval_action_edit_file": "Dosyada cerrahi değişiklik: {path}"
+  "approval_action_edit_file": "Dosyada cerrahi değişiklik: {path}",
+  "settings_card_goal": "Hedef modu (/goal)",
+  "settings_goal_hint": "/goal ile verilen hedefte ajan her turun sonunda durumu bildirir ve hedef kanıtla tamamlanana, bir engele takılana ya da bu tur sınırına kadar kendiliğinden devam eder. Her tur kendi adım sınırını (yukarıdaki ayar) kullanır.",
+  "settings_goal_max_rounds": "En çok tur",
+  "goal_banner_goal": "Hedef: {objective}",
+  "goal_banner_round": "Tur {round} / {max}",
+  "goal_banner_stop": "Durdur",
+  "goal_banner_stop_tooltip": "Hedefi bitirir ve çalışan turu durdurur.",
+  "goal_none": "Etkin hedef yok. Başlatmak için: `/goal hedefiniz` (ör. `/goal oyuncu zıplayabilsin ve düşünce ölsün`).",
+  "goal_usage": "Kullanım: `/goal hedef` (başlat), `/goal` (durum), `/goal stop` (durdur).",
+  "goal_status_active": "**Etkin hedef:** {objective}\n\nTur {round} / {max}. Durdurmak için `/goal stop` ya da şeritteki Durdur.",
+  "goal_already_active": "Zaten etkin bir hedef var: {objective}. Yenisini başlatmadan önce `/goal stop` ile durdurun.",
+  "goal_busy": "Ajan çalışırken yeni hedef başlatılamaz. Görevin bitmesini bekleyin ya da durdurun.",
+  "goal_round_display": "/goal · tur {round} / {max}",
+  "goal_achieved": "**Hedef tamamlandı** ({rounds} turda).\n\nKanıt: {evidence}",
+  "goal_blocked": "**Hedef beklemede:** ajanın sizden bir şeye ihtiyacı var.\n\n{reason}\n\nYanıtlayın; devam etmek için hedefi `/goal` ile yeniden başlatın.",
+  "goal_exhausted": "**Tur sınırına ulaşıldı** ({max} tur), hedef henüz tamamlanmadı.\n\nSıradaki adım: {next}\n\nDevam için hedefi `/goal` ile yeniden başlatın ya da Ayarlar → Model & Parametreler'den tur sınırını artırın.",
+  "goal_stopped": "Hedef durduruldu."
 }

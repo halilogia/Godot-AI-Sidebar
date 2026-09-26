@@ -18,6 +18,7 @@ const UI_KEYS := {
 	"temperature": "Settings > Model & Parameters",
 	"max_agent_steps": "Settings > Model & Parameters",
 	"max_iterations": "Settings > Model & Parameters (same control as max_agent_steps)",
+	"goal_max_rounds": "Settings > Model & Parameters > Goal mode (/goal)",
 	"system_prompt": "Settings > Rules > Built-in rules (system prompt)",
 	"language": "Settings > General",
 	"ui_animations": "Settings > General > Appearance",

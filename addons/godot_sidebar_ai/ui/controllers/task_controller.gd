@@ -26,6 +26,7 @@ const AISidebarPlanChecklistTracker = preload("res://addons/godot_sidebar_ai/ui/
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarGoalController = preload("res://addons/godot_sidebar_ai/ui/controllers/goal_controller.gd")
 
 # --- ChatDock'tan gelen bağımlılıklar ---
 var input_field: TextEdit = null
@@ -42,6 +43,8 @@ var checklist_tracker: AISidebarPlanChecklistTracker = null
 ## AgentContext / AgentRunner (headless testlerde null olabilir).
 var context: AISidebarAgentContext = null
 var runner: AISidebarAgentRunner = null
+## /goal denetleyicisi (headless testlerde null olabilir).
+var goal: AISidebarGoalController = null
 ## func(comp: Control) — bileşeni message stream'e ekler.
 var add_component: Callable = func(_c): pass
 ## func(meta) — kartlardaki bağlantı tıklamaları.
@@ -207,6 +210,21 @@ func handle_slash_command(parsed_cmd: Dictionary, raw_text: String) -> void:
 		update_header.call()
 		return
 		
+	elif action == "goal":
+		var goal_result: Dictionary = result
+		var reply := goal.handle_command(goal_result) if goal else ""
+		if reply.is_empty():
+			return
+		var goal_cmd_bubble := AISidebarMessageBubble.new("command", raw_text)
+		goal_cmd_bubble.meta_clicked.connect(on_meta_clicked)
+		add_component.call(goal_cmd_bubble)
+		var goal_reply := AISidebarMessageBubble.new("assistant", reply)
+		goal_reply.meta_clicked.connect(on_meta_clicked)
+		add_component.call(goal_reply)
+		sessions.record_local_command(raw_text, reply)
+		update_header.call()
+		return
+
 	elif action == "run_agent":
 		var prompt = result.get("prompt", "")
 		var display_prompt = result.get("display_prompt", raw_text)
@@ -300,7 +318,12 @@ func on_task_completed(metrics: Dictionary) -> void:
 		save_session.call()
 		if history_panel and history_panel.visible:
 			history_panel.refresh_list()
-			
+
+	# Hedef modu sürüyorsa sıradaki turu hedef denetleyicisi başlatır; kuyruk bekler.
+	var round_ok: bool = t_ok == true
+	if goal and goal.on_round_end(round_ok, false):
+		last_sent_vision_input = null
+		return
 	dispatch_next_queued()
 	last_sent_vision_input = null
 
@@ -324,7 +347,9 @@ func on_error(err_msg: String) -> void:
 	err_comp.retry_requested.connect(retry_last_task)
 	add_component.call(err_comp)
 	refresh_ui.call()
-	
+
+	if goal and goal.on_round_end(false, is_user_stopped):
+		return
 	dispatch_next_queued()
 
 ## Hata kartındaki Retry: son isteği normal task hattından (mention çözümleme, yeni transcript
