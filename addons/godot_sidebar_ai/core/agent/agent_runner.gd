@@ -20,6 +20,7 @@ const AISidebarCompletionPolicy = preload("res://addons/godot_sidebar_ai/core/ag
 const AISidebarImplementationPlan = preload("res://addons/godot_sidebar_ai/core/types/implementation_plan.gd")
 const AISidebarAgentTelemetry = preload("res://addons/godot_sidebar_ai/core/agent/agent_telemetry.gd")
 const AISidebarPendingInteraction = preload("res://addons/godot_sidebar_ai/core/agent/pending_interaction.gd")
+const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
 
 enum AgentState {
 	IDLE,
@@ -245,6 +246,7 @@ func _finish_task(success: bool) -> void:
 	loop_finished.emit()
 	_pending_vision_inputs.clear()
 	pending.clear_clarification()
+	AISidebarWriterLock.release(AISidebarWriterLock.Holder.SIDEBAR)
 	_set_state(AgentState.IDLE, AISidebarI18n.get_text("status_ready"))
 
 ## Kullanıcı bekleyen işlemi onayladı (Approve)
@@ -642,7 +644,9 @@ func _execute_tool_call(fn_name: String, tc_id: String, args: Dictionary, remain
 	tool_executing.emit(fn_name, args)
 	
 	var t_start = Time.get_ticks_msec()
-	var result: Dictionary = await AISidebarToolManager.execute_tool_async(fn_name, args, false)
+	# Tek aktif yazıcı: dış ajan yazıyorsa araç çalışmaz, model WRITER_BUSY görür.
+	var lock_err := AISidebarWriterLock.claim(AISidebarWriterLock.Holder.SIDEBAR, fn_name)
+	var result: Dictionary = lock_err if not lock_err.is_empty() else await AISidebarToolManager.execute_tool_async(fn_name, args, false)
 	if not is_running():
 		return ToolCallFlow.HALT
 	var t_delta = Time.get_ticks_msec() - t_start
