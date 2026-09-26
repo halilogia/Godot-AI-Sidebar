@@ -29,7 +29,16 @@ func _setup_ui() -> void:
 	style.content_margin_right = AISidebarTheme.SPACE_MD
 	style.content_margin_bottom = AISidebarTheme.SPACE_MD
 	add_theme_stylebox_override("panel", style)
-	
+	_build_content()
+
+## Dil değişince metinleri seçili dilde yeniden kurar (dock `update_ui_language` çağırır).
+func refresh_texts() -> void:
+	_build_content()
+
+func _build_content() -> void:
+	if _vbox and is_instance_valid(_vbox):
+		remove_child(_vbox)
+		_vbox.free()
 	_vbox = VBoxContainer.new()
 	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
@@ -62,12 +71,12 @@ func _setup_ui() -> void:
 	_vbox.add_child(desc_lbl)
 	
 	# Öneri Çipleri (Suggestion Chips)
-	var suggestions = [
-		{"title": "Hexagon harita sistemi oluştur", "prompt": "Hexagon harita sistemi oluştur"},
-		{"title": "Projeyi ve açık sahneyi analiz et", "prompt": "Projeyi ve aktif sahneyi incele"},
-		{"title": "Karakter ve düşman sahnesi kur", "prompt": "Karakter ve düşman sahnesi kur"},
-		{"title": "Canlı sahne ağacını incele", "prompt": "Oyundaki canlı sahne ağacını incele"}
-	]
+	var suggestions: Array = []
+	for i in range(1, 5):
+		suggestions.append({
+			"title": AISidebarI18n.get_text("welcome_suggestion_%d_title" % i),
+			"prompt": AISidebarI18n.get_text("welcome_suggestion_%d_prompt" % i)
+		})
 	
 	var chips_vbox = VBoxContainer.new()
 	chips_vbox.add_theme_constant_override("separation", AISidebarTheme.SPACE_XS)

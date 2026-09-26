@@ -289,6 +289,8 @@ func _setup_queue_ui() -> void:
 	input_area.move_child(queue_panel, 0)
 
 func update_ui_language() -> void:
+	if welcome_card and is_instance_valid(welcome_card):
+		welcome_card.refresh_texts()
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
 		export_btn.tooltip_text = AISidebarI18n.get_text("tooltip_export_chat")

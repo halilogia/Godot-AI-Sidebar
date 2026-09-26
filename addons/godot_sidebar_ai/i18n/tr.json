@@ -140,5 +140,13 @@
   "activity_steps_other": " · {count} adım",
   "clarification_answered": "Yanıtlandı: {answer}",
   "btn_new_short": "+ Yeni",
-  "btn_jump_latest": "En yeni"
+  "btn_jump_latest": "En yeni",
+  "welcome_suggestion_1_title": "Hexagon harita sistemi oluştur",
+  "welcome_suggestion_1_prompt": "Hexagon harita sistemi oluştur",
+  "welcome_suggestion_2_title": "Projeyi ve açık sahneyi analiz et",
+  "welcome_suggestion_2_prompt": "Projeyi ve aktif sahneyi incele",
+  "welcome_suggestion_3_title": "Karakter ve düşman sahnesi kur",
+  "welcome_suggestion_3_prompt": "Karakter ve düşman sahnesi kur",
+  "welcome_suggestion_4_title": "Canlı sahne ağacını incele",
+  "welcome_suggestion_4_prompt": "Oyundaki canlı sahne ağacını incele"
 }

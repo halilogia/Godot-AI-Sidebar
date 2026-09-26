@@ -140,5 +140,13 @@
   "activity_steps_other": " · {count} steps",
   "clarification_answered": "Answered: {answer}",
   "btn_new_short": "+ New",
-  "btn_jump_latest": "Latest"
+  "btn_jump_latest": "Latest",
+  "welcome_suggestion_1_title": "Create a hexagon map system",
+  "welcome_suggestion_1_prompt": "Create a hexagon map system",
+  "welcome_suggestion_2_title": "Analyze the project and the open scene",
+  "welcome_suggestion_2_prompt": "Inspect the project and the active scene",
+  "welcome_suggestion_3_title": "Set up a character and an enemy scene",
+  "welcome_suggestion_3_prompt": "Set up a character and an enemy scene",
+  "welcome_suggestion_4_title": "Inspect the live scene tree",
+  "welcome_suggestion_4_prompt": "Inspect the live scene tree of the running game"
 }

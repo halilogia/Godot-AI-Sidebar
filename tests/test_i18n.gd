@@ -5,6 +5,7 @@ extends RefCounted
 ## Dil config'ten okunmaz: `translate(lang, …)` kullanılır, kullanıcının config.json'una dokunulmaz.
 
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const ChatDockScene = preload("res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn")
 
 const ROOT = "res://addons/godot_sidebar_ai"
 const LANGS = ["tr", "en"]
@@ -74,7 +75,7 @@ static func run() -> Dictionary:
 	trace.append(["en", "__missing__", AISidebarI18n.translate("en", "__missing__")])
 	trace.append(["tr", "status_executing", AISidebarI18n.translate("tr", "status_executing", {"step": 2, "max": 5})])
 	var digest = JSON.stringify(trace).md5_text()
-	var golden = "9782c8d9e1831265a69622fc58a38fed"
+	var golden = "b58bb8930a88638fd9e4050968f644d7"
 	if trace.size() > 100 and digest == golden:
 		passed += 1
 	else:
@@ -173,5 +174,38 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T7 (literal UI strings) failed: self=%s count=%d %s" % [str(rule_self), violations.size(), str(violations)])
+
+	# 8. Dil değişince karşılama kartı yenilenir; öneri çipleri de çevrilir.
+	# (Editörde bulundu: EN'e geçince kart Türkçe kalıyordu.) config.json birebir geri yüklenir.
+	var cfg_path = "res://addons/godot_sidebar_ai/config.json"
+	var had_cfg = FileAccess.file_exists(cfg_path)
+	var raw_cfg = FileAccess.get_file_as_string(cfg_path) if had_cfg else ""
+	AISidebarI18n.set_language("tr")
+	var dock = ChatDockScene.instantiate()
+	dock._ready()
+	dock.history_panel.new_chat_requested.emit()  # boş sohbet → karşılama kartı
+	var had_card = dock.welcome_card != null
+	AISidebarI18n.set_language("en")
+	dock.update_ui_language()
+	var card_texts: Array = []
+	if dock.welcome_card:
+		for n in dock.welcome_card.find_children("*", "Control", true, false):
+			if n is Label or n is Button:
+				card_texts.append(str(n.text))
+	var want_texts: Array = [AISidebarI18n.translate("en", "welcome_title"), AISidebarI18n.translate("en", "status_ready"), AISidebarI18n.translate("en", "welcome_desc")]
+	for i in range(1, 5):
+		want_texts.append(AISidebarI18n.translate("en", "welcome_suggestion_%d_title" % i))
+	dock.free()
+	if had_cfg:
+		var fw = FileAccess.open(cfg_path, FileAccess.WRITE)
+		fw.store_string(raw_cfg)
+		fw.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(cfg_path))
+	if had_card and card_texts == want_texts:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T8 (welcome card follows language) failed: got=%s want=%s" % [str(card_texts), str(want_texts)])
 
 	return {"name": "I18nTests", "passed": passed, "failed": failed, "errors": errors}
