@@ -235,6 +235,8 @@ Gözlemler (bug değil ya da etkisi düşük; düzeltilmedi): (O1) `TSCN_EMPTY_F
 
 ## Editör Duman Testi Kontrol Listesi (Faz 1 sonu)
 
+**Refactor dönemi kapanışı (2026-09-26):** Kullanıcı `98dabe5` sonrası eklentiyi editörde gerçek kullanımda (grand strateji prototip konuşması, dil değişimi, dar dock) denedi ve sorunsuz çalıştığını bildirdi; maddeler tek tek işaretlenmedi. Bu turda bulunan iki sorun ayrı commit'lerde düzeltildi (`90aed04` karşılama kartı dil değişimi, `98dabe5` dar dock taşması). `verify.ps1 -Live` kullanıcı makinesinde geçti. Sürüm: v2.8.0.
+
 - [ ] Mesaj gönder → streaming balon, thinking kartı, activity grubu
 - [ ] Onay kartı → Approve / Reject / View Diff / Undo
 - [ ] Plan kartı → Apply → checklist ilerlemesi

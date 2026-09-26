@@ -57,7 +57,7 @@ Tools
 **Version string:**
 
 ```text
-2.7.0
+2.8.0
 ```
 
 **Repository host / URL:**
@@ -135,7 +135,7 @@ listing gets bad reviews it cannot recover from.
 # 1. Download the release archive for the version you are submitting, then:
 
 # Confirm the version inside the archive matches the tag
-#   addons/godot_sidebar_ai/plugin.cfg  ->  version="2.7.0"
+#   addons/godot_sidebar_ai/plugin.cfg  ->  version="2.8.0"
 
 # Confirm the archive actually contains the newer source files.
 # All of these must be present:

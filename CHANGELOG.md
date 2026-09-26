@@ -7,7 +7,11 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ---
 
-## [Unreleased] - Faz 1–3: ChatDock, AgentRunner ve doğrulama refactor + düzeltmeler
+## [Unreleased]
+
+---
+
+## [2.8.0] - 2026-09-26 (Refactor Faz 1–5: ChatDock / AgentRunner bölünmesi, test ve tip denetimi altyapısı, i18n, düzeltmeler)
 
 ### Yeniden yapılanma (davranış değişmeden)
 * `ui/docks/chat_dock.gd` 2349 satırdan ~600 satıra indi; sorumluluklar ayrı birimlere taşındı: `ChatDockTheme`, `ToolPresentation`, `PlanChecklistTracker`, `MessageQueuePanel`, `InputComposer`, `ChatExportActions`, `ChatSessionStore`, `SessionReplayRenderer`, `AgentStreamPresenter`, `AgentActivityPresenter`, `AgentInteractionPresenter`, `ModelBarController`, `TaskController`. Plan ve kararlar: `docs/REFACTOR_PLAN.md`.

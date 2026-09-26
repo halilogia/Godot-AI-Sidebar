@@ -7,7 +7,7 @@ scene tree and selection, asks before guessing, edits scripts surgically, record
 every change in Godot's own undo history, and can inspect the game *while it is
 running*.
 
-[![Version](https://img.shields.io/badge/version-2.7.0-478cbf)](#)
+[![Version](https://img.shields.io/badge/version-2.8.0-478cbf)](#)
 [![Godot](https://img.shields.io/badge/Godot-4.7%2B-478cbf)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-headless%20typecheck%20%2B%20unit-brightgreen)](#testing)
