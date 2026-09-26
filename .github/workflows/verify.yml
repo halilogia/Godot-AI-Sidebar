@@ -29,8 +29,10 @@ jobs:
           echo "GODOT_BIN=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
 
       - name: Import project (first open)
-        # İlk açılış .godot/ önbelleğini ve içe aktarmaları üretir; hüküm verify adımındadır.
-        run: timeout 300 "$GODOT_BIN" --headless --editor --quit --path . || true
+        # İlk açılış .godot/ önbelleğini ve içe aktarmaları üretir. Fail-closed: zaman aşımı (124)
+        # veya sıfır dışı çıkış kodu adımı kırmızı yapar. Kapanıştaki ObjectDB / resource "leaked"
+        # satırları bilinen gürültüdür; stderr taranmaz, hüküm çıkış kodudur.
+        run: timeout 300 "$GODOT_BIN" --headless --editor --quit --path .
 
       - name: Verify (typecheck + strict warnings + unit tests)
         shell: pwsh
