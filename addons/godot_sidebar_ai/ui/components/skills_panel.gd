@@ -14,6 +14,9 @@ func _ready() -> void:
 	title = AISidebarI18n.get_text("skills_title")
 	min_size = Vector2i(560, 460)
 	ok_button_text = AISidebarI18n.get_text("skills_close")
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
 	view = AISidebarSkillsView.new()
-	add_child(view)
+	scroll.add_child(view)
 	about_to_popup.connect(view.refresh)

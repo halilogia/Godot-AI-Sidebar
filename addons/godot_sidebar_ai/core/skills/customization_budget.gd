@@ -2,7 +2,7 @@
 extends RefCounted
 class_name AISidebarCustomizationBudget
 
-## Özelleştirmelerin modele her turda eklediği yük (Ayarlar → Özelleştirmeler, Antigravity'nin
+## Özelleştirmelerin modele her turda eklediği yük (Ayarlar → Kurallar, Antigravity'nin
 ## "Token Usage" görünümü gibi): sistem istemi (yerleşik kural katmanı), kurallar, skill kataloğu, araç tanımları. Token sayısı yaklaşıktır
 ## (karakter / 4); araçlar için tam katalog verilir, her turda bunun ilgili alt kümesi gider (üst sınır).
 

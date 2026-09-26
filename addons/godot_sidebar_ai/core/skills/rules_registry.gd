@@ -8,8 +8,8 @@ class_name AISidebarRulesRegistry
 ##   project res://AGENTS.md, res://GEMINI.md, res://.agents/AGENTS.md,
 ##           res://.agents/rules/*.md                               — oyun deposuyla birlikte gider;
 ##           Codex / Cursor / Antigravity aynı dosyaları okur (Antigravity /learn'ün yazdığı yer dahil)
-## Sıra: global önce, proje sonra (daha özel olan sonra gelir). Sidebar'ın sistem istemi (Ayarlar →
-## Sistem Promptu) eklentinin kendi davranışıdır; kurallar onun üstüne eklenir, yerine geçmez.
+## Sıra: global önce, proje sonra (daha özel olan sonra gelir). Sidebar'ın sistem istemi (Ayarlar → Kurallar →
+## Yerleşik kurallar) eklentinin kendi davranışıdır; kurallar onun üstüne eklenir, yerine geçmez.
 
 const SCOPE_GLOBAL := "global"
 const SCOPE_PROJECT := "project"

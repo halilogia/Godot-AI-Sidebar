@@ -9,6 +9,8 @@ class_name AISidebarSkillsView
 
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 
 var _list: VBoxContainer
 var _name_edit: LineEdit
@@ -19,49 +21,30 @@ var _confirm: ConfirmationDialog
 var _pending_delete: Dictionary = {}
 
 func _ready() -> void:
-	var root := self
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 8)
+	add_theme_constant_override("separation", AISidebarTheme.SPACE_MD)
 
-	var hint := Label.new()
-	hint.text = AISidebarI18n.get_text("skills_hint")
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", 11)
-	root.add_child(hint)
-
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 260)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(scroll)
+	var list_card := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("custom_skills_title"), AISidebarI18n.get_text("skills_hint"))
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 6)
-	scroll.add_child(_list)
+	_list.add_theme_constant_override("separation", AISidebarTheme.SPACE_SM)
+	list_card.add_child(_list)
 
-	var create_row := HBoxContainer.new()
-	root.add_child(create_row)
-	_name_edit = LineEdit.new()
-	_name_edit.placeholder_text = AISidebarI18n.get_text("skills_new_placeholder")
-	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var create_card := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("skills_manage_title"))
+	var create_row := AISidebarSettingsUi.row(create_card)
+	_name_edit = AISidebarSettingsUi.line_edit(AISidebarI18n.get_text("skills_new_placeholder"))
 	create_row.add_child(_name_edit)
 	_scope_opt = OptionButton.new()
 	_scope_opt.add_item(AISidebarI18n.get_text("skills_scope_user"), 0)
 	_scope_opt.add_item(AISidebarI18n.get_text("skills_scope_project"), 1)
 	create_row.add_child(_scope_opt)
-	create_row.add_child(_button("skills_new", _on_new))
-
-	var action_row := HBoxContainer.new()
-	root.add_child(action_row)
-	action_row.add_child(_button("skills_import", _on_import))
-	action_row.add_child(_button("skills_open_user_dir", _on_open_user_dir))
-	action_row.add_child(_button("skills_refresh", refresh))
-
-	_status = Label.new()
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.add_theme_font_size_override("font_size", 11)
-	root.add_child(_status)
+	create_row.add_child(AISidebarSettingsUi.primary_button(AISidebarI18n.get_text("skills_new"), _on_new))
+	var action_row := AISidebarSettingsUi.row(create_card)
+	action_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("skills_import"), _on_import))
+	action_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("skills_open_user_dir"), _on_open_user_dir))
+	action_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("skills_refresh"), refresh))
+	_status = AISidebarSettingsUi.status_label()
+	create_card.add_child(_status)
 
 	_dir_dialog = FileDialog.new()
 	_dir_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
@@ -72,14 +55,6 @@ func _ready() -> void:
 	_confirm = ConfirmationDialog.new()
 	_confirm.confirmed.connect(_on_delete_confirmed)
 	add_child(_confirm)
-
-
-func _button(key: String, on_press: Callable) -> Button:
-	var b := Button.new()
-	b.text = AISidebarI18n.get_text(key)
-	b.focus_mode = Control.FOCUS_NONE
-	b.pressed.connect(on_press)
-	return b
 
 func _scope_text(scope: String) -> String:
 	match scope:
@@ -98,17 +73,23 @@ func refresh() -> void:
 	var skills := AISidebarSkillRegistry.discover()
 	var prefs := AISidebarSkillRegistry.load_prefs()
 	if skills.is_empty():
-		var empty := Label.new()
-		empty.text = AISidebarI18n.get_text("skills_empty")
-		_list.add_child(empty)
+		_list.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("skills_empty")))
 		return
 	for s: Dictionary in skills:
 		_list.add_child(_skill_row(s, AISidebarSkillRegistry.is_enabled(s, prefs)))
 
+func _scope_color(scope: String) -> Color:
+	match scope:
+		AISidebarSkillRegistry.SCOPE_PROJECT:
+			return Color(0.35, 0.6, 0.95)
+		AISidebarSkillRegistry.SCOPE_BUILTIN:
+			return Color(0.95, 0.75, 0.35)
+	return Color(0.7, 0.5, 0.9)
+
 func _skill_row(s: Dictionary, enabled: bool) -> Control:
 	var box := VBoxContainer.new()
-	var row := HBoxContainer.new()
-	box.add_child(row)
+	box.add_theme_constant_override("separation", AISidebarTheme.SPACE_XXS)
+	var row := AISidebarSettingsUi.row(box)
 	var name := str(s.get("name", ""))
 	var toggle := CheckBox.new()
 	toggle.text = name
@@ -116,27 +97,20 @@ func _skill_row(s: Dictionary, enabled: bool) -> Control:
 	toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	toggle.toggled.connect(func(on: bool) -> void: AISidebarSkillRegistry.set_enabled(name, on))
 	row.add_child(toggle)
-	var scope := Label.new()
-	scope.text = _scope_text(str(s.get("scope", "")))
-	scope.add_theme_font_size_override("font_size", 11)
-	row.add_child(scope)
+	var scope := str(s.get("scope", ""))
+	row.add_child(AISidebarSettingsUi.badge(_scope_text(scope), _scope_color(scope)))
 	var location := str(s.get("location", ""))
-	row.add_child(_button("skills_open", func() -> void: OS.shell_open(ProjectSettings.globalize_path(location))))
-	if str(s.get("scope", "")) != AISidebarSkillRegistry.SCOPE_BUILTIN:
-		row.add_child(_button("skills_delete", func() -> void: _ask_delete(s)))
-	var desc := Label.new()
-	desc.text = str(s.get("description", ""))
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 11)
-	desc.modulate = Color(1, 1, 1, 0.75)
+	row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("skills_open"), func() -> void: OS.shell_open(ProjectSettings.globalize_path(location))))
+	if scope != AISidebarSkillRegistry.SCOPE_BUILTIN:
+		row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("skills_delete"), func() -> void: _ask_delete(s)))
+	var desc := AISidebarSettingsUi.hint_label(str(s.get("description", "")))
 	box.add_child(desc)
 	var warnings: Array = s.get("warnings", [])
 	if warnings.size() > 0:
-		var warn := Label.new()
-		warn.text = AISidebarI18n.get_text("skills_warning", {"text": "; ".join(PackedStringArray(warnings))})
-		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		warn.add_theme_font_size_override("font_size", 10)
+		var warn := AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("skills_warning", {"text": "; ".join(PackedStringArray(warnings))}))
+		warn.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 		box.add_child(warn)
+	box.add_child(HSeparator.new())
 	return box
 
 func _on_new() -> void:
@@ -174,6 +148,6 @@ func _on_delete_confirmed() -> void:
 
 func _report(res: Dictionary) -> void:
 	if res.get("ok", false) == true:
-		_status.text = AISidebarI18n.get_text("skills_done")
+		AISidebarSettingsUi.set_status(_status, AISidebarI18n.get_text("skills_done"))
 	else:
-		_status.text = AISidebarI18n.get_text("skills_error", {"error": str(res.get("error", ""))})
+		AISidebarSettingsUi.set_status(_status, AISidebarI18n.get_text("skills_error", {"error": str(res.get("error", ""))}), true)

@@ -12,9 +12,12 @@ static func run() -> Dictionary:
 		var settings_packed = load(settings_path)
 		if settings_packed is PackedScene:
 			var inst = settings_packed.instantiate()
-			if inst is AcceptDialog and (inst.has_node("VBox/UrlContainer/BaseUrlEdit") or inst.find_child("BaseUrlEdit", true, false) != null):
+			# Sayfalar kodla kurulur (open_settings → _build); ağaç dışında da kurulabilir olmalı.
+			if inst is AcceptDialog and inst.has_method("open_settings"):
+				inst.call("_build")
+			if inst is AcceptDialog and inst.find_child("BaseUrlEdit", true, false) != null and inst.find_child("SysPromptEdit", true, false) != null:
 				passed += 1
-				inst.queue_free()
+				inst.free()
 			else:
 				failed += 1
 				errors.append("settings_dialog.tscn beklenen düğümlere sahip değil.")

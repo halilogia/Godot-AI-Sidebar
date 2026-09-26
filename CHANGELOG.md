@@ -11,6 +11,10 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 * **MCP sınırları ayrıştırıldı:** HTTP transport, MCP/JSON-RPC protokolü ve Godot araç politikası artık ayrı modüllerdir. Yeni `ExternalAgentGateway` Godot kabiliyetlerine tek giriş noktasıdır; `/mcp` lifecycle facade üzerinden yönetilir. İstemci davranışı ve mevcut güvenlik kontrolleri korunmuştur.
 
+### Değişenler
+* **Ayarlar penceresi yeniden tasarlandı:** Bütün sayfalar aynı kart, yazı ve düğme düzenini kullanıyor; yazı boyu editörün yazı boyuna göre ölçekleniyor, pencere daha geniş ve ekrana sığacak şekilde açılıyor. Sol menüde yalnız seçili sayfa vurgulu görünüyor (önceden üzerine gelinen öğe de seçili gibi duruyordu). Önceden İngilizce arayüzde de Türkçe kalan kart başlıkları artık çevriliyor.
+* **Sistem istemi Kurallar sayfasında:** Ayrı "Sistem Promptu" sayfası kalktı. Kurallar sayfası modelin her turda aldığı katmanları birlikte gösteriyor: bağlam yükü (token), yerleşik kurallar (sistem istemi: düzenleyici, "Güncel varsayılan" / "Özelleştirilmiş" rozeti, boyut, varsayılanı geri yükle), global ve proje kural dosyaları, kural ekleme. Skill'ler ve Dış Ajan (MCP) kendi sayfalarında; "Görünüm & Dil" sayfasının adı içeriğine uygun olarak "Dil & Onaylar" oldu.
+
 ### Düzeltilenler
 * **`validate_script` derleme hatalarını başarı gibi döndürüyordu:** Dosyanın kendi yolu artık doğrulayıcıya aktarılıyor; hata sonucu MCP araç başarısızlığı olarak dönüyor ve eksik `file_path` açıkça reddediliyor. Sonuç, editör bağlamındaki bellek içi derlemenin kapsamını ayrıca belirtiyor.
 * **Dış ajan yazarken sidebar ajanının "yaptım" demesi:** Dış ajan sahneyi değiştirirken sidebar ajanı "biraz sonra tekrar dene" mesajı alıyor, bekleyemediği için tekrar deniyor ve sonunda değişikliği yapmış gibi rapor ediyordu. Artık değişikliğin yapılmadığını, tekrar denememesini ve durumu size söylemesini net olarak alıyor.

@@ -2,90 +2,82 @@
 extends VBoxContainer
 class_name AISidebarMcpSettingsView
 
-## Ayarlar → Dış Ajan (MCP): köprünün durumu, aç / kapa, Claude Code bağlantı komutunu panoya
+## Ayarlar → Dış Ajan (MCP): köprünün durumu, aç / kapa, port, Claude Code bağlantı komutunu panoya
 ## kopyalama. /mcp komutuyla aynı kontrol yüzeyini (AISidebarMcpBridgeControl) kullanır. Token
 ## arayüzde yalnız ilk 4 karakteriyle görünür; tamamı yalnız panoya gider.
 
 const AISidebarMcpBridgeControl = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_control.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 
+var _badge: Label
 var _status: Label
 var _toggle_btn: Button
-var _copy_btn: Button
+var _connect_card: Control
 var _command: Label
 var _note: Label
 var _port: SpinBox
+var _port_row: Control
 
-func _ready() -> void:
+func _init() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_theme_constant_override("separation", 10)
-	var hint := Label.new()
-	hint.text = AISidebarI18n.get_text("mcp_settings_hint")
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", 11)
-	add_child(hint)
-	_status = Label.new()
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_status)
-	var row := HBoxContainer.new()
-	add_child(row)
-	_toggle_btn = Button.new()
-	_toggle_btn.focus_mode = Control.FOCUS_NONE
-	_toggle_btn.pressed.connect(_on_toggle)
+	add_theme_constant_override("separation", AISidebarTheme.SPACE_MD)
+
+	_badge = AISidebarSettingsUi.badge("", AISidebarTheme.COLOR_TEXT_MUTED)
+	var bridge_card := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("mcp_settings_title"), AISidebarI18n.get_text("mcp_settings_hint"), _badge)
+	var row := AISidebarSettingsUi.row(bridge_card)
+	_status = AISidebarSettingsUi.body_label("")
+	row.add_child(_status)
+	_toggle_btn = AISidebarSettingsUi.primary_button("", _on_toggle)
 	row.add_child(_toggle_btn)
-	_copy_btn = Button.new()
-	_copy_btn.focus_mode = Control.FOCUS_NONE
-	_copy_btn.text = AISidebarI18n.get_text("mcp_settings_copy")
-	_copy_btn.pressed.connect(_on_copy)
-	row.add_child(_copy_btn)
-	var port_row := HBoxContainer.new()
-	add_child(port_row)
-	var port_lbl := Label.new()
-	port_lbl.text = AISidebarI18n.get_text("mcp_settings_port")
-	port_row.add_child(port_lbl)
 	_port = SpinBox.new()
 	_port.min_value = 1024
 	_port.max_value = 65535
 	_port.step = 1
-	port_row.add_child(_port)
-	var apply := Button.new()
-	apply.focus_mode = Control.FOCUS_NONE
-	apply.text = AISidebarI18n.get_text("mcp_settings_apply_port")
-	apply.pressed.connect(_on_apply_port)
-	port_row.add_child(apply)
-	_command = Label.new()
+	var port_row := AISidebarSettingsUi.form_row(bridge_card, AISidebarI18n.get_text("mcp_settings_port"), _port)
+	_port_row = port_row
+	_port.size_flags_horizontal = Control.SIZE_FILL
+	port_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("mcp_settings_apply_port"), _on_apply_port))
+	_note = AISidebarSettingsUi.status_label()
+	bridge_card.add_child(_note)
+
+	var connect := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("mcp_settings_connect_title"), AISidebarI18n.get_text("mcp_settings_connect_hint"))
+	_connect_card = connect.get_parent() as Control
+	_command = AISidebarSettingsUi.hint_label("")
 	_command.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	_command.add_theme_font_size_override("font_size", 11)
-	add_child(_command)
-	_note = Label.new()
-	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_note.add_theme_font_size_override("font_size", 11)
-	add_child(_note)
-	refresh()
+	_command.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_command.add_theme_stylebox_override("normal", AISidebarTheme.create_input_style())
+	connect.add_child(_command)
+	var copy_row := AISidebarSettingsUi.row(connect)
+	copy_row.add_child(AISidebarSettingsUi.spacer())
+	copy_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("mcp_settings_copy"), _on_copy))
 
 func refresh() -> void:
-	if _status == null:
-		return
 	var bridge := AISidebarMcpBridgeControl.instance
-	_note.text = ""
+	AISidebarSettingsUi.set_status(_note, "")
 	if bridge == null:
+		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_off"), AISidebarTheme.COLOR_TEXT_MUTED)
 		_status.text = AISidebarI18n.get_text("mcp_settings_unavailable")
 		_toggle_btn.visible = false
-		_copy_btn.visible = false
-		_command.text = ""
+		_port_row.visible = false
+		_connect_card.visible = false
 		return
 	_toggle_btn.visible = true
+	_port_row.visible = true
 	_port.value = bridge.saved_port()
 	var running := bridge.is_running()
+	_connect_card.visible = running
 	if running:
+		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_on"), AISidebarTheme.COLOR_SUCCESS)
 		_status.text = AISidebarI18n.get_text("mcp_settings_on", {"endpoint": bridge.endpoint(), "count": bridge.tool_count()})
 		_toggle_btn.text = AISidebarI18n.get_text("mcp_settings_turn_off")
 		_command.text = bridge.masked_claude_add_command()
 	else:
+		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_off"), AISidebarTheme.COLOR_TEXT_MUTED)
 		_status.text = AISidebarI18n.get_text("mcp_settings_off")
 		_toggle_btn.text = AISidebarI18n.get_text("mcp_settings_turn_on")
 		_command.text = ""
-	_copy_btn.visible = running
 
 func _on_toggle() -> void:
 	var bridge := AISidebarMcpBridgeControl.instance
@@ -98,7 +90,7 @@ func _on_toggle() -> void:
 	var res := bridge.enable()
 	refresh()
 	if res["ok"] != true:
-		_note.text = AISidebarI18n.get_text("mcp_settings_start_failed", {"port": res["port"], "error": res["error"]})
+		AISidebarSettingsUi.set_status(_note, AISidebarI18n.get_text("mcp_settings_start_failed", {"port": res["port"], "error": res["error"]}), true)
 
 func _on_apply_port() -> void:
 	var bridge := AISidebarMcpBridgeControl.instance
@@ -107,13 +99,13 @@ func _on_apply_port() -> void:
 	var res := bridge.change_port(int(_port.value))
 	refresh()
 	if res["ok"] != true:
-		_note.text = AISidebarI18n.get_text("mcp_settings_start_failed", {"port": res["port"], "error": res["error"]})
+		AISidebarSettingsUi.set_status(_note, AISidebarI18n.get_text("mcp_settings_start_failed", {"port": res["port"], "error": res["error"]}), true)
 	else:
-		_note.text = AISidebarI18n.get_text("mcp_settings_port_saved")
+		AISidebarSettingsUi.set_status(_note, AISidebarI18n.get_text("mcp_settings_port_saved"))
 
 func _on_copy() -> void:
 	var bridge := AISidebarMcpBridgeControl.instance
 	if bridge == null or not bridge.is_running():
 		return
 	DisplayServer.clipboard_set(bridge.claude_add_command())
-	_note.text = AISidebarI18n.get_text("mcp_settings_copied")
+	AISidebarSettingsUi.set_status(_note, AISidebarI18n.get_text("mcp_settings_copied"))
