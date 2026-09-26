@@ -37,12 +37,24 @@ const CARD_INFO := "AISidebarCardInfo"
 const CARD_NEUTRAL := "AISidebarCardNeutral"
 const CARD_SUBTLE := "AISidebarCardSubtle"
 const CARD_INSET := "AISidebarCardInset"
+## Onay kartı: tonlu zemin + solda vurgu şeridi (uyarı / tehlike / sonuçlanmış).
+const CARD_APPROVAL := "AISidebarCardApproval"
+const CARD_APPROVAL_DANGER := "AISidebarCardApprovalDanger"
+const CARD_APPROVAL_DONE := "AISidebarCardApprovalDone"
+## Kod / yol kutusu (eş genişlikli yazı için zemin) ve ikon çipi.
+const CODE_BOX := "AISidebarCodeBox"
+const ICON_CHIP_WARNING := "AISidebarIconChipWarning"
+const ICON_CHIP_DANGER := "AISidebarIconChipDanger"
+const ICON_CHIP_SUCCESS := "AISidebarIconChipSuccess"
 # Button
 const BUTTON := "AISidebarButton"
 const PRIMARY_BUTTON := "AISidebarPrimaryButton"
 const DANGER_BUTTON := "AISidebarDangerButton"
 const GHOST_BUTTON := "AISidebarGhostButton"
 const OPTION_BUTTON := "AISidebarOptionChoice"
+## Onay kartının eylem düğmeleri: tonlu (dolgu değil), Gönder düğmesine benzemez.
+const APPROVE_BUTTON := "AISidebarApproveButton"
+const APPROVE_DANGER_BUTTON := "AISidebarApproveDangerButton"
 const LINK_BUTTON := "AISidebarLinkButton"
 const NAV_BUTTON := "AISidebarNavButton"
 const NAV_BUTTON_ACTIVE := "AISidebarNavButtonActive"
@@ -104,12 +116,25 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 	_panel(t, CARD_NEUTRAL, card_style(AISidebarTheme.COLOR_TONE_NEUTRAL_BG, AISidebarTheme.COLOR_TONE_NEUTRAL_BORDER, pad, true))
 	_panel(t, CARD_SUBTLE, card_style(AISidebarTheme.COLOR_TONE_SUBTLE_BG, AISidebarTheme.COLOR_TONE_SUBTLE_BORDER, AISidebarTheme.SPACE_SM, false))
 	_panel(t, CARD_INSET, card_style(AISidebarTheme.COLOR_BG_APP, AISidebarTheme.COLOR_BORDER_SUBTLE, AISidebarTheme.SPACE_SM, false))
+	_panel(t, CARD_APPROVAL, _accent_card(AISidebarTheme.COLOR_TONE_WARNING_BG, AISidebarTheme.COLOR_TONE_WARNING_BORDER, AISidebarTheme.COLOR_TONE_WARNING_TEXT, pad))
+	_panel(t, CARD_APPROVAL_DANGER, _accent_card(AISidebarTheme.COLOR_TONE_ERROR_BG, AISidebarTheme.COLOR_TONE_ERROR_BORDER, AISidebarTheme.COLOR_TONE_ERROR_TEXT, pad))
+	_panel(t, CARD_APPROVAL_DONE, _accent_card(AISidebarTheme.COLOR_TONE_SUBTLE_BG, AISidebarTheme.COLOR_TONE_SUBTLE_BORDER, AISidebarTheme.COLOR_BORDER_HOVER, pad))
+	var code := card_style(AISidebarTheme.COLOR_BG_APP, AISidebarTheme.COLOR_BORDER_SUBTLE, AISidebarTheme.SPACE_SM, false)
+	code.set_corner_radius_all(AISidebarTheme.RADIUS_SM)
+	code.content_margin_top = AISidebarTheme.px(AISidebarTheme.SPACE_XS + 1)
+	code.content_margin_bottom = AISidebarTheme.px(AISidebarTheme.SPACE_XS + 1)
+	_panel(t, CODE_BOX, code)
+	_panel(t, ICON_CHIP_WARNING, _chip(AISidebarTheme.COLOR_TONE_WARNING_TEXT))
+	_panel(t, ICON_CHIP_DANGER, _chip(AISidebarTheme.COLOR_TONE_ERROR_TEXT))
+	_panel(t, ICON_CHIP_SUCCESS, _chip(AISidebarTheme.COLOR_TONE_SUCCESS_TEXT))
 
 	_button(t, BUTTON, button, _outline(false), _outline(true), _outline(true), AISidebarTheme.COLOR_TEXT_PRIMARY)
 	_button(t, PRIMARY_BUTTON, button, AISidebarTheme.create_accent_button_style(), AISidebarTheme.create_accent_button_style(true), AISidebarTheme.create_accent_button_style(false, true), AISidebarTheme.COLOR_WHITE)
 	_button(t, DANGER_BUTTON, button, _filled(AISidebarTheme.COLOR_ERROR), _filled(AISidebarTheme.COLOR_ERROR_HOVER), _filled(AISidebarTheme.COLOR_ERROR), AISidebarTheme.COLOR_WHITE)
 	_button(t, GHOST_BUTTON, button, AISidebarTheme.create_ghost_button_style(), AISidebarTheme.create_ghost_button_style(true), AISidebarTheme.create_ghost_button_style(true), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, OPTION_BUTTON, button, _option(false), _option(true), _option(true), AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_button(t, APPROVE_BUTTON, button, _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, false), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), _tonal(AISidebarTheme.COLOR_TONE_WARNING_TEXT, true), AISidebarTheme.COLOR_TONE_WARNING_TEXT.lightened(0.35))
+	_button(t, APPROVE_DANGER_BUTTON, button, _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, false), _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, true), _tonal(AISidebarTheme.COLOR_TONE_ERROR_TEXT, true), AISidebarTheme.COLOR_TONE_ERROR_TEXT.lightened(0.35))
 	_button(t, LINK_BUTTON, hint, StyleBoxEmpty.new(), StyleBoxEmpty.new(), StyleBoxEmpty.new(), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, NAV_BUTTON, body, _nav(false, false), _nav(false, true), _nav(false, true), AISidebarTheme.COLOR_TEXT_SECONDARY)
 	_button(t, NAV_BUTTON_ACTIVE, body, _nav(true, false), _nav(true, true), _nav(true, true), AISidebarTheme.COLOR_TEXT_PRIMARY)
@@ -141,6 +166,32 @@ static func card_style(bg: Color, border: Color, pad: int, shadow: bool) -> Styl
 		s.shadow_color = AISidebarTheme.COLOR_SHADOW
 		s.shadow_size = AISidebarTheme.px(4)
 		s.shadow_offset = Vector2(0, AISidebarTheme.px(1))
+	return s
+
+## Tonlu kart (onay kartı): soluk vurgu kenarlığı; soldaki vurgu şeridini kart kendisi çizer (ayrı çubuk).
+static func _accent_card(bg: Color, border: Color, stripe: Color, pad: int) -> StyleBoxFlat:
+	var s := card_style(bg, border, pad, true)
+	s.border_color = Color(stripe, 0.38)
+	return s
+
+## Yuvarlak ikon çipi: vurgu renginin soluk dolgusu.
+static func _chip(accent: Color) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(accent, 0.16)
+	s.border_color = Color(accent, 0.35)
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(AISidebarTheme.RADIUS_PILL)
+	_pad(s, AISidebarTheme.SPACE_XS + 1, AISidebarTheme.SPACE_XS + 1)
+	return s
+
+## Tonlu düğme: soluk dolgu + renkli kenarlık (birincil mavi dolgulu Gönder'den ayrışır).
+static func _tonal(accent: Color, hover: bool) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(accent, 0.26 if hover else 0.16)
+	s.border_color = Color(accent, 0.85 if hover else 0.55)
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(AISidebarTheme.RADIUS_MD)
+	_pad(s, AISidebarTheme.SPACE_MD + 2, AISidebarTheme.SPACE_XS + 1)
 	return s
 
 static func _label(t: Theme, v: String, size: int, color: Color) -> void:

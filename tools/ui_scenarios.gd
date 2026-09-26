@@ -15,7 +15,7 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 
 ## Bütün senaryolar (ui_shots hepsini çeker).
-const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "plan", "runtime", "error", "queue", "goal"]
+const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "approval_write", "plan", "runtime", "error", "queue", "goal"]
 
 class SilentProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
@@ -112,6 +112,13 @@ func _scenario_approval(dock, r) -> void:
 	dock.interaction._on_approve_pressed()
 	r.changes_applied.emit(cs)
 	r.approval_requested.emit("delete_file", {"file_path": "res://player/old_controller.gd"}, null)
+
+func _scenario_approval_write(dock, r) -> void:
+	var old_src = "extends CharacterBody2D\n\nconst SPEED = 300.0\n"
+	var new_src = "extends CharacterBody2D\n\nconst SPEED = 300.0\nconst JUMP_VELOCITY = -420.0\n"
+	r.text_received.emit("user", _t("Add a jump velocity constant", "Zıplama hızı sabiti ekle"))
+	var cs = AISidebarChangeSet.new("res://player/player.gd", AISidebarChangeSet.ChangeType.MODIFY_FILE, new_src, old_src, _t("Add jump velocity", "Zıplama hızı ekle"))
+	r.approval_requested.emit("replace_file_content", {"file_path": "res://player/player.gd"}, cs)
 
 func _scenario_plan(dock, r) -> void:
 	r.text_received.emit("user", _t("Build an inventory system with a grid UI", "Grid arayüzlü bir envanter sistemi kur"))

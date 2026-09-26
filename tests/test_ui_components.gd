@@ -84,7 +84,7 @@ static func run() -> Dictionary:
 	var emitted_app = [false]
 	app_card.action_approved.connect(func(): emitted_app[0] = true)
 	app_card._on_approve()
-	var is_app_selectable = app_card._desc_lbl is RichTextLabel and app_card._desc_lbl.selection_enabled and app_card._desc_lbl.context_menu_enabled
+	var is_app_selectable = app_card._target_lbl is RichTextLabel and app_card._target_lbl.selection_enabled and app_card._target_lbl.context_menu_enabled and app_card._target_lbl.text == "Enemy"
 	if emitted_app[0] and app_card._approve_btn.disabled and is_app_selectable:
 		passed += 1
 	else:
