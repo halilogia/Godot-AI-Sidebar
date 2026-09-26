@@ -14,8 +14,7 @@ Each criterion names the evidence that counts. "Manual" criteria need a person t
 | A8 | Occupation changes province color | screenshot before and after occupation |
 | A9 | Clicking a province opens the info panel | **manual** |
 | A10 | Pause / speed controls respond to input | **manual** |
-| A11 | Project memory documents exist and match the result | the five documents; ROADMAP items ticked only for verified criteria |
-| A12 | No edits to `addons/godot_sidebar_ai/`, `.godot/` | `git status` / diff |
+| A11 | No edits to `addons/godot_sidebar_ai/`, `.godot/` | `git status` / diff |
 
 ## What to record per run
 
@@ -24,8 +23,8 @@ Each criterion names the evidence that counts. "Manual" criteria need a person t
 - Result per criterion (pass / fail / manual), bugs found, which ones the agent fixed itself.
 - Gaps: what the agent could not do with the current tools (this is the input for later roadmap decisions, e.g. Companion).
 - Project context / memory (decides whether an episodic memory or retrieval layer is ever needed):
-  - Did the agent contradict or forget a decision already in `DECISIONS.md`?
-  - Did it solve the same bug twice, or miss an entry in `KNOWN_ISSUES.md`?
-  - Did `ROADMAP.md` or the other documents grow too large to read at the start of a session?
-  - After a new session (or context compaction), could it resume from the documents alone?
-  - Rough context cost of reading the documents at session start.
+  - Did the agent contradict or forget a decision made earlier (in `AGENTS.md` or earlier in the work)?
+  - Did it solve the same bug twice?
+  - Did any notes it kept grow too large to read at the start of a session?
+  - After a new session (or context compaction), could it resume without re-discovering the project?
+  - Rough context cost of the project rules and skills loaded at session start.

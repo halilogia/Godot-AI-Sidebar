@@ -12,4 +12,4 @@ Required:
 6. **War:** countries can be at war. An army moves between neighboring provinces over several days; entering an enemy province occupies it after a few days, and occupation changes its map color.
 7. **Autoplay:** AI countries act on their own: after 30 in-game days one AI country declares war on another and sends an army, so war and occupation happen without player input. An autoplay switch (a constant or a project setting, on by default for this benchmark; `play_game` cannot pass command-line arguments) starts the game at the fastest speed, so the result is visible within one minute of play.
 
-Keep the project memory documents up to date. Finish by verifying each acceptance criterion in `ACCEPTANCE.md` (copy it into the project) with evidence and reporting the result table.
+Finish by verifying each acceptance criterion in `ACCEPTANCE.md` (copy it into the project) with evidence and reporting the result table.
