@@ -98,6 +98,21 @@ Sonuç: `claude mcp list` → `✔ Connected`. Bu sürüm "stateless" yeni el s�
 
 `claude mcp add --scope local` kaydı `~/.claude.json` içinde o klasöre bağlanır; proje kapsamlı `.mcp.json` sunucuları ilk kullanımda onay ister (`⏸ Pending approval`).
 
+### Uçtan uca kullanım (E2E, 26.09)
+
+Ortam: Godot 4.7.2 GUI editör, boş bir oyun projesi (eklenti klasörü repoya junction), Claude Code 2.1.226 kullanıcı terminalinde, köprü `/mcp on` ile açık.
+
+* **Okuma / runtime zinciri:** Model araçları kendisi çağırdı. Boş projede `get_scene_tree` → `NO_ACTIVE_SCENE`, `play_game` → `NO_MAIN_SCENE` döndü; model bu kodlardan nedeni doğru çıkardı. Sahne yazılıp ana sahne yapılınca `sync_project` → `play_game` → `get_runtime_errors` (`VERIFIED_CLEAN`) → `take_runtime_screenshot` (960x540) → `stop_game` geçti. Ekran görüntüsü MCP `image` içeriği olarak modele ulaştı; model sahnedeki küpü doğru tarif etti.
+* **Dış ajan yazma döngüsü:** Claude Code dosyayı kendi `Write` aracıyla yazdı → `sync_project` (~99 ms) → `validate_script` geçti. Eklentinin yazma araçları kullanılmadı.
+* **`project.godot` doğrudan düzenleme:** Ana sahneyi ayarlayan bir köprü aracı yok; model `run/main_scene` satırını editör açıkken dosyaya kendisi yazdı ve `sync_project` sonrası `play_game` bu değeri kullandı. Editörün sonraki bir proje ayarı kaydında bu satırı bellekteki eski değerle ezip ezmeyeceği **doğrulanmadı**.
+* **Model araç sayısı:** Model "19 araç" diye özetledi; köprü `tools/list` doğrudan sorulduğunda 21 aracın hepsini döndürüyor. Sayım modelin özetinden; köprü hatası değil.
+* `stop_game` oyun çalışmıyorken de `STOPPED` döner (idempotent); son durum doğrudur.
+
+### Tuzak: `claude` kimlik doğrulaması ve ortam değişkenleri
+
+* Kullanıcı ortamında `ANTHROPIC_BASE_URL` başka bir sağlayıcıya ayarlıysa (ör. eski bir deneme) terminaldeki `claude` model isteğini oraya gönderir; belirti "Please run /login" + alakasız bir HTTP hata sayfası (ör. CloudFront 403). MCP bağlantısı (`claude mcp list`) bundan etkilenmez, çünkü o model çağırmaz. Çözüm: o oturumda `Remove-Item Env:ANTHROPIC_BASE_URL` (ya da değişkeni kalıcı olarak silmek).
+* Claude masaüstü uygulamasının Code oturumundan alt süreç olarak `claude -p` çalıştırmak başarısız olabilir (daha önce "API key is invalid" ya da yanıtsız bekleme). `ANTHROPIC_BASE_URL` ve oturuma ait `CLAUDECODE` / `CLAUDE_CODE_*` değişkenleri temizlenince (kullanıcı terminalde `/login` yaptıktan sonra) `claude -p` çalıştı. Hangi değişkenin tek başına sebep olduğu ayrıştırılmadı.
+
 ## İkon Sistemi (Lucide) ve Emoji Yasağı
 
 * UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.
