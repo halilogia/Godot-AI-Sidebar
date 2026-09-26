@@ -14,7 +14,7 @@ A feature is done only when each acceptance criterion has evidence from the runn
    - "X is visible / looks like Y" → `take_runtime_screenshot`, then describe what you see
    - "node exists / is at position / is visible" → `inspect_runtime_tree`, `inspect_runtime_node`
    - "UI fits / does not overflow" → `inspect_ui_layout` (editor) plus a runtime screenshot
-2. **Prepare:** `sync_project` if files changed; `validate_script` on changed scripts.
+2. **Prepare:** read each tool schema before calling it. `sync_project` with all changed files if files changed; `validate_script` with `file_path` on changed scripts. Script validation checks in-memory compilation in the current editor context. It does not prove clean-cache dependency compilation or runtime behavior; follow the project's `AGENTS.md` / development guide for headless checks.
 3. **Run:** `play_game`; wait 2–3 seconds (longer for heavy scenes); `get_runtime_errors`. If inconclusive (`NO_NEW_LOG_DATA`), wait and ask again.
 4. **Collect the evidence** for each criterion. You cannot press keys or click in the running game; for input-driven behavior, check the code path and the state it should produce, and mark the criterion as "needs manual play test" in your report.
 5. **Repeat runs** when a change matters: `restart_game` gives a fresh run.

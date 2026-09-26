@@ -49,6 +49,10 @@ Parametreler: `-GodotPath <yol>`, `-Live`. Test / dosya sayıları belgelere ell
 
 `verify.ps1` motorun kendi `ERROR:` / `WARNING:` satırlarını göstermez. Bir değişikliğin yeni motor hatası getirip getirmediğine bakmak için test runner'ı doğrudan çalıştırıp çıktıyı öncekiyle karşılaştır (§14).
 
+Test runner başarı için yalnızca exit code'a bakmaz: her suite'in assertion çalıştırmasını ve en sonda `ALL TESTS PASSED` işaretini arar. `SCRIPT ERROR` ve motor hata satırlarının tümünü genel bir grep ile reddetme; bazı testler bozuk script yükleme gibi hata yollarını bilerek sınar. Yeni bir özel test runner yazıyorsan her kontrolden sonra tek bir başarı işareti üret, işareti başarısız/yarıda kesilmiş yoldan çıkarma ve testin ürettiği beklenen hata tanılarını ayrı doğrula.
+
+Windows PowerShell boş çıktı gösterirse bunu doğrudan sonsuz döngü sayma. Gerçekten kullanılan Godot executable'ını ve process exit code'u kontrol et; hem GUI binary'si hem console binary'si kuruluysa terminal için console sürümünü seç. `--log-file <mutlak-yol>` Godot motor log'unu belirtilen dosyaya yönlendirir; bu seçenekte stdout yakalamasının eksik görünmesi mümkündür, log dosyasını da incele. PowerShell sürümüne özgü native stream yakalamayı doğrula; `cmd /c` tek ve evrensel bir düzeltme değildir.
+
 ## 4. GDScript typecheck
 
 ```bash

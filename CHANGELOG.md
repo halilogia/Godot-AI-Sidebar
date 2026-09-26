@@ -12,11 +12,19 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * **MCP sınırları ayrıştırıldı:** HTTP transport, MCP/JSON-RPC protokolü ve Godot araç politikası artık ayrı modüllerdir. Yeni `ExternalAgentGateway` Godot kabiliyetlerine tek giriş noktasıdır; `/mcp` lifecycle facade üzerinden yönetilir. İstemci davranışı ve mevcut güvenlik kontrolleri korunmuştur.
 
 ### Düzeltilenler
+* **`validate_script` derleme hatalarını başarı gibi döndürüyordu:** Dosyanın kendi yolu artık doğrulayıcıya aktarılıyor; hata sonucu MCP araç başarısızlığı olarak dönüyor ve eksik `file_path` açıkça reddediliyor. Sonuç, editör bağlamındaki bellek içi derlemenin kapsamını ayrıca belirtiyor.
 * **Dış ajan yazarken sidebar ajanının "yaptım" demesi:** Dış ajan sahneyi değiştirirken sidebar ajanı "biraz sonra tekrar dene" mesajı alıyor, bekleyemediği için tekrar deniyor ve sonunda değişikliği yapmış gibi rapor ediyordu. Artık değişikliğin yapılmadığını, tekrar denememesini ve durumu size söylemesini net olarak alıyor.
 * **Oyunu ikinci kez çalıştırınca runtime araçlarının çalışmayı bırakması:** İlk durdurmadan sonra çalışan oyunun ekran görüntüsü ve canlı sahne ağacı okunamıyordu ("debugger bağlı değil"); editör aynı hata ayıklama oturumunu yeniden kullanıyor, eklenti ise onu ilk durdurmada unutuyordu.
-* **`class_name` içeren geçerli script'lerin doğrulamada "hata 43" alması:** Script kontrolü, kendi dosyasına kayıtlı sınıf adını "global sınıfı gölgeliyor" diye reddediyordu; oyun bu script'lerle sorunsuz çalışsa da hem sidebar ajanının dosya yazımı hem `validate_script` bunları hatalı sayıyordu.
 * **Çalışan oyunun log'unun (print'ler ve başlangıç hataları) görülmemesi:** Oyun her açılışta yeni bir log dosyası başlatıyor; eklenti eski dosyanın uzunluğundan okumaya devam ettiği için yeni dosyanın başını kaçırıyordu. Başlangıçtaki hatalar da gözden kaçabiliyordu.
 
+### Eklenenler
+* **Headless ve CI doğrulama skill'i:** `godot-headless-ci`, projeye özgü import, derleme, test ve CI yönergelerini bulup kanıta dayalı sonuç raporlamayı tarif ediyor; özel testlerde yarıda kalan kontrolleri, PowerShell'da boş çıktı yakalamayı ve Godot log yönlendirmesini ele alıyor.
+* **`sync_project` değişiklik özeti:** Sonuç artık bildirilen dosya yolları/sayısı ile yeniden yüklenen açık sahneleri ve süreyi gösteriyor; per-file import başarısı iddiasında bulunmuyor.
+
+### Değiştirilenler
+* **Doğrulama talimatlarının sınırı:** Yerleşik geliştirme/runtime skill'leri, sidebar sistem istemi ve MCP yönergeleri araç şemasını önce okumayı ve `validate_script` sonucunu headless/runtime kanıtı yerine koymamayı söylüyor.
+
+* **`class_name` içeren geçerli script'lerin doğrulamada "hata 43" alması:** Script kontrolü, kendi dosyasına kayıtlı sınıf adını "global sınıfı gölgeliyor" diye reddediyordu; oyun bu script'lerle sorunsuz çalışsa da hem sidebar ajanının dosya yazımı hem `validate_script` bunları hatalı sayıyordu.
 ### Eklenenler
 * **Skill'ler (v3.1, Agent Skills standardı):** Başlıktaki **Skills** düğmesiyle skill'leri görebilir, açıp kapatabilir, yenisini oluşturabilir, başka bir yerden klasör içe aktarabilir ve silebilirsiniz. Ajan açık skill'lerin adını ve açıklamasını görür, görev uyduğunda ilgili skill'in talimatlarını kendisi yükler; `/skill ad istek` ile siz de başlatabilirsiniz. Eklentiyle beş yerleşik Godot skill'i gelir (özellik geliştirme, sahne yazımı, hata ayıklama ve onarım, runtime doğrulama, refactor). Skill'ler standart `SKILL.md` klasörleridir: `~/.agents/skills` (kullanıcı) ve projede `.agents/skills` / `.claude/skills` taranır; aynı skill'ler Claude Code, Cursor, Codex gibi araçlarda da çalışır. Proje skill'leri depodan geldiği için siz açana kadar kapalıdır.
 * **Çalışan oyuna tuş, input action ve tıklama gönderme (`send_input`):** Ajan (sidebar ya da köprüye bağlı dış ajan) oyuna tuş basabilir, Input Map'teki bir action'ı tetikleyebilir ya da bir düğüme (buton, il, birim) veya ekranın bir noktasına tıklayabilir; sonra etkisini ekran görüntüsü ya da düğüm durumuyla doğrular. Tıklama ve tuş gerektiren testler artık elle yapılmak zorunda değil. Yalnız editörden başlatılmış oyuna gider, proje dosyalarına dokunmaz.
