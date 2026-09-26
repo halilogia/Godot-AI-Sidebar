@@ -101,6 +101,7 @@ const TestWriterLock = preload("res://tests/test_writer_lock.gd")
 const TestValidateOwnClassName = preload("res://tests/test_validate_own_class_name.gd")
 const TestLogRotation = preload("res://tests/test_log_rotation.gd")
 const TestSkills = preload("res://tests/test_skills.gd")
+const TestRuntimeScriptVars = preload("res://tests/test_runtime_script_vars.gd")
 
 ## Test izolasyonu: testler geliştiricinin kişisel config.json'unu (onay modu, dil, adım
 ## sınırı…) görmez; CI'daki gibi config'siz (varsayılanlar: MANUAL, TR) koşar. Dosyanın
@@ -236,6 +237,7 @@ func _init() -> void:
 		TestValidateOwnClassName,
 		TestLogRotation,
 		TestSkills,
+		TestRuntimeScriptVars,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

@@ -211,7 +211,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "inspect_runtime_node",
-				"description": "Reads safe properties of a live node in the running game (name, type, position, rotation, scale, visible, process_mode).",
+				"description": "Reads a live node in the running game: name, type, position, rotation, scale, visible, process_mode, and its script variables (script_vars, including @export; nodes as paths, resources as file paths, long values truncated).",
 				"parameters": {
 					"type": "object",
 					"properties": {

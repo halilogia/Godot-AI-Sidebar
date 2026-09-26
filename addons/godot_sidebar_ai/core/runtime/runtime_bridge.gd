@@ -206,5 +206,73 @@ static func serialize_node(node: Node) -> Dictionary:
 			info["scale"] = {"x": snapped(sc.x, 0.01), "y": snapped(sc.y, 0.01)}
 		elif sc is Vector3:
 			info["scale"] = {"x": snapped(sc.x, 0.01), "y": snapped(sc.y, 0.01), "z": snapped(sc.z, 0.01)}
-			
+
+	var vars := serialize_script_vars(node)
+	if not vars.is_empty():
+		info["script_vars"] = vars
 	return info
+
+const MAX_SCRIPT_VARS := 64
+const MAX_VALUE_ITEMS := 20
+const MAX_VALUE_DEPTH := 2
+const MAX_STRING_CHARS := 300
+
+## Düğümün script değişkenleri (@export dahil): oyun durumunu ajan okuyabilsin diye (benchmark
+## bulgusu: durum düğüm adlarına yazılmak zorunda kalınıyordu). Değerler JSON'a güvenli, sınırlı:
+## düğüm → yol, kaynak → dosya yolu, dizi / sözlük → ilk MAX_VALUE_ITEMS öğe, derinlik sınırlı.
+static func serialize_script_vars(node: Object) -> Dictionary:
+	var out := {}
+	for prop: Dictionary in node.get_property_list():
+		var usage: int = prop.get("usage", 0)
+		if usage & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
+			continue
+		if out.size() >= MAX_SCRIPT_VARS:
+			out["__truncated__"] = true
+			break
+		var pname := str(prop.get("name", ""))
+		out[pname] = safe_value(node.get(pname), 0)
+	return out
+
+static func safe_value(v: Variant, depth: int) -> Variant:
+	match typeof(v):
+		TYPE_NIL, TYPE_BOOL, TYPE_INT:
+			return v
+		TYPE_FLOAT:
+			var f: float = v
+			return snapped(f, 0.001)
+		TYPE_STRING, TYPE_STRING_NAME, TYPE_NODE_PATH:
+			var s := str(v)
+			return s if s.length() <= MAX_STRING_CHARS else s.left(MAX_STRING_CHARS) + "..."
+		TYPE_ARRAY, TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT64_ARRAY, TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY, TYPE_PACKED_STRING_ARRAY, TYPE_PACKED_VECTOR2_ARRAY, TYPE_PACKED_VECTOR3_ARRAY:
+			var arr: Array = Array(v)
+			if depth >= MAX_VALUE_DEPTH:
+				return "<array size=%d>" % arr.size()
+			var items: Array = []
+			for i in mini(arr.size(), MAX_VALUE_ITEMS):
+				items.append(safe_value(arr[i], depth + 1))
+			if arr.size() > MAX_VALUE_ITEMS:
+				items.append("... (%d items)" % arr.size())
+			return items
+		TYPE_DICTIONARY:
+			var d: Dictionary = v
+			if depth >= MAX_VALUE_DEPTH:
+				return "<dictionary size=%d>" % d.size()
+			var res := {}
+			for k: Variant in d.keys():
+				if res.size() >= MAX_VALUE_ITEMS:
+					res["..."] = "%d entries" % d.size()
+					break
+				res[str(k)] = safe_value(d[k], depth + 1)
+			return res
+		TYPE_OBJECT:
+			var o: Object = v
+			if o == null or not is_instance_valid(o):
+				return null
+			if o is Node:
+				var n: Node = o
+				return {"node": str(n.get_path()) if n.is_inside_tree() else str(n.name), "type": n.get_class()}
+			if o is Resource:
+				var r: Resource = o
+				return {"resource": r.resource_path if not r.resource_path.is_empty() else "<embedded>", "type": r.get_class()}
+			return {"object": o.get_class()}
+	return str(v)
