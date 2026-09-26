@@ -13,6 +13,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ### Değişenler
 * **Ayarlar penceresi yeniden tasarlandı:** Bütün sayfalar aynı kart, yazı ve düğme düzenini kullanıyor; yazı boyu editörün yazı boyuna göre ölçekleniyor, pencere daha geniş ve ekrana sığacak şekilde açılıyor. Sol menüde yalnız seçili sayfa vurgulu görünüyor (önceden üzerine gelinen öğe de seçili gibi duruyordu). Önceden İngilizce arayüzde de Türkçe kalan kart başlıkları artık çevriliyor.
+* **Kural dosyalarını açma dosya gezgininde:** Kurallar sayfasındaki "Klasörde göster" ve "Proje / Global kural klasörünü aç" düğmeleri dosyayı bir uygulamada açmak yerine dosya gezgininde seçili olarak gösteriyor (dosya yoksa önce oluşturuluyor).
+* **Arayüz kalitesi standardı:** Renk ve yazı boyları tema belirteçlerinden geliyor; yeni kodda sabit piksel yazı boyu ve tema dışı renk kullanımı testle engelleniyor. `tools/ui_shots.gd` Ayarlar penceresini iki dilde, geniş ve dar pencerede görüntüleyip PNG kaydediyor. Dar pencerede kaydırma çubuğunun kartların üstüne binmesi ve uzun seçenekli açılır listelerin (onay modu) pencereyi ekranın dışına itmesi düzeltildi.
 * **Sistem istemi Kurallar sayfasında:** Ayrı "Sistem Promptu" sayfası kalktı. Kurallar sayfası modelin her turda aldığı katmanları birlikte gösteriyor: bağlam yükü (token), yerleşik kurallar (sistem istemi: düzenleyici, "Güncel varsayılan" / "Özelleştirilmiş" rozeti, boyut, varsayılanı geri yükle), global ve proje kural dosyaları, kural ekleme. Skill'ler ve Dış Ajan (MCP) kendi sayfalarında; "Görünüm & Dil" sayfasının adı içeriğine uygun olarak "Dil & Onaylar" oldu.
 
 ### Düzeltilenler

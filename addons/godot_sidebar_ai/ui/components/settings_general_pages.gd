@@ -35,7 +35,7 @@ var overwrite_check: CheckBox
 func build_provider_page() -> VBoxContainer:
 	var page := AISidebarSettingsUi.page()
 	var prov := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_provider"))
-	provider_opt = OptionButton.new()
+	provider_opt = AISidebarSettingsUi.option_button()
 	provider_opt.add_item(AISidebarI18n.get_text("provider_antigravity"), 0)
 	provider_opt.add_item(AISidebarI18n.get_text("provider_openai"), 1)
 	provider_opt.item_selected.connect(func(_i: int) -> void: _apply_provider_state())
@@ -56,7 +56,7 @@ func build_provider_page() -> VBoxContainer:
 	stream_check.text = AISidebarI18n.get_text("settings_stream")
 	adv.add_child(stream_check)
 	adv.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_stream_hint")))
-	vision_opt = OptionButton.new()
+	vision_opt = AISidebarSettingsUi.option_button()
 	vision_opt.add_item(AISidebarI18n.get_text("settings_vision_auto"), 0)
 	vision_opt.add_item(AISidebarI18n.get_text("settings_vision_on"), 1)
 	vision_opt.add_item(AISidebarI18n.get_text("settings_vision_off"), 2)
@@ -90,13 +90,13 @@ func build_model_page() -> VBoxContainer:
 func build_language_page() -> VBoxContainer:
 	var page := AISidebarSettingsUi.page()
 	var lang := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_language"), AISidebarI18n.get_text("hint_language"))
-	lang_opt = OptionButton.new()
+	lang_opt = AISidebarSettingsUi.option_button()
 	lang_opt.add_item("Türkçe (TR)", 0)  # i18n-ignore: dil adı kendi dilinde yazılır
 	lang_opt.add_item("English (EN)", 1)  # i18n-ignore: dil adı kendi dilinde yazılır
 	lang.add_child(lang_opt)
 
 	var appr := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_approval"), AISidebarI18n.get_text("hint_approval_mode"))
-	mode_opt = OptionButton.new()
+	mode_opt = AISidebarSettingsUi.option_button()
 	for mode: String in MODES:
 		var key := "mode_" + mode.to_lower()
 		mode_opt.add_item("%s: %s" % [AISidebarI18n.get_text(key), AISidebarI18n.get_text(key + "_desc")])
@@ -162,7 +162,7 @@ func _apply_provider_state() -> void:
 	base_url_edit.editable = not is_cli
 	api_key_edit.editable = not is_cli
 	var card := endpoint_box.get_parent() as Control
-	card.modulate = Color(1, 1, 1, 0.45 if is_cli else 1.0)
+	card.modulate = AISidebarTheme.MODULATE_DISABLED if is_cli else AISidebarTheme.COLOR_WHITE
 
 func _on_temp_changed(val: float) -> void:
 	var v := snappedf(val, 0.05)

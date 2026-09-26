@@ -15,10 +15,10 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
 
-const COLOR_SYSTEM := Color(0.95, 0.75, 0.35)
-const COLOR_RULES := Color(0.35, 0.6, 0.95)
-const COLOR_SKILLS := Color(0.45, 0.8, 0.5)
-const COLOR_TOOLS := Color(0.7, 0.5, 0.9)
+const COLOR_SYSTEM := AISidebarTheme.COLOR_LAYER_SYSTEM
+const COLOR_RULES := AISidebarTheme.COLOR_LAYER_RULES
+const COLOR_SKILLS := AISidebarTheme.COLOR_LAYER_SKILLS
+const COLOR_TOOLS := AISidebarTheme.COLOR_LAYER_TOOLS
 
 var prompt_edit: TextEdit
 var _prompt_badge: Label
@@ -69,7 +69,8 @@ func _init() -> void:
 	_rule_edit = AISidebarSettingsUi.line_edit(AISidebarI18n.get_text("custom_rule_placeholder"))
 	_rule_edit.text_submitted.connect(func(_t: String) -> void: _on_add_rule())
 	add_row.add_child(_rule_edit)
-	_rule_scope = OptionButton.new()
+	_rule_scope = AISidebarSettingsUi.option_button()
+	_rule_scope.custom_minimum_size = Vector2(float(AISidebarSettingsUi.base_size) * 7.0, 0)
 	_rule_scope.add_item(AISidebarI18n.get_text("custom_scope_project"), 0)
 	_rule_scope.add_item(AISidebarI18n.get_text("custom_scope_global"), 1)
 	add_row.add_child(_rule_scope)
@@ -154,14 +155,16 @@ func _refresh_rules() -> void:
 		path.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		path.tooltip_text = p
 		row.add_child(path)
-		row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("skills_open"), func() -> void: OS.shell_open(ProjectSettings.globalize_path(p))))
+		row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("custom_show_in_folder"), func() -> void: OS.shell_show_in_file_manager(ProjectSettings.globalize_path(p))))
 
 func _open_rule_file(path: String) -> void:
 	if path.is_empty():
 		return
 	var res := AISidebarRulesRegistry.ensure_file(path)
 	if res.get("ok", false) == true:
-		OS.shell_open(ProjectSettings.globalize_path(path))
+		OS.shell_show_in_file_manager(ProjectSettings.globalize_path(path))
+	else:
+		AISidebarSettingsUi.set_status(_status, AISidebarI18n.get_text("skills_error", {"error": str(res.get("error", ""))}), true)
 	refresh()
 
 func _on_add_rule() -> void:

@@ -89,9 +89,14 @@ func _build() -> void:
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_root.add_child(_scroll)
+	# Sağ boşluk: kaydırma çubuğu kartların kenarına binmesin.
+	var gutter := MarginContainer.new()
+	gutter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gutter.add_theme_constant_override("margin_right", AISidebarTheme.SPACE_MD)
+	_scroll.add_child(gutter)
 	var pages := VBoxContainer.new()
 	pages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_scroll.add_child(pages)
+	gutter.add_child(pages)
 
 	general = AISidebarSettingsGeneralPages.new()
 	rules_view = AISidebarRulesView.new()

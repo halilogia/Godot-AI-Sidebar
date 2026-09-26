@@ -150,8 +150,8 @@
   "custom_rules_title": "Rules",
   "custom_rules_hint": "Always-on instructions sent on every turn. Global rules (~/.agents/AGENTS.md, ~/.agents/rules/*.md) apply to all your projects; project rules (AGENTS.md, GEMINI.md, .agents/AGENTS.md, .agents/rules/*.md) travel with the game repository and are read by other agents too. Use @rules in a message to stress them, /learn to save a new rule.",
   "custom_rules_none": "No rule files found.",
-  "custom_open_project_rules": "Open project rules",
-  "custom_open_global_rules": "Open global rules",
+  "custom_open_project_rules": "Open project rules folder",
+  "custom_open_global_rules": "Open global rules folder",
   "custom_rule_placeholder": "New rule, one sentence (e.g. Keep province data in data/*.json)",
   "custom_scope_project": "Project",
   "custom_scope_global": "Global",
@@ -233,5 +233,6 @@
   "mcp_settings_badge_on": "On",
   "mcp_settings_badge_off": "Off",
   "mcp_settings_connect_title": "Connect Claude Code",
-  "mcp_settings_connect_hint": "Run the command in a terminal in your game project folder. The token is masked here; the copied command has it in full."
+  "mcp_settings_connect_hint": "Run the command in a terminal in your game project folder. The token is masked here; the copied command has it in full.",
+  "custom_show_in_folder": "Show in folder"
 }

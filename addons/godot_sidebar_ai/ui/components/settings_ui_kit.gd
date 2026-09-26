@@ -139,6 +139,15 @@ static func style_input(c: Control) -> void:
 	c.add_theme_stylebox_override("focus", AISidebarTheme.create_input_focus_style())
 	c.add_theme_stylebox_override("read_only", AISidebarTheme.create_input_style())
 
+## Açılır liste: en uzun seçeneğe göre genişlemez (uzun seçenek pencereyi ekran dışına itmesin), sığmayan
+## metin üç noktayla kesilir.
+static func option_button() -> OptionButton:
+	var o := OptionButton.new()
+	o.fit_to_longest_item = false
+	o.clip_text = true
+	o.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	return o
+
 static func line_edit(placeholder: String = "") -> LineEdit:
 	var e := LineEdit.new()
 	e.placeholder_text = placeholder

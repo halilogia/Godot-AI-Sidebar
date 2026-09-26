@@ -150,8 +150,8 @@
   "custom_rules_title": "Kurallar",
   "custom_rules_hint": "Her turda gönderilen, her zaman geçerli talimatlar. Global kurallar (~/.agents/AGENTS.md, ~/.agents/rules/*.md) bütün projelerinizde geçerlidir; proje kuralları (AGENTS.md, GEMINI.md, .agents/AGENTS.md, .agents/rules/*.md) oyun deposuyla birlikte gider ve başka ajanlar da okur. Bir mesajda @rules ile öne çıkarın, /learn ile yeni kural kaydedin.",
   "custom_rules_none": "Kural dosyası bulunamadı.",
-  "custom_open_project_rules": "Proje kurallarını aç",
-  "custom_open_global_rules": "Global kuralları aç",
+  "custom_open_project_rules": "Proje kural klasörünü aç",
+  "custom_open_global_rules": "Global kural klasörünü aç",
   "custom_rule_placeholder": "Yeni kural, tek cümle (ör. İl verisini data/*.json'da tut)",
   "custom_scope_project": "Proje",
   "custom_scope_global": "Global",
@@ -233,5 +233,6 @@
   "mcp_settings_badge_on": "Açık",
   "mcp_settings_badge_off": "Kapalı",
   "mcp_settings_connect_title": "Claude Code'a bağla",
-  "mcp_settings_connect_hint": "Komutu oyun projenizin klasöründe bir terminalde çalıştırın. Token burada maskelidir; kopyalanan komutta tamdır."
+  "mcp_settings_connect_hint": "Komutu oyun projenizin klasöründe bir terminalde çalıştırın. Token burada maskelidir; kopyalanan komutta tamdır.",
+  "custom_show_in_folder": "Klasörde göster"
 }

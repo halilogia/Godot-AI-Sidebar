@@ -59,6 +59,13 @@ const COLOR_BUBBLE_COMMAND_BORDER = Color(0.35, 0.30, 0.55, 0.7)
 const COLOR_ROLE_COMMAND = Color(0.75, 0.55, 0.95, 1.0)
 const COLOR_MODE_FULL_AUTO = Color(0.85, 0.55, 0.95, 1.0)
 const COLOR_WHITE = Color(1.0, 1.0, 1.0, 1.0)
+# Bağlam katmanları (sistem istemi / kurallar / skill'ler / araçlar) ve kapsam rozetleri
+const COLOR_LAYER_SYSTEM = Color(0.95, 0.75, 0.35, 1.0)
+const COLOR_LAYER_RULES = Color(0.35, 0.60, 0.95, 1.0)
+const COLOR_LAYER_SKILLS = Color(0.45, 0.80, 0.50, 1.0)
+const COLOR_LAYER_TOOLS = Color(0.70, 0.50, 0.90, 1.0)
+# Devre dışı bir bölümü soluklaştırma (modulate)
+const MODULATE_DISABLED = Color(1.0, 1.0, 1.0, 0.45)
 const COLOR_TRANSPARENT = Color(0, 0, 0, 0)
 
 # 5. Factory Metotları

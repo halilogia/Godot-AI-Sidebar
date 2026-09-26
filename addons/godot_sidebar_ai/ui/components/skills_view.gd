@@ -34,7 +34,8 @@ func _ready() -> void:
 	var create_row := AISidebarSettingsUi.row(create_card)
 	_name_edit = AISidebarSettingsUi.line_edit(AISidebarI18n.get_text("skills_new_placeholder"))
 	create_row.add_child(_name_edit)
-	_scope_opt = OptionButton.new()
+	_scope_opt = AISidebarSettingsUi.option_button()
+	_scope_opt.custom_minimum_size = Vector2(float(AISidebarSettingsUi.base_size) * 7.0, 0)
 	_scope_opt.add_item(AISidebarI18n.get_text("skills_scope_user"), 0)
 	_scope_opt.add_item(AISidebarI18n.get_text("skills_scope_project"), 1)
 	create_row.add_child(_scope_opt)
@@ -81,10 +82,10 @@ func refresh() -> void:
 func _scope_color(scope: String) -> Color:
 	match scope:
 		AISidebarSkillRegistry.SCOPE_PROJECT:
-			return Color(0.35, 0.6, 0.95)
+			return AISidebarTheme.COLOR_LAYER_RULES
 		AISidebarSkillRegistry.SCOPE_BUILTIN:
-			return Color(0.95, 0.75, 0.35)
-	return Color(0.7, 0.5, 0.9)
+			return AISidebarTheme.COLOR_LAYER_SYSTEM
+	return AISidebarTheme.COLOR_LAYER_TOOLS
 
 func _skill_row(s: Dictionary, enabled: bool) -> Control:
 	var box := VBoxContainer.new()

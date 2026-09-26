@@ -142,6 +142,15 @@ godot --path . -s res://tools/readme_shots.gd -- docs/media tr
 
 Pencere birkaç saniye açılıp kapanır; `config.json` dili geçici değiştirilir ve dosya birebir geri yazılır. Üretilen PNG'leri commit'lemeden önce gözle kontrol et.
 
+* **Arayüz görsel kontrolü (AGENTS.md §3.9):** Ayarlar penceresinin her sayfası gerçek bileşenleriyle, geniş (1280x800) ve dar (900x620) pencerede çekilir; uzun sayfaların alt kısmı ayrıca. Arayüz değişikliğinden önce ve sonra iki dilde çalıştır, görüntüleri karşılaştır. Çıktı klasörü repo dışında olsun (mutlak yol):
+
+```bash
+godot --path . -s res://tools/ui_shots.gd -- <mutlak-klasör> tr
+godot --path . -s res://tools/ui_shots.gd -- <mutlak-klasör> en
+```
+
+`config.json` yalnız dil için geçici değişir; varsa bayt bayt geri yazılır, yoksa silinir. Sabit yazı boyu ve tema dışı renk sabitleri `tests/test_ui_quality.gd` cırcırıyla `verify.ps1`'de denetlenir.
+
 ## 11. GitHub Actions (CI)
 
 `.github/workflows/verify.yml`: her `main` push'unda ve her PR'da, ubuntu-latest üzerinde:
@@ -158,7 +167,7 @@ CI config'siz çalışır; yerel sonuçla farklıysa önce §7'ye bak. Linux dos
 |---|---|---|---|---|
 | Yalnız belge | — (CI yine koşar) | — | — | Bağlantılar ve komutlar gerçekten var mı kontrol et |
 | Çekirdek mantık (`core/agent`, `core/chat`, `core/tools` saf kısımları, doğrulama) | ✅ | — | Araç editör kökü istiyorsa ✅ | Refactor ise önce sabitleme testi |
-| Arayüz (`ui/`) | ✅ | — | ✅ | Metin değiştiyse i18n anahtarı iki dile; görünüm değiştiyse README görselleri |
+| Arayüz (`ui/`) | ✅ | — | ✅ | Metin değiştiyse i18n anahtarı iki dile; önce / sonra `tools/ui_shots.gd` (iki dil); görünüm değiştiyse README görselleri |
 | Provider / ağ (`core/network`, `core/providers`, `AgentHost`) | ✅ | ✅ | Provider değişimi + Refresh | — |
 | Runtime / editör etkileşimi (`core/runtime`, `EditorInterface` araçları) | ✅ | — | ✅ (oyunu başlat / durdur) | — |
 | Test altyapısı (`tests/`, `tools/`) | ✅ | — | — | Değişen kontrolün hâlâ yakaladığını mutasyonla göster |
