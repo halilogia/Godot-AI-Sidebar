@@ -42,6 +42,7 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
 	if mcp_bridge:
+		mcp_bridge.stop()
 		mcp_bridge.queue_free()
 		mcp_bridge = null
 	if debugger_plugin:
