@@ -26,7 +26,7 @@ const EXPOSED_TOOLS: Array[String] = [
 	"inspect_ui_layout",
 ]
 
-## v3.0.1 sahne mutasyonları: kullanıcı `/mcp write auto` demedikçe WRITES_DISABLED döner.
+## Sahne mutasyonları: kullanıcı `/mcp write ask|auto` demedikçe WRITES_DISABLED döner.
 ## Hepsi Undo/Redo'ya kayıtlı. Her çağrı köprüye özgü zorunlu `expected_scene_path` taşır
 ## (değiştirilecek, editörde açık sahne); ToolManager'a gitmeden args'tan çıkarılır.
 ## (`instantiate_scene`'in kendi `scene_path`'i örneklenecek kaynak sahnedir; karıştırılmaz.)
@@ -76,7 +76,7 @@ static func _mutation_definition(name: String, description: String, parameters: 
 	schema["required"] = required
 	return {
 		"name": name,
-		"description": description + " Scene change: undoable with Ctrl+Z in the editor; refused unless the user enabled external writes (/mcp write auto) and while another agent is writing (WRITER_BUSY).",
+		"description": description + " Scene change: undoable with Ctrl+Z in the editor; refused unless the user enabled external writes (/mcp write ask or auto) and while another agent is writing (WRITER_BUSY). In ask mode the call waits until the user approves or rejects it in the editor (USER_DENIED, APPROVAL_TIMEOUT).",
 		"inputSchema": schema,
 	}
 

@@ -39,6 +39,8 @@ func _enter_tree() -> void:
 	mcp_bridge = AISidebarMcpBridgeServer.new()
 	mcp_bridge.name = "GodotAIMcpBridge"
 	add_child(mcp_bridge)
+	if chat_dock and chat_dock.has_method("bind_external_approvals"):
+		chat_dock.call("bind_external_approvals", mcp_bridge.approvals)
 	var bridge_err := mcp_bridge.start_from_settings()
 	if bridge_err != OK:
 		push_warning("[Godot AI MCP] Köprü açılamadı (hata %d). Port başka bir süreçte kullanılıyor olabilir." % bridge_err)

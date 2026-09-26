@@ -29,6 +29,8 @@ const AISidebarAgentActivityPresenter = preload("res://addons/godot_sidebar_ai/u
 const AISidebarAgentInteractionPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/agent_interaction_presenter.gd")
 const AISidebarModelBarController = preload("res://addons/godot_sidebar_ai/ui/controllers/model_bar_controller.gd")
 const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/controllers/task_controller.gd")
+const AISidebarExternalApprovalPresenter = preload("res://addons/godot_sidebar_ai/ui/presenters/external_approval_presenter.gd")
+const AISidebarExternalApprovals = preload("res://addons/godot_sidebar_ai/core/bridge/external_approvals.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
 @onready var status_badge: Label = $MainLayout/HeaderBar/StatusBadge
@@ -87,6 +89,8 @@ var activity: AISidebarAgentActivityPresenter = AISidebarAgentActivityPresenter.
 var checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTracker.new()
 ## Soru, onay, plan ve değişiklik kartları (kararlar AgentRunner'a iletilir).
 var interaction: AISidebarAgentInteractionPresenter = AISidebarAgentInteractionPresenter.new()
+## Dış ajan (MCP) `ask` modu onay kartları; plugin.gd köprüyü kurunca bağlar.
+var external_approvals: AISidebarExternalApprovalPresenter = AISidebarExternalApprovalPresenter.new()
 var auto_scroll_enabled: bool = true
 var welcome_card: AISidebarWelcomeCard = null
 
@@ -110,6 +114,12 @@ func rebuild_provider() -> void:
 		stream.agy_preparing = false
 	if agent_host:
 		agent_host.rebuild_provider()
+
+## Köprünün onay kaydını dock'a bağlar (plugin.gd, köprüyü kurduktan sonra çağırır).
+func bind_external_approvals(approvals: AISidebarExternalApprovals) -> void:
+	external_approvals.add_component = add_stream_component
+	external_approvals.scroll_if_following = _scroll_if_following
+	external_approvals.bind(approvals)
 
 func _ready() -> void:
 	_export_actions = AISidebarChatExportActions.new()

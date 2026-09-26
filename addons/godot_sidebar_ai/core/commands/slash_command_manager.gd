@@ -11,6 +11,7 @@ const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security
 const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
 const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_protocol.gd")
 const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
+const AISidebarExternalApprovals = preload("res://addons/godot_sidebar_ai/core/bridge/external_approvals.gd")
 
 ## Komut Tanım Modeli
 static var _commands: Dictionary = {}
@@ -272,7 +273,7 @@ static func _init_default_commands() -> void:
 	register_command(
 		"mcp",
 		"Dış ajan köprüsü (MCP): Claude Code gibi ajanların bu editörün araçlarını kullanmasını açar / kapatır ve bağlantı komutunu verir.",
-		"/mcp [on | off | write off | write auto]",
+		"/mcp [on | off | write off | write ask | write auto]",
 		AISidebarPermissionPolicy.RiskLevel.EXTERNAL_SENSITIVE,
 		Callable(AISidebarSlashCommandManager, "_handle_mcp")
 	)
@@ -303,7 +304,7 @@ static func _handle_mcp(args: String, _context: Dictionary) -> Dictionary:
 		bridge.write_mode = AISidebarMcpBridgeServer.WRITE_OFF
 		return {"action": "local_response", "message": "**MCP köprüsü kapatıldı.** Dış ajanlar artık bu editöre bağlanamaz."}
 	elif not sub.is_empty():
-		return {"action": "local_response", "message": "Kullanım: `/mcp` (durum), `/mcp on`, `/mcp off`, `/mcp write off | auto`"}
+		return {"action": "local_response", "message": "Kullanım: `/mcp` (durum), `/mcp on`, `/mcp off`, `/mcp write off | ask | auto`"}
 	if not bridge.is_running():
 		return {"action": "local_response", "message": "MCP köprüsü kapalı. Açmak için: `/mcp on`"}
 	var cmd := bridge.claude_add_command()
@@ -315,22 +316,27 @@ static func _handle_mcp(args: String, _context: Dictionary) -> Dictionary:
 	text += _mcp_write_status(bridge)
 	return {"action": "local_response", "message": text}
 
-## /mcp write [off | auto]: dış ajanın sahne değişikliklerini açar / kapatır (yalnız bu oturum).
+## /mcp write [off | ask | auto]: dış ajanın sahne değişikliklerini açar / kapatır (yalnız bu oturum).
+## Argümansız: yalnız durum (hiçbir mod kendiliğinden açılmaz).
 static func _handle_mcp_write(bridge: AISidebarMcpBridgeServer, mode: String) -> Dictionary:
-	if mode == AISidebarMcpBridgeServer.WRITE_AUTO:
-		bridge.write_mode = AISidebarMcpBridgeServer.WRITE_AUTO
+	if mode == AISidebarMcpBridgeServer.WRITE_AUTO or mode == AISidebarMcpBridgeServer.WRITE_ASK:
+		bridge.write_mode = mode
 	elif mode == AISidebarMcpBridgeServer.WRITE_OFF:
 		bridge.write_mode = AISidebarMcpBridgeServer.WRITE_OFF
+		bridge.approvals.cancel_all(AISidebarExternalApprovals.BRIDGE_STOPPED)
 		AISidebarWriterLock.release(AISidebarWriterLock.Holder.EXTERNAL)
 	elif not mode.is_empty():
-		return {"action": "local_response", "message": "Kullanım: `/mcp write` (durum), `/mcp write auto`, `/mcp write off`"}
+		return {"action": "local_response", "message": "Kullanım: `/mcp write` (durum), `/mcp write ask`, `/mcp write auto`, `/mcp write off`"}
 	return {"action": "local_response", "message": _mcp_write_status(bridge)}
 
 static func _mcp_write_status(bridge: AISidebarMcpBridgeServer) -> String:
 	var tools := ", ".join(AISidebarMcpProtocol.MUTATION_TOOLS)
+	var scope := "Her değişiklik Ctrl+Z ile geri alınır; yalnız ajanın belirttiği sahne editörde açıksa ve sidebar ajanı o sırada yazmıyorsa çalışır. Kapatmak için: `/mcp write off` (editör yeniden açılınca da kapanır)."
 	if bridge.write_mode == AISidebarMcpBridgeServer.WRITE_AUTO:
-		return "**Dış ajan sahne değişiklikleri: AÇIK (auto).** Dış ajan onay sormadan şunları yapabilir: %s. Her değişiklik Ctrl+Z ile geri alınır; yalnız ajanın belirttiği sahne editörde açıksa ve sidebar ajanı o sırada yazmıyorsa çalışır. Kapatmak için: `/mcp write off` (editör yeniden açılınca da kapanır)." % tools
-	return "Dış ajan sahne değişiklikleri: **kapalı**. Açmak için: `/mcp write auto` (yalnız bu editör oturumu için; araçlar: %s)." % tools
+		return "**Dış ajan sahne değişiklikleri: AÇIK (auto).** Dış ajan onay sormadan şunları yapabilir: %s. %s" % [tools, scope]
+	if bridge.write_mode == AISidebarMcpBridgeServer.WRITE_ASK:
+		return "**Dış ajan sahne değişiklikleri: AÇIK (ask).** Dış ajanın her değişikliği (%s) için burada bir onay kartı açılır; onaylamadıkça uygulanmaz. %s" % [tools, scope]
+	return "Dış ajan sahne değişiklikleri: **kapalı**. Açmak için: `/mcp write ask` (her değişikliği onaylarsınız) ya da `/mcp write auto` (onaysız). Yalnız bu editör oturumu için; araçlar: %s." % tools
 
 static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 	var cmds = get_commands()

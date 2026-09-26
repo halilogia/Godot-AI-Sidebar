@@ -9,6 +9,7 @@ const AISidebarMcpProtocol = preload("res://addons/godot_sidebar_ai/core/bridge/
 const AISidebarMcpBridgeServer = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_server.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
+const AISidebarExternalApprovals = preload("res://addons/godot_sidebar_ai/core/bridge/external_approvals.gd")
 
 const TOKEN = "test-token-123"
 
@@ -203,15 +204,20 @@ static func run() -> Dictionary:
 	ms.scene_root_provider = func() -> Node: return fake_root
 	var add_args := {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://scenes/main.tscn"}
 	var m_default_off := ms.write_mode == AISidebarMcpBridgeServer.WRITE_OFF
-	var m_off := ms.run_mutation("add_node", add_args)
+	var m_off := ms.precheck_mutation("add_node", add_args)
 	ms.write_mode = AISidebarMcpBridgeServer.WRITE_AUTO
-	var m_missing := ms.run_mutation("add_node", {"node_type": "Node2D", "node_name": "X"})
-	var m_wrong := ms.run_mutation("add_node", {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://scenes/other.tscn"})
+	var m_missing := ms.precheck_mutation("add_node", {"node_type": "Node2D", "node_name": "X"})
+	var wrong_args := {"node_type": "Node2D", "node_name": "X", "expected_scene_path": "res://scenes/other.tscn"}
+	var m_wrong := ms.precheck_mutation("add_node", wrong_args)
+	# Onaydan sonra sahne değişmiş olabilir: apply tekrar kontrol eder ve yeni aldığı kilidi bırakır.
+	var m_wrong_apply := ms.apply_mutation("add_node", wrong_args)
 	var lock_after_wrong := AISidebarWriterLock.holder()
+	ms.write_mode = AISidebarMcpBridgeServer.WRITE_ASK
+	var m_ask_ok := ms.precheck_mutation("add_node", add_args).is_empty()
 	AISidebarWriterLock.try_acquire(AISidebarWriterLock.Holder.SIDEBAR)
-	var m_busy := ms.run_mutation("add_node", add_args)
+	var m_busy := ms.apply_mutation("add_node", add_args)
 	AISidebarWriterLock.reset()
-	var m_pass := ms.run_mutation("add_node", add_args)
+	var m_pass := ms.apply_mutation("add_node", add_args)
 	var lock_after_pass := AISidebarWriterLock.holder()
 	ms.stop()
 	var lock_after_stop := AISidebarWriterLock.holder()
@@ -223,7 +229,8 @@ static func run() -> Dictionary:
 		if AISidebarToolManager.is_async_tool(mt):
 			any_async = true
 	if m_default_off and m_off["error"]["code"] == "WRITES_DISABLED" and m_missing["error"]["code"] == "INVALID_ARGUMENT" \
-			and m_wrong["error"]["code"] == "ACTIVE_SCENE_NOT_CONFIRMED" and lock_after_wrong == AISidebarWriterLock.Holder.NONE \
+			and m_wrong["error"]["code"] == "ACTIVE_SCENE_NOT_CONFIRMED" and m_wrong_apply["error"]["code"] == "ACTIVE_SCENE_NOT_CONFIRMED" \
+			and lock_after_wrong == AISidebarWriterLock.Holder.NONE and m_ask_ok \
 			and m_busy["error"]["code"] == "WRITER_BUSY" and not guard_codes.has(pass_code) \
 			and lock_after_pass == AISidebarWriterLock.Holder.EXTERNAL and lock_after_stop == AISidebarWriterLock.Holder.NONE \
 			and split["expected_scene_path"] == "res://scenes/main.tscn" and split["args"] == {"scene_path": "res://p.tscn"} and not any_async:
@@ -234,5 +241,28 @@ static func run() -> Dictionary:
 	fake_root.free()
 	ms.free()
 	AISidebarWriterLock.reset()
+
+	# 8. ask modu onay kaydı: istek sinyali, karar, geç tıklama etkisiz, köprü kapanınca iptal.
+	var ap := AISidebarExternalApprovals.new()
+	var seen: Array = []
+	ap.requested.connect(func(id: int, tool: String, _a: Dictionary, scene: String) -> void: seen.append([id, tool, scene]))
+	ap.resolved.connect(func(id: int, outcome: String) -> void: seen.append([id, outcome]))
+	var id1 := ap.request("add_node", {"node_name": "X"}, "res://a.tscn")
+	var pending1 := ap.is_pending(id1)
+	ap.resolve(id1, true)
+	ap.resolve(id1, false)  # geç tıklama: sonucu değiştirmez
+	var out1 := ap.outcome(id1)
+	var sb := AISidebarMcpBridgeServer.new()
+	var id2 := sb.approvals.request("save_scene", {}, "res://a.tscn")
+	sb.stop()
+	var out2 := sb.approvals.outcome(id2)
+	sb.free()
+	if pending1 and out1 == AISidebarExternalApprovals.APPROVED and seen[0] == [id1, "add_node", "res://a.tscn"] \
+			and seen[1] == [id1, AISidebarExternalApprovals.APPROVED] and seen.size() == 2 \
+			and out2 == AISidebarExternalApprovals.BRIDGE_STOPPED and ap.pending_count() == 0:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T8 (approval registry) failed: seen=%s out1=%s out2=%s" % [str(seen), out1, out2])
 
 	return {"name": "McpBridgeTests", "passed": passed, "failed": failed, "errors": errors}

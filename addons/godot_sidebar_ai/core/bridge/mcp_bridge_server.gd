@@ -16,10 +16,15 @@ const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/to
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/scene_tools.gd")
 const AISidebarWriterLock = preload("res://addons/godot_sidebar_ai/core/security/writer_lock.gd")
+const AISidebarExternalApprovals = preload("res://addons/godot_sidebar_ai/core/bridge/external_approvals.gd")
 
 const DEFAULT_PORT := 6570
 const WRITE_OFF := "off"
+const WRITE_ASK := "ask"
 const WRITE_AUTO := "auto"
+## `ask` modunda kullanıcı kararı için üst sınır. Geçici değer: Claude Code'un uzun MCP araç
+## çağrısındaki gerçek zaman aşımı final doğrulamada ölçülüp buna göre ayarlanacak.
+const APPROVAL_TIMEOUT_MSEC := 120000
 const IDLE_TIMEOUT_MSEC := 10000
 const SYNC_TIMEOUT_MSEC := 30000
 
@@ -39,11 +44,14 @@ static var instance: AISidebarMcpBridgeServer = null
 
 var port: int = 0
 var token: String = ""
-## Dış ajanın sahne mutasyonları (`/mcp write off|auto`). Kalıcı DEĞİL: her editör açılışında
-## ve `/mcp off`'ta `off`'a döner; `auto` hiçbir zaman kendiliğinden açılmaz.
+## Dış ajanın sahne mutasyonları (`/mcp write off|ask|auto`). Kalıcı DEĞİL: her editör açılışında
+## ve `/mcp off`'ta `off`'a döner; `ask` / `auto` hiçbir zaman kendiliğinden açılmaz.
 var write_mode: String = WRITE_OFF
 ## Etkin sahne kökünü verir; boşsa editör okunur (testler sahte kök enjekte eder).
 var scene_root_provider: Callable = Callable()
+## `ask` modunun bekleyen onayları (arayüz `plugin.gd` üzerinden bağlanır).
+var approvals: AISidebarExternalApprovals = AISidebarExternalApprovals.new()
+var approval_timeout_msec: int = APPROVAL_TIMEOUT_MSEC
 var _server: TCPServer = null
 var _clients: Array[Client] = []
 
@@ -78,6 +86,7 @@ func stop() -> void:
 	for c: Client in _clients:
 		c.peer.disconnect_from_host()
 	_clients.clear()
+	approvals.cancel_all(AISidebarExternalApprovals.BRIDGE_STOPPED)
 	AISidebarWriterLock.release(AISidebarWriterLock.Holder.EXTERNAL)
 	if _server:
 		_server.stop()
@@ -127,14 +136,17 @@ func poll() -> void:
 		_serve(c, req)
 
 func _serve(c: Client, req: Dictionary) -> void:
-	var response: PackedByteArray = await respond(req)
+	# poll() her karede peer.poll() çağırmaya devam eder; istemci koparsa durum düşer.
+	var alive := func() -> bool: return c.peer.get_status() == StreamPeerTCP.STATUS_CONNECTED
+	var response: PackedByteArray = await respond(req, alive)
 	if c.peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 		c.peer.put_data(response)
 		c.peer.disconnect_from_host()
 	_clients.erase(c)
 
 ## Ayrıştırılmış isteğe HTTP yanıtı üretir (araç çağrısı ise yürütür).
-func respond(req: Dictionary) -> PackedByteArray:
+## `alive`: istemci bağlantısı hâlâ açık mı (onay beklerken kopmayı fark etmek için).
+func respond(req: Dictionary, alive: Callable = Callable()) -> PackedByteArray:
 	if req.has("error_status"):
 		var status: int = req["error_status"]
 		return _json(status, {"error": str(req.get("error", ""))})
@@ -157,27 +169,41 @@ func respond(req: Dictionary) -> PackedByteArray:
 		return _json(200, routed["reply"])
 	var call: Dictionary = routed["call"]
 	var call_args: Dictionary = call["arguments"]
-	var result: Dictionary = await run_tool(str(call["name"]), call_args)
+	var result: Dictionary = await run_tool(str(call["name"]), call_args, alive)
 	var ok: bool = result.get("success", false)
 	print("[Godot AI MCP] %s -> %s" % [call["name"], "ok" if ok else "error"])
 	return _json(200, AISidebarMcpProtocol.call_reply(call["id"], result))
 
 ## İzin listesindeki aracı yürütür (sync_project köprüye özgü).
-func run_tool(tool_name: String, args: Dictionary) -> Dictionary:
+func run_tool(tool_name: String, args: Dictionary, alive: Callable = Callable()) -> Dictionary:
 	if tool_name == "sync_project":
 		return await _sync_project()
 	if AISidebarMcpProtocol.is_mutation_tool(tool_name):
-		return run_mutation(tool_name, args)
+		return await run_mutation(tool_name, args, alive)
 	if AISidebarMcpProtocol.is_sync_tool(tool_name):
 		return AISidebarMcpProtocol.run_sync_tool(tool_name, args)
 	return await AISidebarToolManager.execute_tool_async(tool_name, args, false)
 
-## Sahne mutasyonu: yazma modu → beklenen sahne → yazıcı kilidi → ToolManager (PermissionPolicy,
-## PathPolicy, MutationService / Undo-Redo). Mutasyon araçları senkron: sahne kontrolü ile
-## yürütme arasında editör karesi geçmez, kontrol yürütmenin hemen öncesidir.
-func run_mutation(tool_name: String, args: Dictionary) -> Dictionary:
-	if write_mode != WRITE_AUTO:
-		return AISidebarToolResult.err("WRITES_DISABLED", "Scene changes by external agents are turned off in this editor. The user can allow them in the Godot AI Sidebar with /mcp write auto.", false)
+## Sahne mutasyonu: izin listesi (route) → yazma modu → expected_scene_path ön kontrolü →
+## (`ask`: kullanıcı onayı; beklerken yazıcı kilidi TUTULMAZ) → yazıcı kilidi → etkin sahne
+## tekrar kontrolü → ToolManager (PermissionPolicy, PathPolicy, MutationService / Undo-Redo).
+func run_mutation(tool_name: String, args: Dictionary, alive: Callable = Callable()) -> Dictionary:
+	var pre := precheck_mutation(tool_name, args)
+	if not pre.is_empty():
+		return pre
+	if write_mode == WRITE_ASK:
+		var decision := await _await_approval(tool_name, args, alive)
+		if decision != AISidebarExternalApprovals.APPROVED:
+			return _approval_failure(decision)
+	return apply_mutation(tool_name, args)
+
+## Onaydan önceki senkron kontroller: yazma modu, zorunlu expected_scene_path, etkin sahne.
+## Geçerse {} döner.
+func precheck_mutation(tool_name: String, args: Dictionary) -> Dictionary:
+	if write_mode != WRITE_AUTO and write_mode != WRITE_ASK:
+		return AISidebarToolResult.err("WRITES_DISABLED", "Scene changes by external agents are turned off in this editor. The user can allow them in the Godot AI Sidebar with /mcp write ask (approve each change) or /mcp write auto.", false)
+	if not AISidebarMcpProtocol.is_mutation_tool(tool_name):
+		return AISidebarToolResult.err("UNKNOWN_TOOL", "Not an external scene mutation tool: " + tool_name, false)
 	var split := AISidebarMcpProtocol.split_mutation_args(args)
 	var expected: String = split["expected_scene_path"]
 	if expected.is_empty():
@@ -185,11 +211,53 @@ func run_mutation(tool_name: String, args: Dictionary) -> Dictionary:
 	var scene_check := AISidebarSceneTools.confirm_active_scene(expected, 1, scene_root_provider)
 	if not scene_check.get("success", false):
 		return scene_check
+	return {}
+
+## Yürütme: yazıcı kilidi → etkin sahne tekrar kontrolü → ToolManager. Senkron: kontrol ile
+## yürütme arasında editör karesi geçmez. Sahne değişmişse yeni alınan kilit bırakılır.
+func apply_mutation(tool_name: String, args: Dictionary) -> Dictionary:
+	var split := AISidebarMcpProtocol.split_mutation_args(args)
+	var held_before := AISidebarWriterLock.holder() == AISidebarWriterLock.Holder.EXTERNAL
 	var lock_err := AISidebarWriterLock.claim(AISidebarWriterLock.Holder.EXTERNAL, tool_name)
 	if not lock_err.is_empty():
 		return lock_err
+	var expected: String = split["expected_scene_path"]
+	var scene_check := AISidebarSceneTools.confirm_active_scene(expected, 1, scene_root_provider)
+	if not scene_check.get("success", false):
+		if not held_before:
+			AISidebarWriterLock.release(AISidebarWriterLock.Holder.EXTERNAL)
+		return scene_check
 	var tool_args: Dictionary = split["args"]
 	return AISidebarToolManager.execute_tool(tool_name, tool_args, false)
+
+## `ask` modu: editörde kart açar, karar / süre / kopma / köprü kapanışına kadar kare kare bekler.
+func _await_approval(tool_name: String, args: Dictionary, alive: Callable) -> String:
+	var split := AISidebarMcpProtocol.split_mutation_args(args)
+	var tool_args: Dictionary = split["args"]
+	var id := approvals.request(tool_name, tool_args, str(split["expected_scene_path"]))
+	var started := Time.get_ticks_msec()
+	while approvals.is_pending(id):
+		if not is_inside_tree():
+			approvals.cancel(id, AISidebarExternalApprovals.BRIDGE_STOPPED)
+		elif alive.is_valid() and not bool(alive.call()):
+			approvals.cancel(id, AISidebarExternalApprovals.DISCONNECTED)
+		elif Time.get_ticks_msec() - started > approval_timeout_msec:
+			approvals.cancel(id, AISidebarExternalApprovals.TIMEOUT)
+		else:
+			await get_tree().process_frame
+	var decision := approvals.outcome(id)
+	approvals.forget(id)
+	return decision
+
+func _approval_failure(decision: String) -> Dictionary:
+	match decision:
+		AISidebarExternalApprovals.DENIED:
+			return AISidebarToolResult.err("USER_DENIED", "The user rejected this change in the Godot editor. Do not retry it unchanged; ask the user or take another approach.")
+		AISidebarExternalApprovals.TIMEOUT:
+			return AISidebarToolResult.err("APPROVAL_TIMEOUT", "No decision in the Godot editor within %d s; the change was not made." % int(approval_timeout_msec / 1000.0))
+		AISidebarExternalApprovals.DISCONNECTED:
+			return AISidebarToolResult.err("CLIENT_DISCONNECTED", "The MCP client disconnected while waiting for approval; the change was not made.")
+	return AISidebarToolResult.err("BRIDGE_STOPPED", "The MCP bridge was stopped while waiting for approval; the change was not made.", false)
 
 func _sync_project() -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface") or not is_inside_tree():
