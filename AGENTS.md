@@ -64,6 +64,7 @@ powershell -ExecutionPolicy Bypass -File .\verify.ps1
 powershell -ExecutionPolicy Bypass -File .\verify.ps1 -Live
 ```
 
+* Ayrıntılı geliştirme akışı ve doğrulama matrisi: `docs/DEVELOPMENT.md`.
 * Test/dosya sayıları dokümanlara elle yazılmaz (hızla eskir); güncel sayı `verify.ps1` çıktısındadır.
 * Adımlar ayrı ayrı gerekirse: `typecheck.ps1`, `tests/test_runner.gd`, `tests/integration/test_real_9router_live.gd`.
 * **Uyarı cırcırı:** `addons/` için 5 sıkı uyarı türü (`untyped_declaration`, `unsafe_method_access`, `unsafe_property_access`, `unsafe_call_argument`, `unsafe_cast`) dosya başına `tools/typecheck_baseline.json` ile karşılaştırılır; bir dosyada sayı artarsa `verify.ps1` kırmızıdır. Yeni dosya tabanda yoksa sıfır uyarıyla başlamalıdır (tam tipli yazılır). Tip ekleyip sayıyı düşürdüysen tabanı düşür: `godot --headless --path . -s res://tools/warning_report.gd -- --update-baseline` (tabanı asla yukarı çekmek için kullanma).
@@ -105,6 +106,7 @@ Aktif plan ve ilerleme: `docs/REFACTOR_PLAN.md`.
 
 * `AGENTS.md` — tüm ajanlar için tek giriş noktası (bu dosya).
 * `ARCHITECTURE.md` — katmanlar ve veri akışı. `ROADMAP.md` — fazlar. `CHANGELOG.md` — tarihçe (geçmiş sayılar düzeltilmez).
+* `docs/DEVELOPMENT.md` — geliştirme, doğrulama ve bakım akışı (verify, typecheck, uyarı cırcırı, testler, canlı test, duman testi, CI, doğrulama matrisi).
 * `docs/KNOWLEDGE.md` — kalıcı teknik bilgi (paylaşılan kaynak). `brain/`, `archives/` git-ignored yerel çalışma alanlarıdır; kalıcı kararlar oradan `docs/`'a taşınır.
 
 ---
