@@ -158,6 +158,9 @@ func _setup_ui() -> void:
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
+	# Tek satır: dar dock'ta "…" ile kesilir, tam metin tooltip'te.
+	_header_btn.clip_text = true
+	_header_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_header_btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_BODY)
 	_header_btn.pressed.connect(func():
 		_user_toggled = true
@@ -196,6 +199,7 @@ func _update_header() -> void:
 			title = goal.left(60)
 		_header_btn.text = arrow + " " + title + " · %d/%d" % [done, total]
 		_header_btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_PRIMARY)
+	_header_btn.tooltip_text = _header_btn.text
 
 func _render_row(idx: int) -> void:
 	if not _items_container:

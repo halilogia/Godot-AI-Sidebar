@@ -61,6 +61,9 @@ func _setup_ui() -> void:
 	_header_btn.flat = true
 	_header_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_header_btn.focus_mode = Control.FOCUS_NONE
+	# Tek satır: dar dock'ta "…" ile kesilir, tam metin tooltip'te.
+	_header_btn.clip_text = true
+	_header_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_header_btn.add_theme_font_size_override("font_size", 10)
 	_header_btn.pressed.connect(_on_header_pressed)
 	_header_bar.add_child(_header_btn)
@@ -117,6 +120,7 @@ func render_metrics(m: Dictionary) -> void:
 	else:
 		_header_btn.text = AISidebarI18n.get_text("telemetry_failed", {"elapsed": elapsed, "summary": summary})
 		AISidebarIconHelper.apply_tinted_icon(_header_btn, "x", AISidebarTheme.COLOR_ERROR, 12)
+	_header_btn.tooltip_text = _header_btn.text
 	_header_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
 	
 	var llm_s = str(m.get("llm_time_s", 0.0)) + "s"

@@ -15,7 +15,7 @@ var quick_options: Array = []
 var is_answered: bool = false
 
 var _question_lbl: RichTextLabel
-var _options_container: HFlowContainer
+var _options_container: VBoxContainer
 var _input_line: LineEdit
 var _send_btn: Button
 var _status_lbl: Label
@@ -72,14 +72,20 @@ func _ready() -> void:
 	
 	# 2. Hızlı Seçenek Butonları (Quick Choices)
 	if quick_options.size() > 0:
-		_options_container = HFlowContainer.new()
-		_options_container.add_theme_constant_override("h_separation", 6)
-		_options_container.add_theme_constant_override("v_separation", 6)
+		# Dikey liste: her seçenek tam genişlikte ve satır kaydırır. (Yatay akışta satır
+		# kaydıran butonlar en dar hallerine sıkışıyordu; kaydırmayanlar ise dar dock'u taşırıyordu.)
+		_options_container = VBoxContainer.new()
+		_options_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_options_container.add_theme_constant_override("separation", 6)
 		
 		for opt in quick_options:
 			var opt_str = str(opt)
 			var btn = Button.new()
 			btn.text = opt_str
+			# Uzun seçenek dar dock'u genişletmesin: satır kaydırır (metin kaybolmaz).
+			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			btn.focus_mode = Control.FOCUS_NONE
 			btn.add_theme_font_size_override("font_size", 11)
 			

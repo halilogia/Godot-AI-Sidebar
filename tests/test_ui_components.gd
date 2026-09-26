@@ -11,6 +11,9 @@ const AISidebarTelemetryCard = preload("res://addons/godot_sidebar_ai/ui/compone
 const AISidebarErrorCard = preload("res://addons/godot_sidebar_ai/ui/components/error_card.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarClarificationCard = preload("res://addons/godot_sidebar_ai/ui/components/clarification_card.gd")
+const AISidebarTaskChecklist = preload("res://addons/godot_sidebar_ai/ui/components/task_checklist.gd")
+const AISidebarWelcomeCard = preload("res://addons/godot_sidebar_ai/ui/components/welcome_card.gd")
 
 static func run() -> Dictionary:
 	var passed = 0
@@ -246,5 +249,47 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 15 (ActivityGroup manual re-expand after collapse) failed.")
 	live_grp.queue_free()
+
+	# Test 16: Uzun metinler dar dock'u genişletmez (editörde bulundu: netleştirme seçeneği
+	# 756+ px minimum genişlik isteyip sağ tarafı dock dışına itiyordu). Metin kaybolmaz:
+	# seçenek / öneri butonları satır kaydırır, tek satırlık başlıklar kesilip tooltip'te tam kalır.
+	var long_txt = "Map pipeline: province raster compiler + ID-texture/palette shader renderer + province picking and adjacency graph export"
+	var max_w = 320.0
+	var widths: Dictionary = {}
+	var clar = AISidebarClarificationCard.new(long_txt, ["1. " + long_txt, "2. short"])
+	clar._ready()
+	widths["clarification"] = clar.get_combined_minimum_size().x
+	var opt_text_kept = false
+	# Satır kaydıran seçenek yatay akışta en dar haline sıkışır (gerçek yerleşimde görüldü):
+	# dikey kutuda ve tam genişlikte olmalı.
+	var opt_layout_ok = false
+	for n in clar.find_children("*", "Button", true, false):
+		if str((n as Button).text) == "1. " + long_txt:
+			opt_text_kept = true
+			opt_layout_ok = (n.get_parent() is VBoxContainer) and ((n as Button).size_flags_horizontal & Control.SIZE_EXPAND) != 0
+	clar.free()
+	var tel16 = AISidebarTelemetryCard.new({"success": true, "elapsed_seconds": 123.4, "used_steps": 17, "max_steps": 20, "tool_calls": 44, "tools_sent": 28, "total_tools": 44, "file_ops": 12})
+	tel16._ready()
+	widths["telemetry"] = tel16.get_combined_minimum_size().x
+	var tel_tip = str(tel16._header_btn.tooltip_text) == str(tel16._header_btn.text)
+	tel16.free()
+	var cl16 = AISidebarTaskChecklist.new()
+	cl16.setup([long_txt, "short"], long_txt)
+	cl16._ready()
+	widths["checklist"] = cl16.get_combined_minimum_size().x
+	cl16.free()
+	var wc16 = AISidebarWelcomeCard.new()
+	wc16._ready()
+	widths["welcome"] = wc16.get_combined_minimum_size().x
+	wc16.free()
+	var too_wide: Array = []
+	for k in widths.keys():
+		if float(widths[k]) > max_w:
+			too_wide.append("%s=%d" % [k, int(widths[k])])
+	if too_wide.is_empty() and opt_text_kept and opt_layout_ok and tel_tip:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test 16 (narrow dock fit) failed: too_wide=%s opt_text_kept=%s opt_layout_ok=%s tel_tooltip=%s" % [str(too_wide), str(opt_text_kept), str(opt_layout_ok), str(tel_tip)])
 
 	return {"name": "UIComponentsTests", "passed": passed, "failed": failed, "errors": errors}

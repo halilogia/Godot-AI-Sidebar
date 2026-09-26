@@ -46,6 +46,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * Sohbet export'unda mesaj alanı boş (`null`) olan bir tool sonucu, Markdown'daki tool bölümünü yarıda kesmiyor.
 * Türkçe arayüzde kalan İngilizce metinler çevrildi: onay / netleştirme / plan / hata kartları, değişiklik kartı, kuyruk paneli, telemetri başlığı, etkinlik grubu, görev listesi, History paneli, ayar ipuçları ve üst çubuk. İngilizce arayüz aynı kaldı; yalnızca daha önce İngilizce modda da Türkçe görünen karşılama kartı, ek görseli, ipuçları ve onay diyaloğu artık İngilizce. "Changes (1 files)" gibi tekil/çoğul hataları düzeldi. README görselleri güncellendi.
 * Kuyruk panelindeki satır numarası ve iptal butonu tema renklerini kullanıyor.
+* Dar dock'ta arayüz sağdan taşmıyor: uzun netleştirme seçenekleri ve hızlı başlangıç önerileri satır kaydırıyor (seçenekler artık alt alta, tam genişlikte), görev listesi ve telemetri başlıkları "…" ile kısalıyor ve tam metin ipucunda görünüyor.
 * Ayarlardan dil değiştirilince karşılama kartı da yeni dile geçiyor; hızlı başlangıç önerileri artık çevriliyor (İngilizce arayüzde Türkçe kalıyordu).
 
 ### Eklenenler

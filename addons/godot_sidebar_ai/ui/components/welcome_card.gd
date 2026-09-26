@@ -89,6 +89,7 @@ func _build_content() -> void:
 		btn.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", AISidebarTheme.FONT_SIZE_SMALL)
 		btn.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
