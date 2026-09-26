@@ -14,12 +14,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "get_project_files",
-				"description": "Projedeki tüm dosya ve klasör ağacını veya belirli bir uzantıyı (.tscn, .gd, .png) listeler.",
+				"description": "Lists the project's files and folders, optionally filtered by extension (.tscn, .gd, .png).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"sub_path": { "type": "string", "description": "Taranacak alt dizin (varsayılan: 'res://')." },
-						"extension_filter": { "type": "string", "description": "Filtre (örn: '.gd', '.tscn', '.tres')." }
+						"sub_path": { "type": "string", "description": "Sub folder to list (default: 'res://')." },
+						"extension_filter": { "type": "string", "description": "Extension filter (e.g. '.gd', '.tscn', '.tres')." }
 					}
 				}
 			}
@@ -28,12 +28,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "search_project_assets",
-				"description": "Projedeki sahneleri, scriptleri, dokuları, materyalleri veya ses dosyalarını türe göre arar.",
+				"description": "Searches the project's scenes, scripts, textures, materials or audio files by type.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"query": { "type": "string", "description": "Aranacak dosya adı veya kelime (örn: 'player', 'jump', 'icon')." },
-						"asset_type": { "type": "string", "description": "Asset tipi: 'scene', 'script', 'texture', 'material', 'audio', 'all'" }
+						"query": { "type": "string", "description": "File name or word to search for (e.g. 'player', 'jump', 'icon')." },
+						"asset_type": { "type": "string", "description": "Asset type: 'scene', 'script', 'texture', 'material', 'audio', 'all'" }
 					},
 					"required": ["query"]
 				}
@@ -43,7 +43,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "analyze_project",
-				"description": "Projenin genel yapısını, ana sahnesini, sahne/script sayılarını ve mimarisini özetler.",
+				"description": "Summarizes the project: structure, main scene, scene/script counts and architecture.",
 				"parameters": {
 					"type": "object",
 					"properties": {}
@@ -54,7 +54,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "get_selected_nodes",
-				"description": "Kullanıcının Godot sahne ağacında şu anda fareyle seçtiği düğümleri listeler.",
+				"description": "Lists the nodes the user has currently selected in the Godot scene tree.",
 				"parameters": {
 					"type": "object",
 					"properties": {}
@@ -65,11 +65,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "select_node",
-				"description": "Belirtilen düğümü Godot sahne ağacında ve Inspector panelinde seçili hale getirir.",
+				"description": "Selects the given node in the Godot scene tree and Inspector.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Seçilecek düğüm yolu." }
+						"node_path": { "type": "string", "description": "Path of the node to select." }
 					},
 					"required": ["node_path"]
 				}
@@ -79,11 +79,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "open_scene",
-				"description": "Belirtilen sahneyi (.tscn) Godot ana editöründe açar.",
+				"description": "Opens the given scene (.tscn) in the Godot editor.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"scene_path": { "type": "string", "description": "Açılacak sahne yolu (örn: res://scenes/Main.tscn)." }
+						"scene_path": { "type": "string", "description": "Path of the scene to open (e.g. res://scenes/Main.tscn)." }
 					},
 					"required": ["scene_path"]
 				}
@@ -93,11 +93,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "play_game",
-				"description": "Projeyi veya aktif sahneyi test etmek için çalıştırır (Play).",
+				"description": "Runs the project (main scene) or the active scene.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"current_scene_only": { "type": "boolean", "description": "True ise sadece açık olan sahneyi oynatır (F6)." }
+						"current_scene_only": { "type": "boolean", "description": "If true, runs only the scene open in the editor (F6)." }
 					}
 				}
 			}
@@ -106,7 +106,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "stop_game",
-				"description": "Çalışmakta olan oyunu durdurur (Stop).",
+				"description": "Stops the running game.",
 				"parameters": {
 					"type": "object",
 					"properties": {}
@@ -117,11 +117,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "restart_game",
-				"description": "Oyunu durdurup yeniden başlatır (Restart).",
+				"description": "Stops and restarts the game.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"current_scene_only": { "type": "boolean", "description": "True ise sadece açık olan sahneyi yeniden oynatır." }
+						"current_scene_only": { "type": "boolean", "description": "If true, restarts only the scene open in the editor." }
 					}
 				}
 			}
@@ -130,7 +130,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "get_runtime_errors",
-				"description": "Çalışan oyundan veya log dosyasından en son hata ve exception kayıtlarını kaynak satırlarıyla çeker.",
+				"description": "Reads the latest errors and exceptions of the running game from its log, with source lines. Wait a few seconds after play_game; an inconclusive result means nothing was logged yet.",
 				"parameters": {
 					"type": "object",
 					"properties": {}
@@ -141,11 +141,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "take_editor_screenshot",
-				"description": "Godot editör arayüzünün anlık ekran görüntüsünü alır.",
+				"description": "Takes a screenshot of the Godot editor window.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"save_path": { "type": "string", "description": "Kaydedilecek yol (varsayılan: user://ai_editor_snapshot.png)." }
+						"save_path": { "type": "string", "description": "Where to save the image (default: user://ai_editor_snapshot.png)." }
 					}
 				}
 			}
@@ -154,12 +154,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "take_runtime_screenshot",
-				"description": "Çalışan OYUNUN kendi viewport görüntüsünü alır (RuntimeBridge) ve modelin görsel analizi için hazırlar. Oyun çalışmıyorsa hata döner.",
+				"description": "Takes a screenshot of the running GAME's own viewport for visual analysis. Fails if the game is not running.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"save_path": { "type": "string", "description": "Kaydedilecek yol (varsayılan: user://ai_runtime_snapshot.png)." },
-						"max_dimension": { "type": "integer", "description": "En uzun kenar üst sınırı, piksel (varsayılan: 960)." }
+						"save_path": { "type": "string", "description": "Where to save the image (default: user://ai_runtime_snapshot.png)." },
+						"max_dimension": { "type": "integer", "description": "Maximum length of the longest side in pixels (default: 960)." }
 					}
 				}
 			}
@@ -168,26 +168,26 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "take_viewport_screenshot",
-				"description": "Godot editörünün aktif 2D veya 3D sahne viewport görüntüsünü alır ve modelin görsel analizi için hazırlar.",
+				"description": "Takes a screenshot of the editor's active 2D or 3D scene viewport for visual analysis.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"viewport_type": {
 							"type": "string",
 							"enum": ["auto", "2d", "3d", "editor"],
-							"description": "Görüntüsü alınacak viewport tipi. 'auto': aktif sahne kök düğümüne göre otomatik seçer (2D veya 3D), '2d': 2D editör viewport'u, '3d': 3D editör viewport'u, 'editor': tüm editör penceresi (varsayılan: 'auto')."
+							"description": "Viewport to capture. 'auto': 2D or 3D from the active scene root, '2d': the 2D editor viewport, '3d': the 3D editor viewport, 'editor': the whole editor window (default: 'auto')."
 						},
 						"viewport_index": {
 							"type": "integer",
-							"description": "3D viewport için indeks (0-3 arası, varsayılan: 0)."
+							"description": "3D viewport index (0-3, default: 0)."
 						},
 						"save_path": {
 							"type": "string",
-							"description": "Kaydedilecek dosya yolu (varsayılan: 'user://ai_viewport_snapshot.png')."
+							"description": "Where to save the image (default: 'user://ai_viewport_snapshot.png')."
 						},
 						"max_dimension": {
 							"type": "integer",
-							"description": "Görselin maksimum genişlik/yükseklik boyutu (piksel). Token tasarrufu için ölçeklendirilir (varsayılan: 1280, 0 ise orijinal boyut korunur)."
+							"description": "Maximum image width/height in pixels; scaled down to save tokens (default: 1280, 0 keeps the original size)."
 						}
 					}
 				}
@@ -197,12 +197,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "inspect_runtime_tree",
-				"description": "Çalışan oyunun canlı sahne ağacını (Remote Scene Tree) hiyerarşik olarak listeler. Oyunun çalışır durumda olması (play_game) gerekir.",
+				"description": "Lists the live scene tree of the running game (remote scene tree). The game must be running (play_game).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"path": { "type": "string", "description": "İncelenecek düğüm yolu (boş bırakılırsa kök 'root'tan başlar)." },
-						"max_depth": { "type": "integer", "description": "Maksimum hiyerarşi derinliği (varsayılan: 3)." }
+						"path": { "type": "string", "description": "Node path to start from (empty: the root)." },
+						"max_depth": { "type": "integer", "description": "Maximum hierarchy depth (default: 3)." }
 					}
 				}
 			}
@@ -211,11 +211,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "inspect_runtime_node",
-				"description": "Çalışan oyundaki belirli bir canlı düğümün güvenli özelliklerini (name, type, position, rotation, scale, visible, process_mode) sorgular.",
+				"description": "Reads safe properties of a live node in the running game (name, type, position, rotation, scale, visible, process_mode).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Sorgulanacak düğüm yolu (örn: 'Main/Player' veya mutlak '/root/Main/Player')." }
+						"node_path": { "type": "string", "description": "Path of the node to query (e.g. 'Main/Player' or absolute '/root/Main/Player')." }
 					},
 					"required": ["node_path"]
 				}

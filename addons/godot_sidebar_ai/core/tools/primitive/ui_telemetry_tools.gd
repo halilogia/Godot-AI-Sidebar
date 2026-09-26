@@ -22,25 +22,25 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "inspect_ui_layout",
-				"description": "Belirtilen UI düğümünün veya sahne ağacının hiyerarşik yerleşim telemetrisini (geometri, bounding box, minimum boyutlar, görünürlük, kırpılma, tema, A11y ve semantik roller) ve kanıta dayalı layout uyarılarını döner. Tamamen salt okunurdur (read-only).",
+				"description": "Returns layout telemetry for a UI node or scene tree (geometry, bounding boxes, minimum sizes, visibility, clipping, theme, accessibility and semantic roles) with evidence-based layout warnings. Read-only.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"root_path": {
 							"type": "string",
-							"description": "Taranacak kök düğüm yolu (örn: '@sidebar', '@sidebar/HistoryPanel', '@edited_scene', '/root/...', veya sahne içi düğüm adı). Boş veya '@edited_scene' ise açık oyun sahnesi kökü taranır; '@sidebar' ise eklentinin kendi arayüzü taranır."
+							"description": "Root node path to scan (e.g. '@sidebar', '@sidebar/HistoryPanel', '@edited_scene', '/root/...', or a node name in the scene). Empty or '@edited_scene' scans the open game scene; '@sidebar' scans the plugin's own UI."
 						},
 						"max_depth": {
 							"type": "integer",
-							"description": "Taranacak maksimum hiyerarşi derinliği (varsayılan: 4, maksimum: 8)."
+							"description": "Maximum hierarchy depth to scan (default: 4, maximum: 8)."
 						},
 						"include_invisible": {
 							"type": "boolean",
-							"description": "Görünmez (is_visible_in_tree == false) düğümlerin dahil edilip edilmeyeceği (varsayılan: false)."
+							"description": "Whether to include invisible nodes (is_visible_in_tree == false) (default: false)."
 						},
 						"include_theme_details": {
 							"type": "boolean",
-							"description": "Detaylı StyleBox (arka plan, border, radius), font boyutu ve renk bilgilerinin dahil edilip edilmeyeceği (varsayılan: false)."
+							"description": "Whether to include StyleBox details (background, border, radius), font size and colors (default: false)."
 						}
 					}
 				}

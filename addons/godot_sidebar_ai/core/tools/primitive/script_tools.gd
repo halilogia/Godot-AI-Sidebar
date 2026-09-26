@@ -15,11 +15,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "read_script",
-				"description": "Belirtilen GDScript, shader veya metin dosyasının tüm içeriğini satır satır okur.",
+				"description": "Reads the full content of a GDScript, shader or text file.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"file_path": { "type": "string", "description": "Dosya yolu (örn: res://scripts/Player.gd)." }
+						"file_path": { "type": "string", "description": "File path (e.g. res://scripts/Player.gd)." }
 					},
 					"required": ["file_path"]
 				}
@@ -29,12 +29,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_or_update_script",
-				"description": "Bir GDScript veya metin dosyasını atomik olarak oluşturur veya günceller. Kod diske yazılmadan önce bellekte sözdizimi doğrulamasından geçirilir.",
+				"description": "Creates or updates a GDScript or text file atomically. The code is validated in memory before it is written.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"file_path": { "type": "string", "description": "Dosya yolu (örn: res://scripts/Player.gd)." },
-						"content": { "type": "string", "description": "Yazılacak GDScript kodu." }
+						"file_path": { "type": "string", "description": "File path (e.g. res://scripts/Player.gd)." },
+						"content": { "type": "string", "description": "GDScript code to write." }
 					},
 					"required": ["file_path", "content"]
 				}
@@ -44,12 +44,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "delete_file",
-				"description": "Projeden bir script, sahne veya dosyayı güvenli biçimde siler. Kullanıcı onayı (approval) gerektirir ve ChangeSet üzerinden geri alınabilir (Undo).",
+				"description": "Safely deletes a script, scene or file from the project. Needs user approval and can be undone through the change set.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"file_path": { "type": "string", "description": "Silinecek dosya yolu (örn: res://scripts/OldScript.gd veya res://DiffTest.gd)." },
-						"reason": { "type": "string", "description": "Dosyanın silinme gerekçesi." }
+						"file_path": { "type": "string", "description": "Path of the file to delete (e.g. res://scripts/OldScript.gd)." },
+						"reason": { "type": "string", "description": "Why the file is deleted." }
 					},
 					"required": ["file_path"]
 				}
@@ -59,18 +59,18 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "write_files",
-				"description": "Birden fazla script veya sahne dosyasını tek atomik operasyonda toplu olarak oluşturur veya günceller. Bağımlılıklar (ExtResource ve GDScript) batch içinde otomatik çözümlenir.",
+				"description": "Creates or updates several script or scene files in one atomic batch. Dependencies between them (ExtResource, GDScript) are resolved inside the batch.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"files": {
 							"type": "array",
-							"description": "Yazılacak dosyaların listesi. Her öğe 'file_path' ve 'content' alanlarına sahiptir.",
+							"description": "Files to write. Each item has 'file_path' and 'content'.",
 							"items": {
 								"type": "object",
 								"properties": {
-									"file_path": { "type": "string", "description": "Dosya yolu (örn: res://scripts/Player.gd veya res://scenes/Player.tscn)." },
-									"content": { "type": "string", "description": "Dosya metin içeriği." }
+									"file_path": { "type": "string", "description": "File path (e.g. res://scripts/Player.gd or res://scenes/Player.tscn)." },
+									"content": { "type": "string", "description": "File text content." }
 								},
 								"required": ["file_path", "content"]
 							}
@@ -84,11 +84,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "open_script",
-				"description": "Belirtilen script dosyasını Godot Script Editöründe açar.",
+				"description": "Opens the given script in the Godot script editor.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"file_path": { "type": "string", "description": "Açılacak script yolu (örn: res://scripts/Player.gd)." }
+						"file_path": { "type": "string", "description": "Path of the script to open (e.g. res://scripts/Player.gd)." }
 					},
 					"required": ["file_path"]
 				}
@@ -98,11 +98,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "validate_script",
-				"description": "Bir GDScript dosyasının derlenip derlenmediğini ve syntax hatalarını kontrol eder.",
+				"description": "Checks whether a GDScript file compiles and reports syntax errors.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"file_path": { "type": "string", "description": "Kontrol edilecek script yolu." }
+						"file_path": { "type": "string", "description": "Path of the script to check." }
 					},
 					"required": ["file_path"]
 				}
@@ -112,13 +112,13 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "replace_file_content",
-				"description": "Mevcut bir dosyada belirli bir kod bloğunu cerrahi (surgical) olarak yeni kod bloğuyla değiştirir. Tüm dosyayı baştan sona yeniden yazmak yerine sadece değişecek kısmı güncellemek için kullanılır.",
+				"description": "Surgically replaces one code block in an existing file. Use it to change only the part that changes instead of rewriting the whole file.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"file_path": { "type": "string", "description": "Değiştirilecek dosya yolu (örn: res://scripts/Player.gd)." },
-						"target_code": { "type": "string", "description": "Dosyada tam olarak eşleşmesi gereken mevcut kod bloğu." },
-						"replacement_code": { "type": "string", "description": "Hedef kodun yerine yazılacak yeni kod bloğu." }
+						"file_path": { "type": "string", "description": "Path of the file to change (e.g. res://scripts/Player.gd)." },
+						"target_code": { "type": "string", "description": "Existing code block; must match the file exactly." },
+						"replacement_code": { "type": "string", "description": "New code block that replaces the target." }
 					},
 					"required": ["file_path", "target_code", "replacement_code"]
 				}

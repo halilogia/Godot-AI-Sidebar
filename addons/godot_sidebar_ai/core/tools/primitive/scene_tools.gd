@@ -43,11 +43,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "get_scene_tree",
-				"description": "Aktif sahnedeki tüm düğüm (node) hiyerarşisini, tiplerini ve yollarını listeler.",
+				"description": "Lists the full node hierarchy of the active scene with node types and paths.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"root_path": { "type": "string", "description": "Taranacak başlangıç düğüm yolu (varsayılan: aktif sahne kökü)." }
+						"root_path": { "type": "string", "description": "Node path to start from (default: the active scene root)." }
 					}
 				}
 			}
@@ -56,14 +56,14 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_scene",
-				"description": "Sıfırdan yeni bir sahne (.tscn) dosyası oluşturur. İsteğe bağlı olarak doğrudan tam TSCN metin içeriği verilebilir (File-First tek adımda tüm sahne oluşturma).",
+				"description": "Creates a new scene (.tscn) file. Optionally takes the complete TSCN text to create the whole scene in one step (file-first).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"scene_path": { "type": "string", "description": "Kaydedilecek yol (örn: res://scenes/Player.tscn veya res://scenes/Main.tscn)." },
-						"root_type": { "type": "string", "description": "Kök düğüm tipi (örn: CharacterBody3D, Node3D, Node2D, Control)." },
-						"root_name": { "type": "string", "description": "Kök düğüm adı (örn: Player, Main, Level1)." },
-						"tscn_content": { "type": "string", "description": "Opsiyonel: Doğrudan yazılacak komple .tscn metin içeriği (File-First hızlı üretim)." }
+						"scene_path": { "type": "string", "description": "Path to save to (e.g. res://scenes/Player.tscn or res://scenes/Main.tscn)." },
+						"root_type": { "type": "string", "description": "Root node type (e.g. CharacterBody3D, Node3D, Node2D, Control)." },
+						"root_name": { "type": "string", "description": "Root node name (e.g. Player, Main, Level1)." },
+						"tscn_content": { "type": "string", "description": "Optional: complete .tscn text to write as-is (fast file-first creation)." }
 					},
 					"required": ["scene_path", "root_type"]
 				}
@@ -73,13 +73,13 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "add_node",
-				"description": "Sahneye yeni bir düğüm (CharacterBody3D, MeshInstance3D, CollisionShape3D, Camera3D vb.) ekler (Ctrl+Z ile geri alınabilir).",
+				"description": "Adds a new node (CharacterBody3D, MeshInstance3D, CollisionShape3D, Camera3D, ...) to the scene (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_type": { "type": "string", "description": "Godot sınıf adı (Örn: CharacterBody3D, MeshInstance3D, CollisionShape3D, Camera3D)." },
-						"node_name": { "type": "string", "description": "Düğümün adı (Örn: Mesh, Collision, Camera, Player)." },
-						"parent_path": { "type": "string", "description": "Ekleneceği üst düğümün yolu (boşsa sahne köküne eklenir)." }
+						"node_type": { "type": "string", "description": "Godot class name (e.g. CharacterBody3D, MeshInstance3D, CollisionShape3D, Camera3D)." },
+						"node_name": { "type": "string", "description": "Node name (e.g. Mesh, Collision, Camera, Player)." },
+						"parent_path": { "type": "string", "description": "Path of the parent node (empty: the scene root)." }
 					},
 					"required": ["node_type", "node_name"]
 				}
@@ -89,13 +89,13 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "instantiate_scene",
-				"description": "Diskteki bir sahneyi (.tscn) aktif sahnenin içine alt düğüm olarak ekler (Ctrl+Z ile geri alınabilir).",
+				"description": "Instances a scene (.tscn) from disk as a child node in the active scene (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"scene_path": { "type": "string", "description": "Örneklenecek sahne yolu (örn: res://scenes/Player.tscn)." },
-						"parent_path": { "type": "string", "description": "Ekleneceği üst düğüm yolu." },
-						"node_name": { "type": "string", "description": "Oluşacak düğümün adı (opsiyonel)." }
+						"scene_path": { "type": "string", "description": "Path of the scene to instance (e.g. res://scenes/Player.tscn)." },
+						"parent_path": { "type": "string", "description": "Path of the parent node." },
+						"node_name": { "type": "string", "description": "Name of the new node (optional)." }
 					},
 					"required": ["scene_path"]
 				}
@@ -105,11 +105,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "delete_node",
-				"description": "Sahnede belirtilen düğümü siler (Ctrl+Z ile geri alınabilir).",
+				"description": "Deletes the given node from the scene (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Silinecek düğümün tam veya göreli yolu." }
+						"node_path": { "type": "string", "description": "Full or relative path of the node to delete." }
 					},
 					"required": ["node_path"]
 				}
@@ -119,12 +119,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "rename_node",
-				"description": "Sahnede belirtilen bir düğümün adını değiştirir (Ctrl+Z ile geri alınabilir).",
+				"description": "Renames the given node in the scene (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Düğümün yolu." },
-						"new_name": { "type": "string", "description": "Yeni düğüm adı." }
+						"node_path": { "type": "string", "description": "Node path." },
+						"new_name": { "type": "string", "description": "New node name." }
 					},
 					"required": ["node_path", "new_name"]
 				}
@@ -134,12 +134,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "duplicate_node",
-				"description": "Sahnede belirtilen bir düğümün kopyasını oluşturur (Ctrl+Z ile geri alınabilir).",
+				"description": "Duplicates the given node in the scene (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Kopyalanacak düğüm yolu." },
-						"new_name": { "type": "string", "description": "Kopya düğümün yeni adı (opsiyonel)." }
+						"node_path": { "type": "string", "description": "Path of the node to duplicate." },
+						"new_name": { "type": "string", "description": "Name of the copy (optional)." }
 					},
 					"required": ["node_path"]
 				}
@@ -149,13 +149,13 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "set_node_property",
-				"description": "Bir düğümün özelliğini (position, scale, text vb.) değiştirir (Ctrl+Z ile geri alınabilir).",
+				"description": "Sets a node property (position, scale, text, ...) (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Hedef düğümün yolu." },
-						"property_name": { "type": "string", "description": "Değiştirilecek özellik adı." },
-						"property_value": { "description": "Yeni değer ('Vector3(0, 1, 0)', '#ff0000', sayı vb.)." }
+						"node_path": { "type": "string", "description": "Path of the target node." },
+						"property_name": { "type": "string", "description": "Property name." },
+						"property_value": { "description": "New value ('Vector3(0, 1, 0)', '#ff0000', a number, ...)." }
 					},
 					"required": ["node_path", "property_name", "property_value"]
 				}
@@ -165,11 +165,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "get_node_properties",
-				"description": "Bir düğümün tüm inspector özelliklerini ve mevcut değerlerini listeler.",
+				"description": "Lists all Inspector properties of a node with their current values.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "İncelenecek düğüm yolu." }
+						"node_path": { "type": "string", "description": "Path of the node to inspect." }
 					},
 					"required": ["node_path"]
 				}
@@ -179,14 +179,14 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "connect_signal",
-				"description": "İki düğüm arasındaki bir sinyali hedefin metoduna bağlar (Ctrl+Z ile geri alınabilir).",
+				"description": "Connects a signal of one node to a method of another (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"source_node_path": { "type": "string", "description": "Sinyali yayınlayan düğüm yolu." },
-						"signal_name": { "type": "string", "description": "Sinyal adı (örn: pressed, body_entered)." },
-						"target_node_path": { "type": "string", "description": "Sinyali dinleyen düğüm yolu." },
-						"method_name": { "type": "string", "description": "Çalıştırılacak fonksiyon adı." }
+						"source_node_path": { "type": "string", "description": "Path of the node that emits the signal." },
+						"signal_name": { "type": "string", "description": "Signal name (e.g. pressed, body_entered)." },
+						"target_node_path": { "type": "string", "description": "Path of the node that receives the signal." },
+						"method_name": { "type": "string", "description": "Name of the method to call." }
 					},
 					"required": ["source_node_path", "signal_name", "target_node_path", "method_name"]
 				}
@@ -196,12 +196,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "attach_script_to_node",
-				"description": "Diskteki bir GDScript dosyasını aktif sahnedeki belirli bir düğüme bağlar (Ctrl+Z ile geri alınabilir).",
+				"description": "Attaches a GDScript file from disk to a node in the active scene (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Hedef düğümün yolu." },
-						"script_path": { "type": "string", "description": "Script yolu (örn: res://scripts/Player.gd)." }
+						"node_path": { "type": "string", "description": "Path of the target node." },
+						"script_path": { "type": "string", "description": "Script path (e.g. res://scripts/Player.gd)." }
 					},
 					"required": ["node_path", "script_path"]
 				}
@@ -211,12 +211,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "reparent_node",
-				"description": "Bir düğümü başka bir üst düğümün altına taşır (Ctrl+Z ile geri alınabilir).",
+				"description": "Moves a node under another parent (undoable with Ctrl+Z).",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"node_path": { "type": "string", "description": "Taşınacak düğümün yolu." },
-						"new_parent_path": { "type": "string", "description": "Yeni üst düğümün yolu." }
+						"node_path": { "type": "string", "description": "Path of the node to move." },
+						"new_parent_path": { "type": "string", "description": "Path of the new parent node." }
 					},
 					"required": ["node_path", "new_parent_path"]
 				}
@@ -226,7 +226,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "save_scene",
-				"description": "Aktif olarak düzenlenen sahneyi diske kaydeder.",
+				"description": "Saves the scene currently being edited to disk.",
 				"parameters": {
 					"type": "object",
 					"properties": {}

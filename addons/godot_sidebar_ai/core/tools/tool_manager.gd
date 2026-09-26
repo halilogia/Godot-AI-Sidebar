@@ -27,11 +27,11 @@ static func get_all_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": "search_tools",
-			"description": "Mevcut tüm Godot araçları arasında arama yapar ve sadece ilgili araçların listesini döner.",
+			"description": "Searches all available Godot tools and returns only the matching ones.",
 			"parameters": {
 				"type": "object",
 				"properties": {
-					"query": { "type": "string", "description": "Aranacak kelime (örn: 'scene', 'script', 'camera', 'character', 'enemy', 'hud')." }
+					"query": { "type": "string", "description": "Word to search for (e.g. 'scene', 'script', 'camera', 'character', 'enemy', 'hud')." }
 				},
 				"required": ["query"]
 			}
@@ -43,18 +43,18 @@ static func get_all_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": "ask_user",
-			"description": "Sonucu kökten değiştirecek ve aktif editör bağlamından çıkarılamayan kritik bir mimari veya kapsam belirsizliği olduğunda kullanıcıya soru sorup netleştirme (clarification) ister (Örn: 'Sahne oluştur ve slime yap' dendiğinde 2D mi 3D mi olduğu belirsizse veya 'hexagon oluştur' dendiğinde tekil bir obje mi yoksa oynanabilir bir ızgara haritası mı olduğu belirsizse). Önemsiz detaylarda (hız, renk, boyut vb.) KESİNLİKLE soru sormayın, makul varsayımla devam edin.",
+			"description": "Asks the user a clarifying question when a critical architecture or scope ambiguity would change the result and cannot be inferred from the editor context (e.g. 'make a scene with a slime' when 2D vs 3D is unclear, or 'make a hexagon' when a single object vs a playable grid map is unclear). NEVER ask about minor details (speed, color, size, ...); continue with a sensible assumption.",
 			"parameters": {
 				"type": "object",
 				"properties": {
 					"question": {
 						"type": "string",
-						"description": "Kullanıcıya sorulacak açık, net ve kısa soru."
+						"description": "A clear, short question for the user."
 					},
 					"options": {
 						"type": "array",
 						"items": { "type": "string" },
-						"description": "Kullanıcının tek tıkla seçebileceği hızlı seçenekler (örn: ['2D', '3D']). İsteğe bağlıdır."
+						"description": "Quick options the user can pick with one click (e.g. ['2D', '3D']). Optional."
 					}
 				},
 				"required": ["question"]
@@ -67,17 +67,17 @@ static func get_all_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": "propose_plan",
-			"description": "Orta/büyük kapsamlı bir üretim isteğinde, KOD YAZMADAN ÖNCE kullanıcıya uygulanabilir bir implementation plan sunar ve onay ister. Plan onaylanana kadar hiçbir değiştirici araç (dosya yazma/silme, sahne veya düğüm mutasyonu) çalıştırılamaz. Plan somut olmalıdır: 'sistem oluştur ve test et' gibi genel ifadeler YETERSİZDİR; gerçek dosya yolları, sıralı ve uygulanabilir adımlar ve somut doğrulama ölçütleri içermelidir.",
+			"description": "For a medium or large build request, presents an actionable implementation plan BEFORE WRITING ANY CODE and asks for approval. No changing tool (file write/delete, scene or node change) can run until the plan is approved. The plan must be concrete: vague steps like 'build the system and test it' are NOT enough; it needs real file paths, ordered actionable steps and concrete verification criteria.",
 			"parameters": {
 				"type": "object",
 				"properties": {
-					"goal": { "type": "string", "description": "Planın tek cümlelik amacı (ör. 'Oynanabilir hex grid sistemi oluşturmak')." },
-					"affected_files": { "type": "array", "items": { "type": "string" }, "description": "Etkilenecek gerçek dosya yolları (ör. 'res://scripts/HexGrid.gd')." },
-					"steps": { "type": "array", "items": { "type": "string" }, "description": "Sıralı, uygulanabilir adımlar (ör. 'HexGrid modelinde koordinat dönüşümü ve komşu araması ekle')." },
-					"dependencies": { "type": "array", "items": { "type": "string" }, "description": "Ön koşullar / bağımlılıklar (isteğe bağlı)." },
-					"verification": { "type": "array", "items": { "type": "string" }, "description": "Planın nasıl doğrulanacağı (ör. 'Üretilen düğüm hiyerarşisini doğrula', 'Projeyi çalıştırıp hata olmadığını kontrol et')." },
-					"risks": { "type": "array", "items": { "type": "string" }, "description": "Bilinen riskler (isteğe bağlı)." },
-					"tools": { "type": "array", "items": { "type": "string" }, "description": "Kullanılacak araçlar (isteğe bağlı)." }
+					"goal": { "type": "string", "description": "The plan's goal in one sentence (e.g. 'Build a playable hex grid system')." },
+					"affected_files": { "type": "array", "items": { "type": "string" }, "description": "Real file paths that will be affected (e.g. 'res://scripts/HexGrid.gd')." },
+					"steps": { "type": "array", "items": { "type": "string" }, "description": "Ordered, actionable steps (e.g. 'Add coordinate conversion and neighbor lookup to the HexGrid model')." },
+					"dependencies": { "type": "array", "items": { "type": "string" }, "description": "Prerequisites / dependencies (optional)." },
+					"verification": { "type": "array", "items": { "type": "string" }, "description": "How the plan will be verified (e.g. 'Check the generated node hierarchy', 'Run the project and check there are no errors')." },
+					"risks": { "type": "array", "items": { "type": "string" }, "description": "Known risks (optional)." },
+					"tools": { "type": "array", "items": { "type": "string" }, "description": "Tools that will be used (optional)." }
 				},
 				"required": ["goal", "steps", "verification"]
 			}

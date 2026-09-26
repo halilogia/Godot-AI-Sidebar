@@ -13,14 +13,14 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_character_scene",
-				"description": "Tek adımda tam çalışan, scripti, collision şekli ve hareketi hazır 2D veya 3D bir karakter sahnesi oluşturur.",
+				"description": "Creates a working 2D or 3D character scene in one step, with script, collision shape and movement.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"dimension": { "type": "string", "enum": ["2d", "3d"], "description": "2D veya 3D karakter tipi." },
-						"character_name": { "type": "string", "description": "Karakter adı (örn: Player, Enemy)." },
-						"speed": { "type": "number", "description": "Hareket hızı (varsayılan: 300.0)." },
-						"jump_velocity": { "type": "number", "description": "Zıplama kuvveti (varsayılan: -400.0)." }
+						"dimension": { "type": "string", "enum": ["2d", "3d"], "description": "2D or 3D character." },
+						"character_name": { "type": "string", "description": "Character name (e.g. Player, Enemy)." },
+						"speed": { "type": "number", "description": "Movement speed (default: 300.0)." },
+						"jump_velocity": { "type": "number", "description": "Jump force (default: -400.0)." }
 					},
 					"required": ["dimension", "character_name"]
 				}
@@ -30,13 +30,13 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_enemy_scene",
-				"description": "Devriye gezen veya oyuncuyu takip eden 2D/3D düşman karakter sahnesi ve scripti oluşturur.",
+				"description": "Creates a 2D/3D enemy scene and script that patrols or chases the player.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"enemy_name": { "type": "string", "description": "Düşman adı (örn: Goblin, Slime)." },
-						"dimension": { "type": "string", "enum": ["2d", "3d"], "description": "2D veya 3D." },
-						"patrol_range": { "type": "number", "description": "Devriye mesafesi (varsayılan: 200.0)." }
+						"enemy_name": { "type": "string", "description": "Enemy name (e.g. Goblin, Slime)." },
+						"dimension": { "type": "string", "enum": ["2d", "3d"], "description": "2D or 3D." },
+						"patrol_range": { "type": "number", "description": "Patrol distance (default: 200.0)." }
 					},
 					"required": ["enemy_name"]
 				}
@@ -46,11 +46,11 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_ui_hud",
-				"description": "Can barı (ProgressBar), skor etiketi ve para sayacı içeren hazır bir Control HUD sahnesi oluşturur.",
+				"description": "Creates a ready Control HUD scene with a health bar (ProgressBar), score label and coin counter.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"hud_name": { "type": "string", "description": "HUD sahne adı (varsayılan: GameHUD)." }
+						"hud_name": { "type": "string", "description": "HUD scene name (default: GameHUD)." }
 					}
 				}
 			}
@@ -59,12 +59,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "create_interactable",
-				"description": "Oyuncunun yaklaştığında 'E tuşuna bas' uyarısı çıkaran etkileşimli alan (Area2D/Area3D) sahnesi kurar.",
+				"description": "Creates an interactable area scene (Area2D/Area3D) that shows a 'press E' prompt when the player comes close.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"object_name": { "type": "string", "description": "Nesne adı (örn: Chest, Door, NPC)." },
-						"prompt_message": { "type": "string", "description": "Gösterilecek mesaj (örn: '[E] Aç')." }
+						"object_name": { "type": "string", "description": "Object name (e.g. Chest, Door, NPC)." },
+						"prompt_message": { "type": "string", "description": "Message to show (e.g. '[E] Open')." }
 					},
 					"required": ["object_name"]
 				}
@@ -74,12 +74,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "setup_camera_follow",
-				"description": "Aktif sahneye yumuşak takip (smooth follow) özellikli bir kamera ekler ve hedef düğüme bağlar.",
+				"description": "Adds a smooth-follow camera to the active scene and attaches it to the target node.",
 				"parameters": {
 					"type": "object",
 					"properties": {
-						"target_node_path": { "type": "string", "description": "Takip edilecek hedef düğümün yolu (örn: Player)." },
-						"zoom": { "type": "number", "description": "Kamera yakınlaştırma oranı (örn: 1.5)." }
+						"target_node_path": { "type": "string", "description": "Path of the node to follow (e.g. Player)." },
+						"zoom": { "type": "number", "description": "Camera zoom factor (e.g. 1.5)." }
 					},
 					"required": ["target_node_path"]
 				}
