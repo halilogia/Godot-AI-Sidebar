@@ -276,6 +276,15 @@ static func _init_default_commands() -> void:
 		Callable(AISidebarSlashCommandManager, "_handle_skill")
 	)
 
+	# 10c. /learn
+	register_command(
+		"learn",
+		"Kalıcı kural öğretir: `/learn kural` metni tek net kurala çevirip kaydeder; argümansız `/learn` bu konuşmadaki düzeltmelerden kural önerir. Varsayılan proje kuralı (.agents/rules/AGENTS.md); `--global` ile bütün projeler (~/.agents/AGENTS.md). Kaydetmeden önce onay ister (Manuel / Otomatik).",
+		"/learn [--global] [kural]",
+		AISidebarPermissionPolicy.RiskLevel.EXTERNAL_SENSITIVE,
+		Callable(AISidebarSlashCommandManager, "_handle_learn")
+	)
+
 	# 11. /mcp
 	register_command(
 		"mcp",
@@ -407,6 +416,21 @@ static func _handle_skill(args: String, _context: Dictionary) -> Dictionary:
 	var request := parts[1] if parts.size() > 1 else "Bu skill'i şu anki projeye uygula."
 	var prompt := "The user activated this skill; follow its instructions for the request below.\n\n" + AISidebarSkillRegistry.activation_content(skill) + "\n\nRequest: " + request
 	return {"action": "run_agent", "prompt": prompt, "display_prompt": "/skill " + args.strip_edges()}
+
+## /learn: kalıcı kuralı add_rule aracıyla kaydettirir (araç onay ister). Metin verilirse onu tek
+## net kurala çevirir; verilmezse konuşmadaki kullanıcı düzeltmelerinden 1-3 kural önerir.
+static func _handle_learn(args: String, _context: Dictionary) -> Dictionary:
+	var text := args.strip_edges()
+	var scope := "project"
+	if text.begins_with("--global"):
+		scope = "global"
+		text = text.trim_prefix("--global").strip_edges()
+	var prompt := ""
+	if text.is_empty():
+		prompt = "Look back at this conversation for corrections or preferences the user expressed that should apply to every future task. Propose at most 3 rules, each one short, testable sentence (procedures belong in a skill, not a rule). Save each with the add_rule tool, scope=%s. If there is nothing worth keeping, say so and save nothing." % scope
+	else:
+		prompt = "The user wants this remembered as a permanent rule: \"%s\". Rewrite it as one short, testable, imperative sentence without losing its meaning and save it with the add_rule tool, scope=%s. Do nothing else." % [text, scope]
+	return {"action": "run_agent", "prompt": prompt, "display_prompt": "/learn " + args.strip_edges()}
 
 static func _handle_run(_args: String, _context: Dictionary) -> Dictionary:
 	var prompt = "Godot oyun projesini play_game aracıyla çalıştır. Çalışma zamanı (runtime) gözlemlerini ve hata loglarını alıp durumu raporla."

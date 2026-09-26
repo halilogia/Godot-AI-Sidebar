@@ -167,7 +167,9 @@ static func _init_default_risks() -> void:
 		
 	# EXTERNAL_SENSITIVE: Dış sisteme/ağa veri aktarma veya hassas dinamik yürütme
 	var sensitive_tools = [
-		"eval_gdscript"
+		"eval_gdscript",
+		# Bütün gelecek oturumları etkileyen kalıcı talimat yazar: Manuel / Otomatik modda onay ister.
+		"add_rule"
 	]
 	for t in sensitive_tools:
 		_tool_risk_registry[t] = RiskLevel.EXTERNAL_SENSITIVE

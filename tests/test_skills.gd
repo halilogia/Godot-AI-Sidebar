@@ -5,7 +5,10 @@ extends RefCounted
 
 const AISidebarSkillParser = preload("res://addons/godot_sidebar_ai/core/skills/skill_parser.gd")
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
-const AISidebarProjectInstructions = preload("res://addons/godot_sidebar_ai/core/skills/project_instructions.gd")
+const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skills/rules_registry.gd")
+const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
+const AISidebarExternalAgentGateway = preload("res://addons/godot_sidebar_ai/core/bridge/external_agent_gateway.gd")
+const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
 const AISidebarContextCompactor = preload("res://addons/godot_sidebar_ai/core/agent/context_compactor.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 const AISidebarSlashCommandManager = preload("res://addons/godot_sidebar_ai/core/commands/slash_command_manager.gd")
@@ -114,19 +117,66 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("T4 (compaction keeps skills) failed")
 
-	# 5. AGENTS.md: varsa başlıkla eklenir, uzunsa kesilir, yoksa hiçbir şey eklenmez.
-	var agents_path := TMP + "/AGENTS.md"
-	_write(agents_path, "Use typed GDScript.")
-	var p_ok := AISidebarProjectInstructions.prompt_text(agents_path)
-	_write(agents_path, "y".repeat(AISidebarProjectInstructions.MAX_CHARS + 50))
-	var p_long := AISidebarProjectInstructions.prompt_text(agents_path)
+	# 5. Kurallar: global önce, proje sonra; .agents/rules/*.md alfabetik, .md dışı atlanır; kesme; add_rule.
 	_rm(TMP)
-	var p_none := AISidebarProjectInstructions.prompt_text(agents_path)
-	if p_ok.contains("AGENTS.md") and p_ok.ends_with("Use typed GDScript.") and p_long.contains("truncated") and p_none == "":
+	var g_dir := TMP + "/home/.agents"
+	var p_agents := TMP + "/proj/AGENTS.md"
+	var p_rules := TMP + "/proj/.agents/rules"
+	_write(g_dir + "/AGENTS.md", "G-main")
+	_write(g_dir + "/rules/b.md", "G-b")
+	_write(g_dir + "/rules/a.md", "G-a")
+	_write(p_agents, "P-main")
+	_write(p_rules + "/x.md", "P-x")
+	_write(p_rules + "/notes.txt", "ignored")
+	var pfiles: Array[String] = [p_agents, TMP + "/proj/GEMINI.md"]
+	var rules := AISidebarRulesRegistry.discover(g_dir, pfiles, p_rules)
+	var order: Array = []
+	for r in rules:
+		order.append("%s:%s" % [r["scope"], str(r["path"]).get_file()])
+	var text := AISidebarRulesRegistry.prompt_text(rules)
+	var learn_file := p_rules + "/AGENTS.md"
+	var add1 := AISidebarRulesRegistry.add_rule("Keep data in JSON", "project", g_dir, learn_file)
+	var add2 := AISidebarRulesRegistry.add_rule("Two\nlines", "project", g_dir, learn_file)
+	var add_g := AISidebarRulesRegistry.add_rule("Global one", "global", g_dir, learn_file)
+	var add_empty := AISidebarRulesRegistry.add_rule("  ", "project", g_dir, learn_file)
+	var add_long := AISidebarRulesRegistry.add_rule("z".repeat(600), "project", g_dir, learn_file)
+	var learned := FileAccess.get_file_as_string(learn_file)
+	var g_text := FileAccess.get_file_as_string(g_dir + "/AGENTS.md")
+	_write(p_agents, "y".repeat(AISidebarRulesRegistry.MAX_TOTAL_CHARS + 50))
+	var rules_long := AISidebarRulesRegistry.prompt_text(AISidebarRulesRegistry.discover(g_dir, pfiles, p_rules))
+	_rm(TMP)
+	var none := AISidebarRulesRegistry.prompt_text(AISidebarRulesRegistry.discover(g_dir, pfiles, p_rules))
+	if order == ["global:AGENTS.md", "global:a.md", "global:b.md", "project:AGENTS.md", "project:x.md"] \
+			and text.find("G-main") < text.find("P-main") and text.contains("global rules") and text.contains("project rules") \
+			and add1["ok"] and add2["ok"] and add_g["ok"] and not add_empty["ok"] and not add_long["ok"] \
+			and learned == "# Rules\n- Keep data in JSON\n- Two lines\n" and g_text.ends_with("- Global one\n") \
+			and rules_long.contains("truncated") and none == "":
 		passed += 1
 	else:
 		failed += 1
-		errors.append("T5 (AGENTS.md) failed: ok=%s none=%s" % [p_ok.left(120), p_none])
+		errors.append("T5 (rules) failed: order=%s learned=%s" % [str(order), learned.c_escape()])
+
+	# 5b. add_rule onay ister (Manuel / Otomatik), köprüde açık değil; /learn, @rules, @skill:ad.
+	var manual_asks := AISidebarPermissionPolicy.requires_user_approval("add_rule", {}, AISidebarPermissionPolicy.AutoApproveMode.MANUAL)
+	var auto_asks := AISidebarPermissionPolicy.requires_user_approval("add_rule", {}, AISidebarPermissionPolicy.AutoApproveMode.AUTO)
+	var full_asks := AISidebarPermissionPolicy.requires_user_approval("add_rule", {}, AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO)
+	var gateway := AISidebarExternalAgentGateway.new()
+	var learn_g := AISidebarSlashCommandManager.parse("/learn --global Use typed GDScript")
+	var learn_res: Dictionary = (learn_g["command"]["execute_fn"] as Callable).call(str(learn_g["args"]), {})
+	var learn_empty: Dictionary = (learn_g["command"]["execute_fn"] as Callable).call("", {})
+	var mention := AISidebarMentionManager.resolve_prompt_context("fix it @skill:godot-refactor please")
+	var sugg_names: Array = []
+	for s in AISidebarMentionManager.get_suggestions("rul"):
+		sugg_names.append(s["insert_text"])
+	if manual_asks and auto_asks and not full_asks and not gateway.is_tool_exposed("add_rule") \
+			and learn_res.get("action") == "run_agent" and str(learn_res["prompt"]).contains("scope=global") and str(learn_res["prompt"]).contains("Use typed GDScript") \
+			and str(learn_empty["prompt"]).contains("corrections") and str(learn_empty["prompt"]).contains("scope=project") \
+			and mention["has_mentions"] and str(mention["augmented_prompt"]).contains("<skill_content name=\"godot-refactor\">") \
+			and sugg_names.has("@rules"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T5b (add_rule policy, /learn, mentions) failed: manual=%s auto=%s full=%s learn=%s sugg=%s" % [manual_asks, auto_asks, full_asks, str(learn_res).left(160), str(sugg_names)])
 
 	# 6. Araç ve /skill: yerleşik skill'ler açık gelir; activate_skill enum'u ve içerik; /skill ajanı başlatır.
 	var tool_schema: Dictionary = {}

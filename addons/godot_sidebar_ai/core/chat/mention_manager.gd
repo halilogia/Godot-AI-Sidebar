@@ -7,6 +7,8 @@ class_name AISidebarMentionManager
 ## seçilen dosya ve düğümlerin içeriğini güvenli limitlerle LLM promptuna bağlam olarak ekler.
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
+const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skills/rules_registry.gd")
+const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 
 const MAX_ATTACHED_FILE_LINES: int = 200
 const MAX_ATTACHED_FILE_BYTES: int = 12288 # 12 KB
@@ -44,7 +46,12 @@ static func detect_mention_query(text: String, caret_pos: int) -> Dictionary:
 static func get_suggestions(query: String, max_results: int = 10) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	var q_lower = query.to_lower().strip_edges()
-	
+
+	# 0. Kurallar ve skill'ler (@rules, @skill:ad)
+	for item: Dictionary in customization_suggestions(str(q_lower)):
+		if results.size() < max_results:
+			results.append(item)
+
 	# 1. Proje Dosyalarını Tara (.gd, .tscn, .tres, .gdshader, .json vb.)
 	var project_files: Array = []
 	_scan_project_files("res://", project_files)
@@ -138,6 +145,20 @@ static func resolve_prompt_context(prompt: String) -> Dictionary:
 				attached_nodes.append(node_name)
 				context_blocks.append("[ATTACHED CONTEXT - NODE: " + node_name + "]\n" + node_info)
 				
+	# @rules: bütün kurallar bu istekte öne çıkarılır; @skill:ad: skill talimatları eklenir.
+	var custom_regex := RegEx.new()
+	custom_regex.compile("(?<=^|\\s)@(rules|skill:[a-z0-9\\-]+)(?=\\s|$|[.,;:!?])")
+	var seen_custom: Array[String] = []
+	var prompt_text := str(clean_prompt)
+	for cm: RegExMatch in custom_regex.search_all(prompt_text):
+		var tag: String = cm.get_string(1)
+		if tag in seen_custom:
+			continue
+		seen_custom.append(tag)
+		var block := customization_block(tag)
+		if not block.is_empty():
+			context_blocks.append(block)
+
 	if context_blocks.is_empty():
 		return {
 			"has_mentions": false,
@@ -155,6 +176,33 @@ static func resolve_prompt_context(prompt: String) -> Dictionary:
 		"files_attached": attached_files,
 		"nodes_attached": attached_nodes
 	}
+
+## @rules ve açık skill'ler için öneriler (sorgu "rules" ya da "skill" önekine uyuyorsa).
+static func customization_suggestions(q_lower: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if q_lower.is_empty() or "rules".begins_with(q_lower) or q_lower.begins_with("rule"):
+		out.append({"type": "rules", "label": "rules", "detail": "Apply all loaded rules strictly to this request", "type_badge": "RULES", "insert_text": "@rules", "path": ""})
+	if q_lower.is_empty() or "skill".begins_with(q_lower) or q_lower.begins_with("skill"):
+		var wanted := q_lower.trim_prefix("skill:").trim_prefix("skill")
+		for s: Dictionary in AISidebarSkillRegistry.enabled_skills():
+			var sname := str(s.get("name", ""))
+			if wanted.is_empty() or sname.contains(wanted):
+				out.append({"type": "skill", "label": sname, "detail": str(s.get("description", "")).left(80), "type_badge": "SKILL", "insert_text": "@skill:" + sname, "path": ""})
+	return out
+
+## @rules / @skill:ad için istek bağlamı bloğu ("" = eklenecek bir şey yok).
+static func customization_block(tag: String) -> String:
+	if tag == "rules":
+		var rules := AISidebarRulesRegistry.prompt_text()
+		if rules.is_empty():
+			return ""
+		return "[ATTACHED CONTEXT - RULES: the user asked to apply these rules strictly to this request]\n" + rules
+	if tag.begins_with("skill:"):
+		var skill := AISidebarSkillRegistry.find(tag.trim_prefix("skill:"), AISidebarSkillRegistry.enabled_skills())
+		if skill.is_empty():
+			return ""
+		return "[ATTACHED CONTEXT - SKILL: the user activated this skill for this request]\n" + AISidebarSkillRegistry.activation_content(skill)
+	return ""
 
 # --- Dahili Yardımcı Fonksiyonlar ---
 

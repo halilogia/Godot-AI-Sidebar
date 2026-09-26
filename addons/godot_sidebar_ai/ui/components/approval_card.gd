@@ -81,6 +81,8 @@ func _setup_ui() -> void:
 		action_desc = "Update file: " + args.get("file_path", "")
 	elif tool_name == "replace_file_content":
 		action_desc = "Surgically update file: " + args.get("file_path", "")
+	elif tool_name == "add_rule":
+		action_desc = AISidebarI18n.get_text("approval_add_rule", {"scope": str(args.get("scope", "project")), "rule": str(args.get("rule", ""))})
 	_desc_lbl.text = action_desc
 	_desc_lbl.bbcode_enabled = true
 	_desc_lbl.fit_content = true
