@@ -98,6 +98,8 @@ const TestStaticReferences = preload("res://tests/test_static_references.gd")
 const TestI18n = preload("res://tests/test_i18n.gd")
 const TestMcpBridge = preload("res://tests/test_mcp_bridge.gd")
 const TestWriterLock = preload("res://tests/test_writer_lock.gd")
+const TestValidateOwnClassName = preload("res://tests/test_validate_own_class_name.gd")
+const TestLogRotation = preload("res://tests/test_log_rotation.gd")
 
 ## Test izolasyonu: testler geliştiricinin kişisel config.json'unu (onay modu, dil, adım
 ## sınırı…) görmez; CI'daki gibi config'siz (varsayılanlar: MANUAL, TR) koşar. Dosyanın
@@ -230,6 +232,8 @@ func _init() -> void:
 		TestI18n,
 		TestMcpBridge,
 		TestWriterLock,
+		TestValidateOwnClassName,
+		TestLogRotation,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

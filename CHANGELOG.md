@@ -9,6 +9,11 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+### Düzeltilenler
+* **Oyunu ikinci kez çalıştırınca runtime araçlarının çalışmayı bırakması:** İlk durdurmadan sonra çalışan oyunun ekran görüntüsü ve canlı sahne ağacı okunamıyordu ("debugger bağlı değil"); editör aynı hata ayıklama oturumunu yeniden kullanıyor, eklenti ise onu ilk durdurmada unutuyordu.
+* **`class_name` içeren geçerli script'lerin doğrulamada "hata 43" alması:** Script kontrolü, kendi dosyasına kayıtlı sınıf adını "global sınıfı gölgeliyor" diye reddediyordu; oyun bu script'lerle sorunsuz çalışsa da hem sidebar ajanının dosya yazımı hem `validate_script` bunları hatalı sayıyordu.
+* **Çalışan oyunun log'unun (print'ler ve başlangıç hataları) görülmemesi:** Oyun her açılışta yeni bir log dosyası başlatıyor; eklenti eski dosyanın uzunluğundan okumaya devam ettiği için yeni dosyanın başını kaçırıyordu. Başlangıçtaki hatalar da gözden kaçabiliyordu.
+
 ### Eklenenler
 * **Dış ajan köprüsü (MCP, v3.0 ilk sürüm):** Claude Code gibi ajanlar artık açık Godot editörünü kullanabilir. Sidebar'da `/mcp on` yazın; Claude Code bağlantı komutu panoya kopyalanır, oyun projenizin klasöründe terminale yapıştırın. Ajan sahne ağacını ve düğümleri okuyabilir, scriptleri doğrulayabilir, dosya yazdıktan sonra editöre taratabilir (`sync_project`), oyunu başlatıp durdurabilir, runtime hatalarını ve canlı ağacı görebilir, ekran görüntüsü alabilir. Köprü yalnız bu bilgisayardan erişilebilir (127.0.0.1 + gizli token) ve eklentinin güvenlik politikalarından geçer; sahne / dosya değiştiren araçlar bu sürümde dışarı açık değildir. Kapatmak için `/mcp off`.
 * **Dış ajan sahne değişiklikleri (v3.0.1):** `/mcp write auto` ile dış ajan açık sahneye düğüm ekleyebilir, özellik değiştirebilir, sahne örnekleyebilir, script bağlayabilir ve sahneyi kaydedebilir; her değişiklik Ctrl+Z ile geri alınır. Varsayılan kapalıdır ve yalnız o editör oturumu için açılır (`/mcp write off` ya da editörü yeniden açmak kapatır). Ajan her değişiklikte hangi sahneyi değiştirdiğini belirtmek zorundadır; editörde başka bir sahne açıksa değişiklik yapılmaz.

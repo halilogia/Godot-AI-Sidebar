@@ -19,6 +19,12 @@ static var _active_start_log_offset: int = 0
 static var _last_poll_offset: int = 0
 static var _is_monitoring: bool = false
 static var _last_observation: AISidebarRuntimeObservation = null
+## Oyun başlarken Godot eski godot.log'u `godot<zaman>.log` olarak yedekleyip BOŞ bir godot.log açar
+## (log rotation). Eski dosyanın uzunluğuyla okumaya devam etmek yeni dosyanın baş kısmını (ilk
+## print'ler ve başlangıç hataları) kaçırıyordu. play() anındaki yedek listesi tutulur; yeni bir yedek
+## belirince okuma yeni dosyanın başından yapılır.
+static var _log_backups_at_start: PackedStringArray = PackedStringArray()
+static var _rotation_seen: bool = false
 
 func _init() -> void:
 	if _last_observation == null:
@@ -39,6 +45,25 @@ static func _reset_log_pointer() -> void:
 	_last_poll_offset = cur_len
 	_active_start_time_msec = Time.get_ticks_msec()
 	_is_monitoring = true
+	_log_backups_at_start = list_log_backups(log_path.get_base_dir())
+	_rotation_seen = false
+
+## logs/ klasöründeki yedek (döndürülmüş) log dosyaları: godot.log dışındaki godot*.log.
+static func list_log_backups(logs_dir: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	if not DirAccess.dir_exists_absolute(logs_dir):
+		return out
+	for f: String in DirAccess.get_files_at(logs_dir):
+		if f.begins_with("godot") and f.ends_with(".log") and f != "godot.log":
+			out.append(f)
+	return out
+
+## play()'den bu yana yeni bir yedek belirdi mi (yani godot.log yeniden mi açıldı)?
+static func rotated_since(before: PackedStringArray, now: PackedStringArray) -> bool:
+	for f: String in now:
+		if not before.has(f):
+			return true
+	return false
 
 ## Ana sahne yapılandırması mevcut mu? (modal seçim penceresini önlemek için)
 static func check_main_scene_available() -> Dictionary:
@@ -104,6 +129,10 @@ func restart(current_scene_only: bool = false) -> Dictionary:
 ## Belirli bir checkpoint süresi ve log analizi ile epistemik gözlem yapar
 func observe_runtime(checkpoint_duration_msec: int = 1500) -> AISidebarRuntimeObservation:
 	var log_path = _get_log_path()
+	if _is_monitoring and not _rotation_seen and rotated_since(_log_backups_at_start, list_log_backups(str(log_path).get_base_dir())):
+		_rotation_seen = true
+		_active_start_log_offset = 0
+		_last_poll_offset = 0
 	var current_len = 0
 	var f: FileAccess = null
 	if FileAccess.file_exists(log_path):
