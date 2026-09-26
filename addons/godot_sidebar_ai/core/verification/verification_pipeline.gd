@@ -102,7 +102,7 @@ static func _run_engine_verifiers(source_code: String, file_path: String, batch_
 ## 1. Bellek İçi Kaynak Kodu Doğrulaması (Pre-write In-Memory Validation)
 static func validate_script_source(source_code: String, file_path: String = "", batch_context: Dictionary = {}) -> Dictionary:
 	var script = GDScript.new()
-	script.source_code = source_code
+	script.source_code = _without_own_class_name(source_code, file_path)
 	var reload_err = script.reload()
 	
 	if reload_err != OK:
@@ -133,6 +133,34 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 		"success": true,
 		"message": "✓ GDScript sözdizimi geçerli."
 	}
+
+## Yolsuz geçici kopya, kendi dosyasına kayıtlı `class_name X`'i derlerken Godot "Class X hides a
+## global script class" (ERR_PARSE_ERROR = 43) der; oysa dosya geçerlidir. Sınıf tam bu dosyaya
+## kayıtlıysa satır, satır numaraları kaymasın diye yoruma çevrilir. Başka bir dosyaya kayıtlı aynı
+## ad gerçek çakışmadır ve dokunulmaz. (Geçici script'e yol vermek, set_path_cache, kaynak
+## önbelleğinde gerçek script'in yerini aldığı için kullanılmaz.)
+static func _without_own_class_name(source_code: String, file_path: String) -> String:
+	if file_path.is_empty():
+		return source_code
+	var re := RegEx.new()
+	re.compile("(?m)^class_name\\s+([A-Za-z_][A-Za-z0-9_]*)")
+	var m := re.search(source_code)
+	if m == null:
+		return source_code
+	var cls := m.get_string(1)
+	var wanted := _res_path(file_path)
+	for entry: Dictionary in ProjectSettings.get_global_class_list():
+		if str(entry.get("class", "")) == cls:
+			if _res_path(str(entry.get("path", ""))) == wanted:
+				return source_code.substr(0, m.get_start()) + "#" + source_code.substr(m.get_start())
+			return source_code
+	return source_code
+
+static func _res_path(p: String) -> String:
+	var s := p.strip_edges().replace("\\", "/")
+	if not s.begins_with("res://"):
+		s = "res://" + s.trim_prefix("/")
+	return s.simplify_path()
 
 ## Batch aynası: derleme sırasında batch dosyalarının geçici kopyaları (proje dışı).
 const BATCH_MIRROR_ROOT = "user://ai_sidebar_verify"
