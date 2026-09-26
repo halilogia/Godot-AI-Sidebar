@@ -197,6 +197,13 @@ Analyse this project and tell me what it does.
 
 ---
 
+## User guide
+
+The full, step-by-step guide covers the panel, every slash command, `@` mentions, goal mode,
+rules, skills, the MCP bridge and settings: **[docs/USER_GUIDE.en.md](docs/USER_GUIDE.en.md)**
+(Türkçe: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)). Inside the editor, the **Help** (?) button
+in the panel header shows the same essentials, with the command list generated from the plugin.
+
 ## Use it from Claude Code (MCP)
 
 External agents such as **Claude Code** can drive the open Godot editor through the
@@ -205,8 +212,8 @@ web research; the plugin gives it Godot's eyes and hands: scene tree and node
 inspection, script validation, re-scanning files it wrote (`sync_project`), running and
 stopping the game, runtime errors and live scene tree, editor/runtime screenshots.
 
-1. In the sidebar type `/mcp on`. The bridge starts on `127.0.0.1` and the connection
-   command is copied to your clipboard.
+1. Open **Settings → External Agent (MCP)** and press **Turn on** (or type `/mcp on`). The
+   bridge starts on `127.0.0.1`; **Copy Claude Code connect command** copies the command.
 2. In a terminal, in your **game project's** folder, paste it. It looks like:
 
    ```bash
@@ -219,8 +226,8 @@ stopping the game, runtime errors and live scene tree, editor/runtime screenshot
 
 The bridge only listens on this machine, requires the secret token, rejects browser
 requests and goes through the same permission and path policies as the in-editor agent.
-In this first version the tools that modify scenes or files are **not** exposed
-(the agent writes files itself and then calls `sync_project`). `/mcp off` closes it.
+The agent writes files itself and then calls `sync_project`; small changes in the open
+scene (with Ctrl+Z undo) are also available. Turn it off in the same page or with `/mcp off`.
 
 ## Providers
 

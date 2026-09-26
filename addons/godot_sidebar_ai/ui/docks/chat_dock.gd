@@ -33,6 +33,7 @@ const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/contro
 const AISidebarGoalController = preload("res://addons/godot_sidebar_ai/ui/controllers/goal_controller.gd")
 const AISidebarGoalBanner = preload("res://addons/godot_sidebar_ai/ui/components/goal_banner.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
+const AISidebarHelpDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd")
 const AISidebarSkillsPanel = preload("res://addons/godot_sidebar_ai/ui/components/skills_panel.gd")
 
 @onready var title_label: Label = $MainLayout/HeaderBar/TitleLabel
@@ -97,6 +98,9 @@ var checklist_tracker: AISidebarPlanChecklistTracker = AISidebarPlanChecklistTra
 var interaction: AISidebarAgentInteractionPresenter = AISidebarAgentInteractionPresenter.new()
 ## Skill yönetimi (başlıktaki Skills düğmesi).
 var skills_btn: Button = null
+## Başlıktaki Yardım düğmesi ve penceresi (komutlar, bahsetmeler, kısayollar, kılavuz bağlantısı).
+var help_btn: Button = null
+var help_dialog: AISidebarHelpDialog = null
 var skills_panel: AISidebarSkillsPanel = null
 var auto_scroll_enabled: bool = true
 var welcome_card: AISidebarWelcomeCard = null
@@ -337,6 +341,14 @@ func _setup_skills_button() -> void:
 	skills_panel = AISidebarSkillsPanel.new()
 	add_child(skills_panel)
 	skills_btn.pressed.connect(func() -> void: skills_panel.popup_centered())
+	help_btn = Button.new()
+	help_btn.flat = history_btn.flat
+	help_btn.focus_mode = Control.FOCUS_NONE
+	history_btn.get_parent().add_child(help_btn)
+	history_btn.get_parent().move_child(help_btn, skills_btn.get_index())
+	help_dialog = AISidebarHelpDialog.new()
+	add_child(help_dialog)
+	help_btn.pressed.connect(func() -> void: help_dialog.open_help())
 
 func update_ui_language() -> void:
 	if welcome_card and is_instance_valid(welcome_card):
@@ -345,6 +357,10 @@ func update_ui_language() -> void:
 		AISidebarIconHelper.apply_icon(skills_btn, "sparkles")
 		skills_btn.text = "" if skills_btn.icon else AISidebarI18n.get_text("skills_btn_short")
 		skills_btn.tooltip_text = AISidebarI18n.get_text("skills_title")
+	if help_btn:
+		AISidebarIconHelper.apply_tinted_icon(help_btn, "message-circle-question-mark", AISidebarTheme.COLOR_TEXT_SECONDARY, AISidebarTheme.ICON_SIZE_LG)
+		help_btn.text = "" if help_btn.icon else AISidebarI18n.get_text("help_btn_short")
+		help_btn.tooltip_text = AISidebarI18n.get_text("help_title")
 	if export_btn:
 		AISidebarIconHelper.apply_icon(export_btn, "download")
 		export_btn.tooltip_text = AISidebarI18n.get_text("tooltip_export_chat")

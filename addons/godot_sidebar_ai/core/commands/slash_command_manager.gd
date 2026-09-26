@@ -10,6 +10,7 @@ const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/se
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarMcpBridgeControl = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_control.gd")
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
 ## Komut Tanım Modeli
 static var _commands: Dictionary = {}
@@ -121,6 +122,19 @@ static func detect_slash_query(text: String, caret_pos: int) -> Dictionary:
 	}
 
 ## Sorguya uyan slash komut önerilerini döndürür
+## Komutun seçili dildeki açıklaması (i18n "cmd_desc_<ad>"; yoksa kayıttaki açıklama). Öneri listesi,
+## /help ve Yardım penceresi bunu kullanır.
+static func describe(cmd: Dictionary) -> String:
+	var key := "cmd_desc_" + str(cmd.get("name", ""))
+	var text := AISidebarI18n.get_text(key)
+	return str(cmd.get("description", "")) if text == key else text
+
+## Komutun seçili dildeki kullanım satırı (i18n "cmd_usage_<ad>"; yoksa kayıttaki kullanım).
+static func usage_text(cmd: Dictionary) -> String:
+	var key := "cmd_usage_" + str(cmd.get("name", ""))
+	var text := AISidebarI18n.get_text(key)
+	return str(cmd.get("usage", "")) if text == key else text
+
 static func get_suggestions(query: String, max_results: int = 10) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	var q = query.to_lower().strip_edges()
@@ -132,8 +146,9 @@ static func get_suggestions(query: String, max_results: int = 10) -> Array[Dicti
 	for cmd_key in cmds.keys():
 		var cmd = cmds[cmd_key]
 		var c_name = cmd["name"]
-		var c_desc = cmd["description"]
-		var c_usage = cmd["usage"]
+		var cmd_d: Dictionary = cmd
+		var c_desc = describe(cmd_d)
+		var c_usage = usage_text(cmd_d)
 		
 		if q.is_empty():
 			exact_prefixes.append({
@@ -345,8 +360,8 @@ static func _handle_goal(args: String, _context: Dictionary) -> Dictionary:
 
 static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 	var cmds = get_commands()
-	var text = "### Godot AI Slash Commands Rehberi\n\n"
-	text += "Doğal dil yerine sık kullanılan ajan görevlerini tek satırda tetikleyebilirsiniz:\n\n"
+	var text = "### " + AISidebarI18n.get_text("help_commands_title") + "\n\n"
+	text += AISidebarI18n.get_text("help_commands_hint") + "\n\n"
 	
 	var sorted_keys = cmds.keys()
 	sorted_keys.sort()
@@ -361,10 +376,11 @@ static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 		elif c["risk"] == AISidebarPermissionPolicy.RiskLevel.EXTERNAL_SENSITIVE:
 			risk_badge = "SENSITIVE"
 			
-		text += "* `/" + c["name"] + "` — " + c["description"] + "\n"
-		text += "  * **Kullanım:** `" + c["usage"] + "` (" + risk_badge + ")\n"
-		
-	text += "\n> **İpucu:** Chat kutusunda `/` yazarak komut listesini açabilir, `↑/↓` ile gezinip `Enter` veya `Tab` ile tamamlayabilirsiniz."
+		var c_d: Dictionary = c
+		text += "* `/" + c["name"] + "` — " + describe(c_d) + "\n"
+		text += "  * " + AISidebarI18n.get_text("help_usage", {"usage": "`" + usage_text(c_d) + "`"}) + " (" + risk_badge + ")\n"
+
+	text += "\n> " + AISidebarI18n.get_text("help_guide_hint") + " " + AISidebarI18n.get_text("help_more_link")
 	
 	return {
 		"action": "local_response",

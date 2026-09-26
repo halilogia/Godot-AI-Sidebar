@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Arayüz görsel kontrolü (CLAUDE.md → Arayüz grafik kalitesi standardı). Eklentinin GERÇEK bileşenlerini
 ## açar ve PNG kaydeder:
-##   settings  Ayarlar penceresinin her sayfası (uzun sayfanın alt kısmı ayrıca), geniş ve dar pencerede
+##   settings  Ayarlar penceresinin her sayfası (uzun sayfanın alt kısmı ayrıca) ve Yardım penceresi, geniş ve dar pencerede
 ##   dock      Sohbet paneli, tools/ui_scenarios.gd'deki her senaryoyla (karşılama, soru, onay, plan,
 ##             runtime, hata, kuyruk …), normal ve dar dock genişliğinde
 ## Arayüz değişikliğinden önce ve sonra çalıştırıp görüntüleri karşılaştırın; iki dilde bakın. Ölçek
@@ -15,6 +15,7 @@ extends SceneTree
 ## bayt geri yazılır, yoksa silinir. Senaryoların açtığı sohbet oturumları sonunda silinir.
 
 const SettingsScene = preload("res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn")
+const AISidebarHelpDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarChatManager = preload("res://addons/godot_sidebar_ai/core/chat/chat_manager.gd")
@@ -104,6 +105,19 @@ func _shoot_settings(size_name: String, size: Vector2i) -> void:
 			await _frames(4)
 			_save("%s_%s_%d_bottom" % [_lang, size_name, i])
 	dlg.queue_free()
+	var help := AISidebarHelpDialog.new()
+	root.add_child(help)
+	help.open_help()
+	await _frames(8)
+	_save("%s_%s_help" % [_lang, size_name])
+	var hr := Rect2i(help.position, help.size)
+	if not Rect2i(Vector2i.ZERO, size).encloses(hr):
+		_overflows.append("%s help: dialog %s exceeds window %s" % [size_name, hr, size])
+	var help_scroll: ScrollContainer = help.get("_scroll")
+	help_scroll.scroll_vertical = 1000000
+	await _frames(4)
+	_save("%s_%s_help_bottom" % [_lang, size_name])
+	help.queue_free()
 	bg.queue_free()
 	await _frames(2)
 

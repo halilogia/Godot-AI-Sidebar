@@ -171,6 +171,7 @@ AgentRunner sinyallerini presenter'lar dinler; görev akışını controller'lar
 * **[`icon_helper.gd`](addons/godot_sidebar_ai/ui/components/icon_helper.gd):** Lucide SVG yükleme ve renge boyama (`get_tinted_icon`); import sistemine bağlı değildir.
 
 **Dialogs ve tema**
+* **[`help_dialog.gd`](addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd):** Başlıktaki Yardım düğmesinin penceresi (`AISidebarHelpDialog`): başlarken, slash komutları (komut kaydından her açılışta üretilir, açıklamalar `SlashCommandManager.describe` ile seçili dilde), `@` bahsetmeleri, klavye, onay modları, diğer özellikler ve `docs/USER_GUIDE*.md` bağlantısı.
 * **[`settings_dialog.gd`](addons/godot_sidebar_ai/ui/dialogs/settings_dialog.gd):** Ayarlar penceresinin kabuğu: sol menü ve sayfalar (Sağlayıcı, Model & Parametreler, Genel, Kurallar, Skill'ler, Dış Ajan). Sayfalar her açılışta kodla `settings_ui_kit.gd` ile kurulur; kaydet config.json'a yazar.
 * **[`change_set_dialog.gd`](addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd):** Değişiklik ve diff görüntüleme / onay penceresi.
 * **[`sidebar_theme.gd`](addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd):** Tasarım belirteçleri (`AISidebarTheme`): renk (metin, ton: uyarı / hata / bilgi / başarı, bağlam katmanları), boşluk, köşe, yazı ve ikon boyları, StyleBox fabrikaları. Ölçek: `ui_scale` (editör ölçeği, `plugin.gd` atar) ve `fs()` / `px()` / `bb()`; yazı boyu, boşluk ve ikon editörle büyür.

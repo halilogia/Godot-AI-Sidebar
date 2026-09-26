@@ -112,6 +112,7 @@ Aktif plan ve ilerleme: `docs/REFACTOR_PLAN.md`.
 * `AGENTS.md` — tüm ajanlar için tek giriş noktası (bu dosya).
 * `ARCHITECTURE.md` — katmanlar ve veri akışı. `ROADMAP.md` — fazlar. `CHANGELOG.md` — tarihçe (geçmiş sayılar düzeltilmez).
 * `docs/DEVELOPMENT.md` — geliştirme, doğrulama ve bakım akışı (verify, typecheck, uyarı cırcırı, testler, canlı test, duman testi, CI, doğrulama matrisi).
+* `docs/USER_GUIDE.md` / `docs/USER_GUIDE.en.md` — son kullanıcı kılavuzu (panelde Yardım düğmesi aynı özeti gösterir).
 * `docs/KNOWLEDGE.md` — kalıcı teknik bilgi (paylaşılan kaynak). `brain/`, `archives/` git-ignored yerel çalışma alanlarıdır; kalıcı kararlar oradan `docs/`'a taşınır.
 
 ---
@@ -124,6 +125,7 @@ Doküman, onu eskiten değişiklikle **aynı iş kapsamında** güncellenir; son
 |---|---|
 | `addons/` altına yeni / taşınan / silinen `.gd` | `ARCHITECTURE.md` (test zorunlu kılar: `tests/test_docs_coverage.gd`) |
 | Kullanıcının göreceği özellik veya düzeltme | `CHANGELOG.md` → `[Unreleased]` |
+| Yeni slash komutu ya da kullanıcının kullanacağı yeni özellik | `docs/USER_GUIDE.md` ve `docs/USER_GUIDE.en.md`; komut açıklaması iki dilde `cmd_desc_<ad>` (test zorunlu kılar: `tests/test_help.gd`) |
 | Ürün fazı tamamlandı, yeni özellik planlandı | `ROADMAP.md` (ürün fazları; refactor fazları `docs/REFACTOR_PLAN.md`'de "Refactor Faz N" olarak ayrı tutulur) |
 | Sürüm çıkarıldı | `CHANGELOG.md` `[Unreleased]` → sürüm numarası + tarih; README sürüm rozeti |
 | Refactor adımı, bulunan bug, faz durumu | `docs/REFACTOR_PLAN.md` |

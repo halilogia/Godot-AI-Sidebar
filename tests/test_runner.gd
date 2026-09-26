@@ -106,6 +106,7 @@ const TestRuntimeInput = preload("res://tests/test_runtime_input.gd")
 const TestSettingsCoverage = preload("res://tests/test_settings_coverage.gd")
 const TestUiQuality = preload("res://tests/test_ui_quality.gd")
 const TestGoal = preload("res://tests/test_goal.gd")
+const TestHelp = preload("res://tests/test_help.gd")
 
 ## Test izolasyonu: testler geliştiricinin kişisel config.json'unu (onay modu, dil, adım
 ## sınırı…) görmez; CI'daki gibi config'siz (varsayılanlar: MANUAL, TR) koşar. Dosyanın
@@ -246,6 +247,7 @@ func _init() -> void:
 		TestSettingsCoverage,
 		TestUiQuality,
 		TestGoal,
+		TestHelp,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

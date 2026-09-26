@@ -37,6 +37,9 @@ func create_dock(parent: Node) -> Dictionary:
 	dock.attach_agent_host(host)
 	dock.sessions.start_new()
 	dock.model_bar_controller.populate_model_selector(["deepseek/deepseek-v4-flash"])
+	# Editör dışında dock _ready'si erken döner; başlık düğmeleri (Skills, Yardım) burada kurulur.
+	if dock.skills_btn == null:
+		dock._setup_skills_button()
 	dock.update_ui_language()
 	return {"dock": dock, "host": host, "runner": host.runner}
 
