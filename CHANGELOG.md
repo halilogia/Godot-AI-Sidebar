@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+* **MCP sınırları ayrıştırıldı:** HTTP transport, MCP/JSON-RPC protokolü ve Godot araç politikası artık ayrı modüllerdir. Yeni `ExternalAgentGateway` Godot kabiliyetlerine tek giriş noktasıdır; `/mcp` lifecycle facade üzerinden yönetilir. İstemci davranışı ve mevcut güvenlik kontrolleri korunmuştur.
+
 ### Düzeltilenler
 * **Dış ajan yazarken sidebar ajanının "yaptım" demesi:** Dış ajan sahneyi değiştirirken sidebar ajanı "biraz sonra tekrar dene" mesajı alıyor, bekleyemediği için tekrar deniyor ve sonunda değişikliği yapmış gibi rapor ediyordu. Artık değişikliğin yapılmadığını, tekrar denememesini ve durumu size söylemesini net olarak alıyor.
 * **Oyunu ikinci kez çalıştırınca runtime araçlarının çalışmayı bırakması:** İlk durdurmadan sonra çalışan oyunun ekran görüntüsü ve canlı sahne ağacı okunamıyordu ("debugger bağlı değil"); editör aynı hata ayıklama oturumunu yeniden kullanıyor, eklenti ise onu ilk durdurmada unutuyordu.
