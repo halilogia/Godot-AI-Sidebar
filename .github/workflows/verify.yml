@@ -36,4 +36,14 @@ jobs:
 
       - name: Verify (typecheck + strict warnings + unit tests)
         shell: pwsh
-        run: ./verify.ps1 -GodotPath $env:GODOT_BIN
+        # Başarısızlıkta hata satırları iş açıklaması (annotation) olarak da basılır: açıklamalar GitHub
+        # API'sinden oturum açmadan okunabilir (iş günlüğü okunamaz).
+        run: |
+          ./verify.ps1 -GodotPath $env:GODOT_BIN 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/verify.log"
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            $lines = Get-Content "$env:RUNNER_TEMP/verify.log" | Select-String -Pattern "FAIL|ERROR|Error|^\s+- |^\s+\* " | Select-Object -Last 40 | ForEach-Object { $_.Line }
+            $msg = (($lines -join "`n") -replace "%", "%25" -replace "`r", "" -replace "`n", "%0A")
+            Write-Host "::error title=verify.ps1 failed::$msg"
+          }
+          exit $code
