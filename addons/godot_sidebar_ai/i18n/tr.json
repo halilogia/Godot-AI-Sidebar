@@ -451,5 +451,17 @@
   "bug_md_environment": "Ortam",
   "bug_md_last_task": "Son görev",
   "bug_md_attachment": "Ek",
-  "bug_md_attachment_hint": "Rapor paketi: `{file}` (bu issue'ya ekleyin)."
+  "bug_md_attachment_hint": "Rapor paketi: `{file}` (bu issue'ya ekleyin).",
+  "context_used_of": "{used} / {window} (%{pct})",
+  "context_used_only": "Bağlam: {used} token",
+  "context_totals": "Oturum: ↑ {input} giden · {cached} önbellekten · ↓ {output} gelen · {requests} istek",
+  "context_tooltip": "Sağlayıcının bildirdiği gerçek token sayıları: son isteğin girdi + çıktısı modelin bağlam penceresine oranlanır. %80'i geçince eski adımlar özetlenir.",
+  "context_tooltip_no_window": "Sağlayıcının bildirdiği gerçek token sayıları. Modelin bağlam penceresi bilinmiyor: Ayarlar → Model & Parametreler → Bağlam penceresi'nden girin.",
+  "context_compacted": "Bağlam %{pct} doldu; eski adımlar özetlendi.",
+  "context_near_limit": "Bağlam neredeyse dolu (%{pct}). Yeni sohbet açmayı düşünün.",
+  "settings_report_usage": "Token kullanımını iste",
+  "settings_report_usage_hint": "OpenAI uyumlu sağlayıcı: akışlı yanıtın sonunda gerçek token sayısını ister (stream_options). Bağlam göstergesi bu sayıları kullanır. Uç noktanız bu alanı reddederse kapatın.",
+  "settings_card_context": "Bağlam penceresi",
+  "settings_context_hint": "Modelin alabildiği en çok token. 0: sağlayıcının model listesinden alınır; sağlayıcı bildirmezse gösterge yalnız kullanılan token'ı gösterir ve bağlam koruması çalışmaz.",
+  "settings_context_window": "Token"
 }

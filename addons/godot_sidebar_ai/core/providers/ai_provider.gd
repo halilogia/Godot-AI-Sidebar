@@ -12,6 +12,9 @@ signal chunk_received(text_delta: String, thinking_delta: String)
 signal response_received(text_content: String, thinking_content: String, tool_calls: Array)
 signal models_fetched(models: Array)
 signal error_occurred(error_message: String)
+## Sağlayıcının bildirdiği token kullanımı (ham `usage`; AISidebarContextBudget.normalize işler). Yanıttan
+## önce yayılır: bağlam koruması bir sonraki istekten önce sıkıştırabilsin. Bildirmeyen sağlayıcı yaymaz.
+signal usage_reported(usage: Dictionary)
 
 func supports_vision() -> bool:
 	return false
@@ -24,6 +27,10 @@ func supports_streaming() -> bool:
 
 func fetch_models() -> void:
 	pass
+
+## Modelin bağlam penceresi (token), sağlayıcı model listesinde bildirdiyse; bilinmiyorsa 0.
+func context_window_for(_model: String) -> int:
+	return 0
 
 func send_chat(messages: Array, tools_schema: Array) -> void:
 	pass

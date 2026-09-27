@@ -184,12 +184,14 @@ Port aynı sayfadan değiştirilebilir. Kapatmak için **Kapat** ya da `/mcp off
 
 | Sayfa | İçerik |
 |---|---|
-| Sağlayıcı | Sağlayıcı, uç nokta (Base URL, API anahtarı), yanıt akışı, görüntü desteği |
-| Model & Parametreler | Sıcaklık, en çok ajan adımı, hedef modu tur sınırı |
-| Genel | Arayüz dili, arayüz animasyonları, onay modu, silme / üzerine yazma onayları |
+| Sağlayıcı | Sağlayıcı, uç nokta (Base URL, API anahtarı), yanıt akışı, görüntü desteği, token kullanımını iste |
+| Model & Parametreler | Sıcaklık, en çok ajan adımı, hedef modu tur sınırı, bağlam penceresi |
+| Genel | Arayüz dili, arayüz animasyonları, onay modu, silme / üzerine yazma onayları, hata bildir |
 | Kurallar | Token kullanımı, yerleşik kurallar (sistem istemi), global ve proje kuralları, kural ekleme |
 | Skill'ler | Skill listesi ve yönetimi |
 | Dış Ajan (MCP) | Köprüyü aç / kapa, port, bağlantı komutu |
+
+**Bağlam göstergesi:** giriş kutusunun üstündeki ince çubuk, bağlamın ne kadar dolduğunu (`kullanılan / pencere`) ve oturumun token toplamlarını gösterir. Sayılar sağlayıcının kendi bildirdiği değerlerdir, tahmin değildir; sağlayıcı bildirmezse gösterge görünmez. Bağlam %80'i geçince eski adımlar özetlenir.
 
 Değişiklikler **Kaydet ve Kapat** ile yazılır. Skill aç / kapa, kural ekleme ve köprü ayarları kendi düğmeleriyle hemen uygulanır.
 

@@ -14,6 +14,8 @@ const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat
 const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skills/rules_registry.gd")
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 
+## Sıkıştırmada korunan son mesaj sayısı.
+const COMPACT_KEEP := 6
 var messages: Array = []
 var recent_actions: Array = []
 ## Compaction'a uğramayan tam transcript (Everything Export / Copy Task kaynağı).
@@ -211,14 +213,33 @@ func get_messages_for_api(keep_recent_tools: int = 2) -> Array:
 		
 	return api_messages
 
+## Bağlam koruması (AgentHost): sağlayıcının bildirdiği doluluk sınırı geçince mesaj sayısından bağımsız
+## sıkıştırır; sıkıştıracak eski mesaj yoksa false.
+func compact_now() -> bool:
+	var before := messages
+	_auto_compact_if_needed(COMPACT_KEEP)
+	return not is_same(before, messages)
+
+static func _role_of(m: Variant) -> String:
+	if m is Dictionary:
+		var d: Dictionary = m
+		return str(d.get("role", ""))
+	return ""
+
 ## Bağlam Şişmesini Önleyen Otomatik Sıkıştırma (Compaction)
 func _auto_compact_if_needed(max_msgs: int = 18) -> void:
 	if messages.size() <= max_msgs:
 		return
 		
-	var keep_count = 6
-	var old_msgs = messages.slice(0, messages.size() - keep_count)
-	var recent_msgs = messages.slice(messages.size() - keep_count)
+	# Kesim noktası bir araç sonucuna denk gelirse geri çekilir: araç sonucu, kendisini isteyen asistan
+	# mesajından (tool_calls) ayrılmaz (API yetim araç sonucunu reddeder).
+	var split: int = messages.size() - COMPACT_KEEP
+	while split > 0 and _role_of(messages[split]) == "tool":
+		split -= 1
+	if split <= 0:
+		return
+	var old_msgs = messages.slice(0, split)
+	var recent_msgs = messages.slice(split)
 	
 	var summary_text = "[ÖNCEKİ AJAN GÖREV ÖZETİ (" + str(old_msgs.size()) + " adım)]: Kullanıcı istekleri ve araç çalıştırmaları işlendi. Son tamamlanan eylemler: " + ", ".join(recent_actions.slice(-4))
 	

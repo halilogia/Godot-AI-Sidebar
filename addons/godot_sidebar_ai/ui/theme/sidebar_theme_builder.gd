@@ -95,6 +95,10 @@ const RICH_MUTED := "AISidebarRichMuted"
 # Metin girişi
 const LINE_EDIT := "AISidebarLineEdit"
 const TEXT_EDIT := "AISidebarTextEdit"
+# İnce doluluk çubuğu (ProgressBar; bağlam göstergesi): normal / uyarı (sıkıştırma eşiği) / tehlike.
+const METER := "AISidebarMeter"
+const METER_WARNING := "AISidebarMeterWarning"
+const METER_DANGER := "AISidebarMeterDanger"
 # Tonlu rozet (Label) ve hap düğmesi (Button): renk veriden seçilir ama ton kümesi sınırlıdır; her ton
 # için varyasyon üretilir, kod rengi değil tonu verir: `badge(TONE_SUCCESS)`, `pill(TONE_WARNING)`.
 const TONE_MUTED := "muted"
@@ -303,6 +307,13 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 		t.set_color("font_color", v, AISidebarTheme.COLOR_TEXT_PRIMARY)
 		t.set_color("font_placeholder_color", v, AISidebarTheme.COLOR_TEXT_MUTED)
 
+	for pair: Array in [[METER, AISidebarTheme.COLOR_ACCENT], [METER_WARNING, AISidebarTheme.COLOR_WARNING], [METER_DANGER, AISidebarTheme.COLOR_ERROR]]:
+		var mv: String = pair[0]
+		var mc: Color = pair[1]
+		t.set_type_variation(mv, "ProgressBar")
+		t.set_stylebox("background", mv, _meter(AISidebarTheme.COLOR_BG_INPUT))
+		t.set_stylebox("fill", mv, _meter(mc))
+
 	for tone: String in TONES:
 		var c := tone_color(tone)
 		var b := badge(tone)
@@ -502,6 +513,13 @@ static func _nav(active: bool, hover: bool) -> StyleBoxFlat:
 	s.border_width_left = AISidebarTheme.px(3) if active else 0
 	s.set_corner_radius_all(AISidebarTheme.RADIUS_SM)
 	_pad(s, AISidebarTheme.SPACE_MD, AISidebarTheme.SPACE_SM - 2)
+	return s
+
+## Doluluk çubuğunun zemini / dolgusu: yuvarlak uçlu, iç boşluksuz.
+static func _meter(color: Color) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = color
+	s.set_corner_radius_all(AISidebarTheme.RADIUS_PILL)
 	return s
 
 static func _pad(s: StyleBoxFlat, h: int, v: int) -> void:

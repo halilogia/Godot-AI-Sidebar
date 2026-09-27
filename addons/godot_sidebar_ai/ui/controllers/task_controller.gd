@@ -58,7 +58,7 @@ var save_session: Callable = func(): pass
 ## func() — Clear butonu yolu (/clear).
 var clear_chat: Callable = func(): pass
 ## /bug: hata raporu penceresini açar.
-var open_bug_report: Callable = func(): pass
+var open_bug_report: Callable = func() -> void: pass
 
 # --- Görev durumu ---
 var last_user_prompt: String = ""

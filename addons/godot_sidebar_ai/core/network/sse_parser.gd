@@ -46,6 +46,8 @@ static func parse_response(raw_text: String) -> Dictionary:
 	var total_thinking: String = ""
 	var raw_tool_calls: Array = []
 	var finish_reason: String = ""
+	## Sağlayıcının bildirdiği token kullanımı (akışta son parçada, include_usage ile); yoksa null.
+	var usage: Variant = null
 	
 	var trimmed_raw = raw_text.strip_edges()
 	if trimmed_raw.is_empty():
@@ -68,6 +70,9 @@ static func parse_response(raw_text: String) -> Dictionary:
 					var err_val = chunk["error"]
 					var err_msg = err_val.get("message", str(err_val)) if err_val is Dictionary else str(err_val)
 					return {"error": AISidebarI18n.get_text("provider_api_error", {"message": str(err_msg)})}
+				var chunk_d: Dictionary = chunk
+				if chunk_d.get("usage", null) is Dictionary:
+					usage = chunk_d["usage"]
 					
 				if chunk.has("choices") and chunk["choices"].size() > 0:
 					var c = chunk["choices"][0]
@@ -101,6 +106,9 @@ static func parse_response(raw_text: String) -> Dictionary:
 				var err_val = json_res["error"]
 				var err_msg = err_val.get("message", str(err_val)) if err_val is Dictionary else str(err_val)
 				return {"error": AISidebarI18n.get_text("provider_api_error", {"message": str(err_msg)})}
+			var json_d: Dictionary = json_res
+			if json_d.get("usage", null) is Dictionary:
+				usage = json_d["usage"]
 				
 			if json_res.has("choices") and json_res["choices"].size() > 0:
 				var choice = json_res["choices"][0]
@@ -165,9 +173,12 @@ static func parse_response(raw_text: String) -> Dictionary:
 			"error": AISidebarI18n.get_text("provider_model_empty")
 		}
 
-	return {
+	var out := {
 		"content": clean_content,
 		"thinking": clean_thinking,
 		"tool_calls": final_tools,
 		"finish_reason": finish_reason
 	}
+	if usage != null:
+		out["usage"] = usage
+	return out

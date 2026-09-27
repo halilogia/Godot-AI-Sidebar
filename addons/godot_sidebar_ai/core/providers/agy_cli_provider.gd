@@ -195,6 +195,10 @@ func _read_worker(gen: int) -> void:
 			var res_obj = json_obj.get("result", {})
 			var raw_response = res_obj.get("response", _current_turn_text)
 			var status = res_obj.get("status", "SUCCESS")
+			# Token kullanımı (result.usage) yanıttan önce: bağlam koruması bir sonraki istekten önce çalışsın.
+			var res_d: Dictionary = res_obj if res_obj is Dictionary else {}
+			if res_d.get("usage", null) is Dictionary:
+				call_deferred("_safe_emit_usage", res_d["usage"])
 			
 			if status != "SUCCESS":
 				call_deferred("_emit_session_error", str(status))
@@ -214,6 +218,9 @@ func _safe_emit_chunk(delta_text: String, delta_thinking: String) -> void:
 
 func _safe_emit_response(text_content: String, thinking_content: String, tool_calls: Array) -> void:
 	response_received.emit(text_content, thinking_content, tool_calls)
+
+func _safe_emit_usage(usage: Dictionary) -> void:
+	usage_reported.emit(usage)
 
 func _safe_emit_error(msg: String) -> void:
 	error_occurred.emit(msg)

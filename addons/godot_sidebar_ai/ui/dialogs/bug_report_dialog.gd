@@ -105,9 +105,11 @@ func create_report() -> Dictionary:
 		"screenshot": _context.get("screenshot", null) if screenshot_check.button_pressed else null,
 		"include_log": log_check.button_pressed,
 	}
-	var env := AISidebarBugReport.environment(_context.get("env_extra", {}))
+	var env_extra: Dictionary = _context.get("env_extra", {})
+	var last_task: Dictionary = _context.get("last_task", {})
+	var env := AISidebarBugReport.environment(env_extra)
 	var out_dir: String = _context.get("out_dir", AISidebarBugReport.OUT_DIR)
-	last_result = AISidebarBugReport.build(description_edit.text, env, _context.get("last_task", {}), parts, out_dir)
+	last_result = AISidebarBugReport.build(description_edit.text, env, last_task, parts, out_dir)
 	(result_box.get_parent() as Control).visible = true
 	if last_result.get("ok", false) == true:
 		if _context.get("clipboard", true) == true:

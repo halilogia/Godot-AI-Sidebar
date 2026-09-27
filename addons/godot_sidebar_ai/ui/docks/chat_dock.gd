@@ -33,6 +33,7 @@ const AISidebarModelBarController = preload("res://addons/godot_sidebar_ai/ui/co
 const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/controllers/task_controller.gd")
 const AISidebarGoalController = preload("res://addons/godot_sidebar_ai/ui/controllers/goal_controller.gd")
 const AISidebarGoalBanner = preload("res://addons/godot_sidebar_ai/ui/components/goal_banner.gd")
+const AISidebarContextMeter = preload("res://addons/godot_sidebar_ai/ui/components/context_meter.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarHelpDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd")
 const AISidebarSkillsPanel = preload("res://addons/godot_sidebar_ai/ui/components/skills_panel.gd")
@@ -86,6 +87,8 @@ var tasks: AISidebarTaskController = null
 ## /goal: hedef denetleyicisi ve giriş alanının üstündeki hedef şeridi.
 var goals: AISidebarGoalController = null
 var goal_banner: AISidebarGoalBanner = AISidebarGoalBanner.new()
+## Giriş kutusunun üstünde bağlam göstergesi (yalnız sağlayıcının bildirdiği token sayıları).
+var context_meter: AISidebarContextMeter = AISidebarContextMeter.new()
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
 var composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
@@ -235,9 +238,10 @@ func _ready() -> void:
 	_start_new_chat_session()
 	if model_selector:
 		model_selector.item_selected.connect(model_bar_controller.on_model_selected)
+		model_selector.item_selected.connect(func(_i: int) -> void: if agent_host: agent_host.refresh_budget_window())
 	if settings_dialog:
 		settings_dialog.settings_saved.connect(_on_settings_saved)
-		settings_dialog.bug_report_requested.connect(func() -> void: _export_actions.open_bug_report(self))
+		settings_dialog.connect("bug_report_requested", func() -> void: _export_actions.open_bug_report(self))
 	if jump_to_bottom_btn:
 		jump_to_bottom_btn.pressed.connect(_on_jump_to_bottom_pressed)
 	if chat_scroll:
@@ -288,6 +292,7 @@ func attach_agent_host(host: AISidebarAgentHost) -> void:
 		goals.context = agent_context
 	host.models_fetched.connect(model_bar_controller.on_models_fetched)
 	host.readiness_changed.connect(_on_provider_readiness_changed)
+	host.budget_changed.connect(context_meter.update_budget)
 	agent_runner = host.runner
 	interaction.runner = agent_runner
 	tasks.runner = agent_runner
@@ -339,6 +344,8 @@ func _setup_queue_ui() -> void:
 	input_area.move_child(queue_panel, 0)
 	input_area.add_child(goal_banner)
 	input_area.move_child(goal_banner, 0)
+	input_area.add_child(context_meter)
+	input_area.move_child(context_meter, input_area.get_node("InputField").get_index())
 
 ## Sohbete asistan mesajı ekler (hedef sonucu gibi yerel bildirimler).
 func _post_assistant_message(text: String) -> void:
@@ -375,6 +382,7 @@ func refresh_theme() -> void:
 func update_ui_language() -> void:
 	if welcome_card and is_instance_valid(welcome_card):
 		welcome_card.refresh_texts()
+	context_meter.refresh_texts()
 	if skills_btn:
 		AISidebarIconHelper.apply_icon(skills_btn, "sparkles")
 		skills_btn.text = "" if skills_btn.icon else AISidebarI18n.get_text("skills_btn_short")
@@ -442,6 +450,7 @@ func _on_settings_saved() -> void:
 	rebuild_provider()
 	if agent_host and agent_host.has_provider():
 		agent_host.fetch_models()
+		agent_host.refresh_budget_window()
 
 # --- Chat Management Olayları ve Yardımcıları ---
 
@@ -491,6 +500,8 @@ func _start_new_chat_session() -> void:
 		_save_current_session()
 		
 	sessions.start_new()
+	if agent_host:
+		agent_host.reset_budget()
 		
 	queue_panel.clear_all()
 	if goals:
@@ -517,6 +528,8 @@ func _load_session_by_id(session_id: String) -> void:
 		_start_new_chat_session()
 		return
 	var loaded = sessions.current
+	if agent_host:
+		agent_host.reset_budget()
 		
 	queue_panel.clear_all()
 	if goals:

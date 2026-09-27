@@ -13,16 +13,22 @@ const AISidebarAGYProvider = preload("res://addons/godot_sidebar_ai/core/provide
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarContextBudget = preload("res://addons/godot_sidebar_ai/core/agent/context_budget.gd")
 
 ## Aktif provider'ın model listesi geldi.
 signal models_fetched(models: Array)
 ## Aktif provider'ın hazırlık durumu değişti (yalnızca AGY gibi alt süreçli provider'lar yayar).
 signal readiness_changed(state: int, message: String)
+## Bağlam bütçesi değişti (sağlayıcı token kullanımı bildirdi ya da sıfırlandı). `compacted`: koruma
+## bu yanıtta bağlamı sıkıştırdı.
+signal budget_changed(snapshot: Dictionary, compacted: bool)
 
 var network_manager: AISidebarNetworkManager
 var provider: AISidebarAIProvider = null
 var context: AISidebarAgentContext
 var runner: AISidebarAgentRunner
+## Yalnız sağlayıcının bildirdiği token sayıları (tahmin yok).
+var budget: AISidebarContextBudget = AISidebarContextBudget.new()
 
 func _init() -> void:
 	network_manager = AISidebarNetworkManager.new()
@@ -60,11 +66,14 @@ func _bind_provider(p_provider: AISidebarAIProvider, warm: bool) -> void:
 	if provider:
 		if provider.models_fetched.is_connected(_relay_models_fetched):
 			provider.models_fetched.disconnect(_relay_models_fetched)
+		if provider.usage_reported.is_connected(_on_usage_reported):
+			provider.usage_reported.disconnect(_on_usage_reported)
 		if provider.has_signal("readiness_changed") and provider.readiness_changed.is_connected(_relay_readiness_changed):
 			provider.readiness_changed.disconnect(_relay_readiness_changed)
 	provider = p_provider
 	if provider:
 		provider.models_fetched.connect(_relay_models_fetched)
+		provider.usage_reported.connect(_on_usage_reported)
 		if provider.has_signal("readiness_changed"):
 			provider.readiness_changed.connect(_relay_readiness_changed)
 		if warm and provider.has_method("pre_warm"):
@@ -73,6 +82,31 @@ func _bind_provider(p_provider: AISidebarAIProvider, warm: bool) -> void:
 
 func _relay_models_fetched(models: Array) -> void:
 	models_fetched.emit(models)
+	# Model listesi pencere boyunu da getirmiş olabilir.
+	refresh_budget_window()
+
+## Pencere boyu: Ayarlar'daki değer, yoksa sağlayıcının model listesindeki değer, yoksa 0 (bilinmiyor).
+func refresh_budget_window() -> void:
+	var cfg := AISidebarConfig.load_config()
+	var configured := int(str(cfg.get("context_window", 0)).to_float())
+	var from_provider := provider.context_window_for(str(cfg.get("selected_model", ""))) if provider else 0
+	budget.window = configured if configured > 0 else from_provider
+	budget_changed.emit(budget.snapshot(), false)
+
+## Sağlayıcı token kullanımını bildirdi: bütçe güncellenir; gerçek doluluk sınırı geçtiyse bağlam, runner
+## bir sonraki isteği kurmadan önce sıkıştırılır (kullanım yanıttan önce yayılır).
+func _on_usage_reported(usage: Dictionary) -> void:
+	if not budget.record(usage):
+		return
+	var compacted := false
+	if budget.should_compact() and context != null:
+		compacted = context.compact_now()
+	budget_changed.emit(budget.snapshot(), compacted)
+
+## Yeni sohbet: sayılar sıfırlanır.
+func reset_budget() -> void:
+	budget.reset()
+	budget_changed.emit(budget.snapshot(), false)
 
 func _relay_readiness_changed(state: int, message: String) -> void:
 	readiness_changed.emit(state, message)

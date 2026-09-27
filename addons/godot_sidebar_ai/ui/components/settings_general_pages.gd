@@ -3,8 +3,9 @@ extends RefCounted
 class_name AISidebarSettingsGeneralPages
 
 ## Ayarlar penceresinin genel sayfaları (kodla, AISidebarSettingsUi ile kurulur):
-##   Sağlayıcı: sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable)
-##   Model & Parametreler: temperature, max_agent_steps (max_iterations aynı denetim), goal_max_rounds (/goal)
+##   Sağlayıcı: sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable, report_usage)
+##   Model & Parametreler: temperature, max_agent_steps (max_iterations aynı denetim), goal_max_rounds (/goal),
+##          context_window (bağlam penceresi; 0 = sağlayıcının model listesinden)
 ##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval,
 ##          hata bildirme (Hata bildir düğmesi; ayar değil, pencereyi açar)
 ## Pencere açılırken config'ten yüklenir (load_from), "Kaydet ve Kapat"ta config'e yazılır (write_to).
@@ -28,6 +29,8 @@ var base_url_edit: LineEdit
 var api_key_edit: LineEdit
 var stream_check: CheckBox
 var vision_opt: OptionButton
+var usage_check: CheckBox
+var context_spin: SpinBox
 var temp_slider: HSlider
 var temp_badge: Label
 var steps_spin: SpinBox
@@ -70,6 +73,10 @@ func build_provider_page() -> VBoxContainer:
 	vision_opt.add_item(AISidebarI18n.get_text("settings_vision_off"), 2)
 	AISidebarSettingsUi.form_row(adv, AISidebarI18n.get_text("settings_vision"), vision_opt)
 	adv.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_vision_hint")))
+	usage_check = CheckBox.new()
+	usage_check.text = AISidebarI18n.get_text("settings_report_usage")
+	adv.add_child(usage_check)
+	adv.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_report_usage_hint")))
 	return page
 
 func build_model_page() -> VBoxContainer:
@@ -101,6 +108,14 @@ func build_model_page() -> VBoxContainer:
 	goal_rounds_spin.step = 1
 	AISidebarSettingsUi.form_row(goal, AISidebarI18n.get_text("settings_goal_max_rounds"), goal_rounds_spin)
 	goal_rounds_spin.size_flags_horizontal = Control.SIZE_FILL
+
+	var ctx := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_context"), AISidebarI18n.get_text("settings_context_hint"))
+	context_spin = SpinBox.new()
+	context_spin.min_value = 0
+	context_spin.max_value = 10000000
+	context_spin.step = 1000
+	AISidebarSettingsUi.form_row(ctx, AISidebarI18n.get_text("settings_context_window"), context_spin)
+	context_spin.size_flags_horizontal = Control.SIZE_FILL
 	return page
 
 func build_language_page() -> VBoxContainer:
@@ -143,6 +158,9 @@ func load_from(cfg: Dictionary) -> void:
 	base_url_edit.text = str(cfg.get("base_url", ""))
 	api_key_edit.text = str(cfg.get("api_key", ""))
 	stream_check.button_pressed = cfg.get("stream", true) == true
+	usage_check.button_pressed = cfg.get("report_usage", true) == true
+	var window: float = cfg.get("context_window", 0)
+	context_spin.value = window
 	var vision: Variant = cfg.get("vision_capable", null)
 	if not (vision is bool):
 		vision_opt.selected = 0
@@ -168,6 +186,8 @@ func write_to(cfg: Dictionary) -> void:
 	cfg["base_url"] = base_url_edit.text.strip_edges()
 	cfg["api_key"] = api_key_edit.text.strip_edges()
 	cfg["stream"] = stream_check.button_pressed
+	cfg["report_usage"] = usage_check.button_pressed
+	cfg["context_window"] = int(context_spin.value)
 	cfg["vision_capable"] = null if vision_opt.selected == 0 else (vision_opt.selected == 1)
 	cfg["temperature"] = snappedf(temp_slider.value, 0.05)
 	var steps := int(steps_spin.value)

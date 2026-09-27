@@ -15,7 +15,7 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 
 ## Bütün senaryolar (ui_shots hepsini çeker).
-const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "approval_write", "plan", "runtime", "error", "queue", "goal"]
+const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "approval_write", "plan", "runtime", "error", "queue", "goal", "context"]
 
 class SilentProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
@@ -75,6 +75,16 @@ func _scenario_queue(dock, r) -> void:
 	var q2 = _t("And save the settings to user://settings.cfg", "Ve ayarları user://settings.cfg'ye kaydet")
 	dock.queue_panel.enqueue(q1, q1)
 	dock.queue_panel.enqueue(q2, q2)
+
+## Bağlam göstergesi: sağlayıcı kullanım bildirir (gerçek yol: provider.usage_reported → AgentHost); doluluk
+## %80'i geçtiği için koruma sıkıştırma notunu gösterir.
+func _scenario_context(dock, r) -> void:
+	r.text_received.emit("user", _t("Refactor the inventory into its own scene", "Envanteri kendi sahnesine ayır"))
+	_tool(dock, r, "read_file", {"file_path": "res://inventory/inventory.gd"}, _t("Read inventory.gd", "inventory.gd okundu"), 60)
+	var host = dock.agent_host
+	host.budget.window = 128000
+	host.provider.usage_reported.emit({"prompt_tokens": 61200, "completion_tokens": 1800, "prompt_tokens_details": {"cached_tokens": 52000}})
+	host.provider.usage_reported.emit({"prompt_tokens": 104300, "completion_tokens": 2100, "prompt_tokens_details": {"cached_tokens": 96400}})
 
 func _t(en: String, tr: String) -> String:
 	return tr if _lang == "tr" else en

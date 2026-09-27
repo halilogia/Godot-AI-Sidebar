@@ -184,12 +184,14 @@ The port can be changed on the same page. To close the bridge: **Turn off** or `
 
 | Page | Contents |
 |---|---|
-| Provider | Provider, endpoint (Base URL, API key), streaming, image support |
-| Model & Parameters | Temperature, maximum agent steps, goal mode round limit |
-| General | Interface language, interface animations, approval mode, delete / overwrite approvals |
+| Provider | Provider, endpoint (Base URL, API key), streaming, image support, request token usage |
+| Model & Parameters | Temperature, maximum agent steps, goal mode round limit, context window |
+| General | Interface language, interface animations, approval mode, delete / overwrite approvals, report a bug |
 | Rules | Token usage, built-in rules (system prompt), global and project rules, add a rule |
 | Skills | Skill list and management |
 | External Agent (MCP) | Turn the bridge on / off, port, connection command |
+
+**Context meter:** the thin bar above the input box shows how full the context is (`used / window`) and the session's token totals. The numbers are what the provider reports, not estimates; if the provider reports nothing the meter stays hidden. Past 80%, older steps are summarized.
 
 **Save & Close** writes the changes. Skill toggles, adding rules and the bridge controls apply immediately with their own buttons.
 

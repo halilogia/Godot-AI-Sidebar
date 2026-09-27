@@ -29,6 +29,10 @@ const DEFAULT_CONFIG = {
 	"selected_model": "gemini-3.8-flash-low",
 	"temperature": 0.2,
 	"stream": true,
+	# Akışta token kullanımını iste (stream_options.include_usage); reddeden uç noktada kapatılır.
+	"report_usage": true,
+	# Modelin bağlam penceresi (token); 0: sağlayıcının model listesinden (bildirilmezse bilinmiyor).
+	"context_window": 0,
 	# null: modelin görüntü desteği adından tahmin edilir; true / false: elle zorla (Ayarlar → Sağlayıcı)
 	"vision_capable": null,
 	"max_agent_steps": 20,

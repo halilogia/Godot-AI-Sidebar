@@ -9,6 +9,8 @@ const AISidebarNetworkManager = preload("res://addons/godot_sidebar_ai/core/netw
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarSSEParser = preload("res://addons/godot_sidebar_ai/core/network/sse_parser.gd")
 
+## Model listesinden öğrenilen bağlam pencereleri: {model_id: token}.
+var _context_windows: Dictionary = {}
 var network_manager: AISidebarNetworkManager
 var _provider_req_start_msec: int = 0
 var _stream_buffer: String = ""
@@ -182,6 +184,11 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 		"stream": use_stream
 	}
 	
+	# Akışta token kullanımı son parçada gelsin (OpenAI stream_options); uç nokta reddederse Ayarlar →
+	# Sağlayıcı → Gelişmiş'ten kapatılır.
+	if use_stream and config.get("report_usage", true) == true:
+		body_dict["stream_options"] = {"include_usage": true}
+	
 	if not tools_schema.is_empty():
 		body_dict["tools"] = tools_schema
 		body_dict["tool_choice"] = "auto"
@@ -233,6 +240,8 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 				for item in json_res["data"]:
 					if item is Dictionary and item.has("id"):
 						model_ids.append(item["id"])
+						var item_d: Dictionary = item
+						_remember_context_window(str(item_d["id"]), item_d)
 			elif json_res.has("models") and json_res["models"] is Array:
 				for item in json_res["models"]:
 					if item is Dictionary and item.has("name"):
@@ -253,6 +262,10 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 			print("[TIMING] %s | PROVIDER_PARSE_ERROR | err=%s" % [get_ts(), parsed["error"]])
 			error_occurred.emit(parsed["error"])
 		else:
+			var usage: Variant = parsed.get("usage", null)
+			if usage is Dictionary:
+				var usage_d: Dictionary = usage
+				usage_reported.emit(usage_d)
 			var txt = parsed.get("content", "")
 			var tools = parsed.get("tool_calls", [])
 			var think_len = str(parsed.get("thinking", "")).length()
@@ -262,6 +275,27 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 				parsed.get("thinking", ""),
 				tools
 			)
+
+## Model listesinin bildirdiği bağlam penceresi (OpenRouter `context_length`, Groq `context_window`,
+## vLLM `max_model_len` …). Bildirilmeyen model için değer tutulmaz (tahmin yok).
+func _remember_context_window(model_id: String, item: Dictionary) -> void:
+	var sources: Array[Dictionary] = [item]
+	var top: Variant = item.get("top_provider", null)
+	if top is Dictionary:
+		var top_d: Dictionary = top
+		sources.append(top_d)
+	for src: Dictionary in sources:
+		for key: String in ["context_length", "context_window", "max_context_length", "max_model_len"]:
+			var v: Variant = src.get(key, null)
+			if v is int or v is float:
+				var n: float = v
+				if n > 0.0:
+					_context_windows[model_id] = int(n)
+					return
+
+func context_window_for(model: String) -> int:
+	var n: int = _context_windows.get(model, 0)
+	return n
 
 func _on_network_failed(endpoint_type: String, error_msg: String) -> void:
 	_stream_buffer = ""

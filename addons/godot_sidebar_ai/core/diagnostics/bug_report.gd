@@ -62,7 +62,8 @@ static func safe_settings(cfg: Dictionary) -> Dictionary:
 	out["base_url_host"] = url_host(str(cfg.get("base_url", "")))
 	out["system_prompt"] = "default" if str(cfg.get("system_prompt", "")) == str(AISidebarConfig.DEFAULT_CONFIG["system_prompt"]) else "custom"
 	var models: Variant = cfg.get("cached_models", [])
-	out["cached_models_count"] = (models as Array).size() if models is Array else 0
+	var model_list: Array = models if models is Array else []
+	out["cached_models_count"] = model_list.size()
 	return out
 
 ## Adresin yalnız şema + ana bilgisayar + port kısmı (kullanıcı bilgisi, yol ve sorgu atılır).
@@ -147,17 +148,20 @@ static func build(description: String, env: Dictionary, last_task: Dictionary, p
 		var tail := log_tail()
 		if not tail.is_empty():
 			files["godot_log_tail.txt"] = tail.to_utf8_buffer()
-	var shot: Variant = parts.get("screenshot", null)
-	if shot is Image and not (shot as Image).is_empty():
-		files["sidebar.png"] = (shot as Image).save_png_to_buffer()
+	var shot_v: Variant = parts.get("screenshot", null)
+	if shot_v is Image:
+		var shot: Image = shot_v
+		if not shot.is_empty():
+			files["sidebar.png"] = shot.save_png_to_buffer()
 
 	var zip := ZIPPacker.new()
 	var err := zip.open(zip_path)
 	if err != OK:
 		return {"ok": false, "error": error_string(err), "path": zip_path, "markdown": markdown, "files": []}
 	for name: String in files.keys():
+		var data: PackedByteArray = files[name]
 		zip.start_file(name)
-		zip.write_file(files[name])
+		zip.write_file(data)
 		zip.close_file()
 	zip.close()
 	return {"ok": true, "error": "", "path": zip_path, "markdown": markdown, "files": files.keys()}

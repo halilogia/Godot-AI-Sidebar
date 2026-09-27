@@ -39,6 +39,7 @@ const VARIATIONS: Array[String] = [
 	AISidebarThemeBuilder.GHOST_BUTTON, AISidebarThemeBuilder.OPTION_BUTTON, AISidebarThemeBuilder.LINK_BUTTON,
 	AISidebarThemeBuilder.NAV_BUTTON, AISidebarThemeBuilder.NAV_BUTTON_ACTIVE,
 	AISidebarThemeBuilder.LINE_EDIT, AISidebarThemeBuilder.TEXT_EDIT,
+	AISidebarThemeBuilder.METER, AISidebarThemeBuilder.METER_WARNING, AISidebarThemeBuilder.METER_DANGER,
 ]
 const KIT := "res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd"
 
