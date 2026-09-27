@@ -60,11 +60,32 @@ static func _on_child_entered(n: Node) -> void:
 		var c: Control = n
 		fade_in(c)
 
+## Yerleşim oturduktan sonra (iki kare) bölümü en yakın ScrollContainer içinde görünür yapar.
+## Kaydırmadır, hareket değil: yerleşimi değiştirmez, yalnız kaydırma konumunu.
+static func _bring_into_view(section: Control) -> void:
+	var tree := section.get_tree()
+	if tree == null:
+		return
+	await tree.process_frame
+	await tree.process_frame
+	if not is_instance_valid(section) or not section.is_visible_in_tree():
+		return
+	var p: Node = section.get_parent()
+	while p != null and not (p is ScrollContainer):
+		p = p.get_parent()
+	if p is ScrollContainer:
+		var scroll: ScrollContainer = p
+		scroll.ensure_control_visible(section)
+
 ## Açılır bölüm: açılırken görünür olup belirir, kapanırken solup gizlenir. Animasyon yoksa anında.
 ## Hareket sürerken tersine çevrilirse önceki durdurulur (kapanış geri çağrısı açılmış bölümü gizlemez).
 static func reveal(section: CanvasItem, show: bool) -> void:
 	if section == null:
 		return
+	# Açılan bölüm kaydırma alanının altında kalmasın (hareket kapalıyken de).
+	if show and section is Control:
+		var ctrl: Control = section
+		_bring_into_view(ctrl)
 	if not _animates(section):
 		_stop(section)
 		section.visible = show

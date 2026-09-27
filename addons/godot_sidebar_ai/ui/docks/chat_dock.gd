@@ -242,11 +242,13 @@ func _ready() -> void:
 		settings_btn.pressed.connect(_on_settings_pressed)
 	if approve_mode_btn:
 		approve_mode_btn.pressed.connect(model_bar_controller.on_approve_mode_pressed)
+	# Build / Plan seçimi mesajla ilgili: yazma alanının altında, Gönder'in hemen solunda.
+	if send_btn:
 		var plan_btn := Button.new()
 		plan_btn.focus_mode = Control.FOCUS_ALL
 		plan_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		approve_mode_btn.get_parent().add_child(plan_btn)
-		approve_mode_btn.get_parent().move_child(plan_btn, approve_mode_btn.get_index())
+		send_btn.get_parent().add_child(plan_btn)
+		send_btn.get_parent().move_child(plan_btn, send_btn.get_index())
 		plan_btn.pressed.connect(model_bar_controller.on_plan_mode_pressed)
 		model_bar_controller.plan_mode_btn = plan_btn
 	if refresh_models_btn:
@@ -269,9 +271,11 @@ func _ready() -> void:
 	if jump_to_bottom_btn:
 		jump_to_bottom_btn.pressed.connect(_on_jump_to_bottom_pressed)
 	if chat_scroll:
-		var v_bar = chat_scroll.get_v_scroll_bar()
+		var v_bar: VScrollBar = chat_scroll.get_v_scroll_bar()
 		if v_bar:
 			v_bar.value_changed.connect(_on_scroll_value_changed)
+			# İçerik büyüyünce (kart açılır, akış uzar) en alttaki kullanıcı en altta kalır.
+			v_bar.changed.connect(_scroll_if_following)
 
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	if has_node("MainLayout"):
