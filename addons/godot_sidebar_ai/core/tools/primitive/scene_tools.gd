@@ -22,18 +22,16 @@ static func refresh_open_scenes(paths: Array) -> Dictionary:
 	var refreshed: Array = []
 	if not (Engine.is_editor_hint() and ClassDB.class_exists("EditorInterface")):
 		return {"refreshed": refreshed}
-	if not EditorInterface.has_method("get_edited_scene_root") or not EditorInterface.has_method("open_scene_from_path"):
-		return {"refreshed": refreshed}
-	var root = EditorInterface.get_edited_scene_root()
-	if root == null:
-		return {"refreshed": refreshed}
-	var active = AISidebarPathPolicy.normalize_path(str(root.scene_file_path))
-	if active.is_empty():
-		return {"refreshed": refreshed}
+	# Açık olan (etkin ya da arka sekmedeki) her sahne diskten yeniden yüklenir. open_scene_from_path açık
+	# sahnede yalnız sekmeye geçer, diskten okumaz: editör eski kopyayı tutar ve play_game'in "çalıştırmadan
+	# önce kaydet" adımı ajanın yazdığı .tscn'i o eski kopyayla ezerdi.
+	var open_scenes: Array = []
+	for s: Variant in EditorInterface.get_open_scenes():
+		open_scenes.append(AISidebarPathPolicy.normalize_path(str(s)))
 	for p in paths:
 		var np = AISidebarPathPolicy.normalize_path(str(p))
-		if np.ends_with(".tscn") and np == active and not np in refreshed:
-			EditorInterface.open_scene_from_path(np)
+		if np.ends_with(".tscn") and np in open_scenes and not np in refreshed:
+			EditorInterface.reload_scene_from_path(np)
 			refreshed.append(np)
 	return {"refreshed": refreshed}
 

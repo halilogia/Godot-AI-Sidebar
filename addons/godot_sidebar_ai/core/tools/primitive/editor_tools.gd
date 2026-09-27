@@ -548,7 +548,10 @@ static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 	var img = tex.get_image()
 	if not img or img.is_empty():
 		return AISidebarToolResult.err("IMAGE_EMPTY", "Viewport görüntüsü boş.")
-		
+	# Görünmeyen viewport (ör. betik düzenleyici açıkken 2D sekmesi) 2x2 boş doku verir: başarı sayılmaz.
+	if img.get_width() < 16 or img.get_height() < 16:
+		return AISidebarToolResult.err("VIEWPORT_NOT_VISIBLE", "The %s viewport is not visible (image %dx%d). Switch the editor to the 2D/3D view, or use take_runtime_screenshot / take_editor_screenshot." % [vp_type_str, img.get_width(), img.get_height()])
+
 	downscale_to_max(img, max_dim)
 
 	var norm_path = path_check["path"]
