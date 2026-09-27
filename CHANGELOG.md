@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-09-27 (Dış ajan köprüsü, skill ve kurallar, /goal, yeni arayüz, hata bildirme, bağlam bütçesi, validate_project)
+
 * **MCP sınırları ayrıştırıldı:** HTTP transport, MCP/JSON-RPC protokolü ve Godot araç politikası artık ayrı modüllerdir. Yeni `ExternalAgentGateway` Godot kabiliyetlerine tek giriş noktasıdır; `/mcp` lifecycle facade üzerinden yönetilir. İstemci davranışı ve mevcut güvenlik kontrolleri korunmuştur.
 
 ### Değişenler
