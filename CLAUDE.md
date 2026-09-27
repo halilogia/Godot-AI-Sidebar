@@ -43,5 +43,6 @@ godot --path . -s res://tools/ui_shots.gd -- <mutlak klasör> tr all 1 light   #
 - Yeni bir kart ya da arayüz durumu eklediysen `tools/ui_scenarios.gd`'ye senaryosunu ekle (`NAMES`).
 - Headless çekim çalışmaz. `ui_shots.gd` editör dışında çizer (Godot'nun varsayılan teması); son söz gerçek editörün görüntüsüdür.
 - **Gerçek editör:** kullanıcının editöründe MCP köprüsü açık ve bu oturuma bağlıysa (`claude mcp add … godot …`), `take_editor_screenshot` aracını `region: "sidebar"` ile çağır; panelin editördeki gerçek görüntüsü (editör teması, ölçek, yazı tipleri) döner. Arayüz işini bitirmeden önce bununla da bak; köprü bağlı değilse kullanıcıya bunu söyle ve bağlamasını iste.
+- **Editör duman testi:** arayüz işini bitirmeden `tools/editor_smoke.ps1` çalıştır; panel gerçek editörde yüklenip Ayarlar / Yardım açılıyor mu denetler ve gerçek görüntüleri `ui_snapshots\editor_smoke\` altına yazar (köprü bağlı olmasa da çalışır).
 - `tests/test_ui_quality.gd` yeşil kalır: sabit / ölçeksiz yazı boyu, ölçeksiz boşluk, renk ve BBCode renk sabiti sayısı dosya başına `BASELINE`'ı (şu an boş) aşamaz; sahnelerde tema geçersiz kılması yok; her varyasyon tanımlı.
 - İş bitince önce / sonra görüntüsünü kullanıcıya gönder.

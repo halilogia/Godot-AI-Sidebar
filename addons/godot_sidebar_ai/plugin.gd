@@ -1,6 +1,7 @@
 @tool
 extends EditorPlugin
 
+const AISidebarEditorSmoke = preload("res://addons/godot_sidebar_ai/core/dev/editor_smoke.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const DOCK_SCENE_PATH: String = "res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn"
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
@@ -41,6 +42,14 @@ func _enter_tree() -> void:
 			add_control_to_dock(DOCK_SLOT_RIGHT_UL, chat_dock)
 			AISidebarUITelemetryTools.register_sidebar_dock(chat_dock)
 			print("[Godot AI Core] Eklenti başarıyla yüklendi (Sağ Dock).")
+
+	# 2b. Editör duman testi: yalnız `-- --ai-sidebar-smoke=<klasör>` ile açılınca (tools/editor_smoke.ps1).
+	var smoke_dir := AISidebarEditorSmoke.requested_out_dir()
+	if not smoke_dir.is_empty() and chat_dock:
+		var smoke := AISidebarEditorSmoke.new()
+		smoke.out_dir = smoke_dir
+		smoke.dock = chat_dock
+		add_child(smoke)
 
 	# 3. Dış ajan köprüsü (MCP): düğüm her zaman kurulur, yalnız ayar açıksa dinler.
 	mcp_bridge = AISidebarMcpBridgeControl.new()

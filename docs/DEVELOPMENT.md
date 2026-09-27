@@ -162,6 +162,14 @@ powershell -ExecutionPolicy Bypass -File .\tools\ui_snapshot.ps1 -Compare <önce
 
 Karşılaştırma `ui_snapshots\compare_<önce>_vs_<sonra>\` klasörüne değişen her ekranı yan yana (farklı bölge kırmızı çerçeveli) ve `report.md` yazar. Test değil rapordur; farkların istenip istenmediğine gözle bakılır. `ui_snapshots\` git'e girmez.
 
+* **Gerçek editörde duman testi:** `ui_shots.gd` editör dışında çizer; gerçek editörün görüntüsü ve yüklenme denetimi için:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\editor_smoke.ps1
+```
+
+Editörü ekranda açar, panelin yüklendiğini, temanın kökte olduğunu, durum rozetinin dolduğunu, Ayarlar ve Yardım'ın açıldığını denetler; `ui_snapshots\editor_smoke\` altına `sidebar.png`, `settings.png`, `help.png`, `editor_window.png` ve `report.json` yazar, editörü kapatır. Eklentiye ait betik hatası ya da başarısız denetim çıkış kodu 1 verir. Editör açılışı kişisel `config.json`'ı ve `project.godot`'u (autoload) yazdığı için betik bu dosyaları önceki baytlarına geri koyar. Ekran gerekir; CI'da çalışmaz.
+
 ## 11. GitHub Actions (CI)
 
 `.github/workflows/verify.yml`: her `main` push'unda ve her PR'da, ubuntu-latest üzerinde:
