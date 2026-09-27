@@ -24,6 +24,9 @@ if (-not $GodotBin) {
 }
 $Out = Join-Path $Root "ui_snapshots\editor_smoke"
 New-Item -ItemType Directory -Force $Out | Out-Null
+# Godot bu klasördeki PNG'leri içe aktarmasın (içe aktarma penceresi görüntülere karışıyordu).
+$gdignore = Join-Path (Split-Path -Parent $Out) ".gdignore"
+if (-not (Test-Path $gdignore)) { New-Item -ItemType File $gdignore | Out-Null }
 Get-ChildItem $Out -File | Remove-Item -Force
 $log = Join-Path $Out "editor.log"
 $errLog = Join-Path $Out "editor.err.log"
