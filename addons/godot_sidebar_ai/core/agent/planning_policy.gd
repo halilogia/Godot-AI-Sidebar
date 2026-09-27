@@ -23,7 +23,7 @@ const PLANNING_SAFE_TOOLS: Array = [
 	"get_scene_tree", "get_active_scene_tree", "get_selected_nodes",
 	"get_open_scripts", "get_node_properties", "get_editor_errors",
 	"search_project_assets", "take_editor_screenshot", "take_viewport_screenshot",
-	"inspect_ui_layout"
+	"inspect_ui_layout", "get_godot_class_info"
 ]
 
 ## Plan aşaması aktifken bu aracın çağrılması engellenmeli mi?

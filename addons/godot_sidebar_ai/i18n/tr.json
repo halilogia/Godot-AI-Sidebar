@@ -479,5 +479,6 @@
   "plan_usage_hint": "Ne planlanacağını yaz: ör. `/plan envanter sistemi ekle`.",
   "settings_card_planning": "Planlama",
   "settings_planning_mode": "Her istekte önce plan yap",
-  "settings_planning_hint": "Açıksa ajan her isteği uygulamadan önce inceleyip onayına bir plan sunar. Kapalıyken (önerilen) doğrudan işe başlar; tek bir istek için plan istersen /plan yaz."
+  "settings_planning_hint": "Açıksa ajan her isteği uygulamadan önce inceleyip onayına bir plan sunar. Kapalıyken (önerilen) doğrudan işe başlar; tek bir istek için plan istersen /plan yaz.",
+  "tool_title_class_info": "Godot API'sine bakıldı: {class}"
 }

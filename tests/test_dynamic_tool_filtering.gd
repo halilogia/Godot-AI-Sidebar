@@ -35,7 +35,8 @@ static func run() -> Dictionary:
 	for s in script_schemas:
 		script_names.append(s["function"]["name"])
 		
-	if script_schemas.size() <= 12 and "create_or_update_script" in script_names and "validate_script" in script_names:
+	# 13: get_godot_class_info kod yazarken hazır olmalı (API uydurmasın).
+	if script_schemas.size() <= 13 and "create_or_update_script" in script_names and "validate_script" in script_names:
 		passed += 1
 	else:
 		failed += 1

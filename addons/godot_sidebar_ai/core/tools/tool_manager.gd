@@ -20,6 +20,7 @@ const AISidebarSkillTools = preload("res://addons/godot_sidebar_ai/core/tools/pr
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 const AISidebarRulesTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/rules_tools.gd")
 const AISidebarGoalTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/goal_tools.gd")
+const AISidebarApiTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/api_tools.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -95,6 +96,7 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarRuntimeInputTools.get_schemas())
 	schemas.append_array(AISidebarRulesTools.get_schemas())
 	schemas.append_array(AISidebarGoalTools.get_schemas())
+	schemas.append_array(AISidebarApiTools.get_schemas())
 	# Skill'ler: açık skill yoksa activate_skill hiç sunulmaz.
 	schemas.append_array(AISidebarSkillTools.get_schemas())
 
@@ -182,7 +184,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			
 	if has_script_intent:
 		var script_tools = [
-			"create_or_update_script", "replace_file_content", "validate_script", "validate_project", "write_files",
+			"create_or_update_script", "replace_file_content", "validate_script", "validate_project", "write_files", "get_godot_class_info",
 			"delete_file", "list_dir", "get_open_scripts", "read_script"
 		]
 		for st in script_tools:
@@ -310,6 +312,8 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 		return AISidebarRulesTools.execute(tool_name, args)
 	if tool_name == AISidebarGoalTools.TOOL_NAME:
 		return AISidebarGoalTools.execute(tool_name, args)
+	if tool_name == AISidebarApiTools.TOOL_NAME:
+		return AISidebarApiTools.execute(tool_name, args)
 
 	# 6. Yüksek Seviyeli Intent Araçları
 	for s in AISidebarGameIntentTools.get_schemas():

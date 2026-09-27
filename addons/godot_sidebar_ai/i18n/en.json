@@ -479,5 +479,6 @@
   "plan_usage_hint": "Write what to plan, e.g. `/plan add an inventory system`.",
   "settings_card_planning": "Planning",
   "settings_planning_mode": "Plan first for every request",
-  "settings_planning_hint": "When on, the agent inspects each request and shows you a plan to approve before changing anything. When off (recommended) it starts right away; type /plan for a plan on a single request."
+  "settings_planning_hint": "When on, the agent inspects each request and shows you a plan to approve before changing anything. When off (recommended) it starts right away; type /plan for a plan on a single request.",
+  "tool_title_class_info": "Checked the Godot API: {class}"
 }
