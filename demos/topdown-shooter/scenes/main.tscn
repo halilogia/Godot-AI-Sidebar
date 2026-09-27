@@ -1,0 +1,158 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/arena_floor.gd" id="2_floor"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="3_player"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_top"]
+size = Vector2(2480, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bottom"]
+size = Vector2(2480, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_left"]
+size = Vector2(40, 1600)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_right"]
+size = Vector2(40, 1600)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.06, 0.07, 0.09, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.18)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fill"]
+bg_color = Color(0.25, 0.8, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="Arena" type="Node2D" parent="."]
+
+[node name="Floor" type="Node2D" parent="Arena"]
+script = ExtResource("2_floor")
+
+[node name="Walls" type="StaticBody2D" parent="Arena"]
+collision_layer = 4
+collision_mask = 0
+
+[node name="Top" type="CollisionShape2D" parent="Arena/Walls"]
+position = Vector2(1200, -20)
+shape = SubResource("RectangleShape2D_top")
+
+[node name="Bottom" type="CollisionShape2D" parent="Arena/Walls"]
+position = Vector2(1200, 1620)
+shape = SubResource("RectangleShape2D_bottom")
+
+[node name="Left" type="CollisionShape2D" parent="Arena/Walls"]
+position = Vector2(-20, 800)
+shape = SubResource("RectangleShape2D_left")
+
+[node name="Right" type="CollisionShape2D" parent="Arena/Walls"]
+position = Vector2(2420, 800)
+shape = SubResource("RectangleShape2D_right")
+
+[node name="Entities" type="Node2D" parent="."]
+
+[node name="Bullets" type="Node2D" parent="Entities"]
+groups = ["bullets"]
+
+[node name="Enemies" type="Node2D" parent="Entities"]
+
+[node name="Player" parent="Entities" instance=ExtResource("3_player")]
+position = Vector2(1200, 800)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="HealthBar" type="ProgressBar" parent="HUD"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 324.0
+offset_bottom = 48.0
+theme_override_styles/background = SubResource("StyleBoxFlat_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_fill")
+value = 100.0
+show_percentage = false
+
+[node name="ScoreLabel" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 56.0
+offset_right = 324.0
+offset_bottom = 82.0
+theme_override_colors/font_color = Color(1, 0.9, 0.5, 1)
+theme_override_font_sizes/font_size = 22
+text = "SKOR 0"
+
+[node name="WaveLabel" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 82.0
+offset_right = 324.0
+offset_bottom = 108.0
+theme_override_colors/font_color = Color(0.6, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "DALGA 0"
+
+[node name="StatusLabel" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 108.0
+offset_right = 424.0
+offset_bottom = 134.0
+theme_override_colors/font_color = Color(0.85, 0.85, 0.9, 1)
+theme_override_font_sizes/font_size = 16
+text = "Hazir"
+
+[node name="GameOver" type="Control" parent="HUD"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Dim" type="ColorRect" parent="HUD/GameOver"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+
+[node name="Center" type="CenterContainer" parent="HUD/GameOver"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Panel" type="VBoxContainer" parent="HUD/GameOver/Center"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="HUD/GameOver/Center/Panel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
+theme_override_font_sizes/font_size = 56
+text = "GAME OVER"
+horizontal_alignment = 1
+
+[node name="FinalScore" type="Label" parent="HUD/GameOver/Center/Panel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "Skor: 0"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="HUD/GameOver/Center/Panel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+theme_override_font_sizes/font_size = 20
+text = "R tusu ile yeniden basla"
+horizontal_alignment = 1
