@@ -153,7 +153,15 @@ static func run() -> Dictionary:
 	var disk_ok: bool = use_ok.get("success", false) and not use_bad.get("success", false)
 	if not disk_ok:
 		errors.append("Test G: unregistered disk class: ok=%s bad=%s" % [str(use_ok.get("error", "")).left(160), use_bad.get("success")])
-	if disk_ok and real_reported and g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
+	# Kök neden öne alınır: bullet.gd yalnız enemy.gd bozuk olduğu için düşüyor; bildirilen hata enemy.gd'nin.
+	var root_res = AISidebarVerificationPipeline.validate_batch_files([
+		{"file_path": "res://tests/temp_root_bullet.gd", "content": "extends Area2D\nfunc hit(e: TempRootEnemy) -> void:\n\te.damage(1)\n"},
+		{"file_path": "res://tests/temp_root_enemy.gd", "content": "class_name TempRootEnemy\nextends Node2D\nfunc damage(n: int) -> void:\n\tundefined_root_call(n)\n"}])
+	var root_err: Dictionary = root_res.get("error", {}) if root_res.get("error") is Dictionary else {}
+	var root_ok: bool = not root_res.get("success", false) and str(root_err.get("file_path", "")).ends_with("temp_root_enemy.gd") and str(root_err.get("message", "")).contains("undefined_root_call")
+	if not root_ok:
+		errors.append("Test G: root cause not reported: " + str(root_err.get("message", "")).left(200))
+	if root_ok and disk_ok and real_reported and g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
 		passed += 1
 	else:
 		failed += 1

@@ -207,6 +207,35 @@ static func _references_batch_file(source_code: String, file_path: String, batch
 			return true
 	return false
 
+## Başarısızlık yalnız batch'teki başka bir dosyadan mı geliyor (kök neden değil mi)?
+static func _is_dependency_failure(val_res: Dictionary, batch_map: Dictionary) -> bool:
+	var err_v: Variant = val_res.get("error", null)
+	if not (err_v is Dictionary):
+		return false
+	var err: Dictionary = err_v
+	var errs_v: Variant = err.get("errors", [])
+	var errs: Array = errs_v if errs_v is Array else []
+	if errs.is_empty():
+		return false
+	# Ayna bağımlı dosyanın hata satırını da bu dosyaya yazar: "depended scripts" varsa sonucun tamamı
+	# bağımlılık hatasıdır, kök neden kendi başına düşen dosyada aranır.
+	for e: Variant in errs:
+		if str(e).contains("Failed to compile depended scripts"):
+			return true
+	var classes := _batch_classes(batch_map)
+	for e: Variant in errs:
+		var msg := str(e)
+		if e is Dictionary:
+			var ed: Dictionary = e
+			msg = str(ed.get("message", ""))
+		var dependent := msg.contains("Failed to compile depended scripts") or msg.contains("Could not preload resource") or msg.contains("Preload file")
+		for cls: String in classes.keys():
+			if msg.contains("\"" + cls + "\""):
+				dependent = true
+		if not dependent:
+			return false
+	return true
+
 ## Hatada çözülemeyen adlar ("Could not find type X", "Identifier X not declared") projede bir .gd'nin
 ## class_name'i ise o dosya bağlama eklenir. Yalnız hata durumunda ve yalnız res:// (addons/ ve .godot/
 ## hariç) taranır.
@@ -398,11 +427,20 @@ static func validate_batch_files(files_arr: Array) -> Dictionary:
 			if not p.is_empty():
 				batch_map[p] = item.get("content", "")
 				
-	# 1. Her dosyayı formatına uygun validator ile doğrula (Unified Source Validation)
+	# 1. Her dosyayı formatına uygun validator ile doğrula (Unified Source Validation). Hepsi denetlenir:
+	# bir dosya yalnız batch'teki başka bir dosya bozuk olduğu için düşüyorsa ("Failed to compile depended
+	# scripts", "Could not find type <batch sınıfı>"), kök nedeni olan dosyanın hatası öne alınır.
+	var first_fail: Dictionary = {}
 	for p in batch_map.keys():
-		var val_res = validate_source(batch_map[p], p, batch_map)
-		if not val_res.get("success", false):
+		var val_res: Dictionary = validate_source(batch_map[p], p, batch_map)
+		if val_res.get("success", false):
+			continue
+		if first_fail.is_empty():
+			first_fail = val_res
+		if not _is_dependency_failure(val_res, batch_map):
 			return val_res
+	if not first_fail.is_empty():
+		return first_fail
 						
 	# 3. Dosyaları güvenli yazım sırasına göre sırala: .gd -> .tres -> .tscn -> diğerleri
 	var sorted_files: Array[Dictionary] = []
