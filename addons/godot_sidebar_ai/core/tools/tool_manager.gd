@@ -47,7 +47,7 @@ static func get_all_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": "ask_user",
-			"description": "Asks the user a clarifying question when a critical architecture or scope ambiguity would change the result and cannot be inferred from the editor context (e.g. 'make a scene with a slime' when 2D vs 3D is unclear, or 'make a hexagon' when a single object vs a playable grid map is unclear). NEVER ask about minor details (speed, color, size, ...); continue with a sensible assumption.",
+			"description": "Last resort. Asks the user only when two readings of the request lead to incompatible, costly work and neither the request nor the editor context gives any hint. If the user named what they want (e.g. 'UI', 'map'), do not ask: pick the reading closest to their words, start with the smallest working version, state your assumption in one sentence and proceed. NEVER ask about scope or minor details (speed, color, size, ...).",
 			"parameters": {
 				"type": "object",
 				"properties": {
