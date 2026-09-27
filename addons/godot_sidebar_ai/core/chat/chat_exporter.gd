@@ -441,6 +441,9 @@ static func _append_task_section(task: Dictionary, idx: int, lines: PackedString
 	var stop_reason = _rx(str(task.get("stop_reason", "")).strip_edges())
 	if not stop_reason.is_empty():
 		lines.append("- **Stop reason:** " + stop_reason)
+	var dropped: int = task.get("dropped_events", 0)
+	if dropped > 0:
+		lines.append("- **Events not recorded (limit reached):** %d" % dropped)
 	lines.append("")
 
 	var evs = task.get("events", [])

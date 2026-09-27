@@ -14,7 +14,9 @@ const MAX_STORED_CHARS: int = 4000
 ## Tool çağrısına eşlik eden model düşüncesi (thinking) için kayıt sınırı. Export'ta tam
 ## görünmesi için MAX_TEXT_CHARS'tan geniştir; aşarsa `thinking_truncated` bayrağı düşer.
 const MAX_THINKING_CHARS: int = 16000
-const MAX_EVENTS_PER_TASK: int = 500
+## Uzun görevler (demo benchmark'ları) 500 olayı aşıyordu; sınırı geçen olay sayısı `dropped_events`
+## ile export'ta görünür (eskiden son adımlar ve bitiş sessizce kayboluyordu).
+const MAX_EVENTS_PER_TASK: int = 5000
 ## Everything Export boyut sınırları (makul, deterministik, flag'li truncation).
 const MAX_TEXT_CHARS: int = 4000
 const MAX_ARGS_CHARS: int = 8000
@@ -230,6 +232,9 @@ func record(event_type: String, data: Dictionary = {}) -> void:
 	if has_running_task():
 		var evs: Array = tasks[_running_idx]["events"]
 		if evs.size() >= MAX_EVENTS_PER_TASK + 2:
+			var task: Dictionary = tasks[_running_idx]
+			var dropped: int = task.get("dropped_events", 0)
+			task["dropped_events"] = dropped + 1
 			return
 		evs.append(entry)
 	else:
