@@ -120,13 +120,21 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 		# olabilir: batch geçici bir aynaya yazılıp betik gerçekten derlenir.
 		# Böylece gerçek sözdizimi / üye hataları istisnaya saklanamaz.
 		if reload_err == ERR_PARSE_ERROR or reload_err == ERR_FILE_NOT_FOUND:
-			if _references_batch_file(source_code, file_path, batch_context) and _compile_with_batch_mirror(source_code, batch_context, file_path) == OK:
-				return {
-					"status": VerificationStatus.PASSED,
-					"success": true,
-					"message": "✓ GDScript sözdizimi geçerli (Batch içi bağımlılık)."
-				}
-				
+			if _references_batch_file(source_code, file_path, batch_context):
+				var mirror := _compile_with_batch_mirror(source_code, batch_context, file_path)
+				var mirror_code: int = mirror["code"]
+				if mirror_code == OK:
+					return {
+						"status": VerificationStatus.PASSED,
+						"success": true,
+						"message": "✓ GDScript sözdizimi geçerli (Batch içi bağımlılık)."
+					}
+				# Batch dosyaları görülerek bulunan GERÇEK hatalar bildirilir. Aynasız derlemenin
+				# "Could not find type <batch sınıfı>" hataları modeli yanıltıyor, asıl hatayı gizliyordu.
+				var mirror_errors: Array = mirror["errors"]
+				if not mirror_errors.is_empty():
+					compile_errors = mirror_errors
+
 		var detail := AISidebarProjectValidator.format_errors(compile_errors)
 		if detail.is_empty():
 			detail = "no line reported (engine error %d)" % reload_err
@@ -250,11 +258,12 @@ static func _mirror_source(text: String, batch_context: Dictionary, root: String
 	return _rewrite_batch_paths(out, batch_context, root) + consts
 
 ## Batch dosyalarını geçici aynaya yazar, batch yollarını aynaya çevirip betiği
-## derler, aynayı siler. Dönen değer derleme sonucudur.
-static func _compile_with_batch_mirror(source_code: String, batch_context: Dictionary, file_path: String = "") -> int:
+## derler, aynayı siler. Dönen değer {code, errors}: hatalar ayna yolları res:// yollarına çevrilmiş olarak.
+static func _compile_with_batch_mirror(source_code: String, batch_context: Dictionary, file_path: String = "") -> Dictionary:
 	_mirror_seq += 1
 	var root: String = BATCH_MIRROR_ROOT + "/%d_%d" % [Time.get_ticks_usec(), _mirror_seq]
 	var written: Array = []
+	var errors: Array = []
 	var err: int = OK
 	for bp in batch_context.keys():
 		var p = str(bp)
@@ -271,18 +280,23 @@ static func _compile_with_batch_mirror(source_code: String, batch_context: Dicti
 		f.close()
 		written.append(target)
 	if err == OK:
-		var mirrored = GDScript.new()
+		var mirrored := GDScript.new()
 		mirrored.source_code = _mirror_source(source_code, batch_context, root)
 		# Betik aynadaki kendi yolunu alır: diğer kopyalar ona o yoldan (türüyle) başvurur, yolsuz betik
 		# "argument should be <ayna yolu>" der. Ayna geçici olduğu için önbellek kaydının değişmesi zararsız.
 		if batch_context.has(file_path) and str(file_path).begins_with("res://"):
 			mirrored.take_over_path(root + "/" + str(file_path).trim_prefix("res://"))
-		err = mirrored.reload()
+		var compiled := AISidebarProjectValidator.compile_with_errors(mirrored)
+		err = compiled["code"]
+		var raw_errors: Array = compiled["errors"]
+		for e: Dictionary in raw_errors:
+			var msg: String = e.get("message", "")
+			errors.append({"line": e.get("line", 0), "message": msg.replace(root + "/", "res://")})
 	for w in written:
 		DirAccess.remove_absolute(w)
 	_remove_empty_dirs(root)
 	_remove_empty_dirs(BATCH_MIRROR_ROOT)
-	return err
+	return {"code": err, "errors": errors}
 
 static func _rewrite_batch_paths(text: String, batch_context: Dictionary, root: String) -> String:
 	var out = text

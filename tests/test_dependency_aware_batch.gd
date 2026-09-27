@@ -134,7 +134,15 @@ static func run() -> Dictionary:
 	var g_self = "class_name TempClsGSelf\nextends RefCounted\nstatic func make() -> TempClsGSelf:\n\tvar d := TempClsGSelf.new()\n\treturn d\n"
 	var g_self_ok = AISidebarVerificationPipeline.validate_batch_files([{"file_path": "res://tests/temp_cls_g_self.gd", "content": g_self}])
 	var g_self_bad = AISidebarVerificationPipeline.validate_batch_files([{"file_path": "res://tests/temp_cls_g_self.gd", "content": g_self.replace(".new()", ".nope()")}])
-	if g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
+	# Batch sınıfına başvuran betikte GERÇEK bir hata varsa model o hatayı görür, "Could not find type
+	# <batch sınıfı>" değil (benchmark: world_map.gd'de her seferinde "Province bulunamadı" çıkıyordu).
+	var g_map = "extends Node2D\nvar cells: Array[TempClsGData] = []\nfunc f() -> void:\n\tundefined_thing()\n"
+	var g_real = AISidebarVerificationPipeline.validate_batch_files([{"file_path": ga, "content": g_data}, {"file_path": "res://tests/temp_cls_g_map.gd", "content": g_map}])
+	var g_real_msg := str((g_real.get("error", {}) as Dictionary).get("message", ""))
+	var real_reported: bool = not g_real.get("success", false) and g_real_msg.contains("undefined_thing") and not g_real_msg.contains("Could not find type")
+	if not real_reported:
+		errors.append("Test G: real error hidden: " + g_real_msg.left(200))
+	if real_reported and g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
 		passed += 1
 	else:
 		failed += 1
