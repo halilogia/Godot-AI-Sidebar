@@ -77,6 +77,9 @@ func populate_model_selector(models: Array) -> void:
 
 	if model_selector.item_count > 0:
 		model_selector.selected = selected_idx
+		if not models.has(selected_model):
+			cfg["selected_model"] = str(models[0])
+			AISidebarConfig.save_config(cfg)
 
 func on_models_fetched(models: Array) -> void:
 	var cfg = AISidebarConfig.load_config()

@@ -58,16 +58,26 @@ func _init() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		_is_reading = false
-		if _stdio:
-			_stdio.close()
-			_stdio = null
-		if _pid > 0 and OS.is_process_running(_pid):
+		_shutdown_process()
+
+## Süreci güvenle kapatır. Sıra önemli: okuma iş parçacığı boruda `get_line()` ile beklerken boruyu
+## kapatmak Windows'ta okuma bitene kadar bekler; okuma da süreç ölmeden bitmez (karşılıklı kilit, editör
+## donar; ör. agy Google girişini beklerken sağlayıcı değiştirilince). Önce süreç (alt süreçleriyle)
+## öldürülür, okuma EOF ile biter, iş parçacığı beklenir, boru en son kapatılır.
+func _shutdown_process() -> void:
+	_is_reading = false
+	if _pid > 0 and OS.is_process_running(_pid):
+		if OS.get_name() == "Windows":
+			OS.execute("taskkill", ["/PID", str(_pid), "/T", "/F"])
+		if OS.is_process_running(_pid):
 			OS.kill(_pid)
-			_pid = -1
-		if _reader_thread and _reader_thread.is_started():
-			_reader_thread.wait_to_finish()
-			_reader_thread = null
+	_pid = -1
+	if _reader_thread and _reader_thread.is_started():
+		_reader_thread.wait_to_finish()
+	_reader_thread = null
+	if _stdio:
+		_stdio.close()
+		_stdio = null
 
 func _ensure_sandbox_dir() -> String:
 	if _sandbox_dir.is_empty():
@@ -96,19 +106,7 @@ func cancel() -> void:
 	stop_process()
 
 func stop_process() -> void:
-	_is_reading = false
-	if _stdio:
-		_stdio.close()
-		_stdio = null
-		
-	if _pid > 0 and OS.is_process_running(_pid):
-		OS.kill(_pid)
-		_pid = -1
-		
-	if _reader_thread and _reader_thread.is_started():
-		_reader_thread.wait_to_finish()
-		_reader_thread = null
-		
+	_shutdown_process()
 	_pipe_dict.clear()
 	_active_model = ""
 	_state = AgyState.STARTING

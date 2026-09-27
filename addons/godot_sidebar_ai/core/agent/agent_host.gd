@@ -17,6 +17,8 @@ const AISidebarContextBudget = preload("res://addons/godot_sidebar_ai/core/agent
 
 ## Aktif provider'ın model listesi geldi.
 signal models_fetched(models: Array)
+## Aktif provider'ın model listesi alınamadı.
+signal models_failed(error_message: String)
 ## Aktif provider'ın hazırlık durumu değişti (yalnızca AGY gibi alt süreçli provider'lar yayar).
 signal readiness_changed(state: int, message: String)
 ## Bağlam bütçesi değişti (sağlayıcı token kullanımı bildirdi ya da sıfırlandı). `compacted`: koruma
@@ -46,7 +48,7 @@ static func create_provider(provider_type: String, p_network_manager: AISidebarN
 ## ısıtır (pre_warm) ve runner'ı ona geçirir.
 func rebuild_provider() -> void:
 	var cfg = AISidebarConfig.load_config()
-	var prov_type = cfg.get("provider_type", "antigravity_cli")
+	var prov_type = cfg.get("provider_type", "openai_compatible")
 	# Süren istek kapatılır: yanıtı ortak NetworkManager üzerinden yeni provider'a gelmesin.
 	if provider:
 		provider.cancel()
@@ -66,6 +68,8 @@ func _bind_provider(p_provider: AISidebarAIProvider, warm: bool) -> void:
 	if provider:
 		if provider.models_fetched.is_connected(_relay_models_fetched):
 			provider.models_fetched.disconnect(_relay_models_fetched)
+		if provider.models_failed.is_connected(models_failed.emit):
+			provider.models_failed.disconnect(models_failed.emit)
 		if provider.usage_reported.is_connected(_on_usage_reported):
 			provider.usage_reported.disconnect(_on_usage_reported)
 		if provider.has_signal("readiness_changed") and provider.readiness_changed.is_connected(_relay_readiness_changed):
@@ -73,6 +77,7 @@ func _bind_provider(p_provider: AISidebarAIProvider, warm: bool) -> void:
 	provider = p_provider
 	if provider:
 		provider.models_fetched.connect(_relay_models_fetched)
+		provider.models_failed.connect(models_failed.emit)
 		provider.usage_reported.connect(_on_usage_reported)
 		if provider.has_signal("readiness_changed"):
 			provider.readiness_changed.connect(_relay_readiness_changed)

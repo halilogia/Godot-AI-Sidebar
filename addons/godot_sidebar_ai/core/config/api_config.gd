@@ -23,10 +23,10 @@ const CONFIG_VERSION := 1
 static var last_recovery: String = ""
 
 const DEFAULT_CONFIG = {
-	"provider_type": "antigravity_cli",
+	"provider_type": "openai_compatible",
 	"base_url": "http://localhost:20128/v1",
 	"api_key": "",
-	"selected_model": "gemini-3.8-flash-low",
+	"selected_model": "all",
 	"temperature": 0.2,
 	"stream": true,
 	# Akışta token kullanımını iste (stream_options.include_usage); reddeden uç noktada kapatılır.
@@ -41,7 +41,7 @@ const DEFAULT_CONFIG = {
 	"language": "tr",
 	"ui_animations": true,
 	"goal_max_rounds": 10,
-	"cached_models": ["gemini-3.8-flash-low", "gemini-3.8-flash-medium", "gemini-3.8-flash-high", "claude-sonnet-4-6", "all", "free"],
+	"cached_models": ["all", "free"],
 	# İzin ve Güvenlik Ayarları
 	"require_delete_approval": true,
 	"require_overwrite_approval": true,

@@ -153,7 +153,7 @@ func build_language_page() -> VBoxContainer:
 	return page
 
 func load_from(cfg: Dictionary) -> void:
-	provider_opt.selected = maxi(0, PROVIDERS.find(str(cfg.get("provider_type", PROVIDERS[0]))))
+	provider_opt.selected = maxi(0, PROVIDERS.find(str(cfg.get("provider_type", "openai_compatible"))))
 	_apply_provider_state()
 	base_url_edit.text = str(cfg.get("base_url", ""))
 	api_key_edit.text = str(cfg.get("api_key", ""))

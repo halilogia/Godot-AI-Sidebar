@@ -89,6 +89,8 @@ var goals: AISidebarGoalController = null
 var goal_banner: AISidebarGoalBanner = AISidebarGoalBanner.new()
 ## Giriş kutusunun üstünde bağlam göstergesi (yalnız sağlayıcının bildirdiği token sayıları).
 var context_meter: AISidebarContextMeter = AISidebarContextMeter.new()
+## Kayıttan önceki sağlayıcı tipi (değişince model listesi temizlenir).
+var _last_provider_type: String = ""
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
 var composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
@@ -133,6 +135,7 @@ func rebuild_provider() -> void:
 		agent_host.rebuild_provider()
 
 func _ready() -> void:
+	_last_provider_type = str(AISidebarConfig.load_config().get("provider_type", ""))
 	_export_actions = AISidebarChatExportActions.new()
 	_export_actions.get_session = func(): return sessions.current
 	_export_actions.status_badge = status_badge
@@ -291,6 +294,7 @@ func attach_agent_host(host: AISidebarAgentHost) -> void:
 	if goals:
 		goals.context = agent_context
 	host.models_fetched.connect(model_bar_controller.on_models_fetched)
+	host.models_failed.connect(func(msg: String) -> void: set_status_badge(msg, AISidebarTheme.COLOR_ERROR))
 	host.readiness_changed.connect(_on_provider_readiness_changed)
 	host.budget_changed.connect(context_meter.update_budget)
 	agent_runner = host.runner
@@ -447,9 +451,14 @@ func _on_settings_pressed() -> void:
 
 func _on_settings_saved() -> void:
 	update_ui_language()
+	# Sağlayıcı değiştiyse eski sağlayıcının model listesi hemen kalkar (yenisi gelene kadar boş).
+	var provider_type := str(AISidebarConfig.load_config().get("provider_type", ""))
+	if provider_type != _last_provider_type:
+		model_bar_controller.populate_model_selector([])
+	_last_provider_type = provider_type
 	rebuild_provider()
+	refresh_models()
 	if agent_host and agent_host.has_provider():
-		agent_host.fetch_models()
 		agent_host.refresh_budget_window()
 
 # --- Chat Management Olayları ve Yardımcıları ---

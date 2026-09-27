@@ -11,6 +11,8 @@ const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/v
 signal chunk_received(text_delta: String, thinking_delta: String)
 signal response_received(text_content: String, thinking_content: String, tool_calls: Array)
 signal models_fetched(models: Array)
+## Model listesi alınamadı (ajan çalışmıyorken error_occurred görmezden gelinir; bu sinyal arayüze gider).
+signal models_failed(error_message: String)
 signal error_occurred(error_message: String)
 ## Sağlayıcının bildirdiği token kullanımı (ham `usage`; AISidebarContextBudget.normalize işler). Yanıttan
 ## önce yayılır: bağlam koruması bir sonraki istekten önce sıkıştırabilsin. Bildirmeyen sağlayıcı yaymaz.

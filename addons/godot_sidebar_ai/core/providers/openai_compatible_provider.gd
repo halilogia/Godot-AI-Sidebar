@@ -108,7 +108,7 @@ func fetch_models() -> void:
 		
 	var err = network_manager.get_request(models_url, headers)
 	if err != OK:
-		error_occurred.emit(AISidebarI18n.get_text("provider_models_failed", {"error": str(err)}))
+		models_failed.emit(AISidebarI18n.get_text("provider_models_failed", {"error": str(err)}))
 
 func send_chat(messages: Array, tools_schema: Array) -> void:
 	send_multimodal_chat(messages, tools_schema, [])
@@ -300,4 +300,7 @@ func context_window_for(model: String) -> int:
 func _on_network_failed(endpoint_type: String, error_msg: String) -> void:
 	_stream_buffer = ""
 	print("[TIMING] %s | PROVIDER_NETWORK_FAILED | endpoint=%s err=%s" % [get_ts(), endpoint_type, error_msg])
+	if endpoint_type == "models":
+		models_failed.emit(AISidebarI18n.get_text("provider_models_failed", {"error": error_msg}))
+		return
 	error_occurred.emit(error_msg)
