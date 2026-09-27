@@ -6,6 +6,7 @@ extends RefCounted
 
 const AISidebarProjectValidator = preload("res://addons/godot_sidebar_ai/core/verification/project_validator.gd")
 const AISidebarScriptTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/script_tools.gd")
+const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
 
 const DIR := "res://tests/tmp_validate_project"
 
@@ -52,6 +53,17 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T2 tool: %s / %s" % [JSON.stringify(tool_res).left(300), JSON.stringify(bad_path).left(200)])
+
+	# T3 Tek dosya doğrulaması (write_files / create_or_update_script) gerçek satırı ve mesajı verir,
+	# "Derleme kodu: 43" gibi anlamsız bir kod değil (model 43'ü satır sanıyordu).
+	var one := AISidebarVerificationPipeline.validate_script_source("extends Node\n\nfunc _ready() -> void:\n\tvar x: int = \"a\"\n", "res://tests/tmp_one.gd")
+	var one_err: Dictionary = one.get("error", {})
+	var one_msg := str(one_err.get("message", ""))
+	if one.get("success") == false and one_msg.contains("line 4") and not one_msg.contains("43"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T3 single-file error line: " + one_msg)
 
 	for f: String in ["ok.gd", "broken.gd", "scene.tscn"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(DIR.path_join(f)))

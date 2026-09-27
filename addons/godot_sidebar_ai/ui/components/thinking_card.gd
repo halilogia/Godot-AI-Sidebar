@@ -138,5 +138,5 @@ func _render() -> void:
 		return
 	var shown = _text
 	if _truncated:
-		shown += "\n…[truncated]"
+		shown += "\n" + AISidebarI18n.get_text("thinking_truncated")
 	_content_lbl.text = shown

@@ -7,6 +7,7 @@ class_name AISidebarVerificationPipeline
 
 const AISidebarVisualObservation = preload("res://addons/godot_sidebar_ai/core/types/visual_observation.gd")
 const AISidebarTscnValidator = preload("res://addons/godot_sidebar_ai/core/verification/tscn_validator.gd")
+const AISidebarProjectValidator = preload("res://addons/godot_sidebar_ai/core/verification/project_validator.gd")
 
 enum VerificationStatus {
 	PASSED,
@@ -101,10 +102,13 @@ static func _run_engine_verifiers(source_code: String, file_path: String, batch_
 
 ## 1. Bellek İçi Kaynak Kodu Doğrulaması (Pre-write In-Memory Validation)
 static func validate_script_source(source_code: String, file_path: String = "", batch_context: Dictionary = {}) -> Dictionary:
-	var script = GDScript.new()
+	var script := GDScript.new()
 	script.source_code = _without_own_class_name(source_code, file_path)
-	var reload_err = script.reload()
-	
+	# Derleme hataları satır / mesajla yakalanır (yalnız hata kodu "43" modele bir şey söylemiyordu).
+	var compiled := AISidebarProjectValidator.compile_with_errors(script)
+	var reload_err: int = compiled["code"]
+	var compile_errors: Array = compiled["errors"]
+
 	if reload_err != OK:
 		# Hata, henüz diske yazılmamış bir batch dosyasına referanstan kaynaklanıyor
 		# olabilir: batch geçici bir aynaya yazılıp betik gerçekten derlenir.
@@ -117,13 +121,17 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 					"message": "✓ GDScript sözdizimi geçerli (Batch içi bağımlılık)."
 				}
 				
+		var detail := AISidebarProjectValidator.format_errors(compile_errors)
+		if detail.is_empty():
+			detail = "no line reported (engine error %d)" % reload_err
 		return {
 			"status": VerificationStatus.FAILED,
 			"success": false,
 			"error": {
 				"code": "SCRIPT_SYNTAX_ERROR",
-				"message": "Script sözdizimi hatası içeriyor (Derleme kodu: " + str(reload_err) + "). Dosya: " + file_path,
+				"message": "Script does not compile: %s: %s" % [file_path, detail],
 				"file_path": file_path,
+				"errors": compile_errors,
 				"recoverable": true
 			}
 		}

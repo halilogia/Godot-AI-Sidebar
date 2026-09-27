@@ -28,6 +28,33 @@ class _ErrorCapture extends Logger:
 	func _log_message(_message: String, _error: bool) -> void:
 		pass
 
+## Betiği derler ve Godot'nun loga yazdığı derleme hatalarını satır / mesaj olarak döndürür (tek dosya
+## doğrulamasında "Derleme kodu: 43" yerine gerçek hata). Dönüş: {"code": Error, "errors": [{line, message}]}.
+static func compile_with_errors(script: GDScript) -> Dictionary:
+	var capture := _ErrorCapture.new()
+	OS.add_logger(capture)
+	var code := script.reload()
+	OS.remove_logger(capture)
+	var errors: Array[Dictionary] = []
+	for e: Dictionary in capture.items:
+		errors.append({"line": e["line"], "message": e["message"]})
+	return {"code": code, "errors": errors}
+
+## Hata listesini modelin okuyacağı kısa metne çevirir: "line 12: Identifier "x" not declared …".
+static func format_errors(errors: Array, max_items: int = 5) -> String:
+	var parts := PackedStringArray()
+	var seen := {}
+	for e: Dictionary in errors:
+		var line_no: int = e.get("line", 0)
+		var line_text := "line %d: %s" % [line_no, str(e.get("message", ""))]
+		if seen.has(line_text):
+			continue
+		seen[line_text] = true
+		parts.append(line_text)
+		if parts.size() >= max_items:
+			break
+	return "; ".join(parts)
+
 ## `root` altındaki projeyi doğrular (varsayılan bütün proje; eklentinin kendi klasörü atlanır).
 static func run(root: String = "res://") -> Dictionary:
 	var started := Time.get_ticks_msec()
