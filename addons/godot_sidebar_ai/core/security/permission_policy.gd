@@ -62,7 +62,13 @@ static func parse_auto_approve_mode(val: Variant) -> AutoApproveMode:
 		"FULL_AUTO", "FULLAUTO", "FULL": return AutoApproveMode.FULL_AUTO
 		_: return AutoApproveMode.MANUAL
 
+## Yalnız bellekte: demo benchmark (core/dev/demo_bench.gd) kullanıcının config.json'ına dokunmadan
+## tek çalıştırmayı Tam Otomatik yapar. -1 = yok.
+static var mode_override: int = -1
+
 static func get_auto_approve_mode() -> AutoApproveMode:
+	if mode_override >= 0:
+		return parse_auto_approve_mode(mode_override)
 	var cfg = AISidebarConfig.load_config()
 	return parse_auto_approve_mode(cfg.get("auto_approve_mode", "MANUAL"))
 

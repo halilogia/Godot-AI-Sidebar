@@ -2,6 +2,7 @@
 extends EditorPlugin
 
 const AISidebarEditorSmoke = preload("res://addons/godot_sidebar_ai/core/dev/editor_smoke.gd")
+const AISidebarDemoBench = preload("res://addons/godot_sidebar_ai/core/dev/demo_bench.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const DOCK_SCENE_PATH: String = "res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn"
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
@@ -54,10 +55,20 @@ func _enter_tree() -> void:
 		smoke.dock = chat_dock
 		add_child(smoke)
 
-	# 3. Dış ajan köprüsü (MCP): düğüm her zaman kurulur, yalnız ayar açıksa dinler.
-	mcp_bridge = AISidebarMcpBridgeControl.new()
-	mcp_bridge.name = "GodotAIMcpBridge"
-	add_child(mcp_bridge)
+	# 2c. Demo benchmark: yalnız `-- --ai-sidebar-bench=<klasör>` ile açılınca (tools/demo_bench.ps1).
+	var bench_dir := AISidebarDemoBench.requested_out_dir()
+	if not bench_dir.is_empty() and chat_dock:
+		var bench := AISidebarDemoBench.new()
+		bench.out_dir = bench_dir
+		bench.dock = chat_dock
+		add_child(bench)
+
+	# 3. Dış ajan köprüsü (MCP): düğüm her zaman kurulur, yalnız ayar açıksa dinler. Benchmark editöründe
+	# kurulmaz: kullanıcının açık editörü portu tutar, ölçülen de sidebar ajanıdır.
+	if bench_dir.is_empty():
+		mcp_bridge = AISidebarMcpBridgeControl.new()
+		mcp_bridge.name = "GodotAIMcpBridge"
+		add_child(mcp_bridge)
 
 func _on_editor_settings_changed() -> void:
 	if AISidebarTheme.use_editor_palette() and chat_dock and chat_dock.has_method("refresh_theme"):
