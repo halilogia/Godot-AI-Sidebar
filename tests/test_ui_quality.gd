@@ -187,6 +187,7 @@ static func run() -> Dictionary:
 	for tone: String in AISidebarThemeBuilder.TONES:
 		all_variations.append(AISidebarThemeBuilder.badge(tone))
 		all_variations.append(AISidebarThemeBuilder.pill(tone))
+		all_variations.append(AISidebarThemeBuilder.segment(tone))
 	for v: String in all_variations:
 		if theme.get_type_variation_base(v) == &"":
 			missing.append(v)

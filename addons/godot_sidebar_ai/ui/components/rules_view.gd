@@ -10,6 +10,7 @@ class_name AISidebarRulesView
 
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
+const AISidebarContextBudget = preload("res://addons/godot_sidebar_ai/core/agent/context_budget.gd")
 const AISidebarCustomizationBudget = preload("res://addons/godot_sidebar_ai/core/skills/customization_budget.gd")
 const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skills/rules_registry.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
@@ -22,6 +23,7 @@ var _prompt_badge: Label
 var _prompt_size: Label
 var _bar: HBoxContainer
 var _legend: GridContainer
+var _total_badge: Label
 var _rules_list: VBoxContainer
 var _rule_edit: LineEdit
 var _rule_scope: OptionButton
@@ -31,14 +33,18 @@ func _init() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 
-	var usage := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("custom_usage_title"), AISidebarI18n.get_text("custom_usage_hint"))
+	_total_badge = AISidebarSettingsUi.badge("", AISidebarThemeBuilder.TONE_ACCENT)
+	var usage := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("custom_usage_title"), AISidebarI18n.get_text("custom_usage_hint"), _total_badge)
+	# Bölümlü çubuk: her katman yuvarlak uçlu ayrı bir bölüm, aralarında boşluk.
 	_bar = HBoxContainer.new()
-	_bar.custom_minimum_size = Vector2(0, 8)
-	_bar.add_theme_constant_override("separation", AISidebarTheme.px(2))
+	_bar.custom_minimum_size = Vector2(0, AISidebarTheme.px(AISidebarTheme.SPACE_SM + 2))
+	_bar.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_XXS + 1))
 	usage.add_child(_bar)
+	# Açıklama: renk noktası + ad (sol), değer (sağ); iki sütun.
 	_legend = GridContainer.new()
 	_legend.columns = 2
 	_legend.add_theme_constant_override("h_separation", AISidebarTheme.px(AISidebarTheme.SPACE_LG))
+	_legend.add_theme_constant_override("v_separation", AISidebarTheme.px(AISidebarTheme.SPACE_XS))
 	usage.add_child(_legend)
 
 	_prompt_badge = AISidebarSettingsUi.badge("", AISidebarThemeBuilder.TONE_LAYER_SYSTEM)
@@ -108,28 +114,53 @@ func _refresh_usage() -> void:
 	var m := AISidebarCustomizationBudget.measure()
 	var total_tokens: int = m["total_tokens"]
 	var total: int = maxi(1, total_tokens)
-	var rows := [["system", AISidebarTheme.COLOR_LAYER_SYSTEM, "custom_usage_system"], ["rules", AISidebarTheme.COLOR_LAYER_RULES, "custom_usage_rules"], ["skills", AISidebarTheme.COLOR_LAYER_SKILLS, "custom_usage_skills"], ["tools", AISidebarTheme.COLOR_LAYER_TOOLS, "custom_usage_tools"]]
+	AISidebarSettingsUi.set_badge(_total_badge, AISidebarI18n.get_text("custom_usage_total", {"tokens": AISidebarContextBudget.short(total_tokens)}), AISidebarThemeBuilder.TONE_ACCENT)
+	var rows := [["system", AISidebarThemeBuilder.TONE_LAYER_SYSTEM, "custom_usage_system"], ["rules", AISidebarThemeBuilder.TONE_LAYER_RULES, "custom_usage_rules"], ["skills", AISidebarThemeBuilder.TONE_LAYER_SKILLS, "custom_usage_skills"], ["tools", AISidebarThemeBuilder.TONE_LAYER_TOOLS, "custom_usage_tools"]]
 	for row: Array in rows:
 		var part: Dictionary = m[row[0]]
 		var tokens: int = part["tokens"]
-		var color: Color = row[1]
+		var tone: String = row[1]
 		var key: String = row[2]
 		var count: int = part.get("count", part.get("files", 0))
 		if tokens > 0:
-			var seg := ColorRect.new()
-			seg.color = color
+			var seg := PanelContainer.new()
+			seg.theme_type_variation = AISidebarThemeBuilder.segment(tone)
 			seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			seg.size_flags_stretch_ratio = float(tokens)
+			# Çok küçük katman da görünsün (ince çizgi değil, en az bir nokta genişliği).
+			seg.custom_minimum_size = Vector2(AISidebarTheme.px(AISidebarTheme.SPACE_SM), 0)
+			seg.tooltip_text = AISidebarI18n.get_text(key, {"count": count})
 			_bar.add_child(seg)
-		var line := AISidebarSettingsUi.hint_label(AISidebarI18n.get_text(key, {"percent": "%.1f" % (100.0 * tokens / total), "tokens": tokens, "count": count}))
-		line.autowrap_mode = TextServer.AUTOWRAP_OFF
-		line.add_theme_color_override("font_color", color)
-		_legend.add_child(line)
+		_legend.add_child(_legend_cell(tone, AISidebarI18n.get_text(key, {"count": count}), AISidebarI18n.get_text("custom_usage_value", {"percent": "%.1f" % (100.0 * tokens / total), "tokens": tokens})))
 	var rules_d: Dictionary = m["rules"]
 	if rules_d.get("truncated", false) == true:
 		var warn := AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("custom_rules_truncated", {"max": AISidebarRulesRegistry.MAX_TOTAL_CHARS}))
 		warn.add_theme_color_override("font_color", AISidebarTheme.COLOR_WARNING)
 		_legend.add_child(warn)
+
+## Açıklama hücresi: renk noktası, katmanın adı ve sağa hizalı "~N token · %P".
+func _legend_cell(tone: String, name_text: String, value_text: String) -> HBoxContainer:
+	var cell := HBoxContainer.new()
+	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_SM))
+	var dot := PanelContainer.new()
+	dot.theme_type_variation = AISidebarThemeBuilder.segment(tone)
+	dot.custom_minimum_size = Vector2(AISidebarTheme.px(AISidebarTheme.SPACE_SM), AISidebarTheme.px(AISidebarTheme.SPACE_SM))
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cell.add_child(dot)
+	var name_label := Label.new()
+	name_label.text = name_text
+	name_label.tooltip_text = name_text
+	name_label.theme_type_variation = AISidebarThemeBuilder.LABEL_SMALL
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	cell.add_child(name_label)
+	var value_label := Label.new()
+	value_label.text = value_text
+	value_label.theme_type_variation = AISidebarThemeBuilder.HINT_MUTED
+	cell.add_child(value_label)
+	return cell
 
 func _refresh_rules() -> void:
 	for c: Node in _rules_list.get_children():

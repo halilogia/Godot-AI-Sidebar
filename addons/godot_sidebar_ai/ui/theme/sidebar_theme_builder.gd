@@ -122,6 +122,10 @@ static func badge(tone: String) -> String:
 static func pill(tone: String) -> String:
 	return "AISidebarPill_" + tone
 
+## Tonun dolu, yuvarlak bölüm varyasyonu (PanelContainer): bölümlü çubuklar ve renk noktaları.
+static func segment(tone: String) -> String:
+	return "AISidebarSegment_" + tone
+
 ## Tonun rengi (paletten; açık / koyu temada ayrı).
 static func tone_color(tone: String) -> Color:
 	match tone:
@@ -319,6 +323,7 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 		var b := badge(tone)
 		_label(t, b, micro, AISidebarTheme.emphasize(c, 0.25))
 		t.set_stylebox("normal", b, AISidebarTheme.create_pill_style(c))
+		_panel(t, segment(tone), _meter(c))
 		var p := pill(tone)
 		t.set_type_variation(p, "Button")
 		t.set_font_size("font_size", p, hint)
