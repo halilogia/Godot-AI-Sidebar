@@ -1,10 +1,13 @@
 param(
     [string]$GodotPath = "",
-    [switch]$Live
+    [switch]$Live,
+    [switch]$Editor
 )
 
-# Tek komutluk doğrulama: typecheck -> uyarı cırcırı -> birim testleri -> (isteğe bağlı) canlı 9Router testi.
-# Usage: ./verify.ps1 [-GodotPath <path>] [-Live]
+# Tek komutluk doğrulama: typecheck -> uyarı cırcırı -> birim testleri -> (isteğe bağlı) gerçek editör
+# entegrasyonu (-Editor: tools/editor_smoke.ps1; ekran gerekir, editör ve oyun penceresi açılır) ->
+# (isteğe bağlı) canlı 9Router testi.
+# Usage: ./verify.ps1 [-GodotPath <path>] [-Editor] [-Live]
 # Herhangi bir adım başarısızsa sonraki adımlar koşmaz ve exit 1 döner.
 
 # Windows PowerShell 5.1 decodes native (Godot) output with [Console]::OutputEncoding,
@@ -65,7 +68,17 @@ if ($testExit -ne 0 -or -not $summary -or $summary.Line -notmatch "ALL TESTS PAS
 }
 Write-Host "$($summary.Line) ($suites suites)" -ForegroundColor Green
 
-# 3. Canlı entegrasyon (yalnızca -Live ile; 127.0.0.1:20128 üzerinde 9Router gerekir)
+# 3a. Gerçek editör entegrasyonu (yalnızca -Editor ile): açık sahne yenileme, autoload, oyun + runtime köprüsü.
+if ($Editor) {
+    Write-Step "Editor integration (real editor)"
+    & (Join-Path $PSScriptRoot "tools\editor_smoke.ps1") -GodotPath $GodotBin -TimeoutSec 180
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[VERIFY FAIL] Editör entegrasyon testi başarısız." -ForegroundColor Red
+        exit 1
+    }
+}
+
+# 3b. Canlı entegrasyon (yalnızca -Live ile; 127.0.0.1:20128 üzerinde 9Router gerekir)
 if ($Live) {
     Write-Step "Live 9Router integration"
     # Fail-closed: exit 0 yetmez, script'in "LIVE TEST PASSED" satiri da gorulmeli

@@ -155,7 +155,7 @@
     "unsafe_call_argument": 51
   },
   "core/tools/primitive/scene_tools.gd": {
-    "untyped_declaration": 105,
+    "untyped_declaration": 103,
     "unsafe_method_access": 15,
     "unsafe_call_argument": 109,
     "unsafe_cast": 1

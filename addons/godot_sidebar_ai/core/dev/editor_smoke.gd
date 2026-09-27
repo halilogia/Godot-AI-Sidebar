@@ -10,6 +10,7 @@ class_name AISidebarEditorSmoke
 
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarEditorIntegration = preload("res://addons/godot_sidebar_ai/core/dev/editor_integration.gd")
 
 const FLAG := "--ai-sidebar-smoke="
 const SETTLE_SEC := 4.0
@@ -77,6 +78,8 @@ func _run() -> void:
 		help.hide()
 	else:
 		_check("help_opens", false, "help_dialog missing")
+	# Entegrasyon: ajanın araçlarıyla gerçek editör davranışı (açık sahne, autoload, oyun + köprü, viewport).
+	await AISidebarEditorIntegration.new().run(self, _check)
 	_finish()
 
 ## Ayrı pencere (tek pencere kipi kapalıyken ayrı işletim sistemi penceresi): kendi görüntüsü; gömülü
