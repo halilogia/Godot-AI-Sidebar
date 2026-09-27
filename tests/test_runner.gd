@@ -45,6 +45,7 @@ const TestSurgicalFileEditing = preload("res://tests/test_surgical_file_editing.
 const TestStreamingAndSSE = preload("res://tests/test_streaming_and_sse.gd")
 const TestMentionManager = preload("res://tests/test_mention_manager.gd")
 const TestContextCompactor = preload("res://tests/test_context_compactor.gd")
+const TestSkillToolNames = preload("res://tests/test_skill_tool_names.gd")
 const TestNetworkRecovery = preload("res://tests/test_network_recovery.gd")
 const TestViewportScreenshot = preload("res://tests/test_viewport_screenshot.gd")
 const TestUIUXQueueAndInput = preload("res://tests/test_ui_ux_queue_and_input.gd")
@@ -220,6 +221,7 @@ func _init() -> void:
 		TestStreamingAndSSE,
 		TestMentionManager,
 		TestContextCompactor,
+		TestSkillToolNames,
 		TestNetworkRecovery,
 		TestViewportScreenshot,
 		TestUIUXQueueAndInput,
