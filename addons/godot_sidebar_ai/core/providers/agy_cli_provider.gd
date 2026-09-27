@@ -141,7 +141,7 @@ func _ensure_process(target_model: String) -> bool:
 	# cwd Windows temp sandbox dizini olarak ayarlanır
 	var pipe = OS.execute_with_pipe("agy", args)
 	if pipe.is_empty() or not pipe.has("stdio"):
-		error_occurred.emit("Antigravity CLI ('agy') başlatılamadı. Lütfen 'agy'nin sistem PATH'inde olduğundan ve oturum açıldığından emin olun.")
+		error_occurred.emit(AISidebarI18n.get_text("provider_agy_start_failed"))
 		return false
 
 	_pipe_dict = pipe
@@ -197,7 +197,7 @@ func _read_worker(gen: int) -> void:
 			var status = res_obj.get("status", "SUCCESS")
 			
 			if status != "SUCCESS":
-				call_deferred("_safe_emit_error", "Antigravity oturum hatası: " + str(status))
+				call_deferred("_emit_session_error", str(status))
 			else:
 				var parsed_tools = extract_tool_calls(raw_response)
 				var clean_text = extract_clean_text(raw_response, parsed_tools.size() > 0)
@@ -218,6 +218,10 @@ func _safe_emit_response(text_content: String, thinking_content: String, tool_ca
 func _safe_emit_error(msg: String) -> void:
 	error_occurred.emit(msg)
 
+## Okuma iş parçacığından ana iş parçacığına: metin burada, seçili dilde kurulur.
+func _emit_session_error(status: String) -> void:
+	error_occurred.emit(AISidebarI18n.get_text("provider_agy_session_error", {"status": status}))
+
 func _set_state(new_state: int, message: String) -> void:
 	if _state == new_state:
 		return
@@ -236,7 +240,7 @@ func _on_agy_start_failed(gen: int) -> void:
 	_has_pending = false
 	_pending_payload = ""
 	_set_state(AgyState.STARTING, "")
-	error_occurred.emit("Antigravity CLI ('agy') başlatılamadı (init tamamlanmadı).")
+	error_occurred.emit(AISidebarI18n.get_text("provider_agy_init_failed"))
 
 ## Reader thread -> ana thread kopru: AGY 'init' handshake'i tamamlandi.
 ## call_deferred ile cagrilir (reader thread'den sinyal yaymak guvenli degil).
@@ -273,14 +277,14 @@ func _write_payload(payload: String) -> void:
 		_stdio.store_string(payload)
 		_stdio.flush()
 	else:
-		error_occurred.emit("Antigravity CLI stdio pipe bağlantısı kurulamadı.")
+		error_occurred.emit(AISidebarI18n.get_text("provider_agy_pipe_failed"))
 
 func send_chat(messages: Array, tools_schema: Array) -> void:
 	send_multimodal_chat(messages, tools_schema, [])
 
 func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -> void:
 	if images.size() > 0:
-		error_occurred.emit("Antigravity CLI (agy) sağlayıcısı şu anda doğrudan görsel (Vision) girdilerini desteklememektedir. Görsel analizi için lütfen Ayarlar'dan OpenAI-Uyumlu Sağlayıcıyı (9Router/OpenRouter/Ollama) seçin.")
+		error_occurred.emit(AISidebarI18n.get_text("provider_agy_no_vision"))
 		return
 
 	var cfg = AISidebarConfig.load_config()

@@ -2,6 +2,8 @@
 extends RefCounted
 class_name AISidebarSSEParser
 
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+
 ## Server-Sent Events (SSE) ve Standart JSON yanıtlarını ayrıştıran bağımsız ayrıştırıcı (SRP).
 
 ## Tek delta/message için thinking çıkarımı (öncelik sırası; çift sayımı önler).
@@ -47,7 +49,7 @@ static func parse_response(raw_text: String) -> Dictionary:
 	
 	var trimmed_raw = raw_text.strip_edges()
 	if trimmed_raw.is_empty():
-		return {"error": "Sunucudan boş yanıt döndü (PROVIDER_EMPTY_RESPONSE)."}
+		return {"error": AISidebarI18n.get_text("provider_server_empty")}
 		
 	var lines = raw_text.split("\n")
 	var is_sse: bool = false
@@ -65,7 +67,7 @@ static func parse_response(raw_text: String) -> Dictionary:
 				if chunk.has("error"):
 					var err_val = chunk["error"]
 					var err_msg = err_val.get("message", str(err_val)) if err_val is Dictionary else str(err_val)
-					return {"error": "API Hatası: " + err_msg}
+					return {"error": AISidebarI18n.get_text("provider_api_error", {"message": str(err_msg)})}
 					
 				if chunk.has("choices") and chunk["choices"].size() > 0:
 					var c = chunk["choices"][0]
@@ -98,7 +100,7 @@ static func parse_response(raw_text: String) -> Dictionary:
 			if json_res.has("error"):
 				var err_val = json_res["error"]
 				var err_msg = err_val.get("message", str(err_val)) if err_val is Dictionary else str(err_val)
-				return {"error": "API Hatası: " + err_msg}
+				return {"error": AISidebarI18n.get_text("provider_api_error", {"message": str(err_msg)})}
 				
 			if json_res.has("choices") and json_res["choices"].size() > 0:
 				var choice = json_res["choices"][0]
@@ -160,7 +162,7 @@ static func parse_response(raw_text: String) -> Dictionary:
 	# Boş Yanıt Denetimi (Empty Response Guard)
 	if clean_content.is_empty() and clean_thinking.is_empty() and final_tools.is_empty():
 		return {
-			"error": "Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE). Lütfen model seçimini veya API parametrelerini kontrol edin."
+			"error": AISidebarI18n.get_text("provider_model_empty")
 		}
 
 	return {

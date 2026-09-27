@@ -2,6 +2,8 @@
 extends RefCounted
 class_name AISidebarAIProvider
 
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+
 ## Soyut Yapay Zeka Sağlayıcı Arayüzü & Yetenek Yöneticisi (Abstract Provider Interface & Capabilities) (SRP).
 
 const AISidebarVisionInput = preload("res://addons/godot_sidebar_ai/core/types/vision_input.gd")
@@ -28,7 +30,7 @@ func send_chat(messages: Array, tools_schema: Array) -> void:
 
 func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -> void:
 	if not supports_vision():
-		error_occurred.emit("Mevcut sağlayıcı veya seçili model görsel (Vision) desteğine sahip değil.")
+		error_occurred.emit(AISidebarI18n.get_text("provider_no_vision"))
 		return
 	send_chat(messages, tools_schema)
 

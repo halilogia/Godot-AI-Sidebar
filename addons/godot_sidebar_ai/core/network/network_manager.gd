@@ -2,6 +2,8 @@
 extends Node
 class_name AISidebarNetworkManager
 
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+
 ## Düşük Gecikmeli HTTPClient Ağ Motoru ve Güvenli URL Normalizasyonu (SRP).
 ## Windows loopback (localhost -> 127.0.0.1) gecikmelerini önler, bağlantı durumlarını milisaniye bazında raporlar.
 
@@ -229,7 +231,7 @@ func _process(delta: float) -> void:
 			else:
 				_is_request_active = false
 				print("[TIMING] %s | NETWORK_FAILED | Disconnected with incomplete/empty body (%d bytes)" % [get_ts(), _raw_response_body.size()])
-				request_failed.emit(_current_endpoint, "Bağlantı kapandı (Sunucu yanıt vermedi veya eksik kaldı).")
+				request_failed.emit(_current_endpoint, AISidebarI18n.get_text("net_connection_closed"))
 		HTTPClient.STATUS_RESOLVING, HTTPClient.STATUS_CONNECTING:
 			_client.poll()
 		HTTPClient.STATUS_CONNECTED:
@@ -242,7 +244,7 @@ func _process(delta: float) -> void:
 				if req_err != OK:
 					_is_request_active = false
 					print("[TIMING] %s | NETWORK_REQUEST_ERROR | err=%d" % [get_ts(), req_err])
-					request_failed.emit(_current_endpoint, "İstek gönderilemedi (Hata: " + str(req_err) + ")")
+					request_failed.emit(_current_endpoint, AISidebarI18n.get_text("net_send_failed", {"error": str(req_err)}))
 			else:
 				_client.poll()
 		HTTPClient.STATUS_REQUESTING:
@@ -282,7 +284,7 @@ func _process(delta: float) -> void:
 			else:
 				_is_request_active = false
 				print("[TIMING] %s | NETWORK_ERROR | status=%d bytes=%d" % [get_ts(), status, _raw_response_body.size()])
-				request_failed.emit(_current_endpoint, "Ağ bağlantı hatası (Status: " + str(status) + ")")
+				request_failed.emit(_current_endpoint, AISidebarI18n.get_text("net_connection_error", {"status": str(status)}))
 
 func _finalize_success() -> void:
 	var total_dur = Time.get_ticks_msec() - _req_start_msec
@@ -297,7 +299,7 @@ func _finalize_success() -> void:
 	_is_request_active = false
 	
 	if code == 401:
-		request_failed.emit(_current_endpoint, "Yetkilendirme Hatası (HTTP 401): Lütfen API Anahtarınızı kontrol edin.")
+		request_failed.emit(_current_endpoint, AISidebarI18n.get_text("net_auth_failed"))
 	elif code != 200 and code != 201:
 		request_failed.emit(_current_endpoint, "HTTP " + str(code) + ": " + resp_str)
 	else:

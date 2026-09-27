@@ -249,5 +249,5 @@ func _refresh_row(idx: int) -> void:
 	var safe_title = str(_steps[idx].get("title", "")).replace("[", "［").replace("]", "］")
 	var err = str(_steps[idx].get("error", ""))
 	if not err.is_empty():
-		safe_title += "\nError: " + err.replace("[", "［").replace("]", "］")
+		safe_title += "\n" + AISidebarI18n.get_text("checklist_step_error", {"error": err.replace("[", "［").replace("]", "］")})
 	(entry["title"] as RichTextLabel).text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TEXT_PRIMARY) + "]" + safe_title + "[/color]"

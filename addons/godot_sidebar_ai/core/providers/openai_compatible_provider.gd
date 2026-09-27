@@ -92,7 +92,7 @@ func get_clean_base_url(url: String) -> String:
 
 func fetch_models() -> void:
 	if not network_manager:
-		error_occurred.emit("Ağ yöneticisi başlatılmamış.")
+		error_occurred.emit(AISidebarI18n.get_text("provider_network_not_ready"))
 		return
 		
 	var config = AISidebarConfig.load_config()
@@ -106,14 +106,14 @@ func fetch_models() -> void:
 		
 	var err = network_manager.get_request(models_url, headers)
 	if err != OK:
-		error_occurred.emit("Modeller çekilemedi (Hata: " + str(err) + ")")
+		error_occurred.emit(AISidebarI18n.get_text("provider_models_failed", {"error": str(err)}))
 
 func send_chat(messages: Array, tools_schema: Array) -> void:
 	send_multimodal_chat(messages, tools_schema, [])
 
 func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -> void:
 	if not network_manager:
-		error_occurred.emit("Ağ yöneticisi başlatılmamış.")
+		error_occurred.emit(AISidebarI18n.get_text("provider_network_not_ready"))
 		return
 		
 	_stream_buffer = ""
@@ -143,7 +143,7 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 	# Multimodal görsel parçaları dönüştürme ve mesaja ekleme
 	if images.size() > 0:
 		if not supports_vision():
-			error_occurred.emit("Seçili model (" + model + ") görsel (Vision) desteğine sahip değil.")
+			error_occurred.emit(AISidebarI18n.get_text("provider_model_no_vision", {"model": model}))
 			return
 			
 		var vision_parts: Array = []
@@ -193,7 +193,7 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 	
 	var err = network_manager.post_request(chat_url, headers, body_str)
 	if err != OK:
-		error_occurred.emit("İstek başlatılamadı (Hata: " + str(err) + ")")
+		error_occurred.emit(AISidebarI18n.get_text("provider_request_failed", {"error": str(err)}))
 
 func _on_network_chunk(endpoint_type: String, chunk_str: String) -> void:
 	if endpoint_type != "chat":
