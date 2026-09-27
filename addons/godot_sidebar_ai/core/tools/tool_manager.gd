@@ -75,9 +75,9 @@ static func get_all_schemas() -> Array:
 			"parameters": {
 				"type": "object",
 				"properties": {
-					"goal": { "type": "string", "description": "The plan's goal in one sentence (e.g. 'Build a playable hex grid system')." },
-					"affected_files": { "type": "array", "items": { "type": "string" }, "description": "Real file paths that will be affected (e.g. 'res://scripts/HexGrid.gd')." },
-					"steps": { "type": "array", "items": { "type": "string" }, "description": "Ordered, actionable steps (e.g. 'Add coordinate conversion and neighbor lookup to the HexGrid model')." },
+					"goal": { "type": "string", "description": "The plan's goal in one sentence (e.g. 'Add a pause menu')." },
+					"affected_files": { "type": "array", "items": { "type": "string" }, "description": "Real file paths that will be affected (e.g. 'res://ui/pause_menu.gd')." },
+					"steps": { "type": "array", "items": { "type": "string" }, "description": "Ordered, actionable steps (e.g. 'Toggle the pause menu with the pause action and set get_tree().paused')." },
 					"dependencies": { "type": "array", "items": { "type": "string" }, "description": "Prerequisites / dependencies (optional)." },
 					"verification": { "type": "array", "items": { "type": "string" }, "description": "How the plan will be verified (e.g. 'Check the generated node hierarchy', 'Run the project and check there are no errors')." },
 					"risks": { "type": "array", "items": { "type": "string" }, "description": "Known risks (optional)." },
@@ -357,6 +357,9 @@ static func _search_tools(args: Dictionary) -> Dictionary:
 		var fn: Dictionary = tool_def.get("function", {})
 		var t_name: String = str(fn.get("name", ""))
 		var t_desc: String = str(fn.get("description", ""))
+		# Plan aracı aramayla açılmaz: yalnız plan modunda sunulur (Build modunda onaya düşürürdü).
+		if t_name == "propose_plan":
+			continue
 		var name_l := t_name.to_lower().replace("_", " ")
 		var desc_l := t_desc.to_lower()
 		var score := 0

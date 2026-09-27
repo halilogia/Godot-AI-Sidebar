@@ -33,4 +33,13 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("search_tools multi-word failed: " + str(names.slice(0, 5)))
 
+	# Test 4: plan aracı aramayla açılmaz (Build modunda onay beklemeye düşürüyordu).
+	var plan_search = AISidebarToolManager.execute_tool("search_tools", {"query": "plan build approval"})
+	var plan_names: Array = (plan_search.get("data", {}).get("tools", []) as Array).map(func(t): return t["name"])
+	if not plan_names.has("propose_plan"):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("search_tools must not return propose_plan")
+
 	return {"name": "ToolManagerTests", "passed": passed, "failed": failed, "errors": errors}
