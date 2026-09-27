@@ -39,6 +39,13 @@
 * 🔄 **Otonom Ajan Durum Makinesi:** `IDLE → PLANNING → EXECUTING → OBSERVING → VERIFYING → COMPLETED` döngüsü, otomatik iyileştirme (self-healing) ve sonsuz döngü (stagnation) koruması.
 * 📚 **Sohbet Kalıcılığı & Geçmiş:** `user://sidebar_ai_chats/` altında JSON oturum deposu; arama, yeniden adlandırma ve silme. API anahtarı asla diske yazılmaz.
 * 🌐 **Gerçek 9Router, OpenAI & Antigravity CLI Uyumluluğu:** 9Router (`127.0.0.1:20128`), OpenRouter, yerel Ollama, LM Studio ve resmi Google Antigravity CLI ile doğrudan oturum desteği.
+* 🎯 **Hedef Modu (`/goal`):** Hedefi verirsiniz; ajan hedef kanıtla tamamlanana kadar tur tur çalışır ve sonucu bildirir.
+* 📦 **Skill'ler ve Kurallar:** Hazır Godot tarifleri (`SKILL.md`, `/skill`) ve `AGENTS.md`'den gelen kalıcı talimatlar (`/learn` ile eklenir).
+* 🔌 **Dış Ajan Köprüsü (MCP):** Claude Code, Cursor, Codex gibi ajanlar editörü kullanabilir: sahneye bakma, oyunu çalıştırma, hataları okuma, ekran görüntüsü, girdi gönderme.
+* ✅ **`validate_project`:** Bütün script'leri gerçek proje bağlamında derler; her hatayı dosya, satır ve mesajla verir.
+* 🎮 **`send_input`:** Çalışan oyunda tuşa basar, input action tetikler, düğmelere tıklar.
+* 🐛 **Hata Bildir (`/bug`):** Ortam bilgisi, maskeli ayarlar, sohbet kaydı ve panel görüntüsüyle yerel bir zip hazırlar; hiçbir şey kendiliğinden gönderilmez.
+* 📊 **Bağlam Göstergesi:** Modelin hafızasının ne kadar dolduğunu sağlayıcının bildirdiği gerçek token sayılarıyla gösterir; %80'i geçince eski adımlar özetlenir.
 * 🇹🇷 🇬🇧 **Çift Dil Desteği:** Tek tıkla Türkçe ve İngilizce arayüz geçişi.
 
 ---

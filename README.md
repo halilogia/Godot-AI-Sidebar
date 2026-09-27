@@ -137,6 +137,22 @@ outside the project and protects sensitive files (`project.godot`,
 operations can require explicit approval through an inline card, with three
 modes: **MANUAL**, **AUTO**, **FULL_AUTO**.
 
+### New in v3
+
+- **Goal mode (`/goal`)** — give an objective; the agent works round by round
+  until it is met with evidence, then reports.
+- **Skills and rules** — ready-made Godot recipes (`SKILL.md`, `/skill`) and
+  standing instructions from `AGENTS.md` (`/learn` adds one).
+- **`validate_project`** — compiles every script in the real project context and
+  lists each error with file, line and message.
+- **`send_input`** — presses keys, triggers input actions and clicks nodes in the
+  running game.
+- **Report a bug (`/bug`)** — builds a local zip with environment, masked
+  settings, chat log and a panel screenshot; nothing is sent automatically.
+- **Context meter** — how full the model's context is, from the provider's own
+  token counts; older steps are summarized past 80%.
+- **Redesigned interface** that follows the editor's light / dark theme and scale.
+
 ### And the practical stuff
 
 - **Live token streaming** over SSE, so the answer appears as it is written.
@@ -145,7 +161,7 @@ modes: **MANUAL**, **AUTO**, **FULL_AUTO**.
 - **Persistent chat history** in `user://sidebar_ai_chats/`, with search, rename
   and delete. API keys are never written to a session file.
 - **`/` slash commands** — `/analyze`, `/debug`, `/fix`, `/inspect`, `/review`,
-  `/run`, `/test`, `/clear`, `/help`.
+  `/run`, `/test`, `/clear`, `/help`, `/goal`, `/skill`, `/learn`, `/mcp`, `/bug`.
 - **Undo/redo-safe multi-step plans** with loop protection, so a stuck agent
   stops instead of burning your tokens.
 - **Turkish / English UI**, switchable at runtime.
@@ -436,12 +452,14 @@ the in-memory provider tests prove internal logic only.
 
 ## Roadmap
 
-Currently shipped: core architecture, undo/redo mutations, surgical editing,
-streaming SSE, `@mention`, chat persistence, clarification, UI telemetry,
-runtime inspection, and the headless validator.
+Currently shipped (v3.0.0): core architecture, undo/redo mutations, surgical
+editing, streaming SSE, `@mention`, chat persistence, clarification, UI
+telemetry, runtime inspection and input, the MCP bridge for external agents,
+skills and rules, goal mode, `validate_project`, bug reports and the context
+meter.
 
-Actively being worked on: live-runtime visual inspection dock, deterministic
-frame stepping (`runtime_freeze`, `runtime_step`), and input simulation.
+Next: final verification of v3 in the real editor and a benchmark run, then
+sub-agents.
 
 See [**ROADMAP.md**](ROADMAP.md) for the full phase-by-phase breakdown, and
 [**CHANGELOG.md**](CHANGELOG.md) for what changed in each version.

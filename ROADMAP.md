@@ -60,7 +60,7 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 - [x] **Yerleşik Godot Debugger Köprüsü (EditorDebuggerPlugin + EngineDebugger):** `inspect_runtime_tree` ve `inspect_runtime_node` ile canlı hiyerarşi (Remote Scene Tree) ve güvenli özellik sorgulama (POC).
 - [ ] Oyun çalışırken canlı ClassDB ve Node ağacı görsel sorgulama dock'u.
 - [ ] Çalışma zamanı deterministik kare ilerletme (`runtime_freeze`, `runtime_step`).
-- [ ] Oyun esnasında girdi simülasyonu (`input_injection`).
+- [x] Oyun esnasında girdi simülasyonu: `send_input` (tuş, input action, düğüm ya da orana tıklama).
 
 ---
 
@@ -84,7 +84,7 @@ Bu yol haritası, Godot AI Core'un **AI-native oyun geliştirme ortamı** vizyon
 
 ---
 
-## 📍 v3.x: Dış Ajan Platformu (Başladı 🚧, 2026-09-26)
+## 📍 v3.x: Dış Ajan Platformu (v3.0.0 yayınlandı ✅, 2026-09-27)
 
 Hedef: Claude Code gibi dış ajanlar (orkestratör) Godot editörünü eklentinin güvenli araç katmanı üzerinden kullanır; eklenti Godot'un "elleri ve gözleri" olur, terminal / web / git dış ajanda kalır. Sıra: önce köprü, sonra iş akışı (skills), en son gerçek ihtiyaç çıkarsa kendi orkestratörümüz (Companion).
 
@@ -120,6 +120,7 @@ Geliştirme Godot **4.7.2-stable** üzerinde sürer. Godot 4.8 **stable** çıkt
 - [x] ~~**v3.1 Claude Code skill paketi**~~ **(kaldırıldı, 2026-09-26):** `integrations/claude-code/skills/` altında yedi skill ve proje hafızası şablonları yazıldı, sonra kaldırıldı: skill'ler dış istemciye (Claude Code / MCP) bağlı değil, eklentinin kendi özelliği olmalı. İçerik git geçmişinde (`bc29ef4`); yerleşik skill olarak yeniden kullanılabilir.
 - [x] **v3.1 Sidebar skill sistemi ve proje kuralları (kod; editörde duman testi final doğrulamada):** Araştırma sonucu iki açık standart benimsendi, kendi biçimimiz yok. **Agent Skills** (agentskills.io, `SKILL.md`, aşamalı yükleme): yerleşik + kullanıcı (`~/.agents/skills`) + proje (`.agents/skills`, `.claude/skills`; kullanıcı açana kadar kapalı) skill'leri, Skills paneli (aç / kapa, yeni, içe aktar, sil), `activate_skill` aracı, `/skill ad istek`, sıkıştırmadan muaf skill içeriği, 5 yerleşik Godot skill'i. **AGENTS.md** (agents.md): oyun projesinin kökündeki tek dosya her turda okunur; beş belgelik proje hafızası standardı fazla mühendislik olduğu için bırakıldı. MCP'ye skill konmadı (MCP prompts ancak ihtiyaç ölçülürse).
 - [x] **v3.2 benchmark altyapısı:** `benchmarks/grand-strategy-slice/` (tek istem, kanıt türüyle kabul kriterleri, koşu başına kayıt alanları, boş proje kuran script). İlk koşu 2026-09-26: 12 kriterin 10'u oyun içi kanıtla geçti, 2'si oyuna girdi gönderilemediği için elle; tek kullanıcı müdahalesi debugger oturumu hatasıydı (düzeltildi).
+- [x] **v3.0.0 yayını (2026-09-27):** sürüm, CHANGELOG, `v3.0.0` etiketi ve GitHub release (yalnız eklenti klasörünü içeren zip). Aynı gün `validate_project` (bütün projeyi gerçek bağlamda derler, dosya / satır / mesaj) eklendi.
 - [ ] **v3 final stabilizasyon / doğrulama fazı:** v3.0.1–v3.2 hafif kontrollerle yazıldı (2026-09-26 stratejisi); ağır doğrulama burada topluca yapılır: tam `verify.ps1` + CI + regresyon, mutasyon testleri, GUI duman testi, Claude Code MCP E2E (okuma, mutasyon, `ask` onayı, Ctrl+Z, `WRITER_BUSY`, bağlantı kopması / zaman aşımı ve gerçek Claude Code araç çağrısı zaman aşımının ölçülmesi), dosya-öncelikli `.tscn` yazımında açık sahne yeniden yükleme / bayat editör senaryosu, runtime hataları, ekran görüntüleri, sidebar sistem istemi ile köprü talimatının uyum denetimi (`AGENTS.md` §3.5 "Tek metodoloji"), benchmark koşusu ve bulunan hataların düzeltmesi. Bilinen bekleyen düzeltme: sidebar tarafındaki `WRITER_BUSY` mesajı modele "tekrar dene" diyor; sidebar modeli bekleyemediği için tekrar denedi ve başarı uydurdu (tamamlanma kapısı görevi Failed işaretledi).
 - [ ] **v3.2 benchmark koşusu (final doğrulamada):** Claude Code + köprüye tek istemle küçük bir grand strateji dikey kesiti (province haritası, 3 ülke, seçim, zaman akışı, basit ekonomi / savaş); eksikler ölçülür.
 - [ ] **Sonra (ihtiyaç ölçülünce):** diğer MCP istemcileri (Cursor, Codex, Antigravity: köprü standart Streamable HTTP + Bearer başlığı konuşur; istemci başına bağlantı ayarı ancak o istemciyle denenince belgelenir), Companion yalnız benchmark / gerçek kullanımda ölçülmüş eksik varsa; proje belleğinde repo içindeki beş belgenin ötesi (yapılandırılmış olay / episodic kayıtları → arama → gerekirse vektör indeksi → çok sonra hiyerarşik bellek yöneticisi) yalnız benchmark'ın bellek sorularında ölçülmüş ihtiyaç varsa ve bu sırayla; sidebar'a ayrı skill motoru gerekirse (şimdilik kurallar sistem istemiyle uyumlu tutulur); alt ajanlar (Faz 10) en son.
