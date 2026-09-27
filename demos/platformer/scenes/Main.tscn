@@ -1,0 +1,24 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/Level.gd" id="2_level"]
+[ext_resource type="PackedScene" path="res://scenes/HUD.tscn" id="3_hud"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Sky" type="CanvasLayer" parent="."]
+layer = -100
+
+[node name="ColorRect" type="ColorRect" parent="Sky"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.09, 0.11, 0.19, 1)
+
+[node name="Level" type="Node2D" parent="."]
+script = ExtResource("2_level")
+
+[node name="PlayerHolder" type="Node2D" parent="."]
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]

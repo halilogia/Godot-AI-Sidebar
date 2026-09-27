@@ -1,4 +1,4 @@
-# Demo benchmark: boş yeni bir Godot projesi açar, istemi Godot AI Sidebar ajanına verir, bitince
+﻿# Demo benchmark: boş yeni bir Godot projesi açar, istemi Godot AI Sidebar ajanına verir, bitince
 # Everything export'unu ve özet sonucu toplar. Ajan kullanıcının config.json'ındaki sağlayıcı ve modelle
 # çalışır (kota harcar); onay modu yalnız bu çalıştırmada bellekte Tam Otomatik olur.
 #
