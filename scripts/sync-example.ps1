@@ -12,6 +12,7 @@ param (
     [switch]$All,
     [switch]$Watch,
     [switch]$Link,
+    [switch]$Copy,
     [string]$NewProject = ""
 )
 
@@ -393,14 +394,9 @@ enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
     }
 }
 
-# Menüden seçildiyse bağlantı türünü sor (varsayılan: canlı bağlantı, repo değişince proje de güncellenir).
-if (-not $PSBoundParameters.ContainsKey("Link") -and $targetProjects.Count -gt 0) {
-    Write-Host "`nBağlantı türü:" -ForegroundColor White
-    Write-Host "  [1] Canlı bağlantı (önerilen): eklenti her güncellemede kendiliğinden güncellenir" -ForegroundColor Cyan
-    Write-Host "  [2] Kopya: eklentinin şu anki hali kopyalanır, sonra güncellenmez" -ForegroundColor Gray
-    $linkChoice = Read-Host "Seçiminiz (Varsayılan: 1)"
-    $Link = ($linkChoice -ne "2")
-}
+# Varsayılan: canlı bağlantı (junction). Proje bir kez seçilince repo her değiştiğinde kendiliğinden
+# güncel kalır; yeniden çalıştırmak gerekmez. Yalnız -Copy verilirse bir defalık kopya yapılır.
+$Link = -not $Copy
 
 # 5. Senkronizasyonu Çalıştır
 foreach ($proj in $targetProjects) {

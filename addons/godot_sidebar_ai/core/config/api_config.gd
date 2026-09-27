@@ -40,6 +40,7 @@ const DEFAULT_CONFIG = {
 	"ui_animations": true,
 	# Editör arka plandayken soru / onay / görev bitişinde görev çubuğu uyarısı (Ayarlar → Genel).
 	"notifications": true,
+	"notification_sound": false,
 	"goal_max_rounds": 10,
 	# Her istekte önce plan (Ayarlar → Genel); kapalıyken plan yalnız /plan ile.
 	"planning_mode": false,

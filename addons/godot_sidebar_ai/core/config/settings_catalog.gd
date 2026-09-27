@@ -24,6 +24,7 @@ const UI_KEYS := {
 	"language": "Settings > General",
 	"ui_animations": "Settings > General > Appearance",
 	"notifications": "Settings > General > Appearance (taskbar alert when the agent needs you or finishes)",
+	"notification_sound": "Settings > General > Appearance (short sound with the alert)",
 	"auto_approve_mode": "Settings > General; approval mode button in the model bar",
 	"require_delete_approval": "Settings > General",
 	"require_overwrite_approval": "Settings > General",

@@ -19,5 +19,11 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T1 notifier: focused_quiet=%s background=%s last=%s" % [focused_quiet, background, n.last])
+	var tone := AISidebarNotifier.make_tone()
+	if tone.data.size() > 1000 and tone.mix_rate == AISidebarNotifier.MIX_RATE:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T2 tone")
 	n.free()
 	return {"name": "NotifierTests", "passed": passed, "failed": failed, "errors": errors}

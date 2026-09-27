@@ -485,5 +485,6 @@
   "mode_build_desc": "Eylem modu: ajan büyük işi kendi içinde aşamalara bölüp doğrudan yapar. Plan modu için tıkla (tek istek için /plan).",
   "mode_plan_desc": "Plan modu: ajan önce inceler, planı gösterir ve onayını bekler. Eylem modu için tıkla.",
   "settings_notifications": "Bildirimler",
-  "settings_notifications_hint": "Başka bir penceredeyken ajan soru sorunca, onay beklerken ya da işi bitince görev çubuğundaki Godot simgesi yanıp söner. Editöre bakarken uyarmaz."
+  "settings_notifications_hint": "Başka bir penceredeyken ajan soru sorunca, onay beklerken ya da işi bitince görev çubuğundaki Godot simgesi yanıp söner. Editöre bakarken uyarmaz.",
+  "settings_notification_sound": "Bildirim sesi (kısa \"ding\")"
 }

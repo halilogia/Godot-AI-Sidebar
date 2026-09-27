@@ -40,6 +40,7 @@ var delete_check: CheckBox
 var overwrite_check: CheckBox
 var animations_check: CheckBox
 var notifications_check: CheckBox
+var sound_check: CheckBox
 var planning_check: CheckBox
 ## Genel sayfasındaki "Hata bildir" düğmesi (Ayarlar penceresi bağlar).
 var on_bug_report: Callable = func() -> void: pass
@@ -127,6 +128,9 @@ func build_language_page() -> VBoxContainer:
 	notifications_check = CheckBox.new()
 	notifications_check.text = AISidebarI18n.get_text("settings_notifications")
 	look.add_child(notifications_check)
+	sound_check = CheckBox.new()
+	sound_check.text = AISidebarI18n.get_text("settings_notification_sound")
+	look.add_child(sound_check)
 	look.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_notifications_hint")))
 
 	var appr := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_approval"), AISidebarI18n.get_text("hint_approval_mode"))
@@ -178,6 +182,7 @@ func load_from(cfg: Dictionary) -> void:
 	lang_opt.selected = maxi(0, LANGUAGES.find(str(cfg.get("language", "tr"))))
 	animations_check.button_pressed = cfg.get("ui_animations", true) == true
 	notifications_check.button_pressed = cfg.get("notifications", true) == true
+	sound_check.button_pressed = cfg.get("notification_sound", false) == true
 	planning_check.button_pressed = cfg.get("planning_mode", false) == true
 	mode_opt.selected = maxi(0, MODES.find(str(cfg.get("auto_approve_mode", "MANUAL"))))
 	delete_check.button_pressed = cfg.get("require_delete_approval", true) == true
@@ -196,6 +201,7 @@ func write_to(cfg: Dictionary) -> void:
 	cfg["language"] = LANGUAGES[lang_opt.selected]
 	cfg["ui_animations"] = animations_check.button_pressed
 	cfg["notifications"] = notifications_check.button_pressed
+	cfg["notification_sound"] = sound_check.button_pressed
 	cfg["planning_mode"] = planning_check.button_pressed
 	AISidebarMotion.enabled = animations_check.button_pressed
 	cfg["auto_approve_mode"] = MODES[mode_opt.selected]
