@@ -12,6 +12,9 @@ const CAPTURE_NAME: String = "godot_ai"
 var _is_registered: bool = false
 
 func _ready() -> void:
+	# Oyun get_tree().paused ile duraklatılsa da köprü çalışır (duraklatma menüsü açıkken de ekran
+	# görüntüsü, düğüm okuma ve girdi gönderme; yoksa işleyicideki await'ler duraklatmada asılı kalırdı).
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_try_register_capture()
 
 func _process(_delta: float) -> void:
