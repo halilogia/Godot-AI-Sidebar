@@ -333,8 +333,8 @@
     "unsafe_call_argument": 15
   },
   "ui/docks/chat_dock.gd": {
-    "untyped_declaration": 13,
-    "unsafe_method_access": 6,
+    "untyped_declaration": 12,
+    "unsafe_method_access": 5,
     "unsafe_property_access": 2,
     "unsafe_call_argument": 9
   },

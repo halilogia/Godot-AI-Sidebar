@@ -21,6 +21,7 @@ const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/t
 const AISidebarRulesTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/rules_tools.gd")
 const AISidebarGoalTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/goal_tools.gd")
 const AISidebarApiTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/api_tools.gd")
+const AISidebarProjectSettingsTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/project_settings_tools.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -97,6 +98,7 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarRulesTools.get_schemas())
 	schemas.append_array(AISidebarGoalTools.get_schemas())
 	schemas.append_array(AISidebarApiTools.get_schemas())
+	schemas.append_array(AISidebarProjectSettingsTools.get_schemas())
 	# Skill'ler: açık skill yoksa activate_skill hiç sunulmaz.
 	schemas.append_array(AISidebarSkillTools.get_schemas())
 
@@ -189,7 +191,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	if has_script_intent:
 		var script_tools = [
 			"create_or_update_script", "replace_file_content", "validate_script", "validate_project", "write_files", "get_godot_class_info",
-			"delete_file", "list_dir", "get_open_scripts", "read_script"
+			"delete_file", "list_dir", "get_open_scripts", "read_script", AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for st in script_tools:
 			active_tool_names[st] = true
@@ -200,7 +202,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			"duplicate_node", "set_node_property", "connect_signal", "reparent_node",
 			"select_node", "get_active_scene_tree", "get_selected_nodes", "write_files",
 			"list_dir", "take_viewport_screenshot", "inspect_ui_layout", "create_character_scene", "create_enemy_scene",
-			"create_ui_hud", "create_interactable", "setup_camera_follow"
+			"create_ui_hud", "create_interactable", "setup_camera_follow", AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for sc in scene_tools:
 			active_tool_names[sc] = true
@@ -221,6 +223,12 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names["add_rule"] = true
 			break
 
+	# Proje ayarları: ana sahne, input action, autoload (hangi kategori eşleşirse eşleşsin).
+	for kw: String in ["input", "autoload", "main scene", "ana sahne", "project setting", "proje ayar", "project.godot", "tuş", "kontrol"]:
+		if kw in text:
+			active_tool_names[AISidebarProjectSettingsTools.TOOL_NAME] = true
+			break
+
 	# Hedef modu (/goal): tur istemi aracın adını içerir.
 	if AISidebarGoalTools.TOOL_NAME in text:
 		active_tool_names[AISidebarGoalTools.TOOL_NAME] = true
@@ -229,7 +237,8 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	if not has_script_intent and not has_scene_intent and not has_runtime_intent and not has_vision_intent:
 		var default_tools = [
 			"create_or_update_script", "replace_file_content", "create_scene", "save_scene",
-			"play_game", "get_runtime_errors", "take_viewport_screenshot", "write_files", "list_dir", "read_script"
+			"play_game", "get_runtime_errors", "take_viewport_screenshot", "write_files", "list_dir", "read_script",
+			AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for dt in default_tools:
 			active_tool_names[dt] = true
@@ -318,6 +327,8 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 		return AISidebarGoalTools.execute(tool_name, args)
 	if tool_name == AISidebarApiTools.TOOL_NAME:
 		return AISidebarApiTools.execute(tool_name, args)
+	if tool_name == AISidebarProjectSettingsTools.TOOL_NAME:
+		return AISidebarProjectSettingsTools.execute(tool_name, args)
 
 	# 6. Yüksek Seviyeli Intent Araçları
 	for s in AISidebarGameIntentTools.get_schemas():

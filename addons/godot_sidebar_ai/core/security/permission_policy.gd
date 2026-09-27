@@ -121,6 +121,12 @@ static func requires_user_approval(tool_name: String, args: Dictionary = {}, mod
 			var req_overwrite = cfg.get("require_overwrite_approval", true)
 			return req_overwrite
 			
+	# Proje ayarı değiştirmek mevcut project.godot'un üzerine yazmaktır (okuma hariç).
+	if tool_name == "manage_project_settings":
+		if str(args.get("action", "")) == "get":
+			return false
+		return cfg.get("require_overwrite_approval", true)
+
 	if tool_name == "write_files":
 		var files_arr = args.get("files", [])
 		for f_item in files_arr:
@@ -153,7 +159,7 @@ static func _init_default_risks() -> void:
 		"attach_script_to_node", "reparent_node", "select_node",
 		"play_game", "stop_game", "restart_game", "send_input",
 		"create_character_scene", "create_enemy_scene", "create_ui_hud",
-		"create_interactable", "setup_camera_follow"
+		"create_interactable", "setup_camera_follow", "manage_project_settings"
 	]
 	for t in write_tools:
 		_tool_risk_registry[t] = RiskLevel.WRITE

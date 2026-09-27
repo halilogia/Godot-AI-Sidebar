@@ -16,6 +16,9 @@ static func human_title(tool_name: String, args: Dictionary) -> String:
 		"write_files":
 			var f_arr: Array = args.get("files", [])
 			return AISidebarI18n.get_text("tool_title_write_files", {"count": f_arr.size()})
+		"manage_project_settings":
+			var target := str(args.get("key", args.get("name", "")))
+			return AISidebarI18n.get_text("tool_title_project_settings", {"action": (str(args.get("action", "")) + " " + target).strip_edges()})
 		"create_scene":
 			return AISidebarI18n.get_text("tool_title_create_scene", {"file": str(args.get("scene_path", "")).get_file()})
 		"save_scene":

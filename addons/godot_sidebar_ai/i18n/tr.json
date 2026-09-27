@@ -376,6 +376,7 @@
   "tool_title_updated_file": "{file} güncellendi",
   "tool_title_updated_script": "Script güncellendi",
   "tool_title_write_files": "{count} dosya yazıldı",
+  "tool_title_project_settings": "Proje ayarı: {action}",
   "tool_title_create_scene": "{file} sahnesi oluşturuldu",
   "tool_title_save_scene": "Açık sahne kaydedildi",
   "tool_title_analyze_project": "Proje yapısı incelendi",

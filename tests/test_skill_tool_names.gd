@@ -10,7 +10,7 @@ const SKILLS_DIR := "res://addons/godot_sidebar_ai/skills"
 ## Araç adına benzeyen ama araç olmayan tanımlayıcılar (argüman adları, alanlar, Godot API'si).
 const NOT_TOOLS := [
 	"changed_files", "expected_scene_path", "file_path", "scene_path", "scene_file", "is_inconclusive",
-	"class_name", "get_node", "ext_resource", "sub_resource",
+	"class_name", "get_node", "ext_resource", "sub_resource", "node_path",
 ]
 
 static func run() -> Dictionary:

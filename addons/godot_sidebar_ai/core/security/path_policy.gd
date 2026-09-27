@@ -57,7 +57,7 @@ static func is_safe_to_write(raw_path: String) -> Dictionary:
 		if norm == exact:
 			return {
 				"safe": false,
-				"reason": "Kritik proje yapılandırma dosyası (" + exact + ") doğrudan yazılamaz/ezilemez."
+				"reason": "Kritik proje yapılandırma dosyası (" + exact + ") doğrudan yazılamaz/ezilemez." + (" Ana sahne, input action ve autoload için manage_project_settings aracını kullanın." if exact.ends_with("project.godot") else "")
 			}
 			
 	for prefix in PROTECTED_PREFIXES:
