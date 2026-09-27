@@ -8,6 +8,7 @@ const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
 const AISidebarChangeSet = preload("res://addons/godot_sidebar_ai/core/types/change_set.gd")
 const AISidebarSceneTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/scene_tools.gd")
+const AISidebarProjectValidator = preload("res://addons/godot_sidebar_ai/core/verification/project_validator.gd")
 
 static func get_schemas() -> Array:
 	return [
@@ -111,6 +112,20 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
+				"name": "validate_project",
+				"description": "Compiles every GDScript in the project with its real path and project context (class_name, preload, types) and checks that scenes and resources point to existing dependencies. Returns each error with file, line and message, plus scope, engine and duration_ms. Use it after changing several scripts or before claiming the project compiles; validate_script is the quick single-file check. Does not execute scripts or prove runtime behavior.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"path": { "type": "string", "description": "Optional folder to limit the check (e.g. res://scripts). Default: the whole project." }
+					},
+					"required": []
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
 				"name": "replace_file_content",
 				"description": "Surgically replaces one code block in an existing file. Use it to change only the part that changes instead of rewriting the whole file.",
 				"parameters": {
@@ -142,6 +157,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _open_script(args)
 		"validate_script":
 			return _validate_script(args)
+		"validate_project":
+			return _validate_project(args)
 		"eval_gdscript":
 			return _eval_gdscript(args)
 		_:
@@ -438,6 +455,21 @@ static func _validate_script(args: Dictionary) -> Dictionary:
 		var error: Dictionary = val_res.get("error", {})
 		return AISidebarToolResult.err(str(error.get("code", "SCRIPT_SYNTAX_ERROR")), str(error.get("message", "Compilation failed.")), true, val_res)
 	return AISidebarToolResult.ok(val_res)
+
+## Bütün proje (ya da bir klasör) gerçek bağlamda derlenir; hatalar dosya / satır / mesaj ile döner.
+static func _validate_project(args: Dictionary) -> Dictionary:
+	var root := str(args.get("path", "res://")).strip_edges()
+	if root.is_empty():
+		root = "res://"
+	if not root.begins_with("res://") or ".." in root.split("/"):
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "path must be a folder inside the project (res://...).")
+	if not DirAccess.dir_exists_absolute(root):
+		return AISidebarToolResult.err("FILE_NOT_FOUND", "Folder not found: " + root)
+	var report := AISidebarProjectValidator.run(root)
+	var error_count: int = report["error_count"]
+	if error_count > 0:
+		return AISidebarToolResult.err("PROJECT_VALIDATION_FAILED", "%d error(s) in %s." % [error_count, root], true, report)
+	return AISidebarToolResult.ok(report)
 
 static func _eval_gdscript(args: Dictionary) -> Dictionary:
 	var code = args.get("code", "")

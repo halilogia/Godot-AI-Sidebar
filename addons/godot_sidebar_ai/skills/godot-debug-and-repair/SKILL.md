@@ -7,7 +7,7 @@ description: Diagnose and fix errors, crashes and wrong behavior in a Godot 4 ga
 
 ## 1. Reproduce with evidence
 
-- Parse problems first: `validate_script` on the suspected `.gd` files (after `sync_project` if you edited them).
+- Parse problems first: `validate_script` on the suspected `.gd` files (after `sync_project` if you edited them); `validate_project` when you don't know which file breaks or a class_name / preload chain is involved (it lists every error with file and line).
 - Run: `play_game` (the main scene; `current_scene_only: true` runs the scene open in the editor), wait 2–3 seconds, then `get_runtime_errors`.
   - Read `errors` / `warnings` with their file and line.
   - `is_verified_clean: true` means no errors were logged. `is_inconclusive` / `NO_NEW_LOG_DATA` means nothing was logged yet: wait and call again before concluding anything.

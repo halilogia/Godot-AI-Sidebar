@@ -182,7 +182,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			
 	if has_script_intent:
 		var script_tools = [
-			"create_or_update_script", "replace_file_content", "validate_script", "write_files",
+			"create_or_update_script", "replace_file_content", "validate_script", "validate_project", "write_files",
 			"delete_file", "list_dir", "get_open_scripts", "read_script"
 		]
 		for st in script_tools:

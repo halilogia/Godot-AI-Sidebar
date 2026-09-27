@@ -128,7 +128,7 @@ static func classify_tool_kind(tool_name: String) -> String:
 			return "search"
 		"create_or_update_script", "replace_file_content", "write_files", "create_scene", "save_scene", "delete_file":
 			return "write"
-		"validate_script":
+		"validate_script", "validate_project":
 			return "verify"
 		"play_game", "stop_game", "restart_game", "get_runtime_errors", "take_runtime_screenshot":
 			return "runtime"

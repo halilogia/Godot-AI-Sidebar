@@ -28,6 +28,8 @@ static func human_title(tool_name: String, args: Dictionary) -> String:
 			return AISidebarI18n.get_text("tool_title_read_script", {"file": str(args.get("file_path", "")).get_file()})
 		"validate_script":
 			return AISidebarI18n.get_text("tool_title_validate_script")
+		"validate_project":
+			return AISidebarI18n.get_text("tool_title_validate_project")
 		"play_game":
 			return AISidebarI18n.get_text("tool_title_play_game")
 		"stop_game":

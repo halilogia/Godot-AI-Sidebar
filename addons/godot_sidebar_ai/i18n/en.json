@@ -463,5 +463,6 @@
   "settings_report_usage_hint": "OpenAI-compatible provider: asks for the real token count at the end of a streamed reply (stream_options). The context meter uses these numbers. Turn it off if your endpoint rejects this field.",
   "settings_card_context": "Context window",
   "settings_context_hint": "The most tokens the model accepts. 0: taken from the provider's model list; if the provider does not report it, the meter shows only the used tokens and the context guard is off.",
-  "settings_context_window": "Tokens"
+  "settings_context_window": "Tokens",
+  "tool_title_validate_project": "Validated the project"
 }

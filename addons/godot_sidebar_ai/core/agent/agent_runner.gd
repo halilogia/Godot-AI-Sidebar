@@ -799,7 +799,7 @@ func _verify_tool_result(tool_name: String, args: Dictionary, result: Variant) -
 	var is_valid = res_dict.get("success", false)
 	var ui_msg = str(res_dict.get("message", ""))
 
-	var needs_explicit_verify = (tool_name == "validate_script" or tool_name == "play_game" or tool_name == "get_runtime_errors")
+	var needs_explicit_verify = (tool_name in ["validate_script", "validate_project", "play_game", "get_runtime_errors"])
 
 	if needs_explicit_verify:
 		_set_state(AgentState.VERIFYING, AISidebarI18n.get_text("agent_state_verifying", {"tool": tool_name}))

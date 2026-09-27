@@ -109,6 +109,7 @@ const TestGoal = preload("res://tests/test_goal.gd")
 const TestHelp = preload("res://tests/test_help.gd")
 const TestBugReport = preload("res://tests/test_bug_report.gd")
 const TestContextBudget = preload("res://tests/test_context_budget.gd")
+const TestProjectValidator = preload("res://tests/test_project_validator.gd")
 const TestEditorScreenshot = preload("res://tests/test_editor_screenshot.gd")
 const TestConfigSafety = preload("res://tests/test_config_safety.gd")
 
@@ -276,6 +277,7 @@ func _init() -> void:
 		TestHelp,
 		TestBugReport,
 		TestContextBudget,
+		TestProjectValidator,
 		TestEditorScreenshot,
 		TestConfigSafety,
 		TestReasoningUI,

@@ -463,5 +463,6 @@
   "settings_report_usage_hint": "OpenAI uyumlu sağlayıcı: akışlı yanıtın sonunda gerçek token sayısını ister (stream_options). Bağlam göstergesi bu sayıları kullanır. Uç noktanız bu alanı reddederse kapatın.",
   "settings_card_context": "Bağlam penceresi",
   "settings_context_hint": "Modelin alabildiği en çok token. 0: sağlayıcının model listesinden alınır; sağlayıcı bildirmezse gösterge yalnız kullanılan token'ı gösterir ve bağlam koruması çalışmaz.",
-  "settings_context_window": "Token"
+  "settings_context_window": "Token",
+  "tool_title_validate_project": "Proje doğrulandı"
 }
