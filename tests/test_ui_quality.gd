@@ -54,7 +54,7 @@ const PATTERNS := {
 	"fixed_font_size": "font_size\"\\s*,\\s*\\d",
 	"unscaled_font_size": "font_size\"\\s*,\\s*AISidebarTheme\\.FONT_SIZE",
 	"color_literal": "\\bColor8?\\(\\s*[0-9.]",
-	"bbcode_hex_color": "\\[color=#[0-9a-fA-F]",
+	"bbcode_hex_color": "\\[color=#",
 	"literal_spacing": "constant_override\\(\"[a-z_]+\",\\s*\\d",
 	"unscaled_spacing": "constant_override\\(\"[a-z_]+\",\\s*AISidebarTheme\\.SPACE",
 	"unexplained_focus_none": "FOCUS_NONE(?!.*# focus:)",

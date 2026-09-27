@@ -140,7 +140,7 @@ func render_changes(cs: AISidebarChangeSet) -> void:
 		delta_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 		delta_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
 		delta_lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
-		delta_lbl.text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_SUCCESS_TEXT) + "]+" + str(d["added"]) + "[/color] [color=#" + AISidebarTheme.COLOR_TONE_ERROR_TEXT.to_html(false) + "]-" + str(d["removed"]) + "[/color]"
+		delta_lbl.text = "[color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_SUCCESS_TEXT) + "]+" + str(d["added"]) + "[/color] [color=" + AISidebarTheme.bb(AISidebarTheme.COLOR_TONE_ERROR_TEXT) + "]-" + str(d["removed"]) + "[/color]"
 		row.add_child(delta_lbl)
 		
 		_files_list.add_child(row)
