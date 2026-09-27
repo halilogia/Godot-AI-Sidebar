@@ -109,6 +109,12 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 	var reload_err: int = compiled["code"]
 	var compile_errors: Array = compiled["errors"]
 
+	if reload_err != OK and _only_own_class_unresolved(source_code, reload_err, compile_errors):
+		return {
+			"status": VerificationStatus.PASSED,
+			"success": true,
+			"message": "✓ GDScript sözdizimi geçerli (kendi sınıf adına başvuru)."
+		}
 	if reload_err != OK:
 		# Hata, henüz diske yazılmamış bir batch dosyasına referanstan kaynaklanıyor
 		# olabilir: batch geçici bir aynaya yazılıp betik gerçekten derlenir.
@@ -199,6 +205,22 @@ static func _batch_classes(batch_context: Dictionary) -> Dictionary:
 		if not cls.is_empty():
 			out[cls] = p
 	return out
+
+## Yeni (henüz kayıtsız) betik kendi class_name'ine başvurunca (Division.new(), -> World) yolsuz geçici
+## kopya ayrıştırmayı geçer ama kod üretiminde "Identifier not found: <kendi adı>" der. Tür denetimi
+## ayrıştırmada yapıldığı için (yanlış üye orada yakalanır) yalnız bu hatalardan oluşan sonuç geçerlidir.
+static func _only_own_class_unresolved(source_code: String, reload_err: int, errors: Array) -> bool:
+	var own := _class_name_of(source_code)
+	if own.is_empty() or reload_err != ERR_COMPILATION_FAILED or errors.is_empty():
+		return false
+	for e: Variant in errors:
+		var msg := str(e)
+		if e is Dictionary:
+			var ed: Dictionary = e
+			msg = str(ed.get("message", ""))
+		if not msg.ends_with("Identifier not found: " + own):
+			return false
+	return true
 
 static func _class_name_of(source_code: String) -> String:
 	var re := RegEx.new()

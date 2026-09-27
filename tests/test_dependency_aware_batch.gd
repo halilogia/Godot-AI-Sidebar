@@ -130,7 +130,11 @@ static func run() -> Dictionary:
 		{"file_path": ga, "content": g_data}, {"file_path": gb, "content": g_state}, {"file_path": gc, "content": g_ai_ok}])
 	var g_bad = AISidebarVerificationPipeline.validate_batch_files([
 		{"file_path": ga, "content": g_data}, {"file_path": gb, "content": g_state}, {"file_path": gc, "content": g_ai_bad}])
-	if g_ok.get("success", false) and not g_bad.get("success", false):
+	# Kendi class_name'ine başvuran yeni betik (static factory, dönüş türü) geçer; yanlış üyesi geçmez.
+	var g_self = "class_name TempClsGSelf\nextends RefCounted\nstatic func make() -> TempClsGSelf:\n\tvar d := TempClsGSelf.new()\n\treturn d\n"
+	var g_self_ok = AISidebarVerificationPipeline.validate_batch_files([{"file_path": "res://tests/temp_cls_g_self.gd", "content": g_self}])
+	var g_self_bad = AISidebarVerificationPipeline.validate_batch_files([{"file_path": "res://tests/temp_cls_g_self.gd", "content": g_self.replace(".new()", ".nope()")}])
+	if g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
 		passed += 1
 	else:
 		failed += 1
