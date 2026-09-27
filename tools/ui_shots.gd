@@ -16,6 +16,7 @@ extends SceneTree
 
 const SettingsScene = preload("res://addons/godot_sidebar_ai/ui/dialogs/settings_dialog.tscn")
 const AISidebarHelpDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd")
+const AISidebarBugReportDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/bug_report_dialog.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
@@ -126,6 +127,25 @@ func _shoot_settings(size_name: String, size: Vector2i) -> void:
 	await _frames(4)
 	_save("%s_%s_help_bottom" % [_lang, size_name])
 	help.queue_free()
+	# Hata bildirme penceresi: boş hali ve rapor oluşturulmuş hali (zip geçici klasöre yazılıp silinir).
+	var bug := AISidebarBugReportDialog.new()
+	root.add_child(bug)
+	bug.open_report({"chat_md": "# chat", "screenshot": Image.create(8, 8, false, Image.FORMAT_RGBA8), "out_dir": "user://ui_shots_bug_report", "clipboard": false})
+	await _frames(8)
+	_save("%s_%s_bug" % [_lang, size_name])
+	var br := Rect2i(bug.position, bug.size)
+	if not Rect2i(Vector2i.ZERO, size).encloses(br):
+		_overflows.append("%s bug: dialog %s exceeds window %s" % [size_name, br, size])
+	var made: Dictionary = bug.create_report()
+	var bug_scroll: ScrollContainer = bug.get("_scroll")
+	await _frames(4)
+	bug_scroll.scroll_vertical = 1000000
+	await _frames(4)
+	_save("%s_%s_bug_done" % [_lang, size_name])
+	if made.has("path"):
+		DirAccess.remove_absolute(str(made["path"]))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://ui_shots_bug_report"))
+	bug.queue_free()
 	bg.queue_free()
 	await _frames(2)
 

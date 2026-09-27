@@ -104,6 +104,7 @@ Type `/` in the box to open the list; move with ↑ ↓ and complete with Enter 
 | `/learn [--global] [rule]` | Saves a permanent rule (asks first). See [Rules](#10-rules). |
 | `/mcp [on \| off]` | Turns the external agent bridge on / off. See [MCP](#12-external-agent-bridge-mcp-and-claude-code). |
 | `/goal [goal \| stop]` | Goal mode. See [Goal mode](#9-goal-mode-goal). |
+| `/bug` | Opens the bug report window. See [Troubleshooting](#14-troubleshooting). |
 
 ## 7. @ mentions
 
@@ -199,4 +200,4 @@ The port can be changed on the same page. To close the bridge: **Turn off** or `
 - **Screenshots are not sent to the model:** the selected model may not support images; Settings → Provider → Advanced → Image support.
 - **The MCP bridge does not start:** another program may be using the port; pick another one in Settings → External Agent.
 - **The agent loops on the same error:** stop it, narrow the request, or add the relevant file with `@res://...`. If it is a lasting preference, make it a rule with `/learn`.
-- **Reporting a bug:** save the chat with **Export** and attach it to an [issue](https://github.com/halilogia/Godot-AI-Sidebar/issues).
+- **Reporting a bug:** **Report a bug** in the Help window, in **Settings → General** or with `/bug`. Describe what happened, choose what to include (chat and task log, panel screenshot, game log) and press **Create report**. The plugin writes one zip on your computer and copies the issue text to the clipboard; **Open issue on GitHub** opens a new issue page, paste the text and drag the zip in. API keys and tokens are never written to the report; nothing is sent automatically.

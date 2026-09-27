@@ -12,6 +12,7 @@ const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarBugReportDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/bug_report_dialog.gd")
 
 var agent_context: AISidebarAgentContext = null
 ## Aktif ChatSession'ı döndürür (oturum değiştikçe güncel kalsın diye callable).
@@ -21,6 +22,7 @@ var export_btn: Button = null
 var copy_task_btn: Button = null
 
 var _export_file_dialog: FileDialog = null
+var bug_dialog: AISidebarBugReportDialog = null
 var _pending_history_export: Dictionary = {}
 
 func _init() -> void:
@@ -29,8 +31,8 @@ func _init() -> void:
 func _session():
 	return get_session.call()
 
-## Export: transcript + mesajları md/json olarak kaydeder ve md'yi panoya kopyalar.
-func export_chat() -> void:
+## Dışa aktarılacak veri: mesajlar, görev kaydı ve oturum bilgisi (boş sohbette ikisi de boş).
+func _export_data() -> Dictionary:
 	var current_session = _session()
 	var msgs: Array = []
 	var transcript_tasks: Array = []
@@ -39,10 +41,6 @@ func export_chat() -> void:
 		transcript_tasks = agent_context.get_transcript().to_data()
 	if current_session and not current_session.transcript_tasks.is_empty() and transcript_tasks.is_empty():
 		transcript_tasks = current_session.transcript_tasks.duplicate(true)
-
-	if msgs.is_empty() and transcript_tasks.is_empty():
-		return
-
 	var cfg = AISidebarConfig.load_config()
 	var session_meta = {
 		"model": cfg.get("selected_model", "all"),
@@ -50,6 +48,16 @@ func export_chat() -> void:
 	}
 	if current_session and not current_session.telemetry.is_empty():
 		session_meta.merge(current_session.telemetry)
+	return {"msgs": msgs, "tasks": transcript_tasks, "meta": session_meta}
+
+## Export: transcript + mesajları md/json olarak kaydeder ve md'yi panoya kopyalar.
+func export_chat() -> void:
+	var data := _export_data()
+	var msgs: Array = data["msgs"]
+	var transcript_tasks: Array = data["tasks"]
+	if msgs.is_empty() and transcript_tasks.is_empty():
+		return
+	var session_meta: Dictionary = data["meta"]
 	var md = AISidebarChatExporter.export_transcript_to_markdown(transcript_tasks, msgs, session_meta)
 	DisplayServer.clipboard_set(md)
 	AISidebarChatExporter.save_to_file(md, "md")
@@ -175,3 +183,31 @@ func flash_status_text(txt: String) -> void:
 			if is_instance_valid(status_badge):
 				status_badge.text = prev
 		)
+
+## Hata raporu penceresini açar (Yardım, Ayarlar → Genel, /bug). Panelin görüntüsü pencere açılmadan
+## alınır; sohbet ve görev kaydı dışa aktarmayla aynı biçimde ve maskelemeyle eklenir.
+func open_bug_report(panel: Control) -> void:
+	var data := _export_data()
+	var msgs: Array = data["msgs"]
+	var transcript_tasks: Array = data["tasks"]
+	var chat_md := ""
+	if not msgs.is_empty() or not transcript_tasks.is_empty():
+		chat_md = AISidebarChatExporter.export_transcript_to_markdown(transcript_tasks, msgs, data["meta"])
+	var shot: Image = null
+	if panel != null and panel.is_visible_in_tree():
+		# Az önce kapanan Yardım / Ayarlar penceresi görüntüde kalmasın: yeni kare çizilsin.
+		await RenderingServer.frame_post_draw
+		var full := panel.get_viewport().get_texture().get_image()
+		var r := Rect2i(Vector2i.ZERO, full.get_size()).intersection(Rect2i(panel.get_global_rect()))
+		if r.size.x > 0 and r.size.y > 0:
+			shot = full.get_region(r)
+	var last_task: Dictionary = transcript_tasks.back() if not transcript_tasks.is_empty() and transcript_tasks.back() is Dictionary else {}
+	if bug_dialog == null:
+		bug_dialog = AISidebarBugReportDialog.new()
+		add_child(bug_dialog)
+	bug_dialog.open_report({
+		"chat_md": chat_md,
+		"screenshot": shot,
+		"last_task": last_task,
+		"env_extra": {"editor_scale": AISidebarTheme.ui_scale, "palette": "light" if AISidebarTheme.is_light else "dark"},
+	})

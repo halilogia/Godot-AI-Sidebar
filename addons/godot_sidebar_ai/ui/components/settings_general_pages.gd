@@ -5,7 +5,8 @@ class_name AISidebarSettingsGeneralPages
 ## Ayarlar penceresinin genel sayfaları (kodla, AISidebarSettingsUi ile kurulur):
 ##   Sağlayıcı: sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable)
 ##   Model & Parametreler: temperature, max_agent_steps (max_iterations aynı denetim), goal_max_rounds (/goal)
-##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval
+##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval,
+##          hata bildirme (Hata bildir düğmesi; ayar değil, pencereyi açar)
 ## Pencere açılırken config'ten yüklenir (load_from), "Kaydet ve Kapat"ta config'e yazılır (write_to).
 
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
@@ -36,6 +37,8 @@ var mode_opt: OptionButton
 var delete_check: CheckBox
 var overwrite_check: CheckBox
 var animations_check: CheckBox
+## Genel sayfasındaki "Hata bildir" düğmesi (Ayarlar penceresi bağlar).
+var on_bug_report: Callable = func() -> void: pass
 
 func build_provider_page() -> VBoxContainer:
 	var page := AISidebarSettingsUi.page()
@@ -127,6 +130,11 @@ func build_language_page() -> VBoxContainer:
 	overwrite_check.text = AISidebarI18n.get_text("settings_require_overwrite")
 	appr.add_child(overwrite_check)
 	appr.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_approvals_hint")))
+
+	var bug := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("bug_card_title"), AISidebarI18n.get_text("bug_card_hint"))
+	var bug_row := AISidebarSettingsUi.row(bug)
+	bug_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("bug_open"), func() -> void: on_bug_report.call()))
+	bug_row.add_child(AISidebarSettingsUi.spacer())
 	return page
 
 func load_from(cfg: Dictionary) -> void:

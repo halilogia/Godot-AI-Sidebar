@@ -183,6 +183,7 @@ func _ready() -> void:
 	tasks.update_header = _update_header_title
 	tasks.save_session = _save_current_session
 	tasks.clear_chat = _on_clear_pressed
+	tasks.open_bug_report = func() -> void: _export_actions.open_bug_report(self)
 	add_child(tasks)
 	goals = AISidebarGoalController.new()
 	goals.banner = goal_banner
@@ -236,6 +237,7 @@ func _ready() -> void:
 		model_selector.item_selected.connect(model_bar_controller.on_model_selected)
 	if settings_dialog:
 		settings_dialog.settings_saved.connect(_on_settings_saved)
+		settings_dialog.bug_report_requested.connect(func() -> void: _export_actions.open_bug_report(self))
 	if jump_to_bottom_btn:
 		jump_to_bottom_btn.pressed.connect(_on_jump_to_bottom_pressed)
 	if chat_scroll:
@@ -362,6 +364,7 @@ func _setup_skills_button() -> void:
 	help_dialog = AISidebarHelpDialog.new()
 	add_child(help_dialog)
 	help_btn.pressed.connect(func() -> void: help_dialog.open_help())
+	help_dialog.bug_report_requested.connect(func() -> void: _export_actions.open_bug_report(self))
 
 ## Editör teması (açık / koyu) değişince: tema yeniden üretilir, varyasyonlu bütün düğümler kendiliğinden
 ## yeni renkleri alır; boyalı ikonlar yeniden çizilir.

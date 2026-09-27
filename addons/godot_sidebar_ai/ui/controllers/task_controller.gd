@@ -57,6 +57,8 @@ var update_header: Callable = func(): pass
 var save_session: Callable = func(): pass
 ## func() — Clear butonu yolu (/clear).
 var clear_chat: Callable = func(): pass
+## /bug: hata raporu penceresini açar.
+var open_bug_report: Callable = func(): pass
 
 # --- Görev durumu ---
 var last_user_prompt: String = ""
@@ -194,6 +196,10 @@ func handle_slash_command(parsed_cmd: Dictionary, raw_text: String) -> void:
 	
 	if action == "clear_chat":
 		clear_chat.call()
+		return
+
+	if action == "bug_report":
+		open_bug_report.call()
 		return
 		
 	if action == "local_response":

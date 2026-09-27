@@ -17,6 +17,9 @@ const GUIDE_URL_TR := "https://github.com/halilogia/Godot-AI-Sidebar/blob/main/d
 const GUIDE_URL_EN := "https://github.com/halilogia/Godot-AI-Sidebar/blob/main/docs/USER_GUIDE.en.md"
 const BASE_SIZE := Vector2(760, 640)
 
+## "Hata bildir" düğmesi (panel rapor penceresini açar).
+signal bug_report_requested()
+
 var _scroll: ScrollContainer
 
 func _init() -> void:
@@ -88,6 +91,13 @@ func _build() -> void:
 	var row := AISidebarSettingsUi.row(guide)
 	row.add_child(AISidebarSettingsUi.primary_button(AISidebarI18n.get_text("help_guide_open"), func() -> void: OS.shell_open(guide_url())))
 	row.add_child(AISidebarSettingsUi.spacer())
+
+	var bug := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("bug_card_title"), AISidebarI18n.get_text("bug_card_hint"))
+	var bug_row := AISidebarSettingsUi.row(bug)
+	bug_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("bug_open"), func() -> void:
+		hide()
+		bug_report_requested.emit()))
+	bug_row.add_child(AISidebarSettingsUi.spacer())
 
 ## "Anahtar — açıklama" satırı: sol sütunda komut / kısayol (rozet), sağda açıklama.
 func _entry(parent: Control, key_text: String, desc: String) -> void:

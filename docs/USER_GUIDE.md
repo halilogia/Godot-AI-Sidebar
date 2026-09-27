@@ -104,6 +104,7 @@ Kutuya `/` yazınca liste açılır; ↑ ↓ ile gezip Enter ya da Tab ile tamam
 | `/learn [--global] [kural]` | Kalıcı kural kaydeder (onay ister). Bkz. [Kurallar](#10-kurallar). |
 | `/mcp [on \| off]` | Dış ajan köprüsünü açar / kapatır. Bkz. [MCP](#12-dış-ajan-köprüsü-mcp-ve-claude-code). |
 | `/goal [hedef \| stop]` | Hedef modu. Bkz. [Hedef modu](#9-hedef-modu-goal). |
+| `/bug` | Hata bildirme penceresini açar. Bkz. [Sorun giderme](#14-sorun-giderme). |
 
 ## 7. @ bahsetmeleri
 
@@ -199,4 +200,4 @@ Değişiklikler **Kaydet ve Kapat** ile yazılır. Skill aç / kapa, kural eklem
 - **Ekran görüntüsü modele gitmiyor:** seçili model görüntü desteklemiyor olabilir; Ayarlar → Sağlayıcı → Gelişmiş → Görüntü desteği.
 - **MCP köprüsü açılmıyor:** port başka bir program tarafından kullanılıyor olabilir; Ayarlar → Dış Ajan'dan başka bir port seçin.
 - **Ajan aynı hatada dönüyor:** Durdurun, isteği daraltın ya da `@res://...` ile ilgili dosyayı bağlama ekleyin. Kalıcı bir tercihse `/learn` ile kural yapın.
-- **Hata bildirmek:** sohbeti **Dışa aktar** ile kaydedip [Issues](https://github.com/halilogia/Godot-AI-Sidebar/issues)'a ekleyin.
+- **Hata bildirmek:** Yardım penceresinde, **Ayarlar → Genel**'de ya da `/bug` ile **Hata bildir**. Ne olduğunu yazın, rapora neyin gireceğini seçin (sohbet ve görev kaydı, panel görüntüsü, oyun logu) ve **Raporu oluştur**'a basın. Eklenti bilgisayarınızda tek bir zip hazırlar ve issue metnini panoya kopyalar; **GitHub'da issue aç** ile yeni issue sayfasını açıp metni yapıştırın ve zip'i sürükleyin. API anahtarı ve token'lar rapora yazılmaz; hiçbir şey kendiliğinden gönderilmez.

@@ -318,6 +318,15 @@ static func _init_default_commands() -> void:
 		Callable(AISidebarSlashCommandManager, "_handle_goal")
 	)
 
+	# 13. /bug
+	register_command(
+		"bug",
+		"Hata bildirme penceresini açar: açıklama, ortam bilgisi, maskeli ayarlar, sohbet kaydı, log ve panel görüntüsüyle yerel bir rapor paketi oluşturur; hiçbir yere göndermez.",
+		"/bug",
+		AISidebarPermissionPolicy.RiskLevel.READ_ONLY,
+		Callable(AISidebarSlashCommandManager, "_handle_bug")
+	)
+
 ## --- KOMUT İŞLEYİCİLERİ (COMMAND HANDLERS) ---
 
 ## /mcp: köprüyü açar / kapatır, durumu ve Claude Code bağlantı komutunu gösterir.
@@ -390,6 +399,9 @@ static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 ## Temizliği ChatDock yapar (Clear butonu yolu); komut yalnızca niyeti bildirir, yanıt balonu yok.
 static func _handle_clear(_args: String, _context: Dictionary) -> Dictionary:
 	return {"action": "clear_chat"}
+
+static func _handle_bug(_args: String, _context: Dictionary) -> Dictionary:
+	return {"action": "bug_report"}
 
 static func _handle_analyze(args: String, _context: Dictionary) -> Dictionary:
 	var target = args.strip_edges()

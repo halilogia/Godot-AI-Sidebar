@@ -22,6 +22,8 @@ const AISidebarSkillsView = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarMcpSettingsView = preload("res://addons/godot_sidebar_ai/ui/components/mcp_settings_view.gd")
 
 signal settings_saved()
+## Genel sayfasındaki "Hata bildir" (pencere kapanır, panel rapor penceresini açar).
+signal bug_report_requested()
 
 const CATEGORY_RULES := 3
 const CATEGORY_SKILLS := 4
@@ -92,6 +94,9 @@ func _build() -> void:
 	gutter.add_child(pages)
 
 	general = AISidebarSettingsGeneralPages.new()
+	general.on_bug_report = func() -> void:
+		hide()
+		bug_report_requested.emit()
 	rules_view = AISidebarRulesView.new()
 	skills_view = AISidebarSkillsView.new()
 	mcp_view = AISidebarMcpSettingsView.new()
