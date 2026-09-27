@@ -73,7 +73,9 @@ var provider: AISidebarAIProvider
 var context: AISidebarAgentContext
 var current_state: AgentState = AgentState.IDLE
 var current_step: int = 0
-var max_steps: int = 20
+## Adım sınırı: 0 = sınırsız (varsayılan). Büyük işler sabit bir sayıda kesilmez; bozuk döngüleri
+## tekrar / iyileştirme / boş yanıt korumaları ve kullanıcının Durdur'u keser.
+var max_steps: int = 0
 var max_recovery_attempts: int = 3
 var _recovery_attempt_count: int = 0
 var max_empty_response_retries: int = 1
@@ -158,7 +160,6 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 		return
 		
 	var cfg = AISidebarConfig.load_config()
-	max_steps = int(cfg.get("max_agent_steps", cfg.get("max_iterations", 20)))
 	current_step = 0
 	_recovery_attempt_count = 0
 	_empty_response_retry_count = 0
@@ -432,7 +433,7 @@ func _run_next_step() -> void:
 	current_step += 1
 	if context:
 		context.get_transcript().mark_step(current_step)
-	if current_step > max_steps:
+	if max_steps > 0 and current_step > max_steps:
 		telemetry.limit_hit = true
 		last_stop_code = AISidebarAgentStatus.STEP_LIMIT
 		_set_state(AgentState.ERROR, AISidebarI18n.get_text("agent_error_step_limit", {"max": max_steps}))
@@ -443,7 +444,7 @@ func _run_next_step() -> void:
 		
 	step_progress.emit(current_step, max_steps)
 	telemetry.llm_turns_count += 1
-	var status_msg = "Agent Step " + str(current_step) + " / " + str(max_steps)
+	var status_msg = "Agent Step " + str(current_step) + ((" / " + str(max_steps)) if max_steps > 0 else "")
 	_set_state(AgentState.PLANNING, status_msg)
 	
 	telemetry.begin_llm_step()
@@ -714,7 +715,7 @@ func _evaluate_completion(text_content: String) -> void:
 		"plan_approved": plan_was_approved,
 		"mutations_done": (telemetry.file_ops_count + telemetry.editor_ops_count + telemetry.write_ops_count) > 0,
 		"limit_hit": telemetry.limit_hit,
-		"steps_summary": str(current_step) + " / " + str(max_steps),
+		"steps_summary": str(current_step) + ((" / " + str(max_steps)) if max_steps > 0 else ""),
 	}
 	var gate = AISidebarCompletionPolicy.evaluate(gate_state)
 	last_completion = gate

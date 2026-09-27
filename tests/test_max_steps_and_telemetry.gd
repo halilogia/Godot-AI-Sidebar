@@ -30,11 +30,11 @@ static func run() -> Dictionary:
 	# Test 1: Varsayılan max_agent_steps = 20
 	var def_cfg = AISidebarConfig.DEFAULT_CONFIG
 	var runner1 = AISidebarAgentRunner.new(null, null)
-	if def_cfg.get("max_agent_steps", 0) == 20 and runner1.max_steps == 20:
+	if not def_cfg.has("max_agent_steps") and runner1.max_steps == 0:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 1 (Default max_agent_steps = 20) failed: cfg=" + str(def_cfg.get("max_agent_steps")) + " runner=" + str(runner1.max_steps))
+		errors.append("Test 1 (no default step limit) failed: cfg=" + str(def_cfg.get("max_agent_steps")) + " runner=" + str(runner1.max_steps))
 		
 	# Test 2: Doğal Erken Tamamlanma (Natural completion terminates early at Step 1)
 	var prov2 = MockStepProvider.new()
@@ -50,7 +50,7 @@ static func run() -> Dictionary:
 	
 	if runner2.current_state == AISidebarAgentRunner.AgentState.IDLE and prov2.history.size() == 1:
 		var m = completed_metrics[0]
-		if m.get("used_steps", 0) == 1 and m.get("max_steps", 0) == 20:
+		if m.get("used_steps", 0) == 1 and m.get("max_steps", -1) == 0 and m.get("steps_summary", "") == "1":
 			passed += 1
 		else:
 			failed += 1
@@ -73,7 +73,8 @@ static func run() -> Dictionary:
 	runner3.error_occurred.connect(func(_e): err3_received[0] = true)
 	runner3.start_task("Test stagnation")
 	
-	if err3_received[0] and runner3.current_step < runner3.max_steps:
+	# Sınır yok: tekrar koruması durdurur (adım sınırı değil).
+	if err3_received[0] and runner3.current_step < 10:
 		passed += 1
 	else:
 		failed += 1
@@ -117,7 +118,7 @@ static func run() -> Dictionary:
 	]
 	runner5.start_task("Progress test")
 	
-	if progress_data.size() == 1 and progress_data[0]["cur"] == 1 and progress_data[0]["max"] == 20:
+	if progress_data.size() == 1 and progress_data[0]["cur"] == 1 and progress_data[0]["max"] == 0:
 		passed += 1
 	else:
 		failed += 1

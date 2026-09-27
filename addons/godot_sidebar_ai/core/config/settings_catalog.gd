@@ -18,8 +18,6 @@ const UI_KEYS := {
 	"context_window": "Settings > Model & Parameters > Context window",
 	"selected_model": "Model bar (dock header)",
 	"temperature": "Settings > Model & Parameters",
-	"max_agent_steps": "Settings > Model & Parameters",
-	"max_iterations": "Settings > Model & Parameters (same control as max_agent_steps)",
 	"goal_max_rounds": "Settings > Model & Parameters > Goal mode (/goal)",
 	"planning_mode": "Settings > General > Planning (plan first for every request; otherwise /plan)",
 	"system_prompt": "Settings > Rules > Built-in rules (system prompt)",

@@ -25,7 +25,7 @@ const LOG_TAIL_LINES := 200
 ## Ayarlardan olduğu gibi yazılabilen alanlar; listede olmayan hiçbir alan rapora girmez.
 const SAFE_SETTINGS: Array[String] = [
 	"config_version", "provider_type", "selected_model", "language", "stream", "vision_capable",
-	"temperature", "max_agent_steps", "goal_max_rounds", "auto_approve_mode", "require_delete_approval",
+	"temperature", "goal_max_rounds", "auto_approve_mode", "require_delete_approval",
 	"require_overwrite_approval", "ui_animations", "mcp_bridge_enabled", "mcp_bridge_port",
 ]
 

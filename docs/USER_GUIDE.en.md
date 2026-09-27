@@ -186,7 +186,7 @@ The port can be changed on the same page. To close the bridge: **Turn off** or `
 | Page | Contents |
 |---|---|
 | Provider | Provider, endpoint (Base URL, API key), streaming, image support, request token usage |
-| Model & Parameters | Temperature, maximum agent steps, goal mode round limit, context window |
+| Model & Parameters | Temperature, goal mode round limit, context window |
 | General | Interface language, interface animations, approval mode, delete / overwrite approvals, report a bug |
 | Rules | Token usage, built-in rules (system prompt), global and project rules, add a rule |
 | Skills | Skill list and management |

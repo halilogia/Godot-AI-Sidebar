@@ -4,7 +4,7 @@ class_name AISidebarSettingsGeneralPages
 
 ## Ayarlar penceresinin genel sayfaları (kodla, AISidebarSettingsUi ile kurulur):
 ##   Sağlayıcı: sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable, report_usage)
-##   Model & Parametreler: temperature, max_agent_steps (max_iterations aynı denetim), goal_max_rounds (/goal),
+##   Model & Parametreler: temperature, goal_max_rounds (/goal),
 ##          context_window (bağlam penceresi; 0 = sağlayıcının model listesinden)
 ##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval,
 ##          hata bildirme (Hata bildir düğmesi; ayar değil, pencereyi açar)
@@ -33,7 +33,6 @@ var usage_check: CheckBox
 var context_spin: SpinBox
 var temp_slider: HSlider
 var temp_badge: Label
-var steps_spin: SpinBox
 var goal_rounds_spin: SpinBox
 var lang_opt: OptionButton
 var mode_opt: OptionButton
@@ -93,14 +92,6 @@ func build_model_page() -> VBoxContainer:
 	var reset_row := AISidebarSettingsUi.row(temp)
 	reset_row.add_child(AISidebarSettingsUi.spacer())
 	reset_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("btn_reset_temp_to"), func() -> void: temp_slider.value = DEFAULT_TEMPERATURE))
-
-	var steps := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_max_steps"), AISidebarI18n.get_text("hint_max_steps"))
-	steps_spin = SpinBox.new()
-	steps_spin.min_value = 1
-	steps_spin.max_value = 50
-	steps_spin.step = 1
-	var steps_row := AISidebarSettingsUi.row(steps)
-	steps_row.add_child(steps_spin)
 
 	var goal := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_goal"), AISidebarI18n.get_text("settings_goal_hint"))
 	goal_rounds_spin = SpinBox.new()
@@ -177,8 +168,6 @@ func load_from(cfg: Dictionary) -> void:
 	var temperature: float = cfg.get("temperature", DEFAULT_TEMPERATURE)
 	temp_slider.value = temperature
 	_on_temp_changed(temp_slider.value)
-	var steps: float = cfg.get("max_agent_steps", cfg.get("max_iterations", 20))
-	steps_spin.value = steps
 	var goal_rounds: float = cfg.get("goal_max_rounds", AISidebarGoalSession.DEFAULT_MAX_ROUNDS)
 	goal_rounds_spin.value = goal_rounds
 	lang_opt.selected = maxi(0, LANGUAGES.find(str(cfg.get("language", "tr"))))
@@ -197,9 +186,6 @@ func write_to(cfg: Dictionary) -> void:
 	cfg["context_window"] = int(context_spin.value)
 	cfg["vision_capable"] = null if vision_opt.selected == 0 else (vision_opt.selected == 1)
 	cfg["temperature"] = snappedf(temp_slider.value, 0.05)
-	var steps := int(steps_spin.value)
-	cfg["max_agent_steps"] = steps
-	cfg["max_iterations"] = steps
 	cfg["goal_max_rounds"] = int(goal_rounds_spin.value)
 	cfg["language"] = LANGUAGES[lang_opt.selected]
 	cfg["ui_animations"] = animations_check.button_pressed

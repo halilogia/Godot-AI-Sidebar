@@ -203,7 +203,7 @@ func build_metrics(success: bool, completion: Dictionary, used_steps: int, max_s
 		"elapsed_seconds": snappedf(total_elapsed_sec, 0.1),
 		"used_steps": used_steps,
 		"max_steps": max_steps,
-		"steps_summary": str(used_steps) + " / " + str(max_steps),
+		"steps_summary": str(used_steps) + ((" / " + str(max_steps)) if max_steps > 0 else ""),
 		"tools_sent": tools_sent,
 		"total_tools": total_tools,
 		"tools_ratio": str(tools_sent) + " / " + str(total_tools),

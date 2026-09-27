@@ -186,7 +186,7 @@ Port aynı sayfadan değiştirilebilir. Kapatmak için **Kapat** ya da `/mcp off
 | Sayfa | İçerik |
 |---|---|
 | Sağlayıcı | Sağlayıcı, uç nokta (Base URL, API anahtarı), yanıt akışı, görüntü desteği, token kullanımını iste |
-| Model & Parametreler | Sıcaklık, en çok ajan adımı, hedef modu tur sınırı, bağlam penceresi |
+| Model & Parametreler | Sıcaklık, hedef modu tur sınırı, bağlam penceresi |
 | Genel | Arayüz dili, arayüz animasyonları, onay modu, silme / üzerine yazma onayları, hata bildir |
 | Kurallar | Token kullanımı, yerleşik kurallar (sistem istemi), global ve proje kuralları, kural ekleme |
 | Skill'ler | Skill listesi ve yönetimi |

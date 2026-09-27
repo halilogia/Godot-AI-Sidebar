@@ -73,7 +73,7 @@ static func build(task: Dictionary, live: Dictionary, active_scene_path: String 
 		"task_id": str(task.get("id", "")),
 		"original_prompt": str(task.get("display_prompt", task.get("prompt", ""))).left(500),
 		"current_step": int(live.get("current_step", 0)),
-		"max_steps": int(live.get("max_steps", 20)),
+		"max_steps": int(live.get("max_steps", 0)),
 		"elapsed_s": float(live.get("elapsed_s", 0.0)),
 		"status": status,
 		"stop_reason": stop_reason,
@@ -92,7 +92,7 @@ static func build_resume_message(cp: Dictionary) -> String:
 	if cp == null or cp.is_empty():
 		return ""
 	var lines: PackedStringArray = []
-	lines.append("DEVAM — Task resumed at S%d/%d (task %s, yeni task_id açma)." % [int(cp.get("current_step", 0)), int(cp.get("max_steps", 20)), str(cp.get("task_id", ""))])
+	lines.append("DEVAM — Task resumed at step %d (task %s, yeni task_id açma)." % [int(cp.get("current_step", 0)), str(cp.get("task_id", ""))])
 	lines.append("Orijinal görev: " + str(cp.get("original_prompt", "")).left(300))
 	var done = cp.get("completed_tools", [])
 	if done is Array and not done.is_empty():
