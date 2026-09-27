@@ -13,7 +13,7 @@ static func _run(args: Dictionary) -> Dictionary:
 
 static func run() -> Dictionary:
 	var checks: Array = []
-	var touched := ["application/run/main_scene", "input/tmp_move_left", "autoload/TmpState"]
+	var touched := ["application/run/main_scene", "input/tmp_move_left", "autoload/TmpState", "display/window/size/viewport_width"]
 	var saved: Dictionary = {}
 	for k: String in touched:
 		saved[k] = ProjectSettings.get_setting(k, null)
@@ -48,6 +48,12 @@ static func run() -> Dictionary:
 	var needs_get := AISidebarPermissionPolicy.requires_user_approval(T.TOOL_NAME, {"action": "get"}, AISidebarPermissionPolicy.AutoApproveMode.MANUAL)
 	var reason := str(AISidebarPathPolicy.is_safe_to_write("res://project.godot").get("reason", ""))
 	checks.append(["T5 permission", needs_set and not needs_get and reason.contains(T.TOOL_NAME)])
+
+	# T6 tür: "1600" metni mevcut int ayara int olarak yazılır; sayı olmayan metin reddedilir.
+	var w_ok := _run({"action": "set", "key": "display/window/size/viewport_width", "value": "1600"})
+	var w_val: Variant = ProjectSettings.get_setting("display/window/size/viewport_width")
+	var w_bad := _run({"action": "set", "key": "display/window/size/viewport_width", "value": "wide"})
+	checks.append(["T6 type coercion", w_ok["success"] and typeof(w_val) == TYPE_INT and int(w_val) == 1600 and not w_bad["success"]])
 
 	for k: String in touched:
 		ProjectSettings.set_setting(k, saved[k])

@@ -16,6 +16,9 @@ const ACTIONS: Array[String] = ["get", "set", "add_input_action", "remove_input_
 
 ## Testler kaydetmeyi kapatır (depo project.godot'u değişmesin); üretimde daima kaydedilir.
 static var save_enabled: bool = true
+## plugin.gd verir. Editördeyken autoload eklentinin add_autoload_singleton'ı ile eklenir: yalnız
+## ProjectSettings'e yazılan autoload'u editör yeniden başlayana kadar tanımaz ("Identifier not found").
+static var editor_plugin: EditorPlugin = null
 
 static func get_schemas() -> Array:
 	return [{
@@ -81,6 +84,22 @@ static func _set_setting(key: String, value: Variant) -> Dictionary:
 		if not scene.begins_with("res://") or not FileAccess.file_exists(scene):
 			return AISidebarToolResult.err("FILE_NOT_FOUND", "Main scene must be an existing res:// scene: " + scene)
 	var old: Variant = ProjectSettings.get_setting(key, null)
+	# Değer mevcut ayarın türüne çevrilir: model "1600" gönderince viewport_width metin olarak kalıyordu.
+	if old != null and typeof(value) != typeof(old):
+		var text := str(value)
+		var ok := true
+		match typeof(old):
+			TYPE_INT:
+				ok = text.is_valid_int()
+			TYPE_FLOAT:
+				ok = text.is_valid_float()
+			TYPE_BOOL:
+				ok = text.to_lower() in ["true", "false"]
+				value = text.to_lower() == "true"
+		if not ok:
+			return AISidebarToolResult.err("INVALID_ARGUMENT", "%s expects a %s value, got: %s" % [key, type_string(typeof(old)), text])
+		if typeof(old) != TYPE_BOOL:
+			value = type_convert(value, typeof(old))
 	ProjectSettings.set_setting(key, value)
 	return _save({"key": key, "old_value": old, "value": value})
 
@@ -123,6 +142,10 @@ static func _add_autoload(autoload_name: String, path: String) -> Dictionary:
 		return AISidebarToolResult.err("PERMISSION_DENIED", "This autoload belongs to the plugin and is protected.")
 	if not path.begins_with("res://") or not FileAccess.file_exists(path):
 		return AISidebarToolResult.err("FILE_NOT_FOUND", "Autoload must point to an existing res:// script or scene: " + path)
+	if save_enabled and is_instance_valid(editor_plugin):
+		var backup := _backup()
+		editor_plugin.add_autoload_singleton(autoload_name, path)
+		return AISidebarToolResult.ok({"autoload": autoload_name, "path": path, "saved": true, "backup": backup})
 	ProjectSettings.set_setting(key, "*" + path)
 	return _save({"autoload": autoload_name, "path": path})
 
@@ -133,6 +156,10 @@ static func _remove(key: String) -> Dictionary:
 		return AISidebarToolResult.err("PERMISSION_DENIED", "This setting belongs to the plugin and is protected.")
 	if not ProjectSettings.has_setting(key):
 		return AISidebarToolResult.err("NOT_FOUND", "No such setting: " + key)
+	if key.begins_with("autoload/") and save_enabled and is_instance_valid(editor_plugin):
+		var backup := _backup()
+		editor_plugin.remove_autoload_singleton(key.trim_prefix("autoload/"))
+		return AISidebarToolResult.ok({"removed": key, "saved": true, "backup": backup})
 	ProjectSettings.set_setting(key, null)
 	return _save({"removed": key})
 

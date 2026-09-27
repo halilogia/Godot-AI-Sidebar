@@ -14,8 +14,9 @@ const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat
 const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skills/rules_registry.gd")
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 
-## Bütçe sıkıştırmasında (bağlam %80 dolu) korunan son mesaj sayısı.
-const COMPACT_KEEP := 6
+## Bütçe sıkıştırmasında (bağlam %80 dolu) korunan son mesaj sayısı. 6'da model son birkaç adım
+## dışında her şeyi kaybedip "proje boş" diye baştan başlıyordu (benchmark S42).
+const COMPACT_KEEP := 16
 ## Pencere boyu bilinmezse yedek sıkıştırma: bu kadar mesajı geçince son FALLBACK_KEEP kalır.
 ## Asıl koruma bütçedir (compact_now); bu eşik düşük olursa ajan kendi yazdığı kodu unutur.
 const FALLBACK_COMPACT_AT := 120
@@ -225,7 +226,9 @@ func get_messages_for_api(keep_recent_tools: int = AISidebarContextCompactor.KEE
 ## sıkıştırır; sıkıştıracak eski mesaj yoksa false.
 func compact_now() -> bool:
 	var before := messages
-	_auto_compact_if_needed(COMPACT_KEEP, COMPACT_KEEP)
+	# Kısa ama dolu bir bağlamda (az sayıda dev mesaj) da yer açılsın: en çok yarısı korunur.
+	var keep := mini(COMPACT_KEEP, maxi(2, messages.size() / 2))
+	_auto_compact_if_needed(keep, keep)
 	return not is_same(before, messages)
 
 static func _role_of(m: Variant) -> String:
@@ -325,6 +328,7 @@ func _auto_compact_if_needed(max_msgs: int = FALLBACK_COMPACT_AT, keep: int = FA
 	var written := _written_files(old_msgs)
 	if not written.is_empty():
 		summary_text += "\nBu görevde başarıyla yazılan dosyalar (diskte var; içerik için read_script):\n- " + "\n- ".join(written)
+		summary_text += "\nAynı görev sürüyor: proje boş değil, bu dosyalarla kaldığın yerden devam et; tasarımı baştan kurma."
 
 	messages = [
 		{"role": "user", "content": summary_text}

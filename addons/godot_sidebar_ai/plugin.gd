@@ -8,6 +8,7 @@ const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/to
 const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd")
 const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
 const AISidebarMcpBridgeControl = preload("res://addons/godot_sidebar_ai/core/bridge/mcp_bridge_control.gd")
+const AISidebarProjectSettingsTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/project_settings_tools.gd")
 
 var chat_dock: Control = null
 var debugger_plugin: AISidebarDebuggerPlugin = null
@@ -22,7 +23,9 @@ func _enter_tree() -> void:
 	debugger_plugin = AISidebarDebuggerPlugin.new()
 	add_debugger_plugin(debugger_plugin)
 	add_autoload_singleton("GodotAIRuntimeBridge", "res://addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd")
-	
+	# manage_project_settings autoload'ı editörün kendi yoluyla ekler (betikler adı hemen tanısın).
+	AISidebarProjectSettingsTools.editor_plugin = self
+
 	# 2. Sidebar Dock (arayüz editörün ölçeğiyle büyür: yazı, boşluk, ikon)
 	AISidebarTheme.ui_scale = EditorInterface.get_editor_scale()
 	# Açık / koyu editör teması: palet editörün temel renginden seçilir, tema değişince panel yeniden boyanır.
@@ -72,7 +75,8 @@ func _exit_tree() -> void:
 		remove_debugger_plugin(debugger_plugin)
 		debugger_plugin = null
 	remove_autoload_singleton("GodotAIRuntimeBridge")
-	
+	AISidebarProjectSettingsTools.editor_plugin = null
+
 	if chat_dock:
 		AISidebarUITelemetryTools.register_sidebar_dock(null)
 		remove_control_from_docks(chat_dock)
