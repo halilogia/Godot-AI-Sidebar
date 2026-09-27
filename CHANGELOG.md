@@ -9,6 +9,10 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+### Düzeltmeler
+* **`/goal` hatayla biten turda "tamamlandı" saymıyor:** Ajan "tamamlandı" dese bile tur hatayla bittiyse hedef başarılı sayılmıyor; bir sonraki tur doğruluyor.
+* **Bağlam sıkıştırması kullanıcının şartlarını silmiyor:** Uzun görevlerde eski adımlar özetlenirken kullanıcının istekleri ve şartları ("save JSON olsun", "UI mavi olmasın") özette aynen kalıyor; önceden tek bir genel cümleye iniyordu.
+
 ## [3.0.0] - 2026-09-27 (Dış ajan köprüsü, skill ve kurallar, /goal, yeni arayüz, hata bildirme, bağlam bütçesi, validate_project)
 
 * **MCP sınırları ayrıştırıldı:** HTTP transport, MCP/JSON-RPC protokolü ve Godot araç politikası artık ayrı modüllerdir. Yeni `ExternalAgentGateway` Godot kabiliyetlerine tek giriş noktasıdır; `/mcp` lifecycle facade üzerinden yönetilir. İstemci davranışı ve mevcut güvenlik kontrolleri korunmuştur.

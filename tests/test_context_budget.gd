@@ -55,7 +55,9 @@ static func run() -> Dictionary:
 			var prev: Dictionary = ctx.messages[j - 1] if j > 0 else {}
 			if not (prev.has("tool_calls") or str(prev.get("role", "")) == "tool"):
 				orphan = true
-	if did and not orphan and ctx.messages.size() < 13:
+	# Kullanıcının ilk isteği özette aynen kalır (genel tek cümleye inmez).
+	var summary: String = str((ctx.messages[0] as Dictionary).get("content", ""))
+	if did and not orphan and ctx.messages.size() < 13 and summary.contains("- istek 0") and summary.contains("- istek 2"):
 		passed += 1
 	else:
 		failed += 1

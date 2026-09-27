@@ -39,6 +39,11 @@ static func run() -> Dictionary:
 	a.start("x", 5)
 	a.record_report({"status": "achieved", "evidence": "played the game, no runtime errors"})
 	var achieved := a.on_round_finished(true, false) == "achieved" and not a.is_active()
+	# Hatayla biten turdaki "tamamlandı" beyanı kabul edilmez; bir sonraki tur doğrular.
+	var af := AISidebarGoalSession.new()
+	af.start("x", 5)
+	af.record_report({"status": "achieved", "evidence": "played the game"})
+	achieved = achieved and af.on_round_finished(false, false) == "continue" and af.is_active()
 	var b := AISidebarGoalSession.new()
 	b.start("x", 5)
 	b.record_report({"status": "blocked", "evidence": "", "next_step": "which sprite?"})

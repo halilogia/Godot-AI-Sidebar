@@ -16,6 +16,9 @@ const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skill
 
 ## Sıkıştırmada korunan son mesaj sayısı.
 const COMPACT_KEEP := 6
+const COMPACT_REQUESTS_HEADER := "Kullanıcının istekleri ve şartları (aynen korunur):"
+const COMPACT_REQUEST_MAX_CHARS := 600
+const COMPACT_REQUESTS_MAX := 12
 var messages: Array = []
 var recent_actions: Array = []
 ## Compaction'a uğramayan tam transcript (Everything Export / Copy Task kaynağı).
@@ -226,6 +229,35 @@ static func _role_of(m: Variant) -> String:
 		return str(d.get("role", ""))
 	return ""
 
+## Sıkıştırılan mesajlardaki kullanıcı istekleri ("- …" satırları). Eklentinin eklediği runtime hata
+## mesajları atlanır; önceki özetin istek satırları taşınır. Çok uzunsa ilk ve son istekler kalır.
+static func _user_requests(old_msgs: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for m: Variant in old_msgs:
+		if _role_of(m) != "user":
+			continue
+		var d: Dictionary = m
+		var content: Variant = d.get("content", "")
+		if not (content is String):
+			continue
+		var text: String = content
+		var header_at := text.find(COMPACT_REQUESTS_HEADER)
+		if text.begins_with("[ÖNCEKİ AJAN GÖREV ÖZETİ"):
+			if header_at >= 0:
+				for line: String in text.substr(header_at + COMPACT_REQUESTS_HEADER.length()).strip_edges().split("\n"):
+					if not line.strip_edges().is_empty():
+						out.append(line)
+			continue
+		if text.begins_with("⚠️ ÇALIŞMA ZAMANI HATASI"):
+			continue
+		out.append("- " + text.strip_edges().replace("\n", " ").left(COMPACT_REQUEST_MAX_CHARS))
+	if out.size() > COMPACT_REQUESTS_MAX:
+		var half := COMPACT_REQUESTS_MAX / 2
+		var trimmed := out.slice(0, half)
+		trimmed.append_array(out.slice(out.size() - half))
+		return trimmed
+	return out
+
 ## Bağlam Şişmesini Önleyen Otomatik Sıkıştırma (Compaction)
 func _auto_compact_if_needed(max_msgs: int = 18) -> void:
 	if messages.size() <= max_msgs:
@@ -242,7 +274,12 @@ func _auto_compact_if_needed(max_msgs: int = 18) -> void:
 	var recent_msgs = messages.slice(split)
 	
 	var summary_text = "[ÖNCEKİ AJAN GÖREV ÖZETİ (" + str(old_msgs.size()) + " adım)]: Kullanıcı istekleri ve araç çalıştırmaları işlendi. Son tamamlanan eylemler: " + ", ".join(recent_actions.slice(-4))
-	
+	# Kullanıcının kendi istekleri ve şartları aynen korunur (ör. "save JSON olsun", "UI mavi olmasın");
+	# yalnız araç çıktıları özetlenir. Bir önceki özetin istek listesi de taşınır.
+	var requests := _user_requests(old_msgs)
+	if not requests.is_empty():
+		summary_text += "\n" + COMPACT_REQUESTS_HEADER + "\n" + "\n".join(requests)
+
 	messages = [
 		{"role": "user", "content": summary_text}
 	]

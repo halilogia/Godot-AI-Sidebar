@@ -70,8 +70,9 @@ func on_round_finished(finished_ok: bool, user_stopped: bool) -> String:
 		state = State.STOPPED
 		return "stopped"
 	var status := str(last_report.get("status", ""))
-	# Kanıtsız "tamamlandı" kabul edilmez: devam turu kanıt ister.
-	if status == STATUS_ACHIEVED and not str(last_report.get("evidence", "")).is_empty():
+	# "Tamamlandı" yalnız tur hatasız bittiyse ve kanıt yazıldıysa kabul edilir; hatayla biten turdaki
+	# "tamamlandı" beyanı bir sonraki turda doğrulanır.
+	if status == STATUS_ACHIEVED and finished_ok and not str(last_report.get("evidence", "")).is_empty():
 		state = State.ACHIEVED
 		return "achieved"
 	if status == STATUS_BLOCKED:
