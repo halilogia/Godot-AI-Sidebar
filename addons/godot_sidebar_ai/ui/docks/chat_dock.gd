@@ -646,6 +646,8 @@ func _move_checklist_to_bottom() -> void:
 func _on_agent_state_changed(new_state: AISidebarAgentRunner.AgentState, state_desc: String) -> void:
 	update_ui_language()
 	stream.on_state_changed(new_state, state_desc)
+	# Ajan çalışırken durum rozeti yavaşça nabız atar (animasyon kapalıysa sabit kalır).
+	AISidebarMotion.pulse(status_badge, agent_runner != null and agent_runner.is_running())
 	# Durdurulan task devam ettirilebilir durumdaysa boşta rozeti "Hazır" değil "Paused" kalır
 	# (runner stop sonrası IDLE'a geçer; aksi halde Paused rozeti hemen ezilirdi).
 	if new_state == AISidebarAgentRunner.AgentState.IDLE or new_state == AISidebarAgentRunner.AgentState.COMPLETED:

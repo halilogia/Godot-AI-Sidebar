@@ -10,6 +10,7 @@ class_name AISidebarReasoningCard
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 
@@ -57,7 +58,7 @@ func set_action(line: String) -> void:
 func set_expanded(p_expanded: bool) -> void:
 	is_expanded = p_expanded
 	if _content_lbl:
-		_content_lbl.visible = is_expanded
+		AISidebarMotion.reveal(_content_lbl, is_expanded)
 	_update_header()
 
 func get_header_text() -> String:

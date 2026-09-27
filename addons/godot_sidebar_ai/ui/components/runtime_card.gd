@@ -10,6 +10,7 @@ signal meta_clicked(meta: Variant)
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 
 var is_expanded: bool = true
@@ -52,7 +53,7 @@ func _setup_ui() -> void:
 func _on_header_pressed() -> void:
 	is_expanded = not is_expanded
 	if _status_list:
-		_status_list.visible = is_expanded
+		AISidebarMotion.reveal(_status_list, is_expanded)
 	_header_btn.text = ("▾ " if is_expanded else "▸ ") + AISidebarI18n.get_text("runtime_testing")
 
 func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> void:

@@ -9,6 +9,7 @@ class_name AISidebarTaskChecklist
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
@@ -179,7 +180,7 @@ func _setup_ui() -> void:
 func set_expanded(p_expanded: bool) -> void:
 	is_expanded = p_expanded
 	if _items_container:
-		_items_container.visible = is_expanded
+		AISidebarMotion.reveal(_items_container, is_expanded)
 	_update_header()
 
 func _update_header() -> void:

@@ -8,6 +8,7 @@ class_name AISidebarTelemetryCard
 signal copy_task_requested(task_id: String)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
@@ -133,4 +134,4 @@ func render_metrics(m: Dictionary) -> void:
 func _on_header_pressed() -> void:
 	is_expanded = not is_expanded
 	if _details_lbl:
-		_details_lbl.visible = is_expanded
+		AISidebarMotion.reveal(_details_lbl, is_expanded)

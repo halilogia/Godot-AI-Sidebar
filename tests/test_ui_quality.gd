@@ -11,6 +11,7 @@ extends RefCounted
 ##      unscaled_spacing    ..., AISidebarTheme.SPACE_SM)                         → AISidebarTheme.px(...)
 ##      literal_icon_size   apply_tinted_icon(b, "x", c, 12)                      → AISidebarTheme.ICON_SIZE_*
 ##      unexplained_focus_none  FOCUS_NONE satırında "# focus: <gerekçe>" yok       → FOCUS_ALL ya da gerekçe
+##      raw_tween           create_tween() / Tween.new()                           → AISidebarMotion (tek hareket birimi)
 ##      font_size_override  add_theme_font_size_override(...) herhangi biri        → tip varyasyonu (yazı boyu temada)
 ##      stylebox_override   add_theme_stylebox_override(...) herhangi biri         → tip varyasyonu (istisna: veriden
 ##                          gelen renkli haplar, BASELINE'da gerekçesiyle)
@@ -21,7 +22,7 @@ extends RefCounted
 ##   T5 Tema üreticisi her varyasyonu gerçekten tanımlar (adı sabitte olan varyasyonun temel tipi vardır).
 
 const UI_ROOT := "res://addons/godot_sidebar_ai/ui"
-const THEME_FILES: Array[String] = ["theme/sidebar_theme.gd", "theme/sidebar_theme_builder.gd"]
+const THEME_FILES: Array[String] = ["theme/sidebar_theme.gd", "theme/sidebar_theme_builder.gd", "theme/sidebar_motion.gd"]
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const VARIATIONS: Array[String] = [
 	AISidebarThemeBuilder.TITLE, AISidebarThemeBuilder.BODY, AISidebarThemeBuilder.HINT, AISidebarThemeBuilder.MICRO,
@@ -57,6 +58,7 @@ const PATTERNS := {
 	"literal_spacing": "constant_override\\(\"[a-z_]+\",\\s*\\d",
 	"unscaled_spacing": "constant_override\\(\"[a-z_]+\",\\s*AISidebarTheme\\.SPACE",
 	"unexplained_focus_none": "FOCUS_NONE(?!.*# focus:)",
+	"raw_tween": "create_tween\\(|Tween\\.new\\(",
 	"font_size_override": "add_theme_font_size_override\\(",
 	"stylebox_override": "add_theme_stylebox_override\\(",
 	"literal_icon_size":"(?:tinted_icon|make_icon_rect|set_rect_icon|StatusIcon\\.new|get_status_icon)\\([^)]*[ (]\\d+\\)",
@@ -152,6 +154,7 @@ static func run() -> Dictionary:
 		"AISidebarIconHelper.apply_tinted_icon(b, \"x\", AISidebarTheme.COLOR_ERROR, AISidebarTheme.ICON_SIZE_SM)",
 		"p.add_theme_stylebox_override(\"panel\", s)",
 		"b.focus_mode = Control.FOCUS_NONE",
+		"var tw := c.create_tween()",
 		"h.focus_mode = Control.FOCUS_NONE  # focus: akıştaki açılır başlık",
 		"# Color(1, 1, 1)",
 	])))
@@ -233,6 +236,23 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T7 contrast: " + ", ".join(PackedStringArray(low)))
+
+	# T8 Hareket: ağaç dışında (ya da animasyon kapalıyken) sonuç anında uygulanır; nabız bir şey bozmaz.
+	var AISidebarMotion: GDScript = load("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
+	var section := Control.new()
+	section.visible = false
+	AISidebarMotion.call("reveal", section, true)
+	var shown := section.visible and is_equal_approx(section.modulate.a, 1.0)
+	AISidebarMotion.call("reveal", section, false)
+	var hidden := not section.visible and is_equal_approx(section.modulate.a, 1.0)
+	AISidebarMotion.call("pulse", section, true)
+	var pulse_noop := is_equal_approx(section.modulate.a, 1.0) and not section.has_meta(&"_aisidebar_motion_tween")
+	section.free()
+	if shown and hidden and pulse_noop:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T8 motion: shown=%s hidden=%s pulse_noop=%s" % [shown, hidden, pulse_noop])
 
 	return {"name": "UiQualityTests", "passed": passed, "failed": failed, "errors": errors}
 

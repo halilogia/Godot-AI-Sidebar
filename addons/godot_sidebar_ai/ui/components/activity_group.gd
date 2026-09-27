@@ -8,6 +8,7 @@ class_name AISidebarActivityGroup
 signal meta_clicked(meta: Variant)
 
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
+const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 const AISidebarStatusIcon = preload("res://addons/godot_sidebar_ai/ui/components/status_icon.gd")
@@ -146,7 +147,7 @@ static func summarize_error(raw: String, max_len: int = 180) -> String:
 func set_expanded(p_expanded: bool) -> void:
 	is_expanded = p_expanded
 	if _items_container:
-		_items_container.visible = is_expanded
+		AISidebarMotion.reveal(_items_container, is_expanded)
 	_update_header()
 
 func get_header_text() -> String:
