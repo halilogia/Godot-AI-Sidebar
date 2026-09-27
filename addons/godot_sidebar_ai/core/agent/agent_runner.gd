@@ -8,6 +8,7 @@ const AISidebarAIProvider = preload("res://addons/godot_sidebar_ai/core/provider
 const AISidebarAgentContext = preload("res://addons/godot_sidebar_ai/core/agent/agent_context.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
+const AISidebarAgentStatus = preload("res://addons/godot_sidebar_ai/core/agent/agent_status.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
 const AISidebarVerificationPipeline = preload("res://addons/godot_sidebar_ai/core/verification/verification_pipeline.gd")
@@ -92,6 +93,8 @@ var plan_was_approved: bool = false
 var unrecovered_failures: Dictionary = {}
 ## Son completion hükmü (metrics'e yazılır; success/incomplete/failed/cancelled).
 var last_completion: Dictionary = {"verdict": "success", "reason": "Task completed."}
+## Son durmanın makine kodu (AISidebarAgentStatus); başarılı görevde boş. Kararlar metne değil buna bakar.
+var last_stop_code: String = ""
 
 ## Bekleyen kullanıcı kararları: tool onayı, netleştirme sorusu, plan.
 var pending: AISidebarPendingInteraction = AISidebarPendingInteraction.new()
@@ -172,6 +175,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	plan_was_approved = false
 	unrecovered_failures.clear()
 	last_completion = {"verdict": "success", "reason": "Task completed."}
+	last_stop_code = ""
 	
 	var shown_prompt = display_prompt if not display_prompt.is_empty() else user_prompt
 	print("[TIMING] %s | TASK_START | prompt=%s" % [get_ts(), shown_prompt.left(60)])
@@ -232,9 +236,10 @@ func stop() -> void:
 	pending.clear_all()
 	_plan_phase_active = false
 		
+	last_stop_code = AISidebarAgentStatus.USER_STOPPED
 	_set_state(AgentState.CANCELLED, AISidebarI18n.get_text("agent_stopped"))
 	error_occurred.emit(AISidebarI18n.get_text("agent_stopped"))
-	last_completion = {"verdict": "cancelled", "reason": "Stopped by user."}
+	last_completion = {"verdict": "cancelled", "reason": "Stopped by user.", "stop_code": last_stop_code}
 	_finish_task(false)
 
 func _finish_task(success: bool) -> void:
@@ -262,7 +267,7 @@ func approve_pending_action() -> void:
 	var args = req["args"]
 	var cs = req["change_set"]
 	
-	_set_state(AgentState.EXECUTING, "Onaylanan işlem çalıştırılıyor: " + fn_name)
+	_set_state(AgentState.EXECUTING, AISidebarI18n.get_text("agent_state_approved_running", {"tool": fn_name}))
 	print("[TIMING] %s | TOOL_START (APPROVED) | tool=%s" % [get_ts(), fn_name])
 	tool_executing.emit(fn_name, args)
 	
@@ -296,7 +301,7 @@ func reject_pending_action(reason: String = "Kullanıcı bu işlemi reddetti.") 
 	var fn_name = req["name"]
 	var tc_id = req["id"]
 	
-	_set_state(AgentState.RECOVERING, "İşlem reddedildi, ajana bildiriliyor...")
+	_set_state(AgentState.RECOVERING, AISidebarI18n.get_text("agent_state_rejected"))
 	print("[TIMING] %s | TOOL_REJECTED | tool=%s" % [get_ts(), fn_name])
 	var reject_result = AISidebarToolResult.err("USER_REJECTED", reason, true)
 	if context:
@@ -328,7 +333,7 @@ func submit_clarification_response(answer: String) -> void:
 	if context:
 		context.add_tool_result_message(tc_id, "ask_user", result_dict)
 		
-	_set_state(AgentState.EXECUTING, "Kullanıcı yanıtı alındı, göreve devam ediliyor...")
+	_set_state(AgentState.EXECUTING, AISidebarI18n.get_text("agent_state_answer_received"))
 	_run_next_step()
 
 ## Kullanıcı sunulan implementation planını onayladı.
@@ -356,7 +361,7 @@ func approve_plan() -> void:
 
 	print("[TIMING] %s | PLAN_APPROVED" % get_ts())
 	plan_approved.emit(plan)
-	_set_state(AgentState.EXECUTING, "Plan onaylandı, uygulanıyor...")
+	_set_state(AgentState.EXECUTING, AISidebarI18n.get_text("agent_state_plan_applying"))
 	_run_next_step()
 
 ## Kullanıcı planı reddetti.
@@ -396,16 +401,17 @@ func handle_runtime_error(obs: AISidebarRuntimeObservation) -> void:
 	if err_sig == _last_error_signature and not err_sig.is_empty():
 		_recovery_attempt_count += 1
 		if _recovery_attempt_count > max_recovery_attempts:
-			_set_state(AgentState.ERROR, "Aynı çalışma zamanı hatası çözülemedi.")
-			error_occurred.emit("Otomatik iyileştirme limiti aşıldı: " + err_sig)
-			last_completion = {"verdict": "failed", "reason": "Otomatik iyileştirme limiti aşıldı: " + err_sig}
+			last_stop_code = AISidebarAgentStatus.HEAL_LIMIT
+			_set_state(AgentState.ERROR, AISidebarI18n.get_text("agent_state_heal_failed"))
+			error_occurred.emit(AISidebarI18n.get_text("agent_error_heal_limit", {"signature": err_sig}))
+			last_completion = {"verdict": "failed", "reason": AISidebarI18n.get_text("agent_error_heal_limit", {"signature": err_sig}), "stop_code": last_stop_code}
 			_finish_task(false)
 			return
 	else:
 		_last_error_signature = err_sig
 		_recovery_attempt_count = 1
 		
-	_set_state(AgentState.DEBUGGING, "Çalışma zamanı hatası analiz ediliyor...")
+	_set_state(AgentState.DEBUGGING, AISidebarI18n.get_text("agent_state_debugging"))
 	var summary_txt = obs.errors[0].get("message", "Runtime Error") if obs.errors.size() > 0 else "Runtime Error"
 	debugging_started.emit(summary_txt)
 	
@@ -423,9 +429,10 @@ func _run_next_step() -> void:
 		context.get_transcript().mark_step(current_step)
 	if current_step > max_steps:
 		telemetry.limit_hit = true
-		_set_state(AgentState.ERROR, "Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
-		error_occurred.emit("Maksimum ajan adım limitine (" + str(max_steps) + ") ulaşıldı.")
-		last_completion = {"verdict": "failed", "reason": "Step limit reached (" + str(current_step) + " / " + str(max_steps) + ")."}
+		last_stop_code = AISidebarAgentStatus.STEP_LIMIT
+		_set_state(AgentState.ERROR, AISidebarI18n.get_text("agent_error_step_limit", {"max": max_steps}))
+		error_occurred.emit(AISidebarI18n.get_text("agent_error_step_limit", {"max": max_steps}))
+		last_completion = {"verdict": "failed", "reason": "Step limit reached (" + str(current_step) + " / " + str(max_steps) + ").", "stop_code": last_stop_code}
 		_finish_task(false)
 		return
 		
@@ -511,12 +518,13 @@ func _handle_empty_response(text_content: String, thinking_content: String, tool
 		_empty_response_retry_count += 1
 		telemetry.note_retry()
 		print("[TIMING] %s | PROVIDER_EMPTY_RESPONSE_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
-		_set_state(AgentState.RECOVERING, "Geçici boş yanıt alındı, tekrar deneniyor...")
+		_set_state(AgentState.RECOVERING, AISidebarI18n.get_text("agent_state_empty_retry"))
 		_run_next_step()
 	else:
-		_set_state(AgentState.ERROR, "Modelden boş yanıt alındı.")
-		error_occurred.emit("Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE).")
-		last_completion = {"verdict": "failed", "reason": "Model boş yanıt döndürdü (PROVIDER_EMPTY_RESPONSE)."}
+		last_stop_code = AISidebarAgentStatus.EMPTY_RESPONSE
+		_set_state(AgentState.ERROR, AISidebarI18n.get_text("agent_state_empty"))
+		error_occurred.emit(AISidebarI18n.get_text("agent_error_empty"))
+		last_completion = {"verdict": "failed", "reason": AISidebarI18n.get_text("agent_error_empty"), "stop_code": last_stop_code}
 		_finish_task(false)
 	return true
 
@@ -580,9 +588,10 @@ func _guard_stagnation(fn_name: String, tc_id: String, args: Dictionary, remaini
 		return false
 	_stagnation_count += 1
 	if _stagnation_count >= 2:
-		_set_state(AgentState.ERROR, "Aynı araç (" + fn_name + ") tekrar tekrar çağrıldı.")
-		error_occurred.emit("Ajan aynı aracı (" + fn_name + ") tekrarladı. Görev sonlandırıldı.")
-		last_completion = {"verdict": "failed", "reason": "Ajan aynı aracı (" + fn_name + ") tekrarladı."}
+		last_stop_code = AISidebarAgentStatus.REPEATED_TOOL
+		_set_state(AgentState.ERROR, AISidebarI18n.get_text("agent_state_repeated", {"tool": fn_name}))
+		error_occurred.emit(AISidebarI18n.get_text("agent_error_repeated", {"tool": fn_name}))
+		last_completion = {"verdict": "failed", "reason": AISidebarI18n.get_text("agent_reason_repeated", {"tool": fn_name}), "stop_code": last_stop_code}
 		_finish_task(false)
 		return true
 	if context:
@@ -604,7 +613,7 @@ func _request_clarification(tc_id: String, args: Dictionary, remaining: Array) -
 	pending.request_clarification(tc_id, question, options)
 	telemetry.begin_waiting()
 	
-	_set_state(AgentState.WAITING_FOR_CLARIFICATION, "Kullanıcıdan yanıt bekleniyor...")
+	_set_state(AgentState.WAITING_FOR_CLARIFICATION, AISidebarI18n.get_text("agent_state_waiting_answer"))
 	print("[TIMING] %s | CLARIFICATION_REQUESTED | question=%s options=%s" % [get_ts(), question, str(options)])
 	_defer_remaining_calls(remaining, "DEFERRED_FOR_CLARIFICATION", "Kullanıcı yanıtı bekleniyor; bu çağrı ertelendi. Gerekirse yanıt sonrası tekrar isteyin.")
 	clarification_requested.emit(question, options, tc_id)
@@ -614,7 +623,7 @@ func _request_plan_approval(tc_id: String, args: Dictionary, remaining: Array) -
 	pending.propose_plan(plan, tc_id)
 	telemetry.begin_waiting()
 
-	_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, "Plan onayı bekleniyor...")
+	_set_state(AgentState.WAITING_FOR_PLAN_APPROVAL, AISidebarI18n.get_text("agent_state_waiting_plan"))
 	print("[TIMING] %s | PLAN_PROPOSED | steps=%d files=%d" % [get_ts(), plan.steps.size(), plan.affected_files.size()])
 	_defer_remaining_calls(remaining, "DEFERRED_FOR_PLAN", "Plan onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
 	plan_proposed.emit(plan)
@@ -639,7 +648,7 @@ func _execute_tool_call(fn_name: String, tc_id: String, args: Dictionary, remain
 	var cs = _build_changeset_for_tool(fn_name, args)
 	
 	# Yetki ve Onay Kontrolü
-	_set_state(AgentState.EXECUTING, "Araç çalıştırılıyor: " + fn_name)
+	_set_state(AgentState.EXECUTING, AISidebarI18n.get_text("agent_state_running_tool", {"tool": fn_name}))
 	print("[TIMING] %s | TOOL_START | tool=%s" % [get_ts(), fn_name])
 	tool_executing.emit(fn_name, args)
 	
@@ -670,7 +679,7 @@ func _execute_tool_call(fn_name: String, tc_id: String, args: Dictionary, remain
 	if not result.get("success", false) and result.get("error", {}).get("code", "") == "APPROVAL_REQUIRED":
 		pending.request_approval(fn_name, tc_id, args, cs)
 		telemetry.begin_waiting()
-		_set_state(AgentState.WAITING_FOR_APPROVAL, "Kullanıcı onayı bekleniyor (" + fn_name + ")")
+		_set_state(AgentState.WAITING_FOR_APPROVAL, AISidebarI18n.get_text("agent_state_waiting_approval", {"tool": fn_name}))
 		print("[TIMING] %s | APPROVAL_REQUESTED | tool=%s" % [get_ts(), fn_name])
 		_defer_remaining_calls(remaining, "DEFERRED_FOR_APPROVAL", "Kullanıcı onayı bekleniyor; bu çağrı ertelendi. Gerekirse onay sonrası tekrar isteyin.")
 		approval_requested.emit(fn_name, args, cs)
@@ -681,7 +690,7 @@ func _execute_tool_call(fn_name: String, tc_id: String, args: Dictionary, remain
 		changes_applied.emit(cs)
 		
 	if fn_name == "play_game" or fn_name == "restart_game":
-		_set_state(AgentState.RUNNING_GAME, "Oyun çalışıyor...")
+		_set_state(AgentState.RUNNING_GAME, AISidebarI18n.get_text("agent_state_game_running"))
 		
 	var verified = _verify_tool_result(fn_name, args, result)
 	_complete_tool_turn(fn_name, tc_id, args, result, bool(verified.get("is_valid", false)), str(verified.get("message", "")))
@@ -706,6 +715,7 @@ func _evaluate_completion(text_content: String) -> void:
 		_finish_task(true)
 	else:
 		print("[TIMING] %s | COMPLETION_GATE | verdict=%s reason=%s" % [get_ts(), str(gate.get("verdict", "")), str(gate.get("reason", ""))])
+		last_stop_code = AISidebarAgentStatus.COMPLETION_GATE
 		_set_state(AgentState.ERROR, str(gate.get("reason", "")))
 		error_occurred.emit(str(gate.get("reason", "")))
 		_finish_task(false)
@@ -792,7 +802,7 @@ func _verify_tool_result(tool_name: String, args: Dictionary, result: Variant) -
 	var needs_explicit_verify = (tool_name == "validate_script" or tool_name == "play_game" or tool_name == "get_runtime_errors")
 
 	if needs_explicit_verify:
-		_set_state(AgentState.VERIFYING, "Doğrulanıyor: " + tool_name)
+		_set_state(AgentState.VERIFYING, AISidebarI18n.get_text("agent_state_verifying", {"tool": tool_name}))
 		print("[TIMING] %s | VERIFICATION_START | tool=%s" % [get_ts(), tool_name])
 		verification_started.emit(tool_name)
 		telemetry.verification_checkpoints_count += 1
@@ -828,7 +838,7 @@ func _complete_tool_turn(tool_name: String, tool_call_id: String, args: Dictiona
 		unrecovered_failures.erase(fkey)
 	else:
 		unrecovered_failures[fkey] = {"tool": tool_name, "deferred": false}
-	_set_state(AgentState.OBSERVING, "Sonuçlar analiz ediliyor...")
+	_set_state(AgentState.OBSERVING, AISidebarI18n.get_text("agent_state_observing"))
 	if context:
 		var final_payload: Dictionary = {}
 		if res_dict.has("data") and res_dict["data"] != null:
@@ -864,12 +874,13 @@ func _on_provider_error(error_message: String) -> void:
 		_empty_response_retry_count += 1
 		telemetry.note_retry()
 		print("[TIMING] %s | PROVIDER_EMPTY_ERROR_RETRY | attempt=%d/%d" % [get_ts(), _empty_response_retry_count, max_empty_response_retries])
-		_set_state(AgentState.RECOVERING, "Geçici ağ/boş yanıt hatası, tekrar deneniyor...")
+		_set_state(AgentState.RECOVERING, AISidebarI18n.get_text("agent_state_network_retry"))
 		_run_next_step()
 		return
 		
+	last_stop_code = AISidebarAgentStatus.PROVIDER_ERROR
 	_set_state(AgentState.ERROR, error_message)
 	print("[TIMING] %s | PROVIDER_ERROR | err=%s" % [get_ts(), error_message])
 	error_occurred.emit(error_message)
-	last_completion = {"verdict": "failed", "reason": error_message}
+	last_completion = {"verdict": "failed", "reason": error_message, "stop_code": last_stop_code}
 	_finish_task(false)

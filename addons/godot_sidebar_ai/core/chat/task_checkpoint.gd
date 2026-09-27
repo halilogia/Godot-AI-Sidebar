@@ -6,6 +6,7 @@ class_name AISidebarTaskCheckpoint
 ## TaskTranscript'ten türetilir; ayrı database YOKTUR, ChatSession içinde saklanır.
 ## "devam et" aynı task_id ile, S kaldığı noktadan devam eder (tahmin yok, kanıt var).
 
+const AISidebarAgentStatus = preload("res://addons/godot_sidebar_ai/core/agent/agent_status.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 
 const VERSION: int = 1
@@ -19,11 +20,9 @@ static func is_resume_command(text: String) -> bool:
 	return text.strip_edges().to_lower() in RESUME_COMMANDS
 
 ## Limit/stagnation/iyileşme-tükenmesi terminaldir; resume anlamsız olur.
+## Koddan önceki kayıtlar için metin tahmini (yeni kayıtlar AISidebarAgentStatus kodunu kullanır).
 static func is_terminal_failure(stop_reason: String) -> bool:
-	if stop_reason == null or stop_reason.strip_edges().is_empty():
-		return false
-	var s = stop_reason.to_lower()
-	return "limit" in s or "tekrarlad" in s or "iyileştirme limiti" in s or "stagnation" in s
+	return AISidebarAgentStatus.legacy_is_terminal(stop_reason)
 
 ## Bitmiş transcript task + canlı runner bilgisinden checkpoint kurar.
 ## live: {"current_step": int, "max_steps": int, "elapsed_s": float}
@@ -65,7 +64,7 @@ static func build(task: Dictionary, live: Dictionary, active_scene_path: String 
 				var summ = str(d.get("summary", "")).strip_edges()
 				if not summ.is_empty():
 					runtime_summary = summ.left(500)
-	var resumable = status in ["cancelled", "failed"] and not is_terminal_failure(stop_reason)
+	var resumable = status in ["cancelled", "failed"] and not AISidebarAgentStatus.task_is_terminal(str(task.get("stop_code", "")), stop_reason)
 	# Hata mesajı yok ama failed ise yine de resume'a izin ver (recoverable varsayımı).
 	if status == "cancelled":
 		resumable = true

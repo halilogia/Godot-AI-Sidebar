@@ -334,10 +334,11 @@ func on_error(err_msg: String) -> void:
 	checklist_tracker.clear_tool_args()
 	if context and context.get_transcript().has_running_task():
 		var e_status = "cancelled" if is_user_stopped else "failed"
-		context.end_task(e_status, err_msg)
+		var stop_code: String = runner.last_stop_code if runner else ""
+		context.end_task(e_status, err_msg, {"stop_code": stop_code})
 	# Stop/fail sonrası kaldığı noktadan devam için checkpoint üret.
 	refresh_pause_checkpoint()
-	activity.stop_on_error(err_msg)
+	activity.stop_on_error(err_msg, runner.last_stop_code if runner else "")
 		
 	# Hata durumunda veya model reddettiğinde görsel ekinin kaybolmasını önle (P2 UX Fix)
 	if last_sent_vision_input != null and composer.attached_vision_input == null:

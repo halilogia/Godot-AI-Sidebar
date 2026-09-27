@@ -120,6 +120,13 @@ Ortam: Godot 4.7.2 GUI editör, boş bir oyun projesi (eklenti klasörü repoya 
 - **Animasyon görüntüleri kararsız yapar.** Saydamlık geçişi sürerken alınan görüntü her çalıştırmada farklıdır; görüntü araçları `ui_animations` kapalı çeker (aynı kodun iki arşivi 123/123 aynı çıkar).
 - **`Theme.has_font` ve editör ölçeği:** yazı boyları sabit piksel değil `AISidebarTheme.fs()` ile editör ölçeğiyle çarpılır; `EditorInterface.get_editor_scale()` `plugin.gd`'de okunur. SVG ikonlar ölçekle yeniden rasterleştirilir (import önbelleğine bağlı değil).
 
+## Durma kodları (27.09)
+
+- Ajanın durma nedeni makine kodudur (`AISidebarAgentStatus`); karar metin eşleştirmesiyle verilmez. Önceden `is_terminal_failure` metinde "limit" / "tekrarlad", `is_task_limit_error` "maksimum ajan ad" arıyordu: metin çevrilince ya da değişince devam kararı sessizce bozulurdu (örn. İngilizce "rate limit" gibi kurtarılabilir bir sağlayıcı hatası "limit" içerdiği için terminal sayılıyordu).
+- Görev kaydında `stop_code` yoksa (koddan önceki oturumlar) yalnız o durumda eski metin tahmini kullanılır.
+- Çekirdek durum metinleri i18n'dedir; Türkçe metinler önceki sabitlerle birebir aynı tutuldu (`tests/test_provider_response.gd` iz sabitlemesi değişmedi).
+- Kalan tek metin eşleştirmesi sağlayıcı katmanında: boş yanıt yeniden denemesi hata iletisinde `PROVIDER_EMPTY_RESPONSE` kodunu (ya da eski "boş yanıt" metnini) arar.
+
 ## Ayar dosyası güvenliği (27.09)
 
 - `config.json` kişiseldir ve git dışıdır; kaybolursa önceden bütün ayarlar sessizce varsayılana dönüyordu (26.09'da yaşandı). Şimdi: güvenli yazma (`.tmp` → yerine koyma), her kayıttan önce son sağlam dosyanın `config.json.bak` kopyası, eksik / bozuk dosyada yedekten geri yükleme (`last_recovery`, panel bir kez bildirir; bozuk dosya `config.json.corrupt`), `config_version` + `migrate()`.

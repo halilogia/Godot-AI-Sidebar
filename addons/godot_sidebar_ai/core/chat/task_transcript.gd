@@ -215,10 +215,12 @@ func end_task(status: String, stop_reason: String = "", metrics: Dictionary = {}
 	task["status"] = status
 	task["ended_at"] = now_ts()
 	task["stop_reason"] = stop_reason.strip_edges()
+	# Makine kodu (AISidebarAgentStatus); devam kararı metne değil buna bakar.
+	task["stop_code"] = str(metrics.get("stop_code", ""))
 	task["metrics"] = metrics.duplicate(true)
 	(task["events"] as Array).append({
 		"t": "task_ended", "ts": now_ts(),
-		"data": {"status": status, "stop_reason": stop_reason.strip_edges()}
+		"data": {"status": status, "stop_reason": stop_reason.strip_edges(), "stop_code": str(task["stop_code"])}
 	})
 	_running_idx = -1
 

@@ -6,6 +6,7 @@ extends RefCounted
 ## önizlemesi. Her olay transcript'e de yazılır (export tek kaynaktan beslenir).
 ## Stream'e ekleme ve rozet ChatDock'tan callable ile; eylem özeti AgentStreamPresenter'dan.
 
+const AISidebarAgentStatus = preload("res://addons/godot_sidebar_ai/core/agent/agent_status.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 const AISidebarRuntimeCard = preload("res://addons/godot_sidebar_ai/ui/components/runtime_card.gd")
 const AISidebarScreenshotCard = preload("res://addons/godot_sidebar_ai/ui/components/screenshot_card.gd")
@@ -84,9 +85,9 @@ func finish_task(stop_reason: String) -> void:
 		group = null
 
 ## Task hata ile durdu. Limit hatasında durma satırı eklenir ve grup açık kalır.
-func stop_on_error(err_msg: String) -> void:
+func stop_on_error(err_msg: String, stop_code: String = "") -> void:
 	if group:
-		if AISidebarToolPresentation.is_task_limit_error(err_msg):
+		if stop_code == AISidebarAgentStatus.STEP_LIMIT:
 			var grp = group
 			grp.add_activity("✕", "Task stopped\nError: " + AISidebarActivityGroup.summarize_error(err_msg), 0, "stop_reason: " + err_msg.left(500))
 			grp.set_stop_reason(err_msg)

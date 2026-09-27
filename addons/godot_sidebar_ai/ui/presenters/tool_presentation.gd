@@ -83,10 +83,6 @@ static func screenshot_image_path(tool_name: String, result: Dictionary) -> Stri
 		return str(data.get("path", ""))
 	return ""
 
-static func is_task_limit_error(err_msg: String) -> bool:
-	var s = err_msg.to_lower()
-	return s.contains("limit") or s.contains("maksimum ajan ad")
-
 static func format_limit_stop_reason(current_step: int, max_steps: int) -> String:
 	return "Tool-call limit reached: " + str(current_step) + "/" + str(max_steps)
 

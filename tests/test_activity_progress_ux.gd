@@ -119,7 +119,7 @@ static func run() -> Dictionary:
 	var card = AISidebarClarificationCard.new("2D mi 3D mi?", ["2D", "3D"])
 	card._ready()
 	var t_ok = AISidebarToolPresentation.human_title("read_script", {"file_path": "res://HexCell.gd"}) == "Read script: HexCell.gd"
-	var l_ok = AISidebarToolPresentation.is_task_limit_error("Maksimum ajan adım limitine (20) ulaşıldı.")
+	var l_ok = load("res://addons/godot_sidebar_ai/core/agent/agent_status.gd").is_terminal("step_limit")
 	var f_ok = AISidebarToolPresentation.format_limit_stop_reason(20, 20) == "Tool-call limit reached: 20/20"
 	var tech = AISidebarToolPresentation.tech_details("read_script", {"api_key": "sk-999"}, {"success": true})
 	var r_ok = not "sk-999" in tech and "[REDACTED]" in tech

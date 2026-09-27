@@ -133,4 +133,16 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("J (terminal vs recoverable) failed.")
 
+	# J2) Karar koddan: kod varsa metin ne derse desin kod kazanır (çeviri / metin değişikliği davranışı bozmaz).
+	var mk_task := func(code: String, reason: String) -> Dictionary:
+		return {"id": "t", "status": "failed", "stop_reason": reason, "stop_code": code, "prompt": "p", "events": []}
+	var cp_limit_en: Dictionary = AISidebarTaskCheckpoint.build(mk_task.call("step_limit", "Maximum agent step limit (20) reached."), {"current_step": 20, "max_steps": 20}, "")
+	var cp_limit_any: Dictionary = AISidebarTaskCheckpoint.build(mk_task.call("step_limit", "herhangi bir metin"), {"current_step": 20, "max_steps": 20}, "")
+	var cp_provider: Dictionary = AISidebarTaskCheckpoint.build(mk_task.call("provider_error", "rate limit exceeded"), {"current_step": 3, "max_steps": 20}, "")
+	if cp_limit_en.get("resumable", true) == false and cp_limit_any.get("resumable", true) == false and cp_provider.get("resumable", false) == true:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("J2 (code decides resumability) failed: en=%s any=%s provider=%s" % [cp_limit_en.get("resumable"), cp_limit_any.get("resumable"), cp_provider.get("resumable")])
+
 	return {"name": "PauseResumeTests", "passed": passed, "failed": failed, "errors": errors}
