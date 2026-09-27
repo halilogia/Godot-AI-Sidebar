@@ -34,6 +34,7 @@ const AISidebarTaskController = preload("res://addons/godot_sidebar_ai/ui/contro
 const AISidebarGoalController = preload("res://addons/godot_sidebar_ai/ui/controllers/goal_controller.gd")
 const AISidebarGoalBanner = preload("res://addons/godot_sidebar_ai/ui/components/goal_banner.gd")
 const AISidebarContextMeter = preload("res://addons/godot_sidebar_ai/ui/components/context_meter.gd")
+const AISidebarRewindController = preload("res://addons/godot_sidebar_ai/ui/controllers/rewind_controller.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarHelpDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd")
 const AISidebarSkillsPanel = preload("res://addons/godot_sidebar_ai/ui/components/skills_panel.gd")
@@ -91,6 +92,8 @@ var goal_banner: AISidebarGoalBanner = AISidebarGoalBanner.new()
 var context_meter: AISidebarContextMeter = AISidebarContextMeter.new()
 ## Kayıttan önceki sağlayıcı tipi (değişince model listesi temizlenir).
 var _last_provider_type: String = ""
+## Kullanıcı mesajına geri dönüş ("Buraya geri dön").
+var rewind: AISidebarRewindController = AISidebarRewindController.new()
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
 var composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
@@ -145,6 +148,14 @@ func _ready() -> void:
 	stream = AISidebarAgentStreamPresenter.new()
 	stream.add_component = add_stream_component
 	stream.on_meta_clicked = _on_meta_clicked
+	stream.on_user_bubble = rewind.record
+	rewind.sessions = sessions
+	rewind.is_busy = func() -> bool: return agent_runner != null and agent_runner.is_running()
+	rewind.set_input_text = func(t: String) -> void:
+		if input_field:
+			input_field.text = t
+			input_field.grab_focus()
+	add_child(rewind)
 	stream.set_status = set_status_badge
 	stream.scroll_if_following = _scroll_if_following
 	stream.answer_text_started.connect(activity.close_group)
@@ -308,6 +319,8 @@ func _connect_agent_runner() -> void:
 	agent_runner.thinking_received.connect(stream.on_thinking_received)
 	agent_runner.chunk_received.connect(stream.on_chunk_received)
 	agent_runner.text_received.connect(stream.on_text_received)
+	agent_runner.changes_applied.connect(rewind.on_changes_applied)
+	rewind.context = agent_context
 	agent_runner.tool_executing.connect(activity.on_tool_executing)
 	agent_runner.tool_completed.connect(activity.on_tool_completed)
 	if goals:
@@ -571,6 +584,7 @@ func _clear_ui_stream() -> void:
 	checklist_tracker.reset()
 	interaction.reset()
 	stream.reset()
+	rewind.reset()
 	welcome_card = null
 
 func _show_welcome_card_if_empty() -> void:

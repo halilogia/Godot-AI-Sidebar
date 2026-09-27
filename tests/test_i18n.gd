@@ -77,7 +77,7 @@ static func run() -> Dictionary:
 	trace.append(["en", "__missing__", AISidebarI18n.translate("en", "__missing__")])
 	trace.append(["tr", "status_executing", AISidebarI18n.translate("tr", "status_executing", {"step": 2, "max": 5})])
 	var digest = JSON.stringify(trace).md5_text()
-	var golden = "36e40f8b6adbc190d42406fa4fec4cd3"
+	var golden = "7fa9e1bf112b51a454c661f97a5bb42e"
 	if trace.size() > 100 and digest == golden:
 		passed += 1
 	else:

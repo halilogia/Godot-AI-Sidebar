@@ -19,6 +19,8 @@ const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_t
 var add_component: Callable = func(_c): pass
 ## func(meta) — kartlardaki bağlantı tıklamaları.
 var on_meta_clicked: Callable = func(_m): pass
+## Kullanıcı mesajı balonu akışa eklendi (geri dönüş kaydı için; RewindController.record).
+var on_user_bubble: Callable = func(_b: Control) -> void: pass
 ## func(text: String, color: Color) — durum rozeti.
 var set_status: Callable = func(_t, _c): pass
 ## func() — kullanıcı en alttaysa akışı aşağı kaydırır.
@@ -255,6 +257,8 @@ func on_text_received(role: String, text: String) -> void:
 		var bubble = AISidebarMessageBubble.new(bubble_role, text, vi_for_bubble)
 		bubble.meta_clicked.connect(on_meta_clicked)
 		add_component.call(bubble)
+		if bubble_role == "user":
+			on_user_bubble.call(bubble)
 
 # --- Yaşam döngüsü ---
 

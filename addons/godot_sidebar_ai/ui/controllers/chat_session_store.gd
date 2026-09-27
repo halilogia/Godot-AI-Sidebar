@@ -126,6 +126,16 @@ func _merge_local_entries(ctx_msgs: Array) -> Array:
 		li += 1
 	return out
 
+## Geri dönüş: bağlam ctx_len mesaja kısaldı; o noktadan sonra eklenen yerel kayıtlar da düşer.
+func truncate_local_entries(ctx_len: int) -> void:
+	var kept: Array = []
+	for e: Variant in _local_entries:
+		var d: Dictionary = e
+		var anchor: int = d.get("anchor", 0)
+		if anchor <= ctx_len:
+			kept.append(d)
+	_local_entries = kept
+
 static func _without_anchor(e: Dictionary) -> Dictionary:
 	var c = e.duplicate(true)
 	c.erase("anchor")

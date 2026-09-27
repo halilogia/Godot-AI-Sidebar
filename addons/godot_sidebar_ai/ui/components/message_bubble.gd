@@ -7,6 +7,8 @@ class_name AISidebarMessageBubble
 
 signal meta_clicked(meta: Variant)
 signal copy_code_requested(code_text: String)
+## Kullanıcı balonundaki "Buraya geri dön" (RewindController dinler).
+signal rewind_requested(bubble: Control)
 
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
@@ -23,6 +25,7 @@ var _vbox: VBoxContainer
 var _header_bar: HBoxContainer
 var _role_label: Label
 var _copy_btn: Button
+var _rewind_btn: Button
 var _content_label: RichTextLabel
 
 func _init(p_role: String = "assistant", p_text: String = "", p_vision_inputs: Array = []) -> void:
@@ -255,6 +258,18 @@ func _setup_ui() -> void:
 	_copy_btn.pressed.connect(_on_copy_pressed)
 	_header_bar.add_child(_copy_btn)
 
+	if role == "user":
+		_rewind_btn = Button.new()
+		_rewind_btn.flat = true
+		_rewind_btn.visible = _rewind_enabled
+		_rewind_btn.focus_mode = Control.FOCUS_NONE  # focus: kopyala düğmesiyle aynı gerekçe; her kullanıcı balonunda tekrarlanır
+		_rewind_btn.tooltip_text = AISidebarI18n.get_text("tooltip_rewind")
+		_rewind_btn.theme_type_variation = AISidebarThemeBuilder.ICON_BUTTON
+		AISidebarIconHelper.apply_icon(_rewind_btn, "undo")
+		_rewind_btn.pressed.connect(func() -> void: rewind_requested.emit(self))
+		_header_bar.add_child(_rewind_btn)
+		_header_bar.move_child(_rewind_btn, _copy_btn.get_index())
+
 	# İçerik
 	_content_label = RichTextLabel.new()
 	_content_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -294,6 +309,13 @@ func _setup_ui() -> void:
 				img_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				img_rect.mouse_filter = Control.MOUSE_FILTER_PASS
 				_vbox.add_child(img_rect)
+
+## Geri dönüş kaydı olan (bu oturumda gönderilmiş) kullanıcı mesajında düğmeyi gösterir.
+var _rewind_enabled: bool = false
+func enable_rewind(on: bool) -> void:
+	_rewind_enabled = on
+	if _rewind_btn:
+		_rewind_btn.visible = on
 
 func _on_copy_pressed() -> void:
 	DisplayServer.clipboard_set(text_content)

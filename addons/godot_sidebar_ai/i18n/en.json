@@ -466,5 +466,12 @@
   "settings_context_window": "Tokens",
   "tool_title_validate_project": "Validated the project",
   "custom_usage_value": "~{tokens} tokens · {percent}%",
-  "custom_usage_total": "~{tokens} tokens"
+  "custom_usage_total": "~{tokens} tokens",
+  "tooltip_rewind": "Go back here: undo the chat and file changes after this message, then edit it",
+  "rewind_confirm_title": "Go back to this message?",
+  "rewind_confirm_text": "This message and everything after it is removed from the chat, and the {changes} file change(s) the agent made after it are undone. The message returns to the input box for you to edit.\n\nNode changes in the scene are not included; undo them with Ctrl+Z.",
+  "rewind_confirm_ok": "Go back",
+  "rewind_cancel": "Cancel",
+  "rewind_busy": "You can't go back while the agent is working. Press Stop first.",
+  "rewind_compacted": "This message was summarized because the chat got long, so you can no longer go back to it."
 }

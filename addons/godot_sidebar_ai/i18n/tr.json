@@ -466,5 +466,12 @@
   "settings_context_window": "Token",
   "tool_title_validate_project": "Proje doğrulandı",
   "custom_usage_value": "~{tokens} token · %{percent}",
-  "custom_usage_total": "~{tokens} token"
+  "custom_usage_total": "~{tokens} token",
+  "tooltip_rewind": "Buraya geri dön: bu mesajdan sonraki sohbeti ve dosya değişikliklerini geri al, mesajı düzenle",
+  "rewind_confirm_title": "Bu mesaja geri dönülsün mü?",
+  "rewind_confirm_text": "Bu mesaj ve sonrası sohbetten silinir; ajanın bu mesajdan sonra yaptığı {changes} dosya değişikliği geri alınır. Mesaj düzenlemen için mesaj kutusuna döner.\n\nSahnedeki düğüm değişiklikleri buna dahil değildir; onları Ctrl+Z ile geri alabilirsin.",
+  "rewind_confirm_ok": "Geri dön",
+  "rewind_cancel": "Vazgeç",
+  "rewind_busy": "Ajan çalışırken geri dönülemez. Önce Durdur'a bas.",
+  "rewind_compacted": "Bu mesaj uzun sohbet yüzünden özetlendiği için artık ona geri dönülemez."
 }
