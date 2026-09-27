@@ -96,7 +96,8 @@ func _scenario_hero(dock, r) -> void:
 	r.state_changed.emit(AISidebarAgentRunner.AgentState.PLANNING, "")
 	r.chunk_received.emit("", _t("\"Hexagon\" could mean a single mesh, a playable grid or a generator. That changes the architecture, so I should ask.", "\"Hexagon\" tek bir mesh, oynanabilir bir grid ya da üretici olabilir. Mimariyi değiştirir, sormalıyım."))
 	r.clarification_requested.emit(_t("Before I build this, which did you mean?", "Başlamadan önce hangisini kastettin?"), [_t("Single hexagon object", "Tek hexagon nesnesi"), _t("Playable hex grid / map", "Oynanabilir hex grid / harita"), _t("Procedural map generator", "Prosedürel harita üretici")], "c1")
-	_answer_last_clarification(dock, _t("Playable hex grid / map", "Oynanabilir hex grid / harita"))
+	# Gerçekçi uzun cevap: "Yanıtlandı" satırı sarılmazsa dar dock taşar (taşma denetimi yakalar).
+	_answer_last_clarification(dock, _t("Playable hex grid / map with axial coordinates, hover highlight and a camera you can pan and zoom", "Oynanabilir hex grid / harita: axial koordinatlar, üzerine gelince vurgulama ve kaydırılıp yakınlaştırılabilen kamera"))
 	_tool(dock, r, "create_scene", {"scene_path": "res://maps/hex_map.tscn"}, _t("Created scene hex_map.tscn", "hex_map.tscn sahnesi oluşturuldu"), 380)
 	_tool(dock, r, "create_or_update_script", {"file_path": "res://maps/hex_grid.gd"}, _t("Wrote hex_grid.gd (axial coordinates)", "hex_grid.gd yazıldı (axial koordinatlar)"), 1240)
 	_tool(dock, r, "validate_script", {"file_path": "res://maps/hex_grid.gd"}, _t("GDScript is valid", "GDScript geçerli"), 210)

@@ -116,6 +116,9 @@ func _ready() -> void:
 	_status_lbl = Label.new()
 	_status_lbl.visible = false
 	_status_lbl.theme_type_variation = AISidebarThemeBuilder.TEXT_SUCCESS
+	# Uzun seçilen cevap sarılır; sarılmazsa kartın (ve dock'un) en küçük genişliğini büyütüp paneli taşırıyordu.
+	_status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_row.add_child(_status_lbl)
 	
 	add_child(vbox)
