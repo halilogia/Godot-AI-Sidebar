@@ -41,6 +41,8 @@ var runtime_card: AISidebarRuntimeCard = null
 ## Running satırının indeksi (tool_completed geldiğinde yerinde güncellenir, satır çoğalmaz).
 var _running_idx: int = -1
 var _running_tool: String = ""
+## Çalışan aracın argümanları: bitiş başlığı da onlardan üretilir (dosya adı, sayı).
+var _running_args: Dictionary = {}
 var _tool_start_msec: int = 0
 
 # --- Grup yaşam döngüsü ---
@@ -113,6 +115,7 @@ func on_tool_executing(tool_name: String, args: Dictionary) -> void:
 	if details.length() > 1500:
 		details = details.left(1500) + "..."
 	_running_tool = tool_name
+	_running_args = args
 	_tool_start_msec = Time.get_ticks_msec()
 	_running_idx = grp.add_activity("▶", AISidebarI18n.get_text("activity_running", {"title": human_title}), -1, details)
 	checklist_tracker.on_tool_start(tool_name, args)
@@ -132,7 +135,16 @@ func on_tool_completed(tool_name: String, result: Dictionary) -> void:
 	var outcome = AISidebarTaskTranscript.effective_tool_outcome(result)
 	var is_ok = bool(outcome["success"])
 	var icon = "•" if is_deferred else ("✓" if is_ok else "✕")
-	var human_title = AISidebarToolPresentation.human_title(tool_name, {})
+	var done_args: Dictionary = _running_args if _running_tool == tool_name else {}
+	# Toplu yazımda sayı gerçekten yazılanlardır (başarısızsa 0): istenen sayı yanıltıcıydı.
+	if tool_name == "write_files":
+		var written: Variant = []
+		var data_v: Variant = result.get("data", null)
+		if data_v is Dictionary:
+			var data: Dictionary = data_v
+			written = data.get("written_files", [])
+		done_args = {"files": written if written is Array else []}
+	var human_title = AISidebarToolPresentation.human_title(tool_name, done_args)
 	var msg = str(result.get("message", "")).strip_edges()
 	if not msg.is_empty() and msg.length() < 200 and not msg.contains("\"tool_calls\""):
 		human_title = msg
@@ -148,7 +160,7 @@ func on_tool_completed(tool_name: String, result: Dictionary) -> void:
 		grp.add_activity(icon, human_title if is_ok else AISidebarI18n.get_text("activity_title_error", {"title": human_title, "error": err_summary}), elapsed, details)
 	_running_idx = -1
 	_running_tool = ""
-	var action_base = AISidebarToolPresentation.human_title(tool_name, {})
+	var action_base = AISidebarToolPresentation.human_title(tool_name, done_args)
 	var action_line = icon + " " + action_base
 	if not msg.is_empty() and msg != action_base:
 		action_line += " — " + str(msg.split("\n")[0]).left(120)
