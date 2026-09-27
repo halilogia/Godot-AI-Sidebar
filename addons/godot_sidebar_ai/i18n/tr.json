@@ -481,5 +481,9 @@
   "settings_planning_mode": "Her istekte önce plan yap",
   "settings_planning_hint": "Açıksa ajan her isteği uygulamadan önce inceleyip onayına bir plan sunar. Kapalıyken (önerilen) doğrudan işe başlar; tek bir istek için plan istersen /plan yaz.",
   "tool_title_class_info": "Godot API'sine bakıldı: {class}",
-  "thinking_truncated": "… (düşünce çok uzun, burada kısaltıldı; hata değil)"
+  "thinking_truncated": "… (düşünce çok uzun, burada kısaltıldı; hata değil)",
+  "mode_build": "Eylem",
+  "mode_plan": "Plan",
+  "mode_build_desc": "Eylem modu: ajan büyük işi kendi içinde aşamalara bölüp doğrudan yapar. Plan modu için tıkla (tek istek için /plan).",
+  "mode_plan_desc": "Plan modu: ajan önce inceler, planı gösterir ve onayını bekler. Eylem modu için tıkla."
 }

@@ -106,6 +106,7 @@ var enable_planning_gate: bool = true
 var _plan_phase_active: bool = false
 ## Bir sonraki görev önce plan ile başlasın (/plan ya da Ayarlar); start_task okuyup sıfırlar.
 var plan_next_task: bool = false
+var _consecutive_asks: int = 0
 var runtime_debugger: AISidebarRuntimeDebugger = null
 ## Oyunu bu runner mı başlattı? Stop yalnızca kendi başlattığı oyunu durdurur (bulgu #14);
 ## kullanıcının F5 ile açtığı veya başka runner'ın başlattığı oyun kapanmaz.
@@ -162,6 +163,7 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	_recovery_attempt_count = 0
 	_empty_response_retry_count = 0
 	_unlocked_tools.clear()
+	_consecutive_asks = 0
 	last_tools_sent_count = 0
 	_last_error_signature = ""
 	_last_tool_signature = ""
@@ -559,9 +561,14 @@ func _process_tool_call(tool_calls: Array, tc_idx: int) -> ToolCallFlow:
 		return ToolCallFlow.HALT
 		
 	# Kullanıcıdan Netleştirme İsteme (Clarification Intercept)
-	if fn_name == "ask_user":
+	# Soru spam koruması: arada iş yapmadan üst üste 3. soru sorulmaz; model varsayıp devam eder.
+	_consecutive_asks = _consecutive_asks + 1 if fn_name == "ask_user" else 0
+	if fn_name == "ask_user" and _consecutive_asks <= 2:
 		_request_clarification(tc_id, args, remaining)
 		return ToolCallFlow.HALT
+	if fn_name == "ask_user":
+		context.add_tool_result_message(tc_id, fn_name, AISidebarToolResult.err("TOO_MANY_QUESTIONS", "You asked twice in a row without acting. Do not ask again: state your assumption in one sentence and continue."))
+		return ToolCallFlow.NEXT
 
 	# Uygulama Planı Sunumu (Plan Review Intercept)
 	# ask_user gibi: araç ÇALIŞTIRILMAZ, plan kullanıcıya sunulur ve onay beklenir.

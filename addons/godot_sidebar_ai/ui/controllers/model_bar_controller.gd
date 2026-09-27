@@ -40,6 +40,24 @@ func update_approve_mode_ui() -> void:
 	approve_mode_btn.theme_type_variation = AISidebarThemeBuilder.pill(tone)
 	AISidebarIconHelper.apply_tinted_icon(approve_mode_btn, spec["icon"], color, AISidebarTheme.ICON_SIZE_SM)
 
+## Eylem / Plan modu hapı: Eylem = ajan işi kendi içinde aşamalara bölüp doğrudan yürütür; Plan = önce görünür
+## plan ve onay. Ayar: planning_mode (Ayarlar → Genel → Planlama ile aynı). /plan tek istek için Plan.
+var plan_mode_btn: Button = null
+
+func update_plan_mode_ui() -> void:
+	if not plan_mode_btn:
+		return
+	var on: bool = AISidebarConfig.load_config().get("planning_mode", false) == true
+	plan_mode_btn.text = AISidebarI18n.get_text("mode_plan") if on else AISidebarI18n.get_text("mode_build")
+	plan_mode_btn.tooltip_text = AISidebarI18n.get_text("mode_plan_desc") if on else AISidebarI18n.get_text("mode_build_desc")
+	plan_mode_btn.theme_type_variation = AISidebarThemeBuilder.pill(AISidebarThemeBuilder.TONE_ACCENT if on else AISidebarThemeBuilder.TONE_MUTED)
+
+func on_plan_mode_pressed() -> void:
+	var cfg: Dictionary = AISidebarConfig.load_config()
+	cfg["planning_mode"] = not (cfg.get("planning_mode", false) == true)
+	AISidebarConfig.save_config(cfg)
+	update_plan_mode_ui()
+
 func on_approve_mode_pressed() -> void:
 	var current_mode = AISidebarPermissionPolicy.get_auto_approve_mode()
 	var next_mode = AISidebarPermissionPolicy.AutoApproveMode.MANUAL

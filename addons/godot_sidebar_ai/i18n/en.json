@@ -481,5 +481,9 @@
   "settings_planning_mode": "Plan first for every request",
   "settings_planning_hint": "When on, the agent inspects each request and shows you a plan to approve before changing anything. When off (recommended) it starts right away; type /plan for a plan on a single request.",
   "tool_title_class_info": "Checked the Godot API: {class}",
-  "thinking_truncated": "… (thinking is very long and was shortened here; not an error)"
+  "thinking_truncated": "… (thinking is very long and was shortened here; not an error)",
+  "mode_build": "Build",
+  "mode_plan": "Plan",
+  "mode_build_desc": "Build mode: the agent splits big work into stages itself and does it. Click for Plan mode (/plan for one request).",
+  "mode_plan_desc": "Plan mode: the agent inspects first, shows a plan and waits for your approval. Click for Build mode."
 }

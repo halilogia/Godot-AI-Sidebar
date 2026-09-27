@@ -239,6 +239,13 @@ func _ready() -> void:
 		settings_btn.pressed.connect(_on_settings_pressed)
 	if approve_mode_btn:
 		approve_mode_btn.pressed.connect(model_bar_controller.on_approve_mode_pressed)
+		var plan_btn := Button.new()
+		plan_btn.focus_mode = Control.FOCUS_ALL
+		plan_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		approve_mode_btn.get_parent().add_child(plan_btn)
+		approve_mode_btn.get_parent().move_child(plan_btn, approve_mode_btn.get_index())
+		plan_btn.pressed.connect(model_bar_controller.on_plan_mode_pressed)
+		model_bar_controller.plan_mode_btn = plan_btn
 	if refresh_models_btn:
 		refresh_models_btn.pressed.connect(refresh_models)
 	if export_btn:
@@ -452,6 +459,7 @@ func update_ui_language() -> void:
 		AISidebarChatDockTheme.apply_send_button(send_btn, agent_runner != null and agent_runner.is_running())
 			
 	model_bar_controller.update_approve_mode_ui()
+	model_bar_controller.update_plan_mode_ui()
 
 func refresh_models() -> void:
 	if agent_host and agent_host.has_provider():
