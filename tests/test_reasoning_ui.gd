@@ -64,7 +64,7 @@ static func run() -> Dictionary:
 	var cards1 = _reasoning_cards(dock1)
 	for c in cards1:
 		c._ready()
-	if cards1.size() == 1 and "Validat" in cards1[0].get_text() and not cards1[0].is_expanded:
+	if cards1.size() == 1 and AISidebarI18n.get_text("tool_title_validate_script") in cards1[0].get_text() and not cards1[0].is_expanded:
 		passed += 1
 	else:
 		failed += 1
@@ -104,7 +104,7 @@ static func run() -> Dictionary:
 	dock4.activity.on_tool_executing("validate_script", {})
 	dock4.activity.on_tool_completed("validate_script", {"success": true, "data": {}, "message": "ok"})
 	var cards4 = _reasoning_cards(dock4)
-	if cards4.size() == 1 and "Validat" in cards4[0].get_text():
+	if cards4.size() == 1 and AISidebarI18n.get_text("tool_title_validate_script") in cards4[0].get_text():
 		passed += 1
 	else:
 		failed += 1

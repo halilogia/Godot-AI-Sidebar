@@ -5,6 +5,7 @@ extends RefCounted
 ## uygulama planı (onay → checklist), uygulanan değişiklikler, diff görüntüleme ve undo.
 ## Kararlar AgentRunner'a iletilir ve transcript'e yazılır.
 
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 const AISidebarApprovalCard = preload("res://addons/godot_sidebar_ai/ui/components/approval_card.gd")
 const AISidebarChangesCard = preload("res://addons/godot_sidebar_ai/ui/components/changes_card.gd")
@@ -56,16 +57,16 @@ func on_clarification_requested(question: String, options: Array, clarification_
 	stream.detach_bubble()
 	activity.clear_running()
 	if activity.group:
-		activity.group.add_activity("✓", "Asked clarification", 50, "question: " + question.left(500))
+		activity.group.add_activity("✓", AISidebarI18n.get_text("tool_title_ask_user"), 50, "question: " + question.left(500))  # i18n-ignore: teknik ayrıntı etiketi (açılır detay, geliştirici için)
 		activity.close_group()
-	stream.set_action_summary("Question: " + question.left(120))
+	stream.set_action_summary(AISidebarI18n.get_text("activity_question", {"question": question.left(120)}))
 	if context:
 		context.get_transcript().record("clarification_requested", {"question": question.left(500), "options": options.duplicate(), "id": clarification_id})
 
 	var card = AISidebarClarificationCard.new(question, options)
 	card.response_submitted.connect(func(ans: String):
 		var grp = activity.ensure_group()
-		grp.add_activity("✓", "User selected: " + AISidebarActivityGroup.summarize_error(ans, 120), 50, "answer: " + str(ans).left(500))
+		grp.add_activity("✓", AISidebarI18n.get_text("activity_user_selected", {"answer": AISidebarActivityGroup.summarize_error(ans, 120)}), 50, "answer: " + str(ans).left(500))  # i18n-ignore: teknik ayrıntı etiketi (açılır detay, geliştirici için)
 		if context:
 			context.get_transcript().record("clarification_answered", {"answer": str(ans).left(500)})
 			context.get_transcript().record("activity", {"icon": "✓", "title": ("User selected: " + ans).left(200)})
@@ -135,7 +136,7 @@ func on_plan_proposed(plan) -> void:
 		elif plan.get("title") != null:
 			p_goal = str(plan.get("title"))
 		context.get_transcript().record("plan_proposed", {"steps": p_steps, "files": p_files, "goal": p_goal.left(300)})
-	stream.set_action_summary("Plan proposed — onay bekleniyor")
+	stream.set_action_summary(AISidebarI18n.get_text("activity_plan_proposed"))
 	plan_card = AISidebarPlanCard.new(plan)
 	plan_card.plan_applied.connect(_on_plan_applied)
 	plan_card.plan_cancelled.connect(_on_plan_cancelled)
@@ -194,6 +195,6 @@ func _on_undo_pressed(cs: AISidebarChangeSet) -> void:
 		var res = cs.rollback()
 		var grp = activity.ensure_group()
 		if res.get("success", false):
-			grp.add_activity("✓", "Undo successful: changes reverted", 50)
+			grp.add_activity("✓", AISidebarI18n.get_text("activity_undo_ok"), 50)
 		else:
-			grp.add_activity("✕", "Undo failed: " + res.get("error", "Error"), 50)
+			grp.add_activity("✕", AISidebarI18n.get_text("activity_undo_failed", {"error": str(res.get("error", ""))}), 50)

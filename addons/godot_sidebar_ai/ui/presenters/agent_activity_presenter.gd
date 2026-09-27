@@ -89,7 +89,7 @@ func stop_on_error(err_msg: String, stop_code: String = "") -> void:
 	if group:
 		if stop_code == AISidebarAgentStatus.STEP_LIMIT:
 			var grp = group
-			grp.add_activity("✕", "Task stopped\nError: " + AISidebarActivityGroup.summarize_error(err_msg), 0, "stop_reason: " + err_msg.left(500))
+			grp.add_activity("✕", AISidebarI18n.get_text("activity_task_stopped", {"error": AISidebarActivityGroup.summarize_error(err_msg)}), 0, "stop_reason: " + err_msg.left(500))  # i18n-ignore: teknik ayrıntı etiketi (açılır detay, geliştirici için)
 			grp.set_stop_reason(err_msg)
 			grp.complete_group_keep_open(true)
 			# keep_open: limit satırı görünür kalsın diye grup referansı korunur,
@@ -114,7 +114,7 @@ func on_tool_executing(tool_name: String, args: Dictionary) -> void:
 		details = details.left(1500) + "..."
 	_running_tool = tool_name
 	_tool_start_msec = Time.get_ticks_msec()
-	_running_idx = grp.add_activity("▶", "Running " + human_title, -1, details)
+	_running_idx = grp.add_activity("▶", AISidebarI18n.get_text("activity_running", {"title": human_title}), -1, details)
 	checklist_tracker.on_tool_start(tool_name, args)
 	stream.set_action_summary(human_title)
 	if context:
@@ -145,7 +145,7 @@ func on_tool_completed(tool_name: String, result: Dictionary) -> void:
 	if _running_idx >= 0 and _running_tool == tool_name and _running_idx < grp.get_item_count():
 		grp.update_activity(_running_idx, icon, human_title, elapsed, details, err_summary)
 	else:
-		grp.add_activity(icon, human_title + ("" if is_ok else ("\nError: " + err_summary)), elapsed, details)
+		grp.add_activity(icon, human_title if is_ok else AISidebarI18n.get_text("activity_title_error", {"title": human_title, "error": err_summary}), elapsed, details)
 	_running_idx = -1
 	_running_tool = ""
 	var action_base = AISidebarToolPresentation.human_title(tool_name, {})
@@ -201,8 +201,8 @@ func _show_screenshot_preview(tool_name: String, result: Dictionary) -> void:
 
 func on_verification_started(tool_name: String) -> void:
 	var grp = ensure_group()
-	grp.add_activity("•", "Verifying " + tool_name + "...", -1)
-	stream.set_action_summary("Verifying " + tool_name)
+	grp.add_activity("•", AISidebarI18n.get_text("activity_verifying", {"tool": tool_name}), -1)
+	stream.set_action_summary(AISidebarI18n.get_text("activity_verifying", {"tool": tool_name}))
 	if context:
 		context.get_transcript().record("verification_started", {"tool": tool_name})
 		context.get_transcript().record("activity", {"icon": "▶", "title": "Verifying " + tool_name})
@@ -210,8 +210,8 @@ func on_verification_started(tool_name: String) -> void:
 func on_verification_completed(tool_name: String, is_valid: bool, msg: String) -> void:
 	var grp = ensure_group()
 	var icon = "✓" if is_valid else "!"
-	grp.add_activity(icon, "Verification: " + msg, 50)
-	stream.set_action_summary((icon + " Verification: " + msg).split("\n")[0])
+	grp.add_activity(icon, AISidebarI18n.get_text("activity_verification", {"message": msg}), 50)
+	stream.set_action_summary((icon + " " + AISidebarI18n.get_text("activity_verification", {"message": msg})).split("\n")[0])
 	if context:
 		context.get_transcript().record("verification_completed", {"tool": tool_name, "valid": is_valid, "message": msg.left(500)})
 		context.get_transcript().record("activity", {"icon": icon, "title": ("Verification: " + msg).left(300)})
@@ -223,9 +223,9 @@ func on_runtime_observation(obs: AISidebarRuntimeObservation) -> void:
 		add_component.call(runtime_card)
 
 	if obs.has_errors():
-		runtime_card.add_status("✕", AISidebarMarkdownRenderer.escape_bbcode(AISidebarToolPresentation.runtime_error_summary(obs)), "#bf616a")
+		runtime_card.add_status("✕", AISidebarMarkdownRenderer.escape_bbcode(AISidebarToolPresentation.runtime_error_summary(obs)), AISidebarTheme.COLOR_TONE_ERROR_TEXT)
 	else:
-		runtime_card.add_status("✓", "No runtime errors detected", "#a3be8c")
+		runtime_card.add_status("✓", AISidebarI18n.get_text("runtime_no_errors"), AISidebarTheme.COLOR_TONE_SUCCESS_TEXT)
 	if context:
 		context.get_transcript().record("runtime_observation", {"summary": obs.format_diagnostic_prompt().left(1000), "has_errors": obs.has_errors()})
 

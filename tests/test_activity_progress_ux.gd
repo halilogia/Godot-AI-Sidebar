@@ -118,7 +118,7 @@ static func run() -> Dictionary:
 	# 12. ask_user -> ClarificationCard bozulmuyor + ToolPresentation (limit/human-title)
 	var card = AISidebarClarificationCard.new("2D mi 3D mi?", ["2D", "3D"])
 	card._ready()
-	var t_ok = AISidebarToolPresentation.human_title("read_script", {"file_path": "res://HexCell.gd"}) == "Read script: HexCell.gd"
+	var t_ok = AISidebarToolPresentation.human_title("read_script", {"file_path": "res://HexCell.gd"}) == load("res://addons/godot_sidebar_ai/core/i18n/i18n.gd").get_text("tool_title_read_script", {"file": "HexCell.gd"})
 	var l_ok = load("res://addons/godot_sidebar_ai/core/agent/agent_status.gd").is_terminal("step_limit")
 	var f_ok = AISidebarToolPresentation.format_limit_stop_reason(20, 20) == "Tool-call limit reached: 20/20"
 	var tech = AISidebarToolPresentation.tech_details("read_script", {"api_key": "sk-999"}, {"success": true})

@@ -56,7 +56,7 @@ func _on_header_pressed() -> void:
 		AISidebarMotion.reveal(_status_list, is_expanded)
 	_header_btn.text = ("▾ " if is_expanded else "▸ ") + AISidebarI18n.get_text("runtime_testing")
 
-func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> void:
+func add_status(icon: String, text: String, color: Color = AISidebarTheme.COLOR_TEXT_PRIMARY) -> void:
 	if not _status_list:
 		return
 	var row = HBoxContainer.new()
@@ -66,7 +66,7 @@ func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> vo
 	
 	var ic = AISidebarStatusIcon.new()
 	row.add_child(ic)
-	ic.set_status(icon, Color.html(color_hex))
+	ic.set_status(icon, color)
 	
 	var lbl = RichTextLabel.new()
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -80,6 +80,6 @@ func add_status(icon: String, text: String, color_hex: String = "#c0caf5") -> vo
 	lbl.deselect_on_focus_loss_enabled = false
 	lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	lbl.theme_type_variation = AISidebarThemeBuilder.RICH_BODY
-	lbl.text = "[color=" + color_hex + "]" + text + "[/color]"
+	lbl.text = "[color=" + AISidebarTheme.bb(color) + "]" + text + "[/color]"
 	lbl.meta_clicked.connect(func(m): meta_clicked.emit(m))
 	row.add_child(lbl)

@@ -41,6 +41,8 @@ func _initialize() -> void:
 	if args.size() > 4 and args[4] == "light":
 		AISidebarTheme.use_palette(true)
 	DirAccess.make_dir_recursive_absolute(_out)
+	# Fare girdisi kapalı: imleç pencerenin üstündeyse denetimler "üzerine gelindi" çizilmesin (kararlı görüntü).
+	root.gui_disable_input = true
 	_run.call_deferred()
 
 func _run() -> void:

@@ -4,51 +4,48 @@ extends RefCounted
 ## Tool çağrılarının kullanıcıya görünen metinleri (SRP: saf dönüşüm, UI durumu yok).
 ## İnsan-okur başlık, teknik detay, hata özeti, screenshot yolu ve limit tespiti.
 
+const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat/task_transcript.gd")
 
 static func human_title(tool_name: String, args: Dictionary) -> String:
 	match tool_name:
-		"create_or_update_script":
-			var p = args.get("file_path", "")
-			return "Updated " + p.get_file() if not p.is_empty() else "Updated script"
+		"create_or_update_script", "replace_file_content":
+			var p := str(args.get("file_path", ""))
+			return AISidebarI18n.get_text("tool_title_updated_file", {"file": p.get_file()}) if not p.is_empty() else AISidebarI18n.get_text("tool_title_updated_script")
 		"write_files":
-			var f_arr = args.get("files", [])
-			return "Batch wrote " + str(f_arr.size()) + " files"
+			var f_arr: Array = args.get("files", [])
+			return AISidebarI18n.get_text("tool_title_write_files", {"count": f_arr.size()})
 		"create_scene":
-			var sp = args.get("scene_path", "")
-			return "Created scene " + sp.get_file()
+			return AISidebarI18n.get_text("tool_title_create_scene", {"file": str(args.get("scene_path", "")).get_file()})
 		"save_scene":
-			return "Saved active scene"
+			return AISidebarI18n.get_text("tool_title_save_scene")
 		"analyze_project":
-			return "Inspected project structure"
+			return AISidebarI18n.get_text("tool_title_analyze_project")
 		"get_project_files":
-			return "Scanned project files"
+			return AISidebarI18n.get_text("tool_title_get_project_files")
 		"read_script":
-			return "Read script: " + args.get("file_path", "").get_file()
+			return AISidebarI18n.get_text("tool_title_read_script", {"file": str(args.get("file_path", "")).get_file()})
 		"validate_script":
-			return "Validated GDScript source"
+			return AISidebarI18n.get_text("tool_title_validate_script")
 		"play_game":
-			return "Launched game instance"
+			return AISidebarI18n.get_text("tool_title_play_game")
 		"stop_game":
-			return "Stopped running game"
+			return AISidebarI18n.get_text("tool_title_stop_game")
 		"get_runtime_errors":
-			return "Checked runtime logs"
+			return AISidebarI18n.get_text("tool_title_get_runtime_errors")
 		"delete_node":
-			return "Deleted node: " + str(args.get("node_path", ""))
-		"replace_file_content":
-			var rp = str(args.get("file_path", ""))
-			return "Updated " + rp.get_file() if not rp.is_empty() else "Updated script"
+			return AISidebarI18n.get_text("tool_title_delete_node", {"path": str(args.get("node_path", ""))})
 		"read_file":
-			return "Read file: " + str(args.get("file_path", "")).get_file()
+			return AISidebarI18n.get_text("tool_title_read_file", {"file": str(args.get("file_path", "")).get_file()})
 		"list_files":
-			return "Listed files: " + str(args.get("directory", ""))
+			return AISidebarI18n.get_text("tool_title_list_files", {"path": str(args.get("directory", ""))})
 		"search_tools":
-			return "Searched available tools"
+			return AISidebarI18n.get_text("tool_title_search_tools")
 		"ask_user":
-			return "Asked clarification"
+			return AISidebarI18n.get_text("tool_title_ask_user")
 		"propose_plan":
-			return "Proposed implementation plan"
+			return AISidebarI18n.get_text("tool_title_propose_plan")
 		_:
 			return str(tool_name).replace("_", " ")
 

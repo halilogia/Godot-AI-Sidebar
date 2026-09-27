@@ -88,7 +88,7 @@ func submit_input() -> void:
 	
 	# Eğer metin boşsa ama ekli görsel varsa varsayılan soru metni ata
 	if user_text.is_empty() and attached_img != null:
-		user_text = "Bu görseli incele ve yardımcı ol."
+		user_text = AISidebarI18n.get_text("prompt_image_only")
 	
 	# Eğer metin boşsa ve kullanıcı 'Stop' butonuna bastıysa:
 	if user_text.is_empty():
@@ -180,7 +180,7 @@ func handle_slash_command(parsed_cmd: Dictionary, raw_text: String) -> void:
 		cmd_bubble.meta_clicked.connect(on_meta_clicked)
 		add_component.call(cmd_bubble)
 		
-		var err_msg = parsed_cmd["error"] + "\n\nKullanılabilir komutları görmek için `/help` yazabilirsiniz."
+		var err_msg = str(parsed_cmd["error"]) + "\n\n" + AISidebarI18n.get_text("slash_unknown_hint")
 		var err_bubble = AISidebarMessageBubble.new("assistant", err_msg)
 		err_bubble.meta_clicked.connect(on_meta_clicked)
 		add_component.call(err_bubble)

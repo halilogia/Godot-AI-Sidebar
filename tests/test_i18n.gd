@@ -38,8 +38,9 @@ static func _placeholders(text: String) -> Array:
 
 ## ui/ kaynaklarındaki kural ihlalleri: ["dosya|sabit", …] (saf; testte ve raporda kullanılır).
 static func literal_violations(sources: Dictionary) -> Array:
-	# Görünür metin alanına atama ya da durum rozetine yazma (set_status / set_status.call).
-	var assign_re = RegEx.create_from_string("(?:\\.(?:text|tooltip_text|placeholder_text|title|dialog_text|ok_button_text|cancel_button_text)\\s*=|(?<![A-Za-z_])set_status(?:_badge)?(?:\\.call)?\\()\\s*(.*)$")
+	# Görünür metin alanına atama, durum rozetine / eylem özetine yazma ya da etkinlik / runtime satırı ekleme
+	# (ilk argüman ikon, ikinci metin).
+	var assign_re = RegEx.create_from_string("(?:\\.(?:text|tooltip_text|placeholder_text|title|dialog_text|ok_button_text|cancel_button_text)\\s*=|(?<![A-Za-z_])set_status(?:_badge)?(?:\\.call)?\\(|set_action_summary\\(|(?:add_activity|add_status|update_activity)\\(\\s*[^,]+,)\\s*(.*)$")
 	var lit_re = RegEx.create_from_string("\"((?:[^\"\\\\]|\\\\.)*)\"")
 	var strip_re = RegEx.create_from_string("\\[[^\\]]*\\]|\\[/?[a-z_]+=?[^\\]]*$|%[-+0-9.]*[a-zA-Z]|\\{[a-z_]+\\}|https?://\\S+")
 	var word_re = RegEx.create_from_string("[A-Za-zÇĞİÖŞÜçğıöşü]{2,}")
@@ -76,7 +77,7 @@ static func run() -> Dictionary:
 	trace.append(["en", "__missing__", AISidebarI18n.translate("en", "__missing__")])
 	trace.append(["tr", "status_executing", AISidebarI18n.translate("tr", "status_executing", {"step": 2, "max": 5})])
 	var digest = JSON.stringify(trace).md5_text()
-	var golden = "a7fe5c01464147cbc0b8d631d087ca2d"
+	var golden = "e35beb815a95c36a21b0e0138ee22239"
 	if trace.size() > 100 and digest == golden:
 		passed += 1
 	else:
