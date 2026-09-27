@@ -1,8 +1,8 @@
 {
   "core/agent/agent_context.gd": {
-    "untyped_declaration": 34,
+    "untyped_declaration": 32,
     "unsafe_method_access": 13,
-    "unsafe_call_argument": 11,
+    "unsafe_call_argument": 10,
     "unsafe_cast": 1
   },
   "core/agent/agent_host.gd": {
@@ -14,7 +14,7 @@
   "core/agent/agent_runner.gd": {
     "untyped_declaration": 99,
     "unsafe_method_access": 32,
-    "unsafe_call_argument": 85,
+    "unsafe_call_argument": 83,
     "unsafe_cast": 1
   },
   "core/agent/agent_telemetry.gd": {
@@ -28,9 +28,9 @@
     "unsafe_cast": 3
   },
   "core/agent/context_compactor.gd": {
-    "untyped_declaration": 35,
-    "unsafe_method_access": 33,
-    "unsafe_call_argument": 4
+    "untyped_declaration": 28,
+    "unsafe_method_access": 10,
+    "unsafe_call_argument": 3
   },
   "core/chat/chat_exporter.gd": {
     "untyped_declaration": 136,
@@ -54,9 +54,9 @@
     "unsafe_call_argument": 10
   },
   "core/chat/task_checkpoint.gd": {
-    "untyped_declaration": 17,
+    "untyped_declaration": 16,
     "unsafe_method_access": 15,
-    "unsafe_call_argument": 9
+    "unsafe_call_argument": 8
   },
   "core/chat/task_transcript.gd": {
     "untyped_declaration": 17,
@@ -66,17 +66,11 @@
   },
   "core/commands/slash_command_manager.gd": {
     "untyped_declaration": 42,
-    "unsafe_method_access": 3,
+    "unsafe_method_access": 2,
     "unsafe_call_argument": 3
   },
-  "core/config/api_config.gd": {
-    "untyped_declaration": 8,
-    "unsafe_method_access": 1,
-    "unsafe_call_argument": 4
-  },
   "core/i18n/i18n.gd": {
-    "untyped_declaration": 7,
-    "unsafe_method_access": 1,
+    "untyped_declaration": 5,
     "unsafe_call_argument": 2
   },
   "core/mutations/editor_mutation_service.gd": {
@@ -105,8 +99,7 @@
     "unsafe_call_argument": 9
   },
   "core/runtime/debugger_plugin.gd": {
-    "untyped_declaration": 18,
-    "unsafe_method_access": 1,
+    "untyped_declaration": 17,
     "unsafe_call_argument": 5,
     "unsafe_cast": 2
   },
@@ -116,7 +109,7 @@
     "unsafe_call_argument": 17
   },
   "core/runtime/runtime_debugger.gd": {
-    "untyped_declaration": 17,
+    "untyped_declaration": 15,
     "unsafe_method_access": 3,
     "unsafe_call_argument": 7
   },
@@ -168,7 +161,7 @@
     "unsafe_cast": 1
   },
   "core/tools/primitive/script_tools.gd": {
-    "untyped_declaration": 95,
+    "untyped_declaration": 94,
     "unsafe_method_access": 20,
     "unsafe_call_argument": 86,
     "unsafe_cast": 6
@@ -180,8 +173,8 @@
     "unsafe_cast": 4
   },
   "core/tools/tool_manager.gd": {
-    "untyped_declaration": 85,
-    "unsafe_method_access": 23,
+    "untyped_declaration": 79,
+    "unsafe_method_access": 18,
     "unsafe_call_argument": 39
   },
   "core/types/change_set.gd": {
@@ -217,9 +210,9 @@
     "unsafe_call_argument": 7
   },
   "core/verification/verification_pipeline.gd": {
-    "untyped_declaration": 36,
+    "untyped_declaration": 35,
     "unsafe_method_access": 8,
-    "unsafe_call_argument": 16
+    "unsafe_call_argument": 13
   },
   "plugin.gd": {
     "unsafe_property_access": 1
@@ -230,34 +223,30 @@
     "unsafe_call_argument": 14,
     "unsafe_cast": 10
   },
-  "ui/components/approval_card.gd": {
-    "untyped_declaration": 4,
-    "unsafe_call_argument": 2
-  },
   "ui/components/changes_card.gd": {
-    "untyped_declaration": 12,
+    "untyped_declaration": 11,
     "unsafe_method_access": 1,
-    "unsafe_call_argument": 4
+    "unsafe_call_argument": 3
   },
   "ui/components/clarification_card.gd": {
-    "untyped_declaration": 14,
+    "untyped_declaration": 12,
     "unsafe_method_access": 1,
     "unsafe_property_access": 2,
-    "unsafe_call_argument": 11
+    "unsafe_call_argument": 9
   },
   "ui/components/error_card.gd": {
-    "untyped_declaration": 2,
-    "unsafe_call_argument": 2
+    "untyped_declaration": 1,
+    "unsafe_call_argument": 1
   },
   "ui/components/history_panel.gd": {
-    "untyped_declaration": 42,
+    "untyped_declaration": 40,
     "unsafe_method_access": 12,
     "unsafe_property_access": 2,
-    "unsafe_call_argument": 33
+    "unsafe_call_argument": 31
   },
   "ui/components/icon_helper.gd": {
-    "untyped_declaration": 16,
-    "unsafe_call_argument": 15
+    "untyped_declaration": 14,
+    "unsafe_call_argument": 13
   },
   "ui/components/input_composer.gd": {
     "untyped_declaration": 37,
@@ -280,17 +269,17 @@
     "unsafe_call_argument": 2
   },
   "ui/components/plan_card.gd": {
-    "untyped_declaration": 4,
+    "untyped_declaration": 3,
     "unsafe_property_access": 1,
-    "unsafe_call_argument": 4
+    "unsafe_call_argument": 3
   },
   "ui/components/reasoning_card.gd": {
     "untyped_declaration": 6
   },
   "ui/components/runtime_card.gd": {
-    "untyped_declaration": 6,
+    "untyped_declaration": 5,
     "unsafe_method_access": 1,
-    "unsafe_call_argument": 4
+    "unsafe_call_argument": 3
   },
   "ui/components/screenshot_card.gd": {
     "untyped_declaration": 16,
@@ -307,22 +296,22 @@
     "unsafe_cast": 1
   },
   "ui/components/telemetry_card.gd": {
-    "untyped_declaration": 24,
-    "unsafe_call_argument": 3
+    "untyped_declaration": 23,
+    "unsafe_call_argument": 2
   },
   "ui/components/thinking_card.gd": {
     "untyped_declaration": 7,
     "unsafe_call_argument": 1
   },
   "ui/components/welcome_card.gd": {
-    "untyped_declaration": 11,
+    "untyped_declaration": 9,
     "unsafe_method_access": 1,
-    "unsafe_call_argument": 8
+    "unsafe_call_argument": 7
   },
   "ui/controllers/chat_export_actions.gd": {
     "untyped_declaration": 31,
     "unsafe_method_access": 10,
-    "unsafe_call_argument": 13
+    "unsafe_call_argument": 12
   },
   "ui/controllers/chat_session_store.gd": {
     "untyped_declaration": 10,
@@ -330,7 +319,7 @@
     "unsafe_call_argument": 10
   },
   "ui/controllers/model_bar_controller.gd": {
-    "untyped_declaration": 15,
+    "untyped_declaration": 14,
     "unsafe_call_argument": 8
   },
   "ui/controllers/task_controller.gd": {
@@ -343,12 +332,6 @@
     "untyped_declaration": 9,
     "unsafe_call_argument": 15
   },
-  "ui/dialogs/settings_dialog.gd": {
-    "untyped_declaration": 33,
-    "unsafe_method_access": 13,
-    "unsafe_property_access": 2,
-    "unsafe_call_argument": 4
-  },
   "ui/docks/chat_dock.gd": {
     "untyped_declaration": 13,
     "unsafe_method_access": 6,
@@ -356,21 +339,20 @@
     "unsafe_call_argument": 9
   },
   "ui/docks/chat_dock_theme.gd": {
-    "untyped_declaration": 6,
-    "unsafe_method_access": 24,
-    "unsafe_property_access": 42,
-    "unsafe_call_argument": 11
+    "unsafe_method_access": 1,
+    "unsafe_property_access": 18,
+    "unsafe_call_argument": 2
   },
   "ui/presenters/agent_activity_presenter.gd": {
     "untyped_declaration": 37,
     "unsafe_method_access": 2,
-    "unsafe_call_argument": 26,
+    "unsafe_call_argument": 25,
     "unsafe_cast": 2
   },
   "ui/presenters/agent_interaction_presenter.gd": {
     "untyped_declaration": 23,
     "unsafe_method_access": 15,
-    "unsafe_call_argument": 7,
+    "unsafe_call_argument": 6,
     "unsafe_cast": 2
   },
   "ui/presenters/agent_stream_presenter.gd": {
@@ -379,8 +361,8 @@
     "unsafe_call_argument": 3
   },
   "ui/presenters/markdown_renderer.gd": {
-    "untyped_declaration": 7,
-    "unsafe_call_argument": 3
+    "untyped_declaration": 6,
+    "unsafe_call_argument": 2
   },
   "ui/presenters/plan_checklist_tracker.gd": {
     "untyped_declaration": 14,
@@ -393,8 +375,8 @@
     "unsafe_call_argument": 8
   },
   "ui/presenters/tool_presentation.gd": {
-    "untyped_declaration": 14,
-    "unsafe_method_access": 12,
+    "untyped_declaration": 9,
+    "unsafe_method_access": 7,
     "unsafe_call_argument": 3
   },
   "ui/theme/sidebar_theme.gd": {

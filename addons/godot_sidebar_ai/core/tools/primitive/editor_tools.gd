@@ -310,7 +310,7 @@ static func _search_project_assets(args: Dictionary) -> Dictionary:
 			if f_lower.ends_with(ext):
 				ext_match = true
 				break
-		if ext_match and (query.is_empty() or query in f_lower.get_file()):
+		if ext_match and (query.is_empty() or query in f_lower.trim_prefix("res://")):
 			matches.append(f)
 			
 	return AISidebarToolResult.ok({

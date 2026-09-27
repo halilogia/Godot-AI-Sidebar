@@ -347,20 +347,31 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 	return await AISidebarEditorTools.execute_async(tool_name, args)
 
 static func _search_tools(args: Dictionary) -> Dictionary:
-	var query = str(args.get("query", "")).to_lower()
-	var all = get_all_schemas()
+	var query: String = str(args.get("query", "")).to_lower()
+	# Çok kelimeli sorgu kelimelere bölünür ("sync validate script" → 3 kelime); en çok kelimesi
+	# eşleşen araç önce gelir. Ad içindeki eşleşme açıklamadakinden ağırdır.
+	var words := query.replace("_", " ").split(" ", false)
+	var scored: Array[Dictionary] = []
+
+	for tool_def: Dictionary in get_all_schemas():
+		var fn: Dictionary = tool_def.get("function", {})
+		var t_name: String = str(fn.get("name", ""))
+		var t_desc: String = str(fn.get("description", ""))
+		var name_l := t_name.to_lower().replace("_", " ")
+		var desc_l := t_desc.to_lower()
+		var score := 0
+		for w: String in words:
+			if w in name_l:
+				score += 3
+			elif w in desc_l:
+				score += 1
+		if words.is_empty() or score > 0:
+			scored.append({"score": score, "name": t_name, "description": t_desc})
+	scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["score"] > b["score"])
 	var matches: Array = []
-	
-	for tool_def in all:
-		var fn = tool_def.get("function", {})
-		var t_name = fn.get("name", "")
-		var t_desc = fn.get("description", "")
-		if query.is_empty() or query in t_name.to_lower() or query in t_desc.to_lower():
-			matches.append({
-				"name": t_name,
-				"description": t_desc
-			})
-			
+	for s: Dictionary in scored:
+		matches.append({"name": s["name"], "description": s["description"]})
+
 	return AISidebarToolResult.ok({
 		"query": query,
 		"count": matches.size(),
