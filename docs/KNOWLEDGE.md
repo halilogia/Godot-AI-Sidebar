@@ -134,6 +134,11 @@ Ortam: Godot 4.7.2 GUI editör, boş bir oyun projesi (eklenti klasörü repoya 
 - Sıfırlamak için `config.json` ve `config.json.bak` birlikte silinir (yalnız ana dosyayı silmek yedekten geri getirir).
 - Test çalıştırıcı bu dört dosyanın hepsini (`config.json`, `.bak`, `.corrupt`, `.tmp`) git dışı `.test_config_backup/` klasörüne alır ve sonunda bayt bayt geri koyar; yalnız ana dosyayı kenara almak yetmez (testler yedekten kişisel ayarı geri yüklerdi).
 
+## Linux'ta gizli klasörler ve CI (27.09)
+
+* **Tuzak:** `DirAccess.get_files_at` / `get_directories_at` gizli girdileri atlar. Linux / macOS'ta nokta ile başlayan her ad gizlidir (`.agents`, `.claude`); Windows'ta gizlilik bir dosya özniteliğidir, bu yüzden aynı kod Windows'ta çalışır. Bir klasörü silen kod `DirAccess.open(dir)` + `include_hidden = true` kullanmalı; yoksa klasör boşalmaz ve silinmez. CI 387cbf7'den eade283'e kadar bu yüzden kırmızıydı (`tests/test_skills.gd` T5 temizliği `.agents`'ı silemiyordu); Windows'ta yerel `verify.ps1` yeşildi.
+* **CI günlüğü:** GitHub iş günlükleri oturum açmadan okunamaz, açıklamalar (annotation) okunur. `verify.yml` başarısızlıkta hata satırlarını `::error::` açıklaması olarak basar: `GET /repos/halilogia/Godot-AI-Sidebar/check-runs/<iş id>/annotations`.
+
 ## İkon Sistemi (Lucide) ve Emoji Yasağı
 
 * UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.

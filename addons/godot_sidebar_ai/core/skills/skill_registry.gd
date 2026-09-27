@@ -235,9 +235,15 @@ static func delete_skill(skill: Dictionary) -> Dictionary:
 	_remove_dir(dir)
 	return {"ok": true}
 
+## Klasörü içindekilerle siler. Gizli girdiler de sayılır: Linux / macOS'ta nokta ile başlayan ad gizlidir ve
+## DirAccess.get_*_at onları atlar (klasör boşalmaz, silinmez).
 static func _remove_dir(dir: String) -> void:
-	for f: String in DirAccess.get_files_at(dir):
+	var da := DirAccess.open(dir)
+	if da == null:
+		return
+	da.include_hidden = true
+	for f: String in da.get_files():
 		DirAccess.remove_absolute(dir.path_join(f))
-	for d: String in DirAccess.get_directories_at(dir):
+	for d: String in da.get_directories():
 		_remove_dir(dir.path_join(d))
 	DirAccess.remove_absolute(dir)

@@ -24,12 +24,15 @@ static func _write(path: String, text: String) -> void:
 static func _skill(root: String, name: String, desc: String, body: String = "Body") -> void:
 	_write(root.path_join(name).path_join("SKILL.md"), "---\nname: %s\ndescription: %s\n---\n\n%s\n" % [name, desc, body])
 
+## Gizli girdiler dahil siler (Linux'ta ".agents" gizlidir; get_directories_at onu atlar ve CI'da T5 kırılıyordu).
 static func _rm(dir: String) -> void:
-	if not DirAccess.dir_exists_absolute(dir):
+	var da := DirAccess.open(dir)
+	if da == null:
 		return
-	for f in DirAccess.get_files_at(dir):
+	da.include_hidden = true
+	for f in da.get_files():
 		DirAccess.remove_absolute(dir.path_join(f))
-	for d in DirAccess.get_directories_at(dir):
+	for d in da.get_directories():
 		_rm(dir.path_join(d))
 	DirAccess.remove_absolute(dir)
 
