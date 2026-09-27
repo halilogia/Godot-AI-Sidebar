@@ -96,10 +96,8 @@ func _setup_ui() -> void:
 	if not risk_text.is_empty():
 		_risk_badge = Label.new()
 		_risk_badge.text = risk_text
-		_risk_badge.theme_type_variation = AISidebarThemeBuilder.MICRO
+		_risk_badge.theme_type_variation = AISidebarThemeBuilder.badge(AISidebarThemeBuilder.TONE_RISK_DANGER if _is_danger else AISidebarThemeBuilder.TONE_RISK_WARNING)
 		_risk_badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_risk_badge.add_theme_color_override("font_color", AISidebarTheme.emphasize(tone, 0.2))
-		_risk_badge.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(tone))
 		head.add_child(_risk_badge)
 
 	# Gövde: fiil + hedef + ipucu

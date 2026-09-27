@@ -8,6 +8,7 @@ class_name AISidebarSettingsGeneralPages
 ##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval
 ## Pencere açılırken config'ten yüklenir (load_from), "Kaydet ve Kapat"ta config'e yazılır (write_to).
 
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarGoalSession = preload("res://addons/godot_sidebar_ai/core/agent/goal_session.gd")
@@ -70,7 +71,7 @@ func build_provider_page() -> VBoxContainer:
 
 func build_model_page() -> VBoxContainer:
 	var page := AISidebarSettingsUi.page()
-	temp_badge = AISidebarSettingsUi.badge("", AISidebarTheme.COLOR_SUCCESS)
+	temp_badge = AISidebarSettingsUi.badge("", AISidebarThemeBuilder.TONE_SUCCESS)
 	var temp := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_temperature"), AISidebarI18n.get_text("hint_temperature"), temp_badge)
 	temp_slider = HSlider.new()
 	temp_slider.max_value = 2.0
@@ -192,8 +193,8 @@ func _on_temp_changed(val: float) -> void:
 	var v := snappedf(val, 0.05)
 	var text := "%0.2f" % v
 	if is_equal_approx(v, DEFAULT_TEMPERATURE):
-		AISidebarSettingsUi.set_badge(temp_badge, AISidebarI18n.get_text("temp_value_default", {"value": text}), AISidebarTheme.COLOR_SUCCESS)
+		AISidebarSettingsUi.set_badge(temp_badge, AISidebarI18n.get_text("temp_value_default", {"value": text}), AISidebarThemeBuilder.TONE_SUCCESS)
 	elif v > 0.60:
-		AISidebarSettingsUi.set_badge(temp_badge, AISidebarI18n.get_text("temp_value_high", {"value": text}), AISidebarTheme.COLOR_WARNING)
+		AISidebarSettingsUi.set_badge(temp_badge, AISidebarI18n.get_text("temp_value_high", {"value": text}), AISidebarThemeBuilder.TONE_WARNING)
 	else:
-		AISidebarSettingsUi.set_badge(temp_badge, text, AISidebarTheme.COLOR_ACCENT)
+		AISidebarSettingsUi.set_badge(temp_badge, text, AISidebarThemeBuilder.TONE_ACCENT)

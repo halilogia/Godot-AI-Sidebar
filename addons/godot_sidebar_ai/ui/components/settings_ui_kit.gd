@@ -75,19 +75,17 @@ static func set_status(l: Label, text: String, is_error: bool = false) -> void:
 	l.visible = not text.is_empty()
 	l.theme_type_variation = AISidebarThemeBuilder.TEXT_ERROR if is_error else AISidebarThemeBuilder.TEXT_SUCCESS
 
-## Küçük renkli hap (kapsam, durum): "Yerleşik", "Proje", "Açık" gibi. Renk veriden geldiği için
-## stil burada, tema belirteçleriyle üretilir.
-static func badge(text: String, accent: Color) -> Label:
+## Küçük renkli hap (kapsam, durum): "Yerleşik", "Proje", "Açık" gibi. Ton temadaki rozet
+## varyasyonunu seçer (`AISidebarThemeBuilder.TONE_*`).
+static func badge(text: String, tone: String) -> Label:
 	var l := Label.new()
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	l.theme_type_variation = AISidebarThemeBuilder.MICRO
-	set_badge(l, text, accent)
+	set_badge(l, text, tone)
 	return l
 
-static func set_badge(l: Label, text: String, accent: Color) -> void:
+static func set_badge(l: Label, text: String, tone: String) -> void:
 	l.text = text
-	l.add_theme_color_override("font_color", AISidebarTheme.emphasize(accent, 0.25))
-	l.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(accent))
+	l.theme_type_variation = AISidebarThemeBuilder.badge(tone)
 
 ## İkincil düğme (kenarlıklı, dikeyde uzamaz).
 static func button(text: String, on_press: Callable) -> Button:

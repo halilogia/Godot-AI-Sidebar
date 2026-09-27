@@ -92,7 +92,7 @@ func _build() -> void:
 ## "Anahtar — açıklama" satırı: sol sütunda komut / kısayol (rozet), sağda açıklama.
 func _entry(parent: Control, key_text: String, desc: String) -> void:
 	var r := AISidebarSettingsUi.row(parent)
-	var k := AISidebarSettingsUi.badge(key_text, AISidebarTheme.COLOR_ACCENT)
+	var k := AISidebarSettingsUi.badge(key_text, AISidebarThemeBuilder.TONE_ACCENT)
 	k.custom_minimum_size = Vector2(float(AISidebarSettingsUi.base_size) * 8.0, 0)
 	k.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	k.clip_text = true

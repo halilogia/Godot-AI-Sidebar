@@ -5,6 +5,7 @@ extends RefCounted
 ## kaydı ve onay modu butonu (Manuel → Otomatik → Tam otomatik döngüsü).
 ## Provider'ın kurulması ChatDock'ta kalır; bu sınıf yalnızca model çubuğunu yönetir.
 
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
@@ -18,28 +19,25 @@ var set_status: Callable = func(_t, _c): pass
 
 var current_model_list: Array = []
 
-## Onay modu → buton metni, açıklaması, Lucide ikonu ve vurgu rengi.
+## Onay modu → buton metni, açıklaması, Lucide ikonu ve tonu (hap varyasyonu).
 static func approve_mode_spec(mode: int) -> Dictionary:
 	match mode:
 		AISidebarPermissionPolicy.AutoApproveMode.AUTO:
-			return {"text": "mode_auto", "desc": "mode_auto_desc", "icon": "shield-check", "color": AISidebarTheme.COLOR_SUCCESS}
+			return {"text": "mode_auto", "desc": "mode_auto_desc", "icon": "shield-check", "tone": AISidebarThemeBuilder.TONE_SUCCESS}
 		AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO:
-			return {"text": "mode_full_auto", "desc": "mode_full_auto_desc", "icon": "zap", "color": AISidebarTheme.COLOR_MODE_FULL_AUTO}
-	return {"text": "mode_manual", "desc": "mode_manual_desc", "icon": "hand", "color": AISidebarTheme.COLOR_WARNING}
+			return {"text": "mode_full_auto", "desc": "mode_full_auto_desc", "icon": "zap", "tone": AISidebarThemeBuilder.TONE_FULL_AUTO}
+	return {"text": "mode_manual", "desc": "mode_manual_desc", "icon": "hand", "tone": AISidebarThemeBuilder.TONE_WARNING}
 
 ## Mod butonu tek kaynaktır: durum rozeti modu tekrar etmez.
 func update_approve_mode_ui() -> void:
 	if not approve_mode_btn:
 		return
 	var spec = approve_mode_spec(AISidebarPermissionPolicy.get_auto_approve_mode())
-	var color: Color = spec["color"]
+	var tone: String = spec["tone"]
+	var color := AISidebarThemeBuilder.tone_color(tone)
 	approve_mode_btn.text = AISidebarI18n.get_text(spec["text"])
 	approve_mode_btn.tooltip_text = AISidebarI18n.get_text("tooltip_approve_mode") + "\n" + AISidebarI18n.get_text(spec["desc"])
-	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		approve_mode_btn.add_theme_color_override(key, color)
-	approve_mode_btn.add_theme_stylebox_override("normal", AISidebarTheme.create_pill_style(color, false))
-	approve_mode_btn.add_theme_stylebox_override("hover", AISidebarTheme.create_pill_style(color, true))
-	approve_mode_btn.add_theme_stylebox_override("pressed", AISidebarTheme.create_pill_style(color, true))
+	approve_mode_btn.theme_type_variation = AISidebarThemeBuilder.pill(tone)
 	AISidebarIconHelper.apply_tinted_icon(approve_mode_btn, spec["icon"], color, AISidebarTheme.ICON_SIZE_SM)
 
 func on_approve_mode_pressed() -> void:

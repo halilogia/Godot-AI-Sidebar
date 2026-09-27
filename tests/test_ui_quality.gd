@@ -42,13 +42,8 @@ const VARIATIONS: Array[String] = [
 ]
 const KIT := "res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd"
 
-## İzinli sayılar; yalnız aşağı çekilir. Kalan istisnalar veriden gelen renkli haplardır (rengi moda /
-## riske / kapsama göre çalışma anında seçilir, tema varyasyonu olamaz).
-const BASELINE := {
-	"components/approval_card.gd": {"stylebox_override": 1},
-	"components/settings_ui_kit.gd": {"stylebox_override": 1},
-	"controllers/model_bar_controller.gd": {"stylebox_override": 3},
-}
+## İzinli sayılar; yalnız aşağı çekilir. Boş: renkli haplar da tonlu varyasyonla (badge / pill) çizilir.
+const BASELINE := {}
 
 const PATTERNS := {
 	"fixed_font_size": "font_size\"\\s*,\\s*\\d",
@@ -187,7 +182,11 @@ static func run() -> Dictionary:
 	# T5 Tema üreticisinin her varyasyonu tanımlı ve temel tipi var.
 	var theme := AISidebarThemeBuilder.build(AISidebarThemeBuilder.Density.COMPACT)
 	var missing: Array[String] = []
-	for v: String in VARIATIONS:
+	var all_variations: Array[String] = VARIATIONS.duplicate()
+	for tone: String in AISidebarThemeBuilder.TONES:
+		all_variations.append(AISidebarThemeBuilder.badge(tone))
+		all_variations.append(AISidebarThemeBuilder.pill(tone))
+	for v: String in all_variations:
 		if theme.get_type_variation_base(v) == &"":
 			missing.append(v)
 	if missing.is_empty():

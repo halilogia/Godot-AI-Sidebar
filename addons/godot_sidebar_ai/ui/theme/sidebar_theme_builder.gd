@@ -65,7 +65,6 @@ const STATUS_TEXT := "AISidebarStatusText"
 const HEADER_BUTTON := "AISidebarHeaderButton"
 const ICON_BUTTON := "AISidebarIconButton"
 const SELECT := "AISidebarSelect"
-const PILL_BUTTON := "AISidebarPillButton"
 const LIST := "AISidebarList"
 const POPUP_PANEL := "AISidebarPopupPanel"
 const FLOAT_BUTTON := "AISidebarFloatButton"
@@ -96,6 +95,53 @@ const RICH_MUTED := "AISidebarRichMuted"
 # Metin girişi
 const LINE_EDIT := "AISidebarLineEdit"
 const TEXT_EDIT := "AISidebarTextEdit"
+# Tonlu rozet (Label) ve hap düğmesi (Button): renk veriden seçilir ama ton kümesi sınırlıdır; her ton
+# için varyasyon üretilir, kod rengi değil tonu verir: `badge(TONE_SUCCESS)`, `pill(TONE_WARNING)`.
+const TONE_MUTED := "muted"
+const TONE_ACCENT := "accent"
+const TONE_SUCCESS := "success"
+const TONE_WARNING := "warning"
+const TONE_RISK_WARNING := "risk_warning"
+const TONE_RISK_DANGER := "risk_danger"
+const TONE_FULL_AUTO := "full_auto"
+const TONE_LAYER_SYSTEM := "layer_system"
+const TONE_LAYER_RULES := "layer_rules"
+const TONE_LAYER_SKILLS := "layer_skills"
+const TONE_LAYER_TOOLS := "layer_tools"
+const TONES: Array[String] = [TONE_MUTED, TONE_ACCENT, TONE_SUCCESS, TONE_WARNING, TONE_RISK_WARNING, TONE_RISK_DANGER, TONE_FULL_AUTO, TONE_LAYER_SYSTEM, TONE_LAYER_RULES, TONE_LAYER_SKILLS, TONE_LAYER_TOOLS]
+
+## Tonun rozet varyasyonu (Label).
+static func badge(tone: String) -> String:
+	return "AISidebarBadge_" + tone
+
+## Tonun hap düğmesi varyasyonu (Button; üzerinde / basılı / odak durumlarıyla).
+static func pill(tone: String) -> String:
+	return "AISidebarPill_" + tone
+
+## Tonun rengi (paletten; açık / koyu temada ayrı).
+static func tone_color(tone: String) -> Color:
+	match tone:
+		TONE_ACCENT:
+			return AISidebarTheme.COLOR_ACCENT
+		TONE_SUCCESS:
+			return AISidebarTheme.COLOR_SUCCESS
+		TONE_WARNING:
+			return AISidebarTheme.COLOR_WARNING
+		TONE_RISK_WARNING:
+			return AISidebarTheme.COLOR_TONE_WARNING_TEXT
+		TONE_RISK_DANGER:
+			return AISidebarTheme.COLOR_TONE_ERROR_TEXT
+		TONE_FULL_AUTO:
+			return AISidebarTheme.COLOR_MODE_FULL_AUTO
+		TONE_LAYER_SYSTEM:
+			return AISidebarTheme.COLOR_LAYER_SYSTEM
+		TONE_LAYER_RULES:
+			return AISidebarTheme.COLOR_LAYER_RULES
+		TONE_LAYER_SKILLS:
+			return AISidebarTheme.COLOR_LAYER_SKILLS
+		TONE_LAYER_TOOLS:
+			return AISidebarTheme.COLOR_LAYER_TOOLS
+	return AISidebarTheme.COLOR_TEXT_MUTED
 
 ## Yoğunluğa göre yazı boyları (ölçeklenmiş).
 static func sizes(density: Density) -> Dictionary:
@@ -198,10 +244,6 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 	t.set_font_size("font_size", SELECT, body)
 	t.set_color("font_color", SELECT, AISidebarTheme.COLOR_TEXT_PRIMARY)
 	t.set_color("font_hover_color", SELECT, AISidebarTheme.COLOR_TEXT_PRIMARY)
-	t.set_type_variation(PILL_BUTTON, "Button")
-	t.set_font_size("font_size", PILL_BUTTON, hint)
-	t.set_constant("h_separation", PILL_BUTTON, AISidebarTheme.px(AISidebarTheme.SPACE_XXS + 1))
-	t.set_stylebox("focus", PILL_BUTTON, focus_ring(AISidebarTheme.RADIUS_PILL))
 	t.set_type_variation(LIST, "ItemList")
 	t.set_font_size("font_size", LIST, body)
 	_panel(t, POPUP_PANEL, AISidebarTheme.create_card_style(false, AISidebarTheme.SPACE_XS))
@@ -260,6 +302,25 @@ static func build(density: Density = Density.COMPACT) -> Theme:
 		t.set_font_size("font_size", v, body)
 		t.set_color("font_color", v, AISidebarTheme.COLOR_TEXT_PRIMARY)
 		t.set_color("font_placeholder_color", v, AISidebarTheme.COLOR_TEXT_MUTED)
+
+	for tone: String in TONES:
+		var c := tone_color(tone)
+		var b := badge(tone)
+		_label(t, b, micro, AISidebarTheme.emphasize(c, 0.25))
+		t.set_stylebox("normal", b, AISidebarTheme.create_pill_style(c))
+		var p := pill(tone)
+		t.set_type_variation(p, "Button")
+		t.set_font_size("font_size", p, hint)
+		t.set_constant("h_separation", p, AISidebarTheme.px(AISidebarTheme.SPACE_XXS + 1))
+		t.set_stylebox("normal", p, AISidebarTheme.create_pill_style(c, false))
+		t.set_stylebox("hover", p, AISidebarTheme.create_pill_style(c, true))
+		t.set_stylebox("pressed", p, AISidebarTheme.create_pill_style(c, true))
+		t.set_stylebox("hover_pressed", p, AISidebarTheme.create_pill_style(c, true))
+		t.set_stylebox("disabled", p, AISidebarTheme.create_pill_style(AISidebarTheme.COLOR_TEXT_MUTED, false))
+		t.set_stylebox("focus", p, focus_ring(AISidebarTheme.RADIUS_PILL))
+		for item: String in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+			t.set_color(item, p, c)
+		t.set_color("font_disabled_color", p, AISidebarTheme.COLOR_TEXT_MUTED)
 	_base_types(t, body)
 	_complete_variations(t, source_theme())
 	return t

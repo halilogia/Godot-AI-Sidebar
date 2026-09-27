@@ -25,7 +25,7 @@ func _init() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation", AISidebarTheme.px(AISidebarTheme.SPACE_MD))
 
-	_badge = AISidebarSettingsUi.badge("", AISidebarTheme.COLOR_TEXT_MUTED)
+	_badge = AISidebarSettingsUi.badge("", AISidebarThemeBuilder.TONE_MUTED)
 	var bridge_card := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("mcp_settings_title"), AISidebarI18n.get_text("mcp_settings_hint"), _badge)
 	var row := AISidebarSettingsUi.row(bridge_card)
 	_status = AISidebarSettingsUi.body_label("")
@@ -60,7 +60,7 @@ func refresh() -> void:
 	var bridge := AISidebarMcpBridgeControl.instance
 	AISidebarSettingsUi.set_status(_note, "")
 	if bridge == null:
-		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_off"), AISidebarTheme.COLOR_TEXT_MUTED)
+		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_off"), AISidebarThemeBuilder.TONE_MUTED)
 		_status.text = AISidebarI18n.get_text("mcp_settings_unavailable")
 		_toggle_btn.visible = false
 		_port_row.visible = false
@@ -72,12 +72,12 @@ func refresh() -> void:
 	var running := bridge.is_running()
 	_connect_card.visible = running
 	if running:
-		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_on"), AISidebarTheme.COLOR_SUCCESS)
+		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_on"), AISidebarThemeBuilder.TONE_SUCCESS)
 		_status.text = AISidebarI18n.get_text("mcp_settings_on", {"endpoint": bridge.endpoint(), "count": bridge.tool_count()})
 		_toggle_btn.text = AISidebarI18n.get_text("mcp_settings_turn_off")
 		_command.text = bridge.masked_claude_add_command()
 	else:
-		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_off"), AISidebarTheme.COLOR_TEXT_MUTED)
+		AISidebarSettingsUi.set_badge(_badge, AISidebarI18n.get_text("mcp_settings_badge_off"), AISidebarThemeBuilder.TONE_MUTED)
 		_status.text = AISidebarI18n.get_text("mcp_settings_off")
 		_toggle_btn.text = AISidebarI18n.get_text("mcp_settings_turn_on")
 		_command.text = ""

@@ -30,9 +30,8 @@ static func apply(dock: Control) -> void:
 	for btn: Variant in [dock.new_chat_btn, dock.history_btn, dock.export_btn, dock.copy_task_btn]:
 		_variation(btn, AISidebarThemeBuilder.HEADER_BUTTON)
 
-	# 3. Model çubuğu (onay modu hapının rengi moda göre ModelBarController'da atanır)
+	# 3. Model çubuğu (onay modu hapının ton varyasyonu moda göre ModelBarController'da atanır)
 	_variation(dock.model_selector, AISidebarThemeBuilder.SELECT)
-	_variation(dock.approve_mode_btn, AISidebarThemeBuilder.PILL_BUTTON)
 	for btn: Variant in [dock.refresh_models_btn, dock.settings_btn]:
 		_variation(btn, AISidebarThemeBuilder.ICON_BUTTON)
 

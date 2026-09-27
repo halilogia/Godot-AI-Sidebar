@@ -8,6 +8,7 @@ class_name AISidebarRulesView
 ##   Global ve proje kuralları: bulunan dosyalar, aç / oluştur, tek satırlık kural ekle (/learn ile aynı)
 ## Sistem istemi burada düzenlenir; "Kaydet ve Kapat"ta pencere prompt_text() ile config'e yazar.
 
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarCustomizationBudget = preload("res://addons/godot_sidebar_ai/core/skills/customization_budget.gd")
 const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skills/rules_registry.gd")
@@ -40,7 +41,7 @@ func _init() -> void:
 	_legend.add_theme_constant_override("h_separation", AISidebarTheme.px(AISidebarTheme.SPACE_LG))
 	usage.add_child(_legend)
 
-	_prompt_badge = AISidebarSettingsUi.badge("", AISidebarTheme.COLOR_LAYER_SYSTEM)
+	_prompt_badge = AISidebarSettingsUi.badge("", AISidebarThemeBuilder.TONE_LAYER_SYSTEM)
 	var builtin := AISidebarSettingsUi.card(self, AISidebarI18n.get_text("rules_builtin_title"), AISidebarI18n.get_text("rules_builtin_hint"), _prompt_badge)
 	prompt_edit = TextEdit.new()
 	prompt_edit.name = "SysPromptEdit"
@@ -90,9 +91,9 @@ func _update_prompt_state() -> void:
 	var text := prompt_edit.text
 	var is_default := text == str(AISidebarConfig.DEFAULT_CONFIG.get("system_prompt", ""))
 	if is_default:
-		AISidebarSettingsUi.set_badge(_prompt_badge, AISidebarI18n.get_text("rules_builtin_default"), AISidebarTheme.COLOR_SUCCESS)
+		AISidebarSettingsUi.set_badge(_prompt_badge, AISidebarI18n.get_text("rules_builtin_default"), AISidebarThemeBuilder.TONE_SUCCESS)
 	else:
-		AISidebarSettingsUi.set_badge(_prompt_badge, AISidebarI18n.get_text("rules_builtin_custom"), AISidebarTheme.COLOR_WARNING)
+		AISidebarSettingsUi.set_badge(_prompt_badge, AISidebarI18n.get_text("rules_builtin_custom"), AISidebarThemeBuilder.TONE_WARNING)
 	_prompt_size.text = AISidebarI18n.get_text("rules_builtin_size", {"chars": text.length(), "tokens": ceili(text.length() / 4.0)})
 
 func _on_reset_prompt() -> void:
@@ -140,9 +141,9 @@ func _refresh_rules() -> void:
 	for f: Dictionary in files:
 		var row := AISidebarSettingsUi.row(_rules_list)
 		if str(f["scope"]) == AISidebarRulesRegistry.SCOPE_GLOBAL:
-			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_global"), AISidebarTheme.COLOR_LAYER_TOOLS))
+			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_global"), AISidebarThemeBuilder.TONE_LAYER_TOOLS))
 		else:
-			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_project"), AISidebarTheme.COLOR_LAYER_RULES))
+			row.add_child(AISidebarSettingsUi.badge(AISidebarI18n.get_text("custom_scope_project"), AISidebarThemeBuilder.TONE_LAYER_RULES))
 		var chars: int = f["chars"]
 		var p := str(f["path"])
 		var path := AISidebarSettingsUi.body_label(AISidebarI18n.get_text("custom_rule_file", {"path": p, "chars": chars}))

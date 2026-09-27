@@ -5,6 +5,7 @@ extends RefCounted
 ## seçimin ve provider'dan gelen listenin config'e yazılması.
 ## Kullanıcının config.json'u test başında aynen saklanır ve sonunda geri yazılır.
 
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarModelBarController = preload("res://addons/godot_sidebar_ai/ui/controllers/model_bar_controller.gd")
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
@@ -34,7 +35,7 @@ static func run() -> Dictionary:
 	ctrl.on_approve_mode_pressed()
 	var step3 = AISidebarPermissionPolicy.get_auto_approve_mode() == AISidebarPermissionPolicy.AutoApproveMode.MANUAL and ctrl.approve_mode_btn.text == AISidebarI18n.get_text("mode_manual")
 	var no_badge = badge.is_empty()
-	var styled = ctrl.approve_mode_btn.icon != null and ctrl.approve_mode_btn.has_theme_stylebox_override("normal") and ctrl.approve_mode_btn.tooltip_text.contains(AISidebarI18n.get_text("mode_manual_desc"))
+	var styled = ctrl.approve_mode_btn.icon != null and ctrl.approve_mode_btn.theme_type_variation == AISidebarThemeBuilder.pill(AISidebarThemeBuilder.TONE_WARNING) and ctrl.approve_mode_btn.tooltip_text.contains(AISidebarI18n.get_text("mode_manual_desc"))
 	if step1 and step2 and step3 and no_badge and styled:
 		passed += 1
 	else:

@@ -7,6 +7,7 @@ class_name AISidebarSkillsView
 ## skill klasörünü içe aktar, kullanıcı skill klasörünü aç. Proje skill'leri depodan geldiği için
 ## kullanıcı açana kadar kapalıdır.
 
+const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
@@ -79,13 +80,13 @@ func refresh() -> void:
 	for s: Dictionary in skills:
 		_list.add_child(_skill_row(s, AISidebarSkillRegistry.is_enabled(s, prefs)))
 
-func _scope_color(scope: String) -> Color:
+func _scope_tone(scope: String) -> String:
 	match scope:
 		AISidebarSkillRegistry.SCOPE_PROJECT:
-			return AISidebarTheme.COLOR_LAYER_RULES
+			return AISidebarThemeBuilder.TONE_LAYER_RULES
 		AISidebarSkillRegistry.SCOPE_BUILTIN:
-			return AISidebarTheme.COLOR_LAYER_SYSTEM
-	return AISidebarTheme.COLOR_LAYER_TOOLS
+			return AISidebarThemeBuilder.TONE_LAYER_SYSTEM
+	return AISidebarThemeBuilder.TONE_LAYER_TOOLS
 
 func _skill_row(s: Dictionary, enabled: bool) -> Control:
 	var box := VBoxContainer.new()
@@ -99,7 +100,7 @@ func _skill_row(s: Dictionary, enabled: bool) -> Control:
 	toggle.toggled.connect(func(on: bool) -> void: AISidebarSkillRegistry.set_enabled(name, on))
 	row.add_child(toggle)
 	var scope := str(s.get("scope", ""))
-	row.add_child(AISidebarSettingsUi.badge(_scope_text(scope), _scope_color(scope)))
+	row.add_child(AISidebarSettingsUi.badge(_scope_text(scope), _scope_tone(scope)))
 	var location := str(s.get("location", ""))
 	row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("skills_open"), func() -> void: OS.shell_open(ProjectSettings.globalize_path(location))))
 	if scope != AISidebarSkillRegistry.SCOPE_BUILTIN:
