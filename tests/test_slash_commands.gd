@@ -28,7 +28,7 @@ static func run() -> Dictionary:
 	]
 	
 	# Gelecekte eklenecek, henüz implement edilmemesi gereken komutlar
-	var prohibited_commands = ["git", "web", "commit", "deploy", "custom", "plan"]
+	var prohibited_commands = ["git", "web", "commit", "deploy", "custom"]
 	
 	# Test 1: 10 Çekirdek Komutun Kayıt Defterinde (Registry) Varlığı
 	var all_cmds = AISidebarSlashCommandManager.get_commands()

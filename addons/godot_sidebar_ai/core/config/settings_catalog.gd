@@ -21,6 +21,7 @@ const UI_KEYS := {
 	"max_agent_steps": "Settings > Model & Parameters",
 	"max_iterations": "Settings > Model & Parameters (same control as max_agent_steps)",
 	"goal_max_rounds": "Settings > Model & Parameters > Goal mode (/goal)",
+	"planning_mode": "Settings > General > Planning (plan first for every request; otherwise /plan)",
 	"system_prompt": "Settings > Rules > Built-in rules (system prompt)",
 	"language": "Settings > General",
 	"ui_animations": "Settings > General > Appearance",

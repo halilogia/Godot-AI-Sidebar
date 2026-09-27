@@ -41,6 +41,8 @@ const DEFAULT_CONFIG = {
 	"language": "tr",
 	"ui_animations": true,
 	"goal_max_rounds": 10,
+	# Her istekte önce plan (Ayarlar → Genel); kapalıyken plan yalnız /plan ile.
+	"planning_mode": false,
 	"cached_models": ["all", "free"],
 	# İzin ve Güvenlik Ayarları
 	"require_delete_approval": true,

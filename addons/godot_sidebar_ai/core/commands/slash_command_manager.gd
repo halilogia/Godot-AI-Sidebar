@@ -318,6 +318,15 @@ static func _init_default_commands() -> void:
 		Callable(AISidebarSlashCommandManager, "_handle_goal")
 	)
 
+	# 12b. /plan
+	register_command(
+		"plan",
+		"Önce plan: ajan projeyi inceler, gerekirse soru sorar ve uygulamadan önce onayına bir plan sunar.",
+		"/plan <istek>",
+		AISidebarPermissionPolicy.RiskLevel.READ_ONLY,
+		Callable(AISidebarSlashCommandManager, "_handle_plan")
+	)
+
 	# 13. /bug
 	register_command(
 		"bug",
@@ -399,6 +408,12 @@ static func _handle_help(_args: String, _context: Dictionary) -> Dictionary:
 ## Temizliği ChatDock yapar (Clear butonu yolu); komut yalnızca niyeti bildirir, yanıt balonu yok.
 static func _handle_clear(_args: String, _context: Dictionary) -> Dictionary:
 	return {"action": "clear_chat"}
+
+static func _handle_plan(args: String, _context: Dictionary) -> Dictionary:
+	var request := args.strip_edges()
+	if request.is_empty():
+		return {"action": "local_response", "message": AISidebarI18n.get_text("plan_usage_hint")}
+	return {"action": "run_agent", "prompt": request}
 
 static func _handle_bug(_args: String, _context: Dictionary) -> Dictionary:
 	return {"action": "bug_report"}

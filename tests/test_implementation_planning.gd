@@ -85,49 +85,29 @@ static func run() -> Dictionary:
 	AISidebarPermissionPolicy.set_auto_approve_mode(AISidebarPermissionPolicy.AutoApproveMode.MANUAL)
 	_cleanup_probe_file()
 
-	# --- Kapsam Sınıflandırıcı (deterministik, LLM'siz) ---
-	var plan_required = [
-		"Bir hexagon map sistemi oluştur.",
-		"Oyuncu ve inventory sistemi oluştur",
-		"Enemy AI ekle",
-		"Quest sistemi oluştur",
-		"Main menu yap",
-		"Save/load sistemi ekle",
-		"Procedural dungeon generator oluştur",
-		"Create a playable hex grid/map system"
-	]
-	var plan_forbidden = [
-		"Player'ın speed değerini 300 yap",
-		"health değerini 100 yap.",
-		"Projenin ana sahnesinin adını söyle",
-		"Selam"
-	]
-
-	# Test 1: Buyuk/kapsamli istekler plan GEREKTIRIR
-	var classifier_ok = true
-	var classifier_err = ""
-	for p in plan_required:
-		if not AISidebarPlanningPolicy.should_plan(p):
-			classifier_ok = false
-			classifier_err = "Plan gerekli ama should_plan=false: " + p
-	if classifier_ok:
+	# --- Plan yalnız istenince (Antigravity gibi): kelimeye bakılmaz ---
+	# Test 1: "sistem oluştur" gibi bir istek bile kendiliğinden plan açmaz.
+	var mock_a = MockPlanProvider.new()
+	var runner_a = AISidebarAgentRunner.new(mock_a, AISidebarAgentContext.new())
+	mock_a.response_queue = [{"content": "tamam", "tool_calls": []}]
+	runner_a.start_task("Oyuncu ve inventory sistemi oluştur")
+	if not runner_a._plan_phase_active:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 1 (large_request_requires_plan) failed: " + classifier_err)
+		errors.append("Test 1 (no plan unless requested) failed")
 
-	# Test 2: Trivial/tekil istekler plan GEREKTIRMEZ (planning threshold)
-	var skip_ok = true
-	var skip_err = ""
-	for p in plan_forbidden:
-		if AISidebarPlanningPolicy.should_plan(p):
-			skip_ok = false
-			skip_err = "Plan gereksiz ama should_plan=true: " + p
-	if skip_ok:
+	# Test 2: plan_next_task tek seferlik; istenince plan açılır ve bayrak sıfırlanır.
+	var mock_b = MockPlanProvider.new()
+	var runner_b = AISidebarAgentRunner.new(mock_b, AISidebarAgentContext.new())
+	mock_b.response_queue = [{"tool_calls": [{"id": "pb", "name": "propose_plan", "arguments": _valid_plan_args()}]}]
+	runner_b.plan_next_task = true
+	runner_b.start_task("Selam")
+	if runner_b._plan_phase_active and not runner_b.plan_next_task:
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test 2 (trivial_request_skips_plan) failed: " + skip_err)
+		errors.append("Test 2 (plan on request, one-shot flag) failed")
 
 	# --- SENARYO 1: Buyuk istek -> plan olusturulur (propose_plan intercept) ---
 	var mock1 = MockPlanProvider.new()
@@ -145,6 +125,7 @@ static func run() -> Dictionary:
 		{"tool_calls": [{"id": "p1", "name": "propose_plan", "arguments": _valid_plan_args()}]},
 		{"content": "onaylandi", "tool_calls": []}
 	]
+	runner1.plan_next_task = true
 	runner1.start_task("Bir hexagon map sistemi oluştur.")
 
 	var is_waiting_plan = (runner1.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_PLAN_APPROVAL)
@@ -191,6 +172,7 @@ static func run() -> Dictionary:
 			"file_path": GUARD_PROBE_PATH, "content": "extends Node\n"}}]},
 		{"content": "tamam", "tool_calls": []}
 	]
+	runner4.plan_next_task = true
 	runner4.start_task("Bir inventory sistemi oluştur.")  # plan fazi aktif
 
 	var blocked_in_ctx = false
@@ -232,6 +214,7 @@ static func run() -> Dictionary:
 		{"tool_calls": [{"id": "m8", "name": "create_or_update_script", "arguments": {
 			"file_path": GUARD_PROBE_PATH, "content": "extends Node\n"}}]}
 	]
+	runner8.plan_next_task = true
 	runner8.start_task("Bir quest sistemi oluştur.")
 	var was_waiting = (runner8.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_PLAN_APPROVAL)
 	runner8.reject_plan()
@@ -266,6 +249,7 @@ static func run() -> Dictionary:
 			"question": "Hangisini istiyorsunuz?",
 			"options": ["Tek hexagon objesi", "Oynanabilir hex grid", "Procedural hex map generator"]}}]}
 	]
+	runner2.plan_next_task = true
 	runner2.start_task("Bir hexagon map sistemi oluştur.")
 
 	var clar_state_ok = (runner2.current_state == AISidebarAgentRunner.AgentState.WAITING_FOR_CLARIFICATION)
@@ -366,6 +350,7 @@ static func run() -> Dictionary:
 	var runner17 = AISidebarAgentRunner.new(mock17, ctx17)
 	runner17.enable_planning_gate = false
 	mock17.response_queue = [{"content": "yapildi", "tool_calls": []}]
+	runner17.plan_next_task = true
 	runner17.start_task("Bir inventory sistemi oluştur.")  # normalde plan gerektirir
 	if not runner17._plan_phase_active and (runner17.current_state == AISidebarAgentRunner.AgentState.IDLE or runner17.current_state == AISidebarAgentRunner.AgentState.COMPLETED):
 		passed += 1
@@ -432,6 +417,7 @@ static func run() -> Dictionary:
 	var ctx21 = AISidebarAgentContext.new()
 	var runner21 = AISidebarAgentRunner.new(mock21, ctx21)
 	mock21.response_queue = [{"tool_calls": [{"id": "p21", "name": "propose_plan", "arguments": _valid_plan_args()}]}]
+	runner21.plan_next_task = true
 	runner21.start_task("Bir save/load sistemi ekle")
 	runner21.stop()
 	if runner21.current_state == AISidebarAgentRunner.AgentState.IDLE and runner21.pending.plan == null and not runner21._plan_phase_active:
@@ -451,6 +437,7 @@ static func run() -> Dictionary:
 			"files": [{"file_path": GUARD_PROBE_PATH, "content": "extends Node\n"}]}}]},
 		{"content": "tamam", "tool_calls": []}
 	]
+	runner22.plan_next_task = true
 	runner22.start_task("Bir save/load sistemi ekle")
 	var probe_absent = not FileAccess.file_exists(GUARD_PROBE_PATH)
 	if runner22.telemetry.file_ops_count == 0 and runner22.telemetry.tool_calls_count == 1 and probe_absent:

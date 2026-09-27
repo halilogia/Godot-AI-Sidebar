@@ -104,6 +104,7 @@ Type `/` in the box to open the list; move with ↑ ↓ and complete with Enter 
 | `/learn [--global] [rule]` | Saves a permanent rule (asks first). See [Rules](#10-rules). |
 | `/mcp [on \| off]` | Turns the external agent bridge on / off. See [MCP](#12-external-agent-bridge-mcp-and-claude-code). |
 | `/goal [goal \| stop]` | Goal mode. See [Goal mode](#9-goal-mode-goal). |
+| `/plan <request>` | Plan first: the agent inspects, asks if needed and shows a plan to approve before changing anything. For every request: Settings -> General -> Planning. |
 | `/bug` | Opens the bug report window. See [Troubleshooting](#14-troubleshooting). |
 
 ## 7. @ mentions

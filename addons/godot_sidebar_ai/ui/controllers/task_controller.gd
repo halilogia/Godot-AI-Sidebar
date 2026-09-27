@@ -6,6 +6,7 @@ extends Node
 ## task bitişi ve hata orkestrasyonu (oturum kaydı, telemetri kartı, görsel ekinin
 ## korunması, yeniden deneme). Görünüm sunumu presenter'larda; ChatDock bağlar.
 
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 const AISidebarTaskCheckpoint = preload("res://addons/godot_sidebar_ai/core/chat/task_checkpoint.gd")
 const AISidebarMentionManager = preload("res://addons/godot_sidebar_ai/core/chat/mention_manager.gd")
@@ -267,6 +268,8 @@ func start_task_prompt(prompt_text: String, display_prompt: String = "", vision_
 	var resolved_ctx = AISidebarMentionManager.resolve_prompt_context(prompt_text)
 	if context:
 		context.begin_task(prompt_text, final_display)
+	# Plan yalnız istenince: "/plan …" (kuyruktan gelse de görünen metin korunur) ya da Ayarlar seçeneği.
+	runner.plan_next_task = final_display.strip_edges().begins_with("/plan") or AISidebarConfig.load_config().get("planning_mode", false) == true
 	runner.start_task(resolved_ctx["augmented_prompt"], final_display, vision_inputs)
 
 func dispatch_next_queued() -> void:

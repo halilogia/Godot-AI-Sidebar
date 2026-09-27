@@ -104,6 +104,8 @@ var pending: AISidebarPendingInteraction = AISidebarPendingInteraction.new()
 ## execution davranisi birebir korunur (mevcut yurutme testleri bunu kullanir).
 var enable_planning_gate: bool = true
 var _plan_phase_active: bool = false
+## Bir sonraki görev önce plan ile başlasın (/plan ya da Ayarlar); start_task okuyup sıfırlar.
+var plan_next_task: bool = false
 var runtime_debugger: AISidebarRuntimeDebugger = null
 ## Oyunu bu runner mı başlattı? Stop yalnızca kendi başlattığı oyunu durdurur (bulgu #14);
 ## kullanıcının F5 ile açtığı veya başka runner'ın başlattığı oyun kapanmaz.
@@ -184,7 +186,8 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 
 	# Uygulama Planlama Kapisi: yalnizca orta/buyuk kapsamli isteklerde acilir.
 	# Kucuk/tekil isteklerde (or. "speed degerini 300 yap") eski hizli davranis korunur.
-	_plan_phase_active = enable_planning_gate and AISidebarPlanningPolicy.should_plan(user_prompt)
+	_plan_phase_active = enable_planning_gate and plan_next_task
+	plan_next_task = false
 	if _plan_phase_active:
 		print("[TIMING] %s | PLAN_PHASE_START | plan onayi gerekli" % get_ts())
 		context.add_user_message(AISidebarPlanningPolicy.build_plan_directive(user_prompt))

@@ -473,5 +473,11 @@
   "rewind_confirm_ok": "Geri dön",
   "rewind_cancel": "Vazgeç",
   "rewind_busy": "Ajan çalışırken geri dönülemez. Önce Durdur'a bas.",
-  "rewind_compacted": "Bu mesaj uzun sohbet yüzünden özetlendiği için artık ona geri dönülemez."
+  "rewind_compacted": "Bu mesaj uzun sohbet yüzünden özetlendiği için artık ona geri dönülemez.",
+  "cmd_desc_plan": "Önce plan: ajan projeyi inceler, gerekirse soru sorar ve uygulamadan önce onayına bir plan sunar.",
+  "cmd_usage_plan": "/plan <istek>",
+  "plan_usage_hint": "Ne planlanacağını yaz: ör. `/plan envanter sistemi ekle`.",
+  "settings_card_planning": "Planlama",
+  "settings_planning_mode": "Her istekte önce plan yap",
+  "settings_planning_hint": "Açıksa ajan her isteği uygulamadan önce inceleyip onayına bir plan sunar. Kapalıyken (önerilen) doğrudan işe başlar; tek bir istek için plan istersen /plan yaz."
 }

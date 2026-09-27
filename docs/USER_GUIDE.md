@@ -104,6 +104,7 @@ Kutuya `/` yazınca liste açılır; ↑ ↓ ile gezip Enter ya da Tab ile tamam
 | `/learn [--global] [kural]` | Kalıcı kural kaydeder (onay ister). Bkz. [Kurallar](#10-kurallar). |
 | `/mcp [on \| off]` | Dış ajan köprüsünü açar / kapatır. Bkz. [MCP](#12-dış-ajan-köprüsü-mcp-ve-claude-code). |
 | `/goal [hedef \| stop]` | Hedef modu. Bkz. [Hedef modu](#9-hedef-modu-goal). |
+| `/plan <istek>` | Önce plan: ajan inceler, gerekirse sorar ve uygulamadan önce onayına bir plan sunar. Her istekte plan için Ayarlar → Genel → Planlama. |
 | `/bug` | Hata bildirme penceresini açar. Bkz. [Sorun giderme](#14-sorun-giderme). |
 
 ## 7. @ bahsetmeleri

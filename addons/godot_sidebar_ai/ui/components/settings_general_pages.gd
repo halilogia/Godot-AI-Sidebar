@@ -40,6 +40,7 @@ var mode_opt: OptionButton
 var delete_check: CheckBox
 var overwrite_check: CheckBox
 var animations_check: CheckBox
+var planning_check: CheckBox
 ## Genel sayfasındaki "Hata bildir" düğmesi (Ayarlar penceresi bağlar).
 var on_bug_report: Callable = func() -> void: pass
 
@@ -146,6 +147,11 @@ func build_language_page() -> VBoxContainer:
 	appr.add_child(overwrite_check)
 	appr.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_approvals_hint")))
 
+	var plan := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_planning"), AISidebarI18n.get_text("settings_planning_hint"))
+	planning_check = CheckBox.new()
+	planning_check.text = AISidebarI18n.get_text("settings_planning_mode")
+	plan.add_child(planning_check)
+
 	var bug := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("bug_card_title"), AISidebarI18n.get_text("bug_card_hint"))
 	var bug_row := AISidebarSettingsUi.row(bug)
 	bug_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("bug_open"), func() -> void: on_bug_report.call()))
@@ -177,6 +183,7 @@ func load_from(cfg: Dictionary) -> void:
 	goal_rounds_spin.value = goal_rounds
 	lang_opt.selected = maxi(0, LANGUAGES.find(str(cfg.get("language", "tr"))))
 	animations_check.button_pressed = cfg.get("ui_animations", true) == true
+	planning_check.button_pressed = cfg.get("planning_mode", false) == true
 	mode_opt.selected = maxi(0, MODES.find(str(cfg.get("auto_approve_mode", "MANUAL"))))
 	delete_check.button_pressed = cfg.get("require_delete_approval", true) == true
 	overwrite_check.button_pressed = cfg.get("require_overwrite_approval", true) == true
@@ -196,6 +203,7 @@ func write_to(cfg: Dictionary) -> void:
 	cfg["goal_max_rounds"] = int(goal_rounds_spin.value)
 	cfg["language"] = LANGUAGES[lang_opt.selected]
 	cfg["ui_animations"] = animations_check.button_pressed
+	cfg["planning_mode"] = planning_check.button_pressed
 	AISidebarMotion.enabled = animations_check.button_pressed
 	cfg["auto_approve_mode"] = MODES[mode_opt.selected]
 	cfg["require_delete_approval"] = delete_check.button_pressed

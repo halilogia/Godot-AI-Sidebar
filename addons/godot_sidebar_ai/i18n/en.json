@@ -473,5 +473,11 @@
   "rewind_confirm_ok": "Go back",
   "rewind_cancel": "Cancel",
   "rewind_busy": "You can't go back while the agent is working. Press Stop first.",
-  "rewind_compacted": "This message was summarized because the chat got long, so you can no longer go back to it."
+  "rewind_compacted": "This message was summarized because the chat got long, so you can no longer go back to it.",
+  "cmd_desc_plan": "Plan first: the agent inspects the project, asks if needed and shows you a plan to approve before changing anything.",
+  "cmd_usage_plan": "/plan <request>",
+  "plan_usage_hint": "Write what to plan, e.g. `/plan add an inventory system`.",
+  "settings_card_planning": "Planning",
+  "settings_planning_mode": "Plan first for every request",
+  "settings_planning_hint": "When on, the agent inspects each request and shows you a plan to approve before changing anything. When off (recommended) it starts right away; type /plan for a plan on a single request."
 }
