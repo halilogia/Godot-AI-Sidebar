@@ -158,6 +158,10 @@ Tailwind'in Godot karşılığı: belirteçler → Godot `Theme` → adlı tip v
 - [x] **Premium onay kartı**, Ayarlar yeniden tasarımı, Yardım penceresi.
 - [x] **Görsel doğrulama altyapısı:** `tools/ui_shots.gd` (Ayarlar, Yardım, dock senaryoları; iki dil, geniş / dar, ölçek, açık tema; taşma denetimi), `tools/ui_snapshot.ps1` + `tools/ui_compare.gd` (sürüm arşivi ve yan yana karşılaştırma raporu), `take_editor_screenshot(region=sidebar)` ile gerçek editör görüntüsü (MCP).
 - [x] **Kalite testi:** `tests/test_ui_quality.gd` (sabit değer, tema dışı renk, sahnede geçersiz kılma, varyasyon tanımı, iki palet, kontrast, gerekçesiz `FOCUS_NONE`).
+- [x] **Editör duman testi:** `tools/editor_smoke.ps1` gerçek editörde paneli, temayı, Ayarlar'ı ve Yardım'ı denetler, gerçek görüntüleri kaydeder; kişisel config ve `project.godot` geri yüklenir.
+- [x] **Hata bildirme:** Yardım, Ayarlar → Genel ve `/bug`; yerel zip (ortam, maskeli ayarlar, sohbet kaydı, log, panel görüntüsü), hiçbir şey kendiliğinden gönderilmez.
+- [x] **Bağlam bütçesi:** yalnız sağlayıcının bildirdiği token sayılarıyla gösterge ve koruma (%80'de sıkıştırma, %95'te uyarı).
+- [x] **CI:** Linux'ta gizli klasör hatası düzeltildi (387cbf7'den beri kırmızıydı); başarısızlık satırları oturum açmadan okunabilen açıklama olarak basılır.
 - [ ] **Sonra:** gerçek editörde köprü ile uçtan uca görsel doğrulama; açılır kartlarda yükseklik animasyonu ve durum geçişleri; piksel karşılaştırmayı teste çevirmek yalnız ihtiyaç ölçülürse (şimdilik rapor).
 
 ---
