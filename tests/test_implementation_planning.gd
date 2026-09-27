@@ -291,12 +291,12 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test 11 (read_only_schema_filter) failed: leaks=" + str(leaks) + " count=" + str(names_ro.size()))
 
-	# --- Test 12: Normal modda (read_only_only=false) mutation araclari SUNULUR ---
+	# --- Test 12: Normal modda mutation araclari SUNULUR, plan araci SUNULMAZ (plan yalniz istenince) ---
 	var normal_schemas = AISidebarToolManager.get_relevant_schemas("inventory sistem oluştur", [], false)
 	var normal_names: Array = []
 	for s in normal_schemas:
 		normal_names.append(s.get("function", {}).get("name", ""))
-	if "create_or_update_script" in normal_names and "propose_plan" in normal_names:
+	if "create_or_update_script" in normal_names and not "propose_plan" in normal_names:
 		passed += 1
 	else:
 		failed += 1

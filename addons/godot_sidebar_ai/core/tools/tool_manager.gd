@@ -111,9 +111,13 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	var active_tool_names: Dictionary = {}
 	
 	# 1. Çekirdek Araçlar (Core Discovery, Clarification, Planning & Inspection - Daima Erişilebilir)
-	var core_tools = ["search_tools", "ask_user", "propose_plan", "analyze_project", "read_script", "activate_skill"]
+	var core_tools = ["search_tools", "ask_user", "analyze_project", "read_script", "activate_skill"]
 	for ct in core_tools:
 		active_tool_names[ct] = true
+	# Plan aracı yalnız plan istenince (/plan ya da plan modu = read_only_only) sunulur; normal istekte
+	# model büyük bir işi kendiliğinden plana çevirmesin.
+	if read_only_only:
+		active_tool_names["propose_plan"] = true
 		
 	# 2. Kategori Anahtar Kelimeleri & Niyet Ayrımı
 	var vision_keywords = [
