@@ -23,6 +23,7 @@ const UI_KEYS := {
 	"system_prompt": "Settings > Rules > Built-in rules (system prompt)",
 	"language": "Settings > General",
 	"ui_animations": "Settings > General > Appearance",
+	"notifications": "Settings > General > Appearance (taskbar alert when the agent needs you or finishes)",
 	"auto_approve_mode": "Settings > General; approval mode button in the model bar",
 	"require_delete_approval": "Settings > General",
 	"require_overwrite_approval": "Settings > General",

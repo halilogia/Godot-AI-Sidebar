@@ -39,6 +39,7 @@ var mode_opt: OptionButton
 var delete_check: CheckBox
 var overwrite_check: CheckBox
 var animations_check: CheckBox
+var notifications_check: CheckBox
 var planning_check: CheckBox
 ## Genel sayfasındaki "Hata bildir" düğmesi (Ayarlar penceresi bağlar).
 var on_bug_report: Callable = func() -> void: pass
@@ -123,6 +124,10 @@ func build_language_page() -> VBoxContainer:
 	animations_check.text = AISidebarI18n.get_text("settings_ui_animations")
 	look.add_child(animations_check)
 	look.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_ui_animations_hint")))
+	notifications_check = CheckBox.new()
+	notifications_check.text = AISidebarI18n.get_text("settings_notifications")
+	look.add_child(notifications_check)
+	look.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_notifications_hint")))
 
 	var appr := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_approval"), AISidebarI18n.get_text("hint_approval_mode"))
 	mode_opt = AISidebarSettingsUi.option_button()
@@ -172,6 +177,7 @@ func load_from(cfg: Dictionary) -> void:
 	goal_rounds_spin.value = goal_rounds
 	lang_opt.selected = maxi(0, LANGUAGES.find(str(cfg.get("language", "tr"))))
 	animations_check.button_pressed = cfg.get("ui_animations", true) == true
+	notifications_check.button_pressed = cfg.get("notifications", true) == true
 	planning_check.button_pressed = cfg.get("planning_mode", false) == true
 	mode_opt.selected = maxi(0, MODES.find(str(cfg.get("auto_approve_mode", "MANUAL"))))
 	delete_check.button_pressed = cfg.get("require_delete_approval", true) == true
@@ -189,6 +195,7 @@ func write_to(cfg: Dictionary) -> void:
 	cfg["goal_max_rounds"] = int(goal_rounds_spin.value)
 	cfg["language"] = LANGUAGES[lang_opt.selected]
 	cfg["ui_animations"] = animations_check.button_pressed
+	cfg["notifications"] = notifications_check.button_pressed
 	cfg["planning_mode"] = planning_check.button_pressed
 	AISidebarMotion.enabled = animations_check.button_pressed
 	cfg["auto_approve_mode"] = MODES[mode_opt.selected]

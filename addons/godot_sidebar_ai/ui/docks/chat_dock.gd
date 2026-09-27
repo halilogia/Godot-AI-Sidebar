@@ -35,6 +35,7 @@ const AISidebarGoalController = preload("res://addons/godot_sidebar_ai/ui/contro
 const AISidebarGoalBanner = preload("res://addons/godot_sidebar_ai/ui/components/goal_banner.gd")
 const AISidebarContextMeter = preload("res://addons/godot_sidebar_ai/ui/components/context_meter.gd")
 const AISidebarRewindController = preload("res://addons/godot_sidebar_ai/ui/controllers/rewind_controller.gd")
+const AISidebarNotifier = preload("res://addons/godot_sidebar_ai/ui/controllers/notifier.gd")
 const AISidebarMessageBubble = preload("res://addons/godot_sidebar_ai/ui/components/message_bubble.gd")
 const AISidebarHelpDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/help_dialog.gd")
 const AISidebarSkillsPanel = preload("res://addons/godot_sidebar_ai/ui/components/skills_panel.gd")
@@ -94,6 +95,8 @@ var context_meter: AISidebarContextMeter = AISidebarContextMeter.new()
 var _last_provider_type: String = ""
 ## Kullanıcı mesajına geri dönüş ("Buraya geri dön").
 var rewind: AISidebarRewindController = AISidebarRewindController.new()
+## Editör arka plandayken soru / onay / bitişte görev çubuğu uyarısı.
+var notifier: AISidebarNotifier = AISidebarNotifier.new()
 ## Giriş alanı davranışı (klavye, autocomplete, görsel eki); _ready'de kurulur.
 var composer: AISidebarInputComposer = null
 ## Cevap akışı, thinking/reasoning kartları ve bekleme rozeti; _ready'de kurulur.
@@ -342,6 +345,13 @@ func _connect_agent_runner() -> void:
 	agent_runner.debugging_started.connect(activity.on_debugging_started)
 	agent_runner.error_occurred.connect(tasks.on_error)
 	agent_runner.task_completed.connect(tasks.on_task_completed)
+	agent_runner.clarification_requested.connect(func(_q: String, _o: Array, _id: String) -> void: notifier.notify("question"))
+	agent_runner.approval_requested.connect(func(_t: String, _a: Dictionary, _c: Variant) -> void: notifier.notify("approval"))
+	agent_runner.plan_proposed.connect(func(_p: Variant) -> void: notifier.notify("plan"))
+	agent_runner.task_completed.connect(func(_m: Dictionary) -> void: notifier.notify("done"))
+	agent_runner.error_occurred.connect(func(_e: String) -> void: notifier.notify("error"))
+	if notifier.get_parent() == null:
+		add_child(notifier)
 	agent_runner.step_progress.connect(activity.on_step_progress)
 
 func _setup_history_panel() -> void:

@@ -483,5 +483,7 @@
   "mode_build": "Build",
   "mode_plan": "Plan",
   "mode_build_desc": "Build mode: the agent splits big work into stages itself and does it. Click for Plan mode (/plan for one request).",
-  "mode_plan_desc": "Plan mode: the agent inspects first, shows a plan and waits for your approval. Click for Build mode."
+  "mode_plan_desc": "Plan mode: the agent inspects first, shows a plan and waits for your approval. Click for Build mode.",
+  "settings_notifications": "Notifications",
+  "settings_notifications_hint": "While you are in another window, the Godot icon in the taskbar flashes when the agent asks something, waits for approval or finishes. No alert while you are looking at the editor."
 }

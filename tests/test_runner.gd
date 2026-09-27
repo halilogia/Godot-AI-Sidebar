@@ -112,6 +112,7 @@ const TestContextBudget = preload("res://tests/test_context_budget.gd")
 const TestProjectValidator = preload("res://tests/test_project_validator.gd")
 const TestRewind = preload("res://tests/test_rewind.gd")
 const TestApiTools = preload("res://tests/test_api_tools.gd")
+const TestNotifier = preload("res://tests/test_notifier.gd")
 const TestEditorScreenshot = preload("res://tests/test_editor_screenshot.gd")
 const TestConfigSafety = preload("res://tests/test_config_safety.gd")
 
@@ -282,6 +283,7 @@ func _init() -> void:
 		TestProjectValidator,
 		TestRewind,
 		TestApiTools,
+		TestNotifier,
 		TestEditorScreenshot,
 		TestConfigSafety,
 		TestReasoningUI,
