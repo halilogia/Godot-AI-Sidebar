@@ -23,6 +23,10 @@ Thumbs.db
 
 # Addon user secrets / local config
 addons/godot_sidebar_ai/config.json
+addons/godot_sidebar_ai/config.json.bak
+addons/godot_sidebar_ai/config.json.corrupt
+addons/godot_sidebar_ai/config.json.tmp
+.test_config_backup/
 .env
 .env.*
 *.env

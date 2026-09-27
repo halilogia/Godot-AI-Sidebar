@@ -108,37 +108,60 @@ const TestUiQuality = preload("res://tests/test_ui_quality.gd")
 const TestGoal = preload("res://tests/test_goal.gd")
 const TestHelp = preload("res://tests/test_help.gd")
 const TestEditorScreenshot = preload("res://tests/test_editor_screenshot.gd")
+const TestConfigSafety = preload("res://tests/test_config_safety.gd")
 
-## Test izolasyonu: testler geliştiricinin kişisel config.json'unu (onay modu, dil, adım
-## sınırı…) görmez; CI'daki gibi config'siz (varsayılanlar: MANUAL, TR) koşar. Dosyanın
-## byte'ları koşu başında user:// altına yedeklenir ve sonunda birebir geri yazılır.
-## Koşu yarıda çökerse yedek kalır; bir sonraki koşu başlarken önce o geri yüklenir.
-const USER_CONFIG = "res://addons/godot_sidebar_ai/config.json"
-const USER_CONFIG_BACKUP = "user://test_runner_user_config.backup"
-
-static var _had_user_config := false
+## Test izolasyonu: testler geliştiricinin kişisel ayar dosyalarını (config.json ve yedekleri:
+## .bak / .corrupt / .tmp) görmez; CI'daki gibi ayarsız (varsayılanlar: MANUAL, TR) koşar. Dosyalar koşu
+## başında git'e girmeyen .test_config_backup/ klasörüne taşınır, sonunda bayt bayt geri konur; testlerin
+## yazdıkları silinir. Koşu yarıda çökerse klasör kalır; bir sonraki koşu başlarken önce o geri yüklenir.
+const USER_CONFIG_FILES: Array[String] = [
+	"res://addons/godot_sidebar_ai/config.json",
+	"res://addons/godot_sidebar_ai/config.json.bak",
+	"res://addons/godot_sidebar_ai/config.json.corrupt",
+	"res://addons/godot_sidebar_ai/config.json.tmp",
+]
+const CONFIG_BACKUP_DIR = "res://.test_config_backup"
+## Eski sürümün user:// yedeği (bir kez geri yüklenip kaldırılır).
+const LEGACY_BACKUP = "user://test_runner_user_config.backup"
 
 static func isolate_user_config() -> void:
-	if FileAccess.file_exists(USER_CONFIG_BACKUP):
+	if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(CONFIG_BACKUP_DIR)):
 		restore_user_config()
-	_had_user_config = FileAccess.file_exists(USER_CONFIG)
-	if _had_user_config:
-		var bytes := FileAccess.get_file_as_bytes(USER_CONFIG)
-		var f := FileAccess.open(USER_CONFIG_BACKUP, FileAccess.WRITE)
-		f.store_buffer(bytes)
-		f.close()
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_CONFIG))
+	if FileAccess.file_exists(LEGACY_BACKUP):
+		var legacy := FileAccess.get_file_as_bytes(LEGACY_BACKUP)
+		var lf := FileAccess.open(USER_CONFIG_FILES[0], FileAccess.WRITE)
+		lf.store_buffer(legacy)
+		lf.close()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(LEGACY_BACKUP))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CONFIG_BACKUP_DIR))
+	# Editör bu klasörü taramasın.
+	var gi := FileAccess.open(CONFIG_BACKUP_DIR.path_join(".gdignore"), FileAccess.WRITE)
+	gi.close()
+	for path: String in USER_CONFIG_FILES:
+		if FileAccess.file_exists(path):
+			var bytes := FileAccess.get_file_as_bytes(path)
+			var f := FileAccess.open(CONFIG_BACKUP_DIR.path_join(path.get_file()), FileAccess.WRITE)
+			f.store_buffer(bytes)
+			f.close()
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 static func restore_user_config() -> void:
-	if FileAccess.file_exists(USER_CONFIG_BACKUP):
-		var bytes := FileAccess.get_file_as_bytes(USER_CONFIG_BACKUP)
-		var f := FileAccess.open(USER_CONFIG, FileAccess.WRITE)
-		f.store_buffer(bytes)
-		f.close()
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_CONFIG_BACKUP))
-	elif FileAccess.file_exists(USER_CONFIG):
-		# Başta config yoktu; testlerin yazdığı dosya kalmasın.
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_CONFIG))
+	var backup_dir := ProjectSettings.globalize_path(CONFIG_BACKUP_DIR)
+	if not DirAccess.dir_exists_absolute(backup_dir):
+		return
+	for path: String in USER_CONFIG_FILES:
+		var saved := CONFIG_BACKUP_DIR.path_join(path.get_file())
+		if FileAccess.file_exists(saved):
+			var bytes := FileAccess.get_file_as_bytes(saved)
+			var f := FileAccess.open(path, FileAccess.WRITE)
+			f.store_buffer(bytes)
+			f.close()
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(saved))
+		elif FileAccess.file_exists(path):
+			# Başta bu dosya yoktu; testlerin yazdığı kalmasın.
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(CONFIG_BACKUP_DIR.path_join(".gdignore")))
+	DirAccess.remove_absolute(backup_dir)
 
 func _init() -> void:
 	print("==================================================")
@@ -250,6 +273,7 @@ func _init() -> void:
 		TestGoal,
 		TestHelp,
 		TestEditorScreenshot,
+		TestConfigSafety,
 		TestReasoningUI,
 		TestExportCoverage,
 		TestTypecheckGuard,

@@ -34,4 +34,5 @@ const UI_KEYS := {
 ## Kullanıcının düzenlemediği, sistemin tuttuğu anahtarlar.
 const INTERNAL_KEYS := {
 	"cached_models": "last model list fetched from the provider (Refresh in the model bar)",
+	"config_version": "format version of config.json; migrate() upgrades older files",
 }

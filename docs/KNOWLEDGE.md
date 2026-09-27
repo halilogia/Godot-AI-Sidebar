@@ -120,6 +120,12 @@ Ortam: Godot 4.7.2 GUI editör, boş bir oyun projesi (eklenti klasörü repoya 
 - **Animasyon görüntüleri kararsız yapar.** Saydamlık geçişi sürerken alınan görüntü her çalıştırmada farklıdır; görüntü araçları `ui_animations` kapalı çeker (aynı kodun iki arşivi 123/123 aynı çıkar).
 - **`Theme.has_font` ve editör ölçeği:** yazı boyları sabit piksel değil `AISidebarTheme.fs()` ile editör ölçeğiyle çarpılır; `EditorInterface.get_editor_scale()` `plugin.gd`'de okunur. SVG ikonlar ölçekle yeniden rasterleştirilir (import önbelleğine bağlı değil).
 
+## Ayar dosyası güvenliği (27.09)
+
+- `config.json` kişiseldir ve git dışıdır; kaybolursa önceden bütün ayarlar sessizce varsayılana dönüyordu (26.09'da yaşandı). Şimdi: güvenli yazma (`.tmp` → yerine koyma), her kayıttan önce son sağlam dosyanın `config.json.bak` kopyası, eksik / bozuk dosyada yedekten geri yükleme (`last_recovery`, panel bir kez bildirir; bozuk dosya `config.json.corrupt`), `config_version` + `migrate()`.
+- Sıfırlamak için `config.json` ve `config.json.bak` birlikte silinir (yalnız ana dosyayı silmek yedekten geri getirir).
+- Test çalıştırıcı bu dört dosyanın hepsini (`config.json`, `.bak`, `.corrupt`, `.tmp`) git dışı `.test_config_backup/` klasörüne alır ve sonunda bayt bayt geri koyar; yalnız ana dosyayı kenara almak yetmez (testler yedekten kişisel ayarı geri yüklerdi).
+
 ## İkon Sistemi (Lucide) ve Emoji Yasağı
 
 * UI'da emoji kullanılmaz; ikonlar `addons/godot_sidebar_ai/assets/icons/` altındaki Lucide SVG'leridir (ISC, `LICENSE` aynı klasörde). Yeni ikon: `lucide-static` paketinden aynı adla kopyalanır.

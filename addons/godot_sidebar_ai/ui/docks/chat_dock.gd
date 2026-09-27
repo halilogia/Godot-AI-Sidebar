@@ -4,6 +4,7 @@ extends Control
 ## Godot AI Sidebar - Profesyonel AI IDE Sohbet ve Orkestrasyon Paneli (SRP).
 ## Cursor / Claude Code tarzı doğal konuşma, katlanabilir aktivite kartları, diff ve geri alma sunar.
 
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarChangeSetDialog = preload("res://addons/godot_sidebar_ai/ui/dialogs/change_set_dialog.gd")
 const AISidebarAgentHost = preload("res://addons/godot_sidebar_ai/core/agent/agent_host.gd")
@@ -257,6 +258,18 @@ func _ready() -> void:
 	model_bar_controller.load_cached_models()
 	if agent_host and agent_host.has_provider():
 		agent_host.fetch_models()
+	_announce_config_recovery.call_deferred()
+
+## Ayar dosyası eksik ya da bozuk olup yedekten geri yüklendiyse bunu bir kez söyler.
+func _announce_config_recovery() -> void:
+	var recovery := AISidebarConfig.last_recovery
+	if recovery.is_empty():
+		return
+	AISidebarConfig.last_recovery = ""
+	if recovery == "restored_corrupt":
+		_post_assistant_message(AISidebarI18n.get_text("config_restored_corrupt"))
+	else:
+		_post_assistant_message(AISidebarI18n.get_text("config_restored_missing"))
 
 ## Ajan katmanını dock birimlerine bağlar: context ve runner presenter / controller'lara verilir,
 ## host'un model listesi ve hazırlık olayları ile runner sinyalleri dinlenir.

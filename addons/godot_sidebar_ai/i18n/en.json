@@ -350,5 +350,7 @@
   "approval_hint_delete_node": "The node is removed from the open scene; Ctrl+Z can undo it.",
   "approval_hint_edit": "Check it with View Diff before approving; the Changes card can undo it.",
   "approval_hint_add_rule": "The rule applies to every future task.",
-  "btn_approve_delete": "Delete"
+  "btn_approve_delete": "Delete",
+  "config_restored_missing": "**The settings file was missing** and was restored from the last backup (config.json.bak); your settings are kept. To reset on purpose, delete config.json and config.json.bak together.",
+  "config_restored_corrupt": "**The settings file was corrupt** and was restored from the last backup (config.json.bak); your settings are kept. The broken file is kept as config.json.corrupt for inspection."
 }

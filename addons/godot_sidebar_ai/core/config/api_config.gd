@@ -3,8 +3,24 @@ extends RefCounted
 class_name AISidebarConfig
 
 ## API Yapılandırması ve Kullanıcı Ayarları Yöneticisi (Persistence) (SRP).
+##
+## Ayar dosyası güvenliği:
+##   - Yazma güvenli: önce geçici dosyaya yazılır, sonra yerine konur (yarım yazılmış dosya kalmaz).
+##   - Her yazmadan önce son SAĞLAM dosya config.json.bak'a kopyalanır (bozuk dosya yedeği ezmez).
+##   - config.json eksik ya da bozuksa yedekten geri yüklenir (bozuk dosya config.json.corrupt olarak
+##     saklanır) ve last_recovery ile bildirilir; panel bunu kullanıcıya bir kez söyler.
+##   - config_version ve migrate(): eski sürümün ayar dosyası yeni biçime taşınır.
+##   Sıfırlamak için config.json ve config.json.bak birlikte silinir.
 
 const CONFIG_PATH = "res://addons/godot_sidebar_ai/config.json"
+const BACKUP_PATH = "res://addons/godot_sidebar_ai/config.json.bak"
+const CORRUPT_PATH = "res://addons/godot_sidebar_ai/config.json.corrupt"
+const TEMP_PATH = "res://addons/godot_sidebar_ai/config.json.tmp"
+## Ayar dosyası biçiminin sürümü; biçim değişince artırılır ve migrate() adımı eklenir.
+const CONFIG_VERSION := 1
+
+## Son yüklemede yapılan kurtarma ("" | "restored_missing" | "restored_corrupt"); panel okur ve sıfırlar.
+static var last_recovery: String = ""
 
 const DEFAULT_CONFIG = {
 	"provider_type": "antigravity_cli",
@@ -25,39 +41,69 @@ const DEFAULT_CONFIG = {
 	# İzin ve Güvenlik Ayarları
 	"require_delete_approval": true,
 	"require_overwrite_approval": true,
-	"auto_approve_mode": "MANUAL"
+	"auto_approve_mode": "MANUAL",
+	"config_version": CONFIG_VERSION
 }
 
 static func load_config() -> Dictionary:
-	if not FileAccess.file_exists(CONFIG_PATH):
-		return DEFAULT_CONFIG.duplicate(true)
-		
-	var file = FileAccess.open(CONFIG_PATH, FileAccess.READ)
-	if not file:
-		return DEFAULT_CONFIG.duplicate(true)
-		
-	var text = file.get_as_text()
-	file.close()
-	
-	var json = JSON.parse_string(text)
-	if json is Dictionary:
-		var cfg = DEFAULT_CONFIG.duplicate(true)
-		for k in json.keys():
-			cfg[k] = json[k]
-		return cfg
-		
-	return DEFAULT_CONFIG.duplicate(true)
+	var data: Variant = _read_json(CONFIG_PATH)
+	if data == null:
+		var main_exists := FileAccess.file_exists(CONFIG_PATH)
+		var backup: Variant = _read_json(BACKUP_PATH)
+		if backup == null:
+			return DEFAULT_CONFIG.duplicate(true)
+		# Ana dosya eksik ya da bozuk, yedek sağlam: yedekten geri yükle (bozuk dosya incelenmek üzere saklanır).
+		if main_exists:
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(CONFIG_PATH), ProjectSettings.globalize_path(CORRUPT_PATH))
+			last_recovery = "restored_corrupt"
+		else:
+			last_recovery = "restored_missing"
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(BACKUP_PATH), ProjectSettings.globalize_path(CONFIG_PATH))
+		push_warning("[Godot AI] config.json %s; son yedekten (config.json.bak) geri yüklendi." % ("bozuktu" if main_exists else "eksikti"))
+		data = backup
+	var loaded: Dictionary = data
+	var cfg: Dictionary = DEFAULT_CONFIG.duplicate(true)
+	for k: Variant in loaded.keys():
+		cfg[k] = loaded[k]
+	if not loaded.has("config_version"):
+		cfg["config_version"] = 0
+	return migrate(cfg)
+
+## Eski biçimdeki ayarları güncel biçime taşır (saf). Her biçim değişikliği bir adım ekler.
+static func migrate(cfg: Dictionary) -> Dictionary:
+	var version: int = cfg.get("config_version", 0)
+	if version < 1:
+		# v0 → v1: kaldırılan ayar; tek adım sınırı max_agent_steps (max_iterations aynı değeri izler).
+		cfg.erase("auto_safe_edits")
+		if cfg.has("max_iterations") and not cfg.has("max_agent_steps"):
+			cfg["max_agent_steps"] = cfg["max_iterations"]
+	cfg["config_version"] = CONFIG_VERSION
+	return cfg
 
 static func save_config(config: Dictionary) -> bool:
-	var dir_path = CONFIG_PATH.get_base_dir()
+	var dir_path := CONFIG_PATH.get_base_dir()
 	if not DirAccess.dir_exists_absolute(dir_path):
 		DirAccess.make_dir_recursive_absolute(dir_path)
-		
-	var file = FileAccess.open(CONFIG_PATH, FileAccess.WRITE)
-	if not file:
+	config["config_version"] = CONFIG_VERSION
+	# Son sağlam dosya yedeklenir; bozuk dosya yedeği ezmez.
+	if _read_json(CONFIG_PATH) != null:
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(CONFIG_PATH), ProjectSettings.globalize_path(BACKUP_PATH))
+	var tmp := FileAccess.open(TEMP_PATH, FileAccess.WRITE)
+	if not tmp:
 		return false
-		
-	var text = JSON.stringify(config, "\t")
-	file.store_string(text)
-	file.close()
-	return true
+	tmp.store_string(JSON.stringify(config, "\t"))
+	tmp.close()
+	var target := ProjectSettings.globalize_path(CONFIG_PATH)
+	if FileAccess.file_exists(CONFIG_PATH):
+		DirAccess.remove_absolute(target)
+	return DirAccess.rename_absolute(ProjectSettings.globalize_path(TEMP_PATH), target) == OK
+
+## JSON sözlüğü; dosya yoksa, okunamıyorsa ya da sözlük değilse null.
+static func _read_json(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		return null
+	var text := FileAccess.get_file_as_string(path)
+	if text.strip_edges().is_empty():
+		return null
+	var parsed: Variant = JSON.parse_string(text)
+	return parsed if parsed is Dictionary else null

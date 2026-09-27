@@ -350,5 +350,7 @@
   "approval_hint_delete_node": "Düğüm açık sahneden kaldırılır; Ctrl+Z ile geri alınabilir.",
   "approval_hint_edit": "Onaylamadan önce Farkı gör ile kontrol edebilirsiniz; Değişiklikler kartından geri alınabilir.",
   "approval_hint_add_rule": "Kural bundan sonraki bütün görevlerde uygulanır.",
-  "btn_approve_delete": "Sil"
+  "btn_approve_delete": "Sil",
+  "config_restored_missing": "**Ayar dosyası bulunamadı**, son yedekten (config.json.bak) geri yüklendi; ayarlarınız korunuyor. Bilinçli olarak sıfırlamak istediyseniz config.json ve config.json.bak dosyalarını birlikte silin.",
+  "config_restored_corrupt": "**Ayar dosyası bozuktu**, son yedekten (config.json.bak) geri yüklendi; ayarlarınız korunuyor. Bozuk dosya incelemek için config.json.corrupt olarak saklandı."
 }
