@@ -52,6 +52,10 @@ if (-not (Test-Path $ExamplesDir)) {
     Write-Host "Bilgi: 'examples' klasörü oluşturuldu." -ForegroundColor Yellow
 }
 
+# project.godot BOM'suz yazılır: [Text.Encoding]::UTF8 başa BOM koyar, Godot onu ilk anahtarın
+# parçası sayar ("ï»¿config_version"=5 satırı çıkar).
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+
 # Yardımcı Fonksiyon: project.godot içinde eklentiyi etkinleştir
 function Enable-PluginInProject([string]$ProjectGodotPath) {
     if (-not (Test-Path $ProjectGodotPath)) { return }
@@ -78,7 +82,7 @@ function Enable-PluginInProject([string]$ProjectGodotPath) {
         $content += "`n`n[editor_plugins]`n`nenabled=PackedStringArray(`"$pluginConfig`")`n"
     }
 
-    [System.IO.File]::WriteAllText($ProjectGodotPath, $content, [System.Text.Encoding]::UTF8)
+    [System.IO.File]::WriteAllText($ProjectGodotPath, $content, $Utf8NoBom)
     Write-Host "  [OK] Eklenti 'project.godot' içine eklendi ve etkinleştirildi." -ForegroundColor Green
 }
 
@@ -247,7 +251,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [editor_plugins]
 enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
 "@
-        [System.IO.File]::WriteAllText($newProjectGodot, $godotContent, [System.Text.Encoding]::UTF8)
+        [System.IO.File]::WriteAllText($newProjectGodot, $godotContent, $Utf8NoBom)
         Write-Host "Yeni proje oluşturuldu: $newProjectPath" -ForegroundColor Green
     }
     Sync-ToProject -TargetProjectPath $newProjectPath -UseJunction $Link
@@ -375,7 +379,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [editor_plugins]
 enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
 "@
-            [System.IO.File]::WriteAllText($newProjectGodot, $godotContent, [System.Text.Encoding]::UTF8)
+            [System.IO.File]::WriteAllText($newProjectGodot, $godotContent, $Utf8NoBom)
             Write-Host "Yeni proje oluşturuldu: $newProjectPath" -ForegroundColor Green
         }
         $targetProjects += $newProjectPath
