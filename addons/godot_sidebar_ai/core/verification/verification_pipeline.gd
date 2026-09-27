@@ -114,7 +114,7 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 		# olabilir: batch geçici bir aynaya yazılıp betik gerçekten derlenir.
 		# Böylece gerçek sözdizimi / üye hataları istisnaya saklanamaz.
 		if reload_err == ERR_PARSE_ERROR or reload_err == ERR_FILE_NOT_FOUND:
-			if _references_batch_file(source_code, file_path, batch_context) and _compile_with_batch_mirror(source_code, batch_context) == OK:
+			if _references_batch_file(source_code, file_path, batch_context) and _compile_with_batch_mirror(source_code, batch_context, file_path) == OK:
 				return {
 					"status": VerificationStatus.PASSED,
 					"success": true,
@@ -174,7 +174,7 @@ static func _res_path(p: String) -> String:
 const BATCH_MIRROR_ROOT = "user://ai_sidebar_verify"
 static var _mirror_seq: int = 0
 
-## Kaynak, kendisi dışındaki bir batch dosyasını tırnaklı yol olarak anıyor mu?
+## Kaynak, kendisi dışındaki bir batch dosyasını tırnaklı yol ya da class_name ile anıyor mu?
 static func _references_batch_file(source_code: String, file_path: String, batch_context: Dictionary) -> bool:
 	for bp in batch_context.keys():
 		var p = str(bp)
@@ -182,13 +182,56 @@ static func _references_batch_file(source_code: String, file_path: String, batch
 			continue
 		if ("\"" + p + "\"") in source_code or ("'" + p + "'") in source_code:
 			return true
+	var own := _class_name_of(source_code)
+	for cls: String in _batch_classes(batch_context).keys():
+		if cls != own and _mentions_identifier(source_code, cls):
+			return true
 	return false
+
+## Batch'teki .gd dosyalarının class_name → yol eşlemesi.
+static func _batch_classes(batch_context: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for bp in batch_context.keys():
+		var p = str(bp)
+		if not p.ends_with(".gd"):
+			continue
+		var cls := _class_name_of(str(batch_context[bp]))
+		if not cls.is_empty():
+			out[cls] = p
+	return out
+
+static func _class_name_of(source_code: String) -> String:
+	var re := RegEx.new()
+	re.compile("(?m)^class_name\\s+([A-Za-z_][A-Za-z0-9_]*)")
+	var m := re.search(source_code)
+	return "" if m == null else m.get_string(1)
+
+static func _mentions_identifier(source_code: String, ident: String) -> bool:
+	var re := RegEx.new()
+	re.compile("\\b" + ident + "\\b")
+	return re.search(source_code) != null
+
+## Aynadaki kopya: kendi class_name satırı yoruma çevrilir (global sınıfla çakışmasın), batch'teki
+## diğer sınıflar dosya sonuna aynaya preload eden sabitler olarak eklenir. Satır numaraları kaymaz.
+static func _mirror_source(text: String, batch_context: Dictionary, root: String) -> String:
+	var own := _class_name_of(text)
+	var out := text
+	if not own.is_empty():
+		var re := RegEx.new()
+		re.compile("(?m)^class_name\\s+" + own + "\\b")
+		out = re.sub(out, "#class_name " + own)
+	var consts := ""
+	var classes := _batch_classes(batch_context)
+	for cls: String in classes.keys():
+		if cls != own and _mentions_identifier(text, cls):
+			consts += "\nconst %s = preload(\"%s\")" % [cls, root + "/" + str(classes[cls]).trim_prefix("res://")]
+	return _rewrite_batch_paths(out, batch_context, root) + consts
 
 ## Batch dosyalarını geçici aynaya yazar, batch yollarını aynaya çevirip betiği
 ## derler, aynayı siler. Dönen değer derleme sonucudur.
-static func _compile_with_batch_mirror(source_code: String, batch_context: Dictionary) -> int:
+static func _compile_with_batch_mirror(source_code: String, batch_context: Dictionary, file_path: String = "") -> int:
 	_mirror_seq += 1
-	var root = BATCH_MIRROR_ROOT + "/%d_%d" % [Time.get_ticks_usec(), _mirror_seq]
+	var root: String = BATCH_MIRROR_ROOT + "/%d_%d" % [Time.get_ticks_usec(), _mirror_seq]
 	var written: Array = []
 	var err: int = OK
 	for bp in batch_context.keys():
@@ -201,12 +244,17 @@ static func _compile_with_batch_mirror(source_code: String, batch_context: Dicti
 		if f == null:
 			err = ERR_CANT_CREATE
 			break
-		f.store_string(_rewrite_batch_paths(str(batch_context[bp]), batch_context, root))
+		var text := str(batch_context[bp])
+		f.store_string(_mirror_source(text, batch_context, root) if p.ends_with(".gd") else _rewrite_batch_paths(text, batch_context, root))
 		f.close()
 		written.append(target)
 	if err == OK:
 		var mirrored = GDScript.new()
-		mirrored.source_code = _rewrite_batch_paths(source_code, batch_context, root)
+		mirrored.source_code = _mirror_source(source_code, batch_context, root)
+		# Betik aynadaki kendi yolunu alır: diğer kopyalar ona o yoldan (türüyle) başvurur, yolsuz betik
+		# "argument should be <ayna yolu>" der. Ayna geçici olduğu için önbellek kaydının değişmesi zararsız.
+		if batch_context.has(file_path) and str(file_path).begins_with("res://"):
+			mirrored.take_over_path(root + "/" + str(file_path).trim_prefix("res://"))
 		err = mirrored.reload()
 	for w in written:
 		DirAccess.remove_absolute(w)

@@ -117,9 +117,28 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test F Başarısız: batch bağımlılık istisnası: " + str(f_bad) + " mirror_left=" + str(mirror_left))
 
+	# Test G: aynı batch'te yeni class_name'lere başvuru (preload yok), karşılıklı başvuru dahil;
+	# gerçek üye hatası yine yakalanır. (Benchmark: GameData / Province / GameState batch'i reddediliyordu.)
+	var ga = "res://tests/temp_cls_g_data.gd"
+	var gb = "res://tests/temp_cls_g_state.gd"
+	var gc = "res://tests/temp_cls_g_ai.gd"
+	var g_data = "class_name TempClsGData\nextends RefCounted\nenum T { SEA, LAND }\nstatic func is_sea(t: int) -> bool:\n\treturn t == T.SEA\n"
+	var g_state = "class_name TempClsGState\nextends Node\nvar terrain: int = TempClsGData.T.LAND\nfunc tick() -> void:\n\tTempClsGAi.think(self)\n"
+	var g_ai_ok = "class_name TempClsGAi\nextends RefCounted\nstatic func think(s: TempClsGState) -> bool:\n\treturn TempClsGData.is_sea(s.terrain)\n"
+	var g_ai_bad = "class_name TempClsGAi\nextends RefCounted\nstatic func think(s: TempClsGState) -> bool:\n\treturn TempClsGData.nope(s.terrain)\n"
+	var g_ok = AISidebarVerificationPipeline.validate_batch_files([
+		{"file_path": ga, "content": g_data}, {"file_path": gb, "content": g_state}, {"file_path": gc, "content": g_ai_ok}])
+	var g_bad = AISidebarVerificationPipeline.validate_batch_files([
+		{"file_path": ga, "content": g_data}, {"file_path": gb, "content": g_state}, {"file_path": gc, "content": g_ai_bad}])
+	if g_ok.get("success", false) and not g_bad.get("success", false):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("Test G Başarısız: batch class_name bağımlılığı: ok=" + str(g_ok) + " bad=" + str(g_bad.get("success")))
+
 	# Temizlik
 	for p in [path_a_gd, path_b_tscn, path_c_tscn, path_bad_gd]:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(p)
-			
+
 	return {"name": "DependencyAwareBatchTests", "passed": passed, "failed": failed, "errors": errors}
