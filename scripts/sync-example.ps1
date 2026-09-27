@@ -102,6 +102,12 @@ function Sync-ToProject([string]$TargetProjectPath, [bool]$UseJunction = $false)
                 Write-Host "  [OK] Zaten junction bağlantısı mevcut." -ForegroundColor Green
             } else {
                 Write-Host "  [!] Mevcut fiziksel klasör kaldırılıyor ve junction oluşturuluyor..." -ForegroundColor Yellow
+                $oldCfg = Join-Path $targetPluginDir "config.json"
+                if (Test-Path $oldCfg) {
+                    $bak = Join-Path $TargetProjectPath "godot_sidebar_ai_config_backup.json"
+                    Copy-Item $oldCfg $bak -Force
+                    Write-Host "  [YEDEK] Kopyadaki config.json -> $bak" -ForegroundColor Gray
+                }
                 Remove-Item -Path $targetPluginDir -Recurse -Force
                 New-Item -ItemType Junction -Path $targetPluginDir -Target $SourceAddonDir | Out-Null
                 Write-Host "  [OK] Junction başarıyla bağlandı." -ForegroundColor Green
@@ -385,6 +391,15 @@ enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
         Write-Host "Geçersiz giriş!" -ForegroundColor Red
         exit 1
     }
+}
+
+# Menüden seçildiyse bağlantı türünü sor (varsayılan: canlı bağlantı, repo değişince proje de güncellenir).
+if (-not $PSBoundParameters.ContainsKey("Link") -and $targetProjects.Count -gt 0) {
+    Write-Host "`nBağlantı türü:" -ForegroundColor White
+    Write-Host "  [1] Canlı bağlantı (önerilen): eklenti her güncellemede kendiliğinden güncellenir" -ForegroundColor Cyan
+    Write-Host "  [2] Kopya: eklentinin şu anki hali kopyalanır, sonra güncellenmez" -ForegroundColor Gray
+    $linkChoice = Read-Host "Seçiminiz (Varsayılan: 1)"
+    $Link = ($linkChoice -ne "2")
 }
 
 # 5. Senkronizasyonu Çalıştır
