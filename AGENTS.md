@@ -65,9 +65,15 @@ Yeni bir özellik veya düzeltme yapıldığında tek komut koşulur; herhangi b
 # (-GodotPath > $env:GODOT_BIN > PATH > Masaüstü). Fail-closed: hata -> exit 1.
 powershell -ExecutionPolicy Bypass -File .\verify.ps1
 
+# Editör davranışı (EditorInterface, sahne yenileme, autoload, play_game, runtime köprüsü) değiştiyse:
+# gerçek editör entegrasyonunu da ekle (ekran gerekir; editör ve oyun penceresi açılır)
+powershell -ExecutionPolicy Bypass -File .\verify.ps1 -Editor
+
 # Ağ/provider davranışı değiştiyse: canlı 9Router testini de ekle (127.0.0.1:20128)
 powershell -ExecutionPolicy Bypass -File .\verify.ps1 -Live
 ```
+
+* **Testler gerçek biçimle yazılır:** araç sonucu gereken testte sonuç `AISidebarToolResult.ok()` / `err()` ile kurulur, elle `{status, result}` gibi uydurma sözlük yazılmaz (sıkıştırıcı böyle bozukken yeşil kaldı). `Engine.is_editor_hint()` arkasındaki kod headless testte hiç çalışmaz; onu `core/dev/editor_integration.gd` senaryosu sınar. Eşik ya da bağlam yönetimi değişikliği `tests/test_long_task.gd` ile uzun görevde denenir.
 
 * Ayrıntılı geliştirme akışı ve doğrulama matrisi: `docs/DEVELOPMENT.md`.
 * Test/dosya sayıları dokümanlara elle yazılmaz (hızla eskir); güncel sayı `verify.ps1` çıktısındadır.
