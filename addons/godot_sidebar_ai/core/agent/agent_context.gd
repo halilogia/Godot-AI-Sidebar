@@ -14,8 +14,13 @@ const AISidebarTaskTranscript = preload("res://addons/godot_sidebar_ai/core/chat
 const AISidebarRulesRegistry = preload("res://addons/godot_sidebar_ai/core/skills/rules_registry.gd")
 const AISidebarSkillRegistry = preload("res://addons/godot_sidebar_ai/core/skills/skill_registry.gd")
 
-## Sıkıştırmada korunan son mesaj sayısı.
+## Bütçe sıkıştırmasında (bağlam %80 dolu) korunan son mesaj sayısı.
 const COMPACT_KEEP := 6
+## Pencere boyu bilinmezse yedek sıkıştırma: bu kadar mesajı geçince son FALLBACK_KEEP kalır.
+## Asıl koruma bütçedir (compact_now); bu eşik düşük olursa ajan kendi yazdığı kodu unutur.
+const FALLBACK_COMPACT_AT := 120
+const FALLBACK_KEEP := 40
+const WRITE_TOOLS := ["write_files", "create_or_update_script", "replace_file_content", "create_scene"]
 const COMPACT_REQUESTS_HEADER := "Kullanıcının istekleri ve şartları (aynen korunur):"
 const COMPACT_REQUEST_MAX_CHARS := 600
 const COMPACT_REQUESTS_MAX := 12
@@ -192,7 +197,7 @@ func add_runtime_error_context(obs: AISidebarRuntimeObservation) -> void:
 
 ## Model API'sine gönderilmeden önce dinamik editör zeminlemesini (Grounding) ekler
 ## ve eski tool sonuçlarını token optimizasyonu için sıkıştırır (Context Compaction).
-func get_messages_for_api(keep_recent_tools: int = 2) -> Array:
+func get_messages_for_api(keep_recent_tools: int = AISidebarContextCompactor.KEEP_RECENT_TOOLS) -> Array:
 	var api_messages: Array = []
 	
 	# Dinamik Editör Durumu (Aktif Sahne, Seçili Düğüm, Açık Script)
@@ -220,7 +225,7 @@ func get_messages_for_api(keep_recent_tools: int = 2) -> Array:
 ## sıkıştırır; sıkıştıracak eski mesaj yoksa false.
 func compact_now() -> bool:
 	var before := messages
-	_auto_compact_if_needed(COMPACT_KEEP)
+	_auto_compact_if_needed(COMPACT_KEEP, COMPACT_KEEP)
 	return not is_same(before, messages)
 
 static func _role_of(m: Variant) -> String:
@@ -258,19 +263,56 @@ static func _user_requests(old_msgs: Array) -> PackedStringArray:
 		return trimmed
 	return out
 
+## Sıkıştırılan mesajlardaki başarılı yazım araçlarının yolları (önceki özetin listesi de taşınır).
+static func _written_files(old_msgs: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for m: Variant in old_msgs:
+		if not (m is Dictionary):
+			continue
+		var d: Dictionary = m
+		if _role_of(d) == "user":
+			var text := str(d.get("content", ""))
+			if text.begins_with("[ÖNCEKİ AJAN GÖREV ÖZETİ"):
+				var at := text.find("Bu görevde başarıyla yazılan dosyalar")
+				if at >= 0:
+					for line: String in text.substr(at).split("\n"):
+						if line.begins_with("- ") and not out.has(line.substr(2)):
+							out.append(line.substr(2))
+			continue
+		if _role_of(d) != "tool" or not WRITE_TOOLS.has(str(d.get("name", ""))):
+			continue
+		var json := JSON.new()
+		if json.parse(str(d.get("content", ""))) != OK or not (json.data is Dictionary):
+			continue
+		var parsed: Dictionary = json.data
+		var data_v: Variant = parsed.get("data", null)
+		if not bool(parsed.get("success", false)) or not (data_v is Dictionary):
+			continue
+		var data: Dictionary = data_v
+		var paths := PackedStringArray()
+		var listed: Variant = data.get("written_files", [])
+		if listed is Array:
+			for p: Variant in listed:
+				paths.append(str(p))
+		paths.append(str(data.get("file_path", "")))
+		for p: String in paths:
+			if not p.is_empty() and not out.has(p):
+				out.append(p)
+	return out
+
 ## Bağlam Şişmesini Önleyen Otomatik Sıkıştırma (Compaction)
-func _auto_compact_if_needed(max_msgs: int = 18) -> void:
+func _auto_compact_if_needed(max_msgs: int = FALLBACK_COMPACT_AT, keep: int = FALLBACK_KEEP) -> void:
 	if messages.size() <= max_msgs:
 		return
-		
+
 	# Kesim noktası bir araç sonucuna denk gelirse geri çekilir: araç sonucu, kendisini isteyen asistan
 	# mesajından (tool_calls) ayrılmaz (API yetim araç sonucunu reddeder).
-	var split: int = messages.size() - COMPACT_KEEP
+	var split: int = messages.size() - keep
 	while split > 0 and _role_of(messages[split]) == "tool":
 		split -= 1
 	if split <= 0:
 		return
-	var old_msgs = messages.slice(0, split)
+	var old_msgs: Array = messages.slice(0, split)
 	var recent_msgs = messages.slice(split)
 	
 	var summary_text = "[ÖNCEKİ AJAN GÖREV ÖZETİ (" + str(old_msgs.size()) + " adım)]: Kullanıcı istekleri ve araç çalıştırmaları işlendi. Son tamamlanan eylemler: " + ", ".join(recent_actions.slice(-4))
@@ -279,6 +321,10 @@ func _auto_compact_if_needed(max_msgs: int = 18) -> void:
 	var requests := _user_requests(old_msgs)
 	if not requests.is_empty():
 		summary_text += "\n" + COMPACT_REQUESTS_HEADER + "\n" + "\n".join(requests)
+	# Ajanın bu görevde diske yazdığı dosyalar: özetten sonra neyin var olduğunu yeniden keşfetmesin.
+	var written := _written_files(old_msgs)
+	if not written.is_empty():
+		summary_text += "\nBu görevde başarıyla yazılan dosyalar (diskte var; içerik için read_script):\n- " + "\n- ".join(written)
 
 	messages = [
 		{"role": "user", "content": summary_text}

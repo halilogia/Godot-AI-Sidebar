@@ -5,100 +5,142 @@ class_name AISidebarContextCompactor
 ## Context Window Optimizasyonu ve Tool Sonucu Sıkıştırıcı (SRP).
 ## Uzun görevlerde eski tool result ve gözlem verilerini yapılandırılmış 1-2 satırlık
 ## özetlere dönüştürerek token şişmesini önler; aktif adımdaki güncel veriyi korur.
+## Girdi AISidebarToolResult biçimidir: {success, data, error}.
+## Korunanlar: başarısız sonuçların hata metni (yazım gerçekleşmedi bilgisi kaybolmasın) ve her
+## dosyanın en son okunan içeriği (ajan aynı dosyayı tekrar tekrar okumasın).
 
 const MAX_UNCOMPACTED_CHARS: int = 350
+const MAX_ERROR_CHARS: int = 400
+## Tam detayda kalan son araç sonucu sayısı.
+const KEEP_RECENT_TOOLS: int = 12
+const READ_TOOLS := ["read_script", "read_files", "read_file"]
 
 ## Mesaj listesindeki eski tool sonuçlarını sıkıştırır.
-## keep_recent_tools: Tam detayda korunacak en son tool sonucu sayısı (varsayılan: 2).
-static func compact_messages(raw_messages: Array, keep_recent_tools: int = 2) -> Array:
+static func compact_messages(raw_messages: Array, keep_recent_tools: int = KEEP_RECENT_TOOLS) -> Array:
 	var compacted: Array = []
-	
-	# Tool mesajlarının indekslerini belirle
+
+	# Tool mesajlarının indekslerini ve her dosyanın son okunduğu mesajı belirle
 	var tool_indices: Array[int] = []
+	var last_read: Dictionary = {}
 	for i in range(raw_messages.size()):
 		var m = raw_messages[i]
 		if m is Dictionary and m.get("role") == "tool":
 			tool_indices.append(i)
-			
+			if READ_TOOLS.has(str(m.get("name", ""))):
+				var p := _read_path(str(m.get("content", "")))
+				if not p.is_empty():
+					last_read[p] = i
+
 	var cutoff_index = -1
 	if tool_indices.size() > keep_recent_tools:
 		var cutoff_pos = tool_indices.size() - keep_recent_tools
 		cutoff_index = tool_indices[cutoff_pos]
-		
+
 	for i in range(raw_messages.size()):
 		var msg = raw_messages[i].duplicate(true)
 		if msg is Dictionary and msg.get("role") == "tool":
 			# Eğer bu tool sonucu son keep_recent_tools içinde değilse sıkıştır
 			if cutoff_index != -1 and i < cutoff_index:
-				var tool_name = str(msg.get("name", ""))
+				var tool_name: String = str(msg.get("name", ""))
+				var content_str: String = str(msg.get("content", ""))
 				# Skill talimatları kalıcı yönergedir: sıkıştırılmaz (sessizce kaybolursa ajan yöntemi unutur).
-				if tool_name != "activate_skill":
-					var content_str = str(msg.get("content", ""))
+				var keep_full: bool = tool_name == "activate_skill"
+				if READ_TOOLS.has(tool_name):
+					var p := _read_path(content_str)
+					keep_full = not p.is_empty() and int(last_read.get(p, -1)) == i
+				if not keep_full:
 					msg["content"] = compact_tool_content(tool_name, content_str)
 		compacted.append(msg)
-		
+
 	return compacted
+
+## Okuma sonucunun dosya yolu (başarısızsa ya da yoksa "").
+static func _read_path(content_str: String) -> String:
+	# JSON.new().parse hata basmaz (parse_string JSON olmayan içerikte konsolu kirletir).
+	var json := JSON.new()
+	if json.parse(content_str) != OK:
+		return ""
+	if not (json.data is Dictionary):
+		return ""
+	var parsed: Dictionary = json.data
+	var data_v: Variant = parsed.get("data", null)
+	if not bool(parsed.get("success", false)) or not (data_v is Dictionary):
+		return ""
+	var data: Dictionary = data_v
+	return str(data.get("file_path", data.get("path", "")))
 
 ## Belirli bir aracın çıktı metnini analiz edip yapılandırılmış özete dönüştürür.
 static func compact_tool_content(tool_name: String, content_str: String) -> String:
 	if content_str.is_empty():
 		return content_str
-		
+
 	var json = JSON.new()
 	var parse_err = json.parse(content_str)
 	if parse_err != OK or not (json.data is Dictionary):
 		if content_str.length() > MAX_UNCOMPACTED_CHARS:
 			return content_str.left(MAX_UNCOMPACTED_CHARS) + "... [Truncated]"
 		return content_str
-		
+
 	var data: Dictionary = json.data
 	if data.get("is_compacted", false):
 		return content_str
-		
-	var status = data.get("status", "ok")
-	var res = data.get("result", {})
+
+	var success: bool = bool(data.get("success", false))
+	if not success:
+		var err_v: Variant = data.get("error", null)
+		var code := ""
+		var message := ""
+		if err_v is Dictionary:
+			var err: Dictionary = err_v
+			code = str(err.get("code", ""))
+			message = str(err.get("message", ""))
+		elif err_v != null:
+			message = str(err_v)
+		return JSON.stringify({
+			"success": false,
+			"is_compacted": true,
+			"summary": "BAŞARISIZ (%s): %s" % [code, message.left(MAX_ERROR_CHARS)]
+		})
+
+	var res: Dictionary = {}
+	var res_v: Variant = data.get("data", null)
+	if res_v is Dictionary:
+		res = res_v
 	var summary = ""
-	
+
 	match tool_name:
 		"analyze_project":
 			var p_name = res.get("project_name", "Godot Project")
-			var main_s = res.get("main_scene", "res://")
+			var main_s = res.get("main_scene", "")
 			var total_f = res.get("total_files", 0)
 			var sc_cnt = res.get("scenes_count", 0)
 			var scr_cnt = res.get("scripts_count", 0)
 			summary = "Proje: '%s', Ana Sahne: '%s', Toplam Dosya: %d (%d sahne, %d script)" % [p_name, main_s, total_f, sc_cnt, scr_cnt]
-			
+
 		"get_project_files":
 			var count = res.get("count", 0)
 			var path = res.get("path", "res://")
-			var files = res.get("files", [])
-			var samples: Array = []
-			for idx in range(mini(3, files.size())):
-				samples.append(str(files[idx]).get_file())
-			summary = "'%s' altında %d dosya listelendi (örn: %s...)" % [path, count, ", ".join(samples)]
-			
+			var files: Array = res.get("files", [])
+			summary = "'%s' altında %d dosya: %s" % [path, count, _path_list(files)]
+
 		"search_project_assets":
 			var q = res.get("query", "")
-			var count = res.get("count", 0)
-			var assets = res.get("assets", [])
-			var samples: Array = []
-			for idx in range(mini(3, assets.size())):
-				samples.append(str(assets[idx]).get_file())
-			summary = "'%s' araması için %d asset bulundu (%s)" % [q, count, ", ".join(samples)]
-			
+			var assets: Array = res.get("assets", [])
+			summary = "'%s' araması için %d asset: %s" % [q, assets.size(), _path_list(assets)]
+
 		"get_scene_tree", "inspect_node":
 			var root_name = res.get("root_name", res.get("node_name", "Node"))
 			var node_type = res.get("node_type", res.get("type", "Node"))
 			var node_count = res.get("node_count", 1)
 			summary = "Sahne Ağacı: '%s' (%s), %d düğüm incelendi" % [root_name, node_type, node_count]
-			
-		"read_script", "read_files", "get_node_info":
+
+		"read_script", "read_files", "read_file", "get_node_info":
 			var f_path = res.get("file_path", res.get("path", ""))
 			var lines_cnt = res.get("line_count", 0)
 			if lines_cnt == 0 and res.has("content"):
 				lines_cnt = str(res["content"]).split("\n").size()
-			summary = "Dosya okundu: '%s' (%d satır)" % [f_path, lines_cnt]
-			
+			summary = "Dosya okundu: '%s' (%d satır; aynı dosya daha sonra yeniden okunduğu için içerik burada kısaltıldı)" % [f_path, lines_cnt]
+
 		"get_runtime_errors":
 			var err_count = res.get("error_count", 0)
 			var errors = res.get("errors", [])
@@ -109,20 +151,34 @@ static func compact_tool_content(tool_name: String, content_str: String) -> Stri
 				var msg = str(e0.get("message", ""))
 				first_err = (f + ": " if not f.is_empty() else "") + msg
 			summary = "Runtime Hatası: %d adet tespit edildi (%s)" % [err_count, first_err.left(60)]
-			
-		"create_or_update_script", "replace_file_content", "write_files":
-			var f_path = res.get("file_path", "")
-			summary = "Dosya başarıyla güncellendi: '%s'" % [f_path]
-			
+
+		"create_or_update_script", "replace_file_content", "write_files", "create_scene":
+			var listed: Variant = res.get("written_files", [])
+			var paths: Array = listed if listed is Array else []
+			var f_path = str(res.get("file_path", ""))
+			if not f_path.is_empty() and not paths.has(f_path):
+				paths.append(f_path)
+			summary = "Diske yazıldı: %s" % [_path_list(paths)]
+
 		_:
 			if content_str.length() > MAX_UNCOMPACTED_CHARS:
 				summary = content_str.left(MAX_UNCOMPACTED_CHARS) + "..."
 			else:
 				return content_str
-				
+
 	var compacted_dict = {
-		"status": status,
+		"success": true,
 		"is_compacted": true,
 		"summary": summary
 	}
 	return JSON.stringify(compacted_dict)
+
+## Yol listesi özeti: tam yollar (klasör bilgisi kaybolmasın), çok uzunsa ilk 40.
+static func _path_list(paths: Array) -> String:
+	var shown := PackedStringArray()
+	for p: Variant in paths.slice(0, 40):
+		shown.append(str(p))
+	var text := ", ".join(shown)
+	if paths.size() > shown.size():
+		text += " … (+%d)" % (paths.size() - shown.size())
+	return text
