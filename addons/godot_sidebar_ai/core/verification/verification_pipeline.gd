@@ -120,6 +120,11 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 		# olabilir: batch geçici bir aynaya yazılıp betik gerçekten derlenir.
 		# Böylece gerçek sözdizimi / üye hataları istisnaya saklanamaz.
 		if reload_err == ERR_PARSE_ERROR or reload_err == ERR_FILE_NOT_FOUND:
+			# Diske yazılmış ama editörün sınıf kaydına henüz girmemiş class_name'ler (aynı adımda ya da
+			# bir önceki adımda yazılan dosya): tanımlayan dosyalar bağlama eklenir, ayna onları da görür.
+			var with_disk := _add_unregistered_classes(compile_errors, batch_context, file_path)
+			if with_disk.size() > batch_context.size():
+				batch_context = with_disk
 			if _references_batch_file(source_code, file_path, batch_context):
 				var mirror := _compile_with_batch_mirror(source_code, batch_context, file_path)
 				var mirror_code: int = mirror["code"]
@@ -201,6 +206,51 @@ static func _references_batch_file(source_code: String, file_path: String, batch
 		if cls != own and _mentions_identifier(source_code, cls):
 			return true
 	return false
+
+## Hatada çözülemeyen adlar ("Could not find type X", "Identifier X not declared") projede bir .gd'nin
+## class_name'i ise o dosya bağlama eklenir. Yalnız hata durumunda ve yalnız res:// (addons/ ve .godot/
+## hariç) taranır.
+static func _add_unregistered_classes(errors: Array, batch_context: Dictionary, file_path: String) -> Dictionary:
+	var re := RegEx.new()
+	re.compile("(?:Could not find type|Identifier) \"([A-Za-z_][A-Za-z0-9_]*)\"")
+	var wanted: Dictionary = {}
+	for e: Variant in errors:
+		var msg := str(e)
+		if e is Dictionary:
+			var ed: Dictionary = e
+			msg = str(ed.get("message", ""))
+		for m: RegExMatch in re.search_all(msg):
+			wanted[m.get_string(1)] = true
+	if wanted.is_empty():
+		return batch_context
+	var known := _batch_classes(batch_context)
+	for cls: String in known.keys():
+		wanted.erase(cls)
+	if wanted.is_empty():
+		return batch_context
+	var out := batch_context.duplicate()
+	var files: Array[String] = []
+	_collect_gd_files("res://", files)
+	for path: String in files:
+		if path == file_path or out.has(path):
+			continue
+		var text := FileAccess.get_file_as_string(path)
+		var cls := _class_name_of(text)
+		if wanted.has(cls):
+			out[path] = text
+			wanted.erase(cls)
+			if wanted.is_empty():
+				break
+	return out
+
+static func _collect_gd_files(dir: String, out: Array[String]) -> void:
+	for f: String in DirAccess.get_files_at(dir):
+		if f.ends_with(".gd"):
+			out.append(dir.path_join(f))
+	for d: String in DirAccess.get_directories_at(dir):
+		if d.begins_with(".") or (dir == "res://" and d == "addons"):
+			continue
+		_collect_gd_files(dir.path_join(d), out)
 
 ## Batch'teki .gd dosyalarının class_name → yol eşlemesi.
 static func _batch_classes(batch_context: Dictionary) -> Dictionary:

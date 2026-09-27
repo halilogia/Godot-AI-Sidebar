@@ -18,7 +18,7 @@ static func get_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": TOOL_NAME,
-			"description": "Returns the real API of a built-in Godot class from the running engine (ClassDB): inheritance chain, methods with argument and return types, properties, signals and constants. Use it before relying on any Godot class, method, property, signal or constant you are not sure about, instead of guessing. By default only the class's own members are listed; set include_inherited to add inherited ones, and filter to narrow by name. An unknown name returns similar class names.",
+			"description": "Returns the real API of a built-in Godot class from the running engine (ClassDB): inheritance chain, methods with argument and return types, properties, signals and constants. Look up only a specific member you genuinely doubt (a name that may have changed in Godot 4, e.g. TileMapLayer, Parallax2D) with filter; do not survey common classes (CharacterBody2D, Area2D, Node2D, Label) before writing code — a wrong member is reported by validation anyway. By default only the class's own members are listed; set include_inherited to add inherited ones, and filter to narrow by name. An unknown name returns similar class names.",
 			"parameters": {
 				"type": "object",
 				"properties": {

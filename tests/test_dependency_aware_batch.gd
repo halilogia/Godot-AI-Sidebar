@@ -142,7 +142,18 @@ static func run() -> Dictionary:
 	var real_reported: bool = not g_real.get("success", false) and g_real_msg.contains("undefined_thing") and not g_real_msg.contains("Could not find type")
 	if not real_reported:
 		errors.append("Test G: real error hidden: " + g_real_msg.left(200))
-	if real_reported and g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
+	# Diske yazılmış ama sınıf kaydına girmemiş class_name (benchmark: aynı adımda yazılan PlayerVisual).
+	var disk_cls := "res://tests/temp_disk_cls.gd"
+	var df := FileAccess.open(disk_cls, FileAccess.WRITE)
+	df.store_string("class_name TempDiskCls\nextends RefCounted\nfunc size() -> int:\n\treturn 3\n")
+	df.close()
+	var use_ok = AISidebarVerificationPipeline.validate_batch_files([{"file_path": "res://tests/temp_use_disk.gd", "content": "extends Node\nvar v: TempDiskCls\nfunc f() -> int:\n\treturn TempDiskCls.new().size()\n"}])
+	var use_bad = AISidebarVerificationPipeline.validate_batch_files([{"file_path": "res://tests/temp_use_disk.gd", "content": "extends Node\nfunc f() -> int:\n\treturn TempDiskCls.nope()\n"}])
+	DirAccess.remove_absolute(disk_cls)
+	var disk_ok: bool = use_ok.get("success", false) and not use_bad.get("success", false)
+	if not disk_ok:
+		errors.append("Test G: unregistered disk class: ok=%s bad=%s" % [str(use_ok.get("error", "")).left(160), use_bad.get("success")])
+	if disk_ok and real_reported and g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
 		passed += 1
 	else:
 		failed += 1
