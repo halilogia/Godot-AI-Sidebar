@@ -203,7 +203,22 @@ function Get-AllGodotProjects() {
         }
     }
 
-    return ,$list
+    # Not: "return ,$list" diziyi bir kez daha sarıyordu; birden çok proje menüde tek satır görünüyordu.
+    return $list
+}
+
+# Yardımcı Fonksiyon: Yeni projeyi Godot'nun proje yöneticisi listesine ekle (%APPDATA%\Godot\projects.cfg).
+# Godot yeni projeleri kendiliğinden bulmaz; yalnız bu listedekileri gösterir. Mevcut satırlara dokunulmaz.
+function Register-InGodotProjectManager([string]$ProjectPath) {
+    $godotDir = Join-Path $env:APPDATA "Godot"
+    if (-not (Test-Path $godotDir)) { return }
+    $cfg = Join-Path $godotDir "projects.cfg"
+    $key = "[" + ((Resolve-Path $ProjectPath).Path -replace '\\', '/') + "]"
+    $existing = if (Test-Path $cfg) { [System.IO.File]::ReadAllText($cfg, [System.Text.Encoding]::UTF8) } else { "" }
+    if ($existing.Contains($key)) { return }
+    $prefix = if ($existing.Length -gt 0 -and -not $existing.EndsWith("`n")) { "`n`n" } elseif ($existing.Length -gt 0) { "`n" } else { "" }
+    [System.IO.File]::AppendAllText($cfg, "$prefix$key`n`nfavorite=false`n", (New-Object System.Text.UTF8Encoding $false))
+    Write-Host "  [OK] Godot proje listesine eklendi (Proje Yöneticisini yeniden açınca görünür)." -ForegroundColor Green
 }
 
 # 3. Yeni Proje Oluşturma
@@ -229,12 +244,14 @@ enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
         Write-Host "Yeni proje oluşturuldu: $newProjectPath" -ForegroundColor Green
     }
     Sync-ToProject -TargetProjectPath $newProjectPath -UseJunction $Link
+    Register-InGodotProjectManager -ProjectPath $newProjectPath
     exit 0
 }
 
 # 4. Projeleri Tara ve Hedef Belirle
 $allProjects = @(Get-AllGodotProjects)
 $targetProjects = @()
+$registerNew = $null
 
 if ($All) {
     if ($allProjects.Count -eq 0) {
@@ -355,6 +372,7 @@ enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
             Write-Host "Yeni proje oluşturuldu: $newProjectPath" -ForegroundColor Green
         }
         $targetProjects += $newProjectPath
+        $registerNew = $newProjectPath
     } elseif ($choice -match '^\d+$') {
         $num = [int]$choice
         if ($indexedProjects.ContainsKey($num)) {
@@ -373,6 +391,7 @@ enabled=PackedStringArray("res://addons/godot_sidebar_ai/plugin.cfg")
 foreach ($proj in $targetProjects) {
     Sync-ToProject -TargetProjectPath $proj -UseJunction $Link
 }
+if ($registerNew) { Register-InGodotProjectManager -ProjectPath $registerNew }
 
 Write-Host "`n========================================================" -ForegroundColor Green
 Write-Host "İşlem tamamlandı!" -ForegroundColor Green
