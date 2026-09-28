@@ -107,7 +107,7 @@ func _watch(runner: AISidebarAgentRunner) -> void:
 	runner.state_changed.connect(func(_s: int, d: String) -> void: _live("state", {"text": d}))
 	runner.text_received.connect(func(role: String, t: String) -> void: _live("text", {"role": role, "text": t}))
 	runner.thinking_received.connect(func(t: String) -> void: _live("thinking", {"text": t}))
-	runner.tool_executing.connect(func(n: String, a: Dictionary) -> void: _live("tool", {"tool": n, "args": JSON.stringify(a)}))
+	runner.tool_executing.connect(func(n: String, a: Dictionary) -> void: _live("tool", {"tool": n, "paths": _paths_of(a), "args": JSON.stringify(a)}))
 	runner.tool_completed.connect(func(n: String, r: Dictionary) -> void:
 		var msg := str(r.get("message", ""))
 		var err_v: Variant = r.get("error", null)
@@ -117,6 +117,21 @@ func _watch(runner: AISidebarAgentRunner) -> void:
 		_live("result", {"tool": n, "ok": r.get("success") == true, "text": msg}))
 	runner.error_occurred.connect(func(m: String) -> void: _live("error", {"text": m}))
 	runner.runtime_observation_received.connect(func(o: Variant) -> void: _live("runtime", {"text": str(o)}))
+
+## Araç argümanındaki dosya yolları (args 600 karakterde kesilince batch'in içeriği görünmüyordu).
+static func _paths_of(args: Dictionary) -> String:
+	var out := PackedStringArray()
+	var files_v: Variant = args.get("files", null)
+	if files_v is Array:
+		var files: Array = files_v
+		for f: Variant in files:
+			if f is Dictionary:
+				var fd: Dictionary = f
+				out.append(str(fd.get("file_path", "")))
+	for key: String in ["file_path", "scene_path", "path", "node_path"]:
+		if args.has(key):
+			out.append(str(args[key]))
+	return ", ".join(out)
 
 func _live(kind: String, data: Dictionary) -> void:
 	var entry := {"t": Time.get_time_string_from_system(), "kind": kind}
