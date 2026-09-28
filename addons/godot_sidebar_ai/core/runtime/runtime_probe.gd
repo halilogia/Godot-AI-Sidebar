@@ -91,7 +91,8 @@ static func _component(v: Variant, key: String) -> Variant:
 
 ## Karşılaştırma: iki taraf da sayıysa sayı olarak; bool ile bool; yoksa metin olarak (== / !=).
 ## contains: metinde alt metin, dizide öğe, sözlükte anahtar.
-static func compare(actual: Variant, op: String, expected: Variant) -> bool:
+static func compare(actual: Variant, op: String, expected_raw: Variant) -> bool:
+	var expected: Variant = coerce_expected(actual, expected_raw)
 	if op == "contains":
 		if actual is String or actual is StringName:
 			return str(actual).contains(str(expected))
@@ -121,6 +122,17 @@ static func compare(actual: Variant, op: String, expected: Variant) -> bool:
 				return a <= e
 	var same := _equal(actual, expected)
 	return same if op == "==" else not same
+
+## Modeller değeri çoğunlukla metin yollar ("1", "true"): gerçek değer sayı ya da bool ise beklenen de
+## o türe çevrilir (yoksa `round >= "1"` hiçbir zaman sağlanmazdı).
+static func coerce_expected(actual: Variant, expected: Variant) -> Variant:
+	if expected is String:
+		var s: String = expected
+		if _is_number(actual) and s.strip_edges().is_valid_float():
+			return s.strip_edges().to_float()
+		if actual is bool and s.strip_edges().to_lower() in ["true", "false"]:
+			return s.strip_edges().to_lower() == "true"
+	return expected
 
 static func _equal(a: Variant, b: Variant) -> bool:
 	if _is_number(a) and _is_number(b):

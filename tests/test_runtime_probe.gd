@@ -41,6 +41,9 @@ static func run() -> Dictionary:
 	# R5 sayı karşılaştırması tür karışık (int / float) ve sayı olmayanla > yanlış
 	checks.append(["R5 compare types", AISidebarRuntimeProbe.compare(3, "==", 3.0) and not AISidebarRuntimeProbe.compare("a", ">", 1) and AISidebarRuntimeProbe.compare([1, "x"], "contains", "x")])
 
+	# R5b metin olarak gelen sayı / bool gerçek türe çevrilir
+	checks.append(["R5b string-typed expected values", AISidebarRuntimeProbe.compare(3, ">=", "1") and not AISidebarRuntimeProbe.compare(3, "<", "1") and AISidebarRuntimeProbe.compare(true, "==", "true") and AISidebarRuntimeProbe.compare(2.5, "==", "2.5") and AISidebarRuntimeProbe.compare("abc", "==", "abc") and not AISidebarRuntimeProbe.compare(0, "==", "abc")])
+
 	# R6 send_input steps: geriye uyumlu tek girdi + dizi + hatalı adım
 	var single := AISidebarRuntimeInputTools.build_spec({"kind": "action", "action": "jump", "hold_ms": 100})
 	var seq := AISidebarRuntimeInputTools.build_spec({"steps": [{"kind": "action", "action": "move_right", "hold_ms": 800}, {"kind": "wait", "wait_ms": 300}, {"kind": "key", "key": "Space"}]})

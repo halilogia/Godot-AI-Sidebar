@@ -122,7 +122,9 @@ func _input_and_wait() -> void:
 	var perf_data: Dictionary = perf.get("data", {}) if perf.get("data") is Dictionary else {}
 	var trace_data: Dictionary = trace.get("data", {}) if trace.get("data") is Dictionary else {}
 	var ns_err: Dictionary = no_signals.get("error", {}) if no_signals.get("error") is Dictionary else {}
-	var ok7: bool = _ok(perf) and int(perf_data.get("frames", 0)) > 0 and _ok(trace) and (trace_data.get("silent", []) as Array).has("visibility_changed") and ns_err.get("code") == "NO_SIGNALS"
+	var frames: int = perf_data.get("frames", 0)
+	var silent: Array = trace_data.get("silent", [])
+	var ok7: bool = _ok(perf) and frames > 0 and _ok(trace) and silent.has("visibility_changed") and ns_err.get("code") == "NO_SIGNALS"
 	_check.call("i7_performance_and_signal_trace", ok7, "perf=%s frames=%s trace=%s nosig=%s" % [perf.get("success"), perf_data.get("frames"), trace.get("success"), ns_err.get("code")])
 
 ## I6: oyun Engine.time_scale = 0 yapsa da (tur tabanlı oyun) send_input ve wait_for_runtime dönmeli;

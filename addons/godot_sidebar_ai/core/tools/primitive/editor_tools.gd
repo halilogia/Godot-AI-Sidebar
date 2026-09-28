@@ -550,7 +550,11 @@ static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 		return AISidebarToolResult.err("IMAGE_EMPTY", "Viewport görüntüsü boş.")
 	# Görünmeyen viewport (ör. betik düzenleyici açıkken 2D sekmesi) 2x2 boş doku verir: başarı sayılmaz.
 	if img.get_width() < 16 or img.get_height() < 16:
-		return AISidebarToolResult.err("VIEWPORT_NOT_VISIBLE", "The %s viewport is not visible (image %dx%d). Switch the editor to the 2D/3D view, or use take_runtime_screenshot / take_editor_screenshot." % [vp_type_str, img.get_width(), img.get_height()])
+		# Modelin editör görünümünü değiştirecek aracı yok (benchmark: 7 kez aynı hata): ilgili görünüm burada
+		# açılır; ilk kare çizilince ikinci çağrı görüntüyü alır.
+		var view := "3D" if vp_type_str == "3d" else "2D"
+		EditorInterface.set_main_screen_editor(view)
+		return AISidebarToolResult.err("VIEWPORT_NOT_VISIBLE", "The %s viewport was not visible (image %dx%d). The editor has just been switched to the %s view: call take_viewport_screenshot again (or use take_runtime_screenshot for the running game)." % [vp_type_str, img.get_width(), img.get_height(), view])
 
 	downscale_to_max(img, max_dim)
 
