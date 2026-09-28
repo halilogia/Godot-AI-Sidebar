@@ -7,12 +7,14 @@ extends Node
 ## plan onayı beklerse devam ettirilir. Görev bitince ya da zaman aşımında Everything export'u
 ## (<klasör>/export.md + export.json) ve result.json yazılır, editör kapanır.
 
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarChatExporter = preload("res://addons/godot_sidebar_ai/core/chat/chat_exporter.gd")
 const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/security/permission_policy.gd")
 const AISidebarAgentRunner = preload("res://addons/godot_sidebar_ai/core/agent/agent_runner.gd")
 
 const FLAG := "--ai-sidebar-bench="
 const TIMEOUT_FLAG := "--ai-sidebar-bench-timeout="
+const MODEL_FLAG := "--ai-sidebar-bench-model="
 const SETTLE_SEC := 8.0
 const POLL_SEC := 3.0
 const AUTO_ANSWER := "Soru sorma; en makul varsayımla devam et ve işi bitir."
@@ -76,6 +78,7 @@ func _run() -> void:
 		_finish("setup_failed", "prompt=%d runner=%s tasks=%s" % [prompt.length(), runner != null, tasks != null])
 		return
 	AISidebarPermissionPolicy.mode_override = AISidebarPermissionPolicy.AutoApproveMode.FULL_AUTO
+	_force_model()
 	runner.task_completed.connect(func(m: Dictionary) -> void: _completion = m, CONNECT_ONE_SHOT)
 	_watch(runner)
 	_started_msec = Time.get_ticks_msec()
@@ -99,6 +102,15 @@ func _run() -> void:
 			await _wait(1.0)
 			_finish("timeout", "%d s" % int(_timeout_sec))
 			return
+
+## -Model ile verilen model listede olmasa da seçili kalsın: model listesi çekilince editör seçimi ilk modele
+## çevirebilir; ajan her istekte config'ten okuduğu için açılıştan sonra yeniden yazmak yeter.
+func _force_model() -> void:
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with(MODEL_FLAG):
+			var cfg := AISidebarConfig.load_config()
+			cfg["selected_model"] = a.trim_prefix(MODEL_FLAG)
+			AISidebarConfig.save_config(cfg)
 
 ## Canlı izleme: ajanın her olayı <klasör>/live.jsonl'a bir satır olarak anında yazılır (tools/demo_bench.ps1
 ## izleyicisi ve geliştirici okur). Dosya her satırda açılıp kapanır: dışarıdan okuyan kilitlenmez.

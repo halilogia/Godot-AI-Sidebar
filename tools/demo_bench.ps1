@@ -78,6 +78,9 @@ $timeoutSec = $TimeoutMin * 60
 Write-Host "[demo_bench] $Project"
 Write-Host "[demo_bench] İstem: $Prompt (zaman aşımı $TimeoutMin dk)"
 $argsList = @("--path", "`"$Project`"", "--editor", "--", "`"--ai-sidebar-bench=$Out`"", "--ai-sidebar-bench-timeout=$timeoutSec")
+# Model 9Router'ın liste uç noktasında görünmese de (ör. oc/...) çağrılabilir: editör listeyi yenileyince
+# seçimi ilk modele çevirir; bench modeli açılıştan sonra kendisi yeniden yazar.
+if ($Model) { $argsList += "--ai-sidebar-bench-model=$Model" }
 $p = Start-Process -FilePath $GodotBin -ArgumentList $argsList -PassThru -RedirectStandardOutput $log -RedirectStandardError $errLog
 # Ajanın kendi zaman aşımı + kapanış payı.
 if (-not $p.WaitForExit(($timeoutSec + 180) * 1000)) {
