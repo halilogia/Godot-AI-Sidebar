@@ -11,6 +11,38 @@ class_name AISidebarCompletionPolicy
 ##   plan_approved: bool, mutations_done: bool, write_problems: String (derlenmeyen / yazılmamış dosyalar)
 ## Çıktı: {"verdict": "success"|"incomplete"|"failed", "reason": String}
 
+const WRITE_TOOLS := ["create_or_update_script", "replace_file_content", "write_files", "create_scene"]
+
+## Başarılı bir yazma, aynı dosyaya ait ÖNCEKİ başarısız YAZMALARI çözülmüş sayar (reddedilen replace_file_content'in
+## ardından dosya create_scene / create_or_update_script ile yazıldıysa iş düzelmiştir). Okuma vb. başarısızlıkları
+## yalnız aynı araçla düzelir (bilinçli sıkılık: test F). Sonda her zaman aynı-anahtar kaydı da silinir.
+static func clear_resolved(unrecovered: Dictionary, fkey: String, tool_name: String, args: Dictionary) -> void:
+	unrecovered.erase(fkey)
+	if not tool_name in WRITE_TOOLS:
+		return
+	var written: Array[String] = []
+	for k: String in ["file_path", "scene_path"]:
+		var v := str(args.get(k, "")).strip_edges()
+		if not v.is_empty():
+			written.append(v)
+	var files_v: Variant = args.get("files", null)
+	if files_v is Array:
+		var files: Array = files_v
+		for f: Variant in files:
+			if f is Dictionary:
+				var fd: Dictionary = f
+				written.append(str(fd.get("file_path", "")).strip_edges())
+	if written.is_empty():
+		return
+	for key: Variant in unrecovered.keys():
+		var parts := str(key).split("|", true, 1)
+		if parts.size() < 2 or not parts[0] in WRITE_TOOLS:
+			continue
+		for target: String in parts[1].split(","):
+			if not target.is_empty() and target in written:
+				unrecovered.erase(key)
+				break
+
 static func evaluate(s: Dictionary) -> Dictionary:
 	if bool(s.get("limit_hit", false)):
 		return {"verdict": "failed", "reason": "Step limit reached (" + str(s.get("steps_summary", "")) + ") before task completion."}

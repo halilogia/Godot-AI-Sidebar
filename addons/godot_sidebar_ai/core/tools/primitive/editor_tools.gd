@@ -261,7 +261,7 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen editör aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in ["inspect_runtime_tree", "inspect_runtime_node", "take_runtime_screenshot", "get_runtime_errors"]
+	return tool_name in ["inspect_runtime_tree", "inspect_runtime_node", "take_runtime_screenshot", "get_runtime_errors", "take_viewport_screenshot"]
 
 static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
 	match tool_name:
@@ -273,6 +273,8 @@ static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
 			return await _take_runtime_screenshot_async(args)
 		"get_runtime_errors":
 			return await _get_runtime_errors_async(args)
+		"take_viewport_screenshot":
+			return await _take_viewport_screenshot_async(args)
 		_:
 			return execute(tool_name, args)
 
@@ -514,6 +516,21 @@ static func _take_runtime_screenshot_async(args: Dictionary) -> Dictionary:
 	if img.load_png_from_buffer(raw) != OK:
 		return AISidebarToolResult.err("DECODE_FAILED", "Oyun görüntüsü çözümlenemedi.")
 	return AISidebarRuntimeDebugger.build_runtime_payload(path, img)
+
+## Görünmeyen viewport (betik düzenleyici açık): görünüm açılır, birkaç kare beklenir, tek kez yeniden denenir.
+## (Modelin görünümü değiştirme aracı yok: "tekrar çağır" demek çoğu zaman çözülmemiş bir başarısızlık bırakıyordu.)
+static func _take_viewport_screenshot_async(args: Dictionary) -> Dictionary:
+	var res := _take_viewport_screenshot(args)
+	var err: Dictionary = res["error"] if res.get("error") is Dictionary else {}
+	if str(err.get("code", "")) != "VIEWPORT_NOT_VISIBLE":
+		return res
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return res
+	for i in 3:
+		await tree.process_frame
+	await tree.create_timer(0.3).timeout
+	return _take_viewport_screenshot(args)
 
 static func _take_viewport_screenshot(args: Dictionary) -> Dictionary:
 	var path_check = resolve_screenshot_path(args.get("save_path", ""), "user://ai_viewport_snapshot.png")

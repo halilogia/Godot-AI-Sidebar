@@ -101,6 +101,24 @@ static func run() -> Dictionary:
 		errors.append("E (limit failed + needs-review UI) failed.")
 	card_e.queue_free()
 
+	# F2) reddedilen yazma, aynı dosyanın başka bir yazma aracıyla yazılmasıyla çözülür
+	var rec2 = "res://tests/temp_gate_rec2.gd"
+	if FileAccess.file_exists(rec2):
+		DirAccess.remove_absolute(rec2)
+	var f2 = _flow([
+		{"content": "", "tool_calls": [{"id": "g1", "name": "replace_file_content", "arguments": {"file_path": rec2, "target_code": "x", "replacement_code": "y"}}]},
+		{"content": "", "tool_calls": [{"id": "g2", "name": "create_or_update_script", "arguments": {"file_path": rec2, "content": "extends Node
+"}}]},
+		{"content": "Yama başarısız oldu, dosyayı baştan yazdım.", "tool_calls": []},
+	])
+	if bool(f2["metrics"].get("success", false)) and str(f2["metrics"].get("completion", "")) == "success":
+		passed += 1
+	else:
+		failed += 1
+		errors.append("F2 (rejected write recovered by another write tool) failed: " + str(f2["metrics"].get("completion", "?")) + " " + str(f2["metrics"].get("completion_reason", "")))
+	if FileAccess.file_exists(rec2):
+		DirAccess.remove_absolute(rec2)
+
 	# F) recovery: aynı iş retry ile düzelirse success (affetme kanıtı)
 	var rec_path = "res://tests/temp_gate_rec.gd"
 	if FileAccess.file_exists(rec_path):
