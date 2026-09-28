@@ -42,7 +42,7 @@ try {
     if ($godot) {
         $shot = Join-Path $Dest "screenshot.png"
         $ErrorActionPreference = "Continue"
-        & $godot --path $Project -s (Join-Path $PSScriptRoot "game_shot.gd") -- $shot 4 2>&1 | Out-Null
+        & $godot --path $Project -s (Join-Path $PSScriptRoot "game_shot.gd") -- $shot 1.5 2>&1 | Out-Null
         $ErrorActionPreference = "Stop"
     }
 } catch { Write-Host "[demo_library] ekran görüntüsü alınamadı: $_" -ForegroundColor Yellow }
