@@ -8,12 +8,15 @@ class_name AISidebarCompletionPolicy
 ## Girdi (runner'dan):
 ##   limit_hit: bool, steps_summary: String,
 ##   unrecovered: Dictionary (key -> {"tool": String, "deferred": bool}),
-##   plan_approved: bool, mutations_done: bool
+##   plan_approved: bool, mutations_done: bool, write_problems: String (derlenmeyen / yazılmamış dosyalar)
 ## Çıktı: {"verdict": "success"|"incomplete"|"failed", "reason": String}
 
 static func evaluate(s: Dictionary) -> Dictionary:
 	if bool(s.get("limit_hit", false)):
 		return {"verdict": "failed", "reason": "Step limit reached (" + str(s.get("steps_summary", "")) + ") before task completion."}
+	var write_problems := str(s.get("write_problems", ""))
+	if not write_problems.is_empty():
+		return {"verdict": "incomplete", "reason": "Unresolved file errors: " + write_problems}
 	var unrec: Variant = s.get("unrecovered", {})
 	if unrec is Dictionary and not (unrec as Dictionary).is_empty():
 		var failed_names: Array = []

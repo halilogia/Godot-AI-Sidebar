@@ -36,7 +36,8 @@ static func run() -> Dictionary:
 		script_names.append(s["function"]["name"])
 		
 	# 13: get_godot_class_info kod yazarken hazır olmalı (API uydurmasın).
-	if script_schemas.size() <= 13 and "create_or_update_script" in script_names and "validate_script" in script_names:
+	# 15: yazma kurtarması için file_info + search_code (dosya diskte mi / kod nerede) script kümesinde.
+	if script_schemas.size() <= 15 and "create_or_update_script" in script_names and "validate_script" in script_names:
 		passed += 1
 	else:
 		failed += 1

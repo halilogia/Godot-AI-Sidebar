@@ -50,17 +50,21 @@ static func run() -> Dictionary:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(p)
 			
-	# Test 2: İçinde 1 hatalı GDScript olan write_files hiçbir dosyayı yazmamalı (Atomik)
+	# Test 2: İçinde 1 sözdizimi hatalı GDScript olan write_files dosya dosya uygulanır: sağlam dosya
+	# yazılır, hatalı olan yazılmaz ve rejected_files'ta döner (tek bozuk dosya bütün batch'i silmez).
 	var broken_batch = [
 		{"file_path": file1, "content": "extends CharacterBody3D\nfunc _ready() -> void:\n\tpass\n"},
 		{"file_path": invalid_file, "content": "extends Node\nfunc _ready( -> syntax_error:\n"}
 	]
 	var res2 = AISidebarScriptTools.execute("write_files", {"files": broken_batch})
-	if not res2.get("success", false) and not FileAccess.file_exists(file1) and not FileAccess.file_exists(invalid_file):
+	var data2: Dictionary = res2.get("data", {}) if res2.get("data") is Dictionary else {}
+	if res2.get("success", false) and FileAccess.file_exists(file1) and not FileAccess.file_exists(invalid_file) and (data2.get("rejected_files", {}) as Dictionary).has(invalid_file):
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Hatalı dosya içeren write_files atomikliği koruyamadı!")
+		errors.append("Hatalı dosya içeren write_files dosya dosya uygulanmadı: " + str(res2))
+	if FileAccess.file_exists(file1):
+		DirAccess.remove_absolute(file1)
 		
 	# Test 3: Multi-file ChangeSet unified diff kontrolü
 	var cs = AISidebarChangeSet.new("res://player.gd", AISidebarChangeSet.ChangeType.MODIFY_FILE, "var speed = 8.0\n", "var speed = 5.0\n", "Player speed")

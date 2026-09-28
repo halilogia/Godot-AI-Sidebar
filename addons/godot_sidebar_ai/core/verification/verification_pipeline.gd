@@ -436,6 +436,76 @@ static func verify_script(file_path: String) -> Dictionary:
 	return validate_source(text, file_path)
 
 ## 3. Bağımlılık Duyarlı Toplu Dosya Doğrulaması (Dependency-Aware Batch Validator)
+## Yazımı engelleyen hata: kaynak ayrıştırılamıyor (sözdizimi) ya da GDScript dışı biçim (.tscn / .tres)
+## bozuk. Tanımsız ad, tip, üye ve bağımlılık hataları engellemez: dosya diske yazılır ve hata
+## raporlanır (sıralı yazımın ara durumu; ajan diskteki dosyayı düzeltir, sıfırdan üretmez).
+const SYNTAX_MARKERS := ["Expected", "Unexpected", "indent", "Unterminated", "Unclosed", "Mixed use of tabs", "Invalid character"]
+
+static func blocks_write(val_res: Dictionary) -> bool:
+	if val_res.get("success", false):
+		return false
+	var err_v: Variant = val_res.get("error", null)
+	if not (err_v is Dictionary):
+		return true
+	var err: Dictionary = err_v
+	if str(err.get("code", "")) != "SCRIPT_SYNTAX_ERROR":
+		return true
+	var errors_v: Variant = err.get("errors", [])
+	if not (errors_v is Array):
+		return true
+	var errors: Array = errors_v
+	if errors.is_empty():
+		return true
+	for e: Variant in errors:
+		var msg := str(e)
+		if e is Dictionary:
+			var ed: Dictionary = e
+			msg = str(ed.get("message", ""))
+		for m: String in SYNTAX_MARKERS:
+			if msg.contains(m):
+				return true
+	return false
+
+## Doğrulama sonucunun hata kodu.
+static func error_code(val_res: Dictionary) -> String:
+	var err_v: Variant = val_res.get("error", null)
+	if err_v is Dictionary:
+		var err: Dictionary = err_v
+		return str(err.get("code", "VALIDATION_FAILED"))
+	return "VALIDATION_FAILED"
+
+## Doğrulama sonucunun model için hata metni.
+static func error_message(val_res: Dictionary) -> String:
+	var err_v: Variant = val_res.get("error", null)
+	if err_v is Dictionary:
+		var err: Dictionary = err_v
+		return str(err.get("message", "Doğrulama hatası"))
+	return str(err_v) if err_v != null else "Doğrulama hatası"
+
+## Batch dosya dosya sınıflanır: {"rejected": {yol: hata}, "codes": {yol: kod}, "errors": {yol: hata}}. rejected diske
+## yazılmaz (blocks_write); errors yazılır ama derlenmiyor; ikisinde de olmayan dosya temizdir.
+static func classify_batch(files_arr: Array) -> Dictionary:
+	var batch_map: Dictionary = {}
+	for item: Variant in files_arr:
+		if item is Dictionary:
+			var d: Dictionary = item
+			var p := str(d.get("file_path", ""))
+			if not p.is_empty():
+				batch_map[p] = d.get("content", "")
+	var rejected: Dictionary = {}
+	var codes: Dictionary = {}
+	var errors: Dictionary = {}
+	for p: String in batch_map.keys():
+		var val_res: Dictionary = validate_source(str(batch_map[p]), p, batch_map)
+		if val_res.get("success", false):
+			continue
+		if blocks_write(val_res):
+			rejected[p] = error_message(val_res)
+			codes[p] = error_code(val_res)
+		else:
+			errors[p] = error_message(val_res)
+	return {"rejected": rejected, "codes": codes, "errors": errors}
+
 static func validate_batch_files(files_arr: Array) -> Dictionary:
 	var batch_map: Dictionary = {}
 	for item in files_arr:

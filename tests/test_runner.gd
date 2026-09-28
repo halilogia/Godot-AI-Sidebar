@@ -49,6 +49,7 @@ const TestSkillToolNames = preload("res://tests/test_skill_tool_names.gd")
 const TestProjectSettingsTools = preload("res://tests/test_project_settings_tools.gd")
 const TestLongTask = preload("res://tests/test_long_task.gd")
 const TestProviderRetry = preload("res://tests/test_provider_retry.gd")
+const TestWriteRecovery = preload("res://tests/test_write_recovery.gd")
 const TestNetworkRecovery = preload("res://tests/test_network_recovery.gd")
 const TestViewportScreenshot = preload("res://tests/test_viewport_screenshot.gd")
 const TestUIUXQueueAndInput = preload("res://tests/test_ui_ux_queue_and_input.gd")
@@ -228,6 +229,7 @@ func _init() -> void:
 		TestProjectSettingsTools,
 		TestLongTask,
 		TestProviderRetry,
+		TestWriteRecovery,
 		TestNetworkRecovery,
 		TestViewportScreenshot,
 		TestUIUXQueueAndInput,

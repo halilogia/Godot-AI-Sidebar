@@ -191,7 +191,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	if has_script_intent:
 		var script_tools = [
 			"create_or_update_script", "replace_file_content", "validate_script", "validate_project", "write_files", "get_godot_class_info",
-			"delete_file", "list_dir", "get_open_scripts", "read_script", AISidebarProjectSettingsTools.TOOL_NAME
+			"delete_file", "list_dir", "get_open_scripts", "read_script", "file_info", "search_code", AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for st in script_tools:
 			active_tool_names[st] = true
@@ -238,7 +238,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 		var default_tools = [
 			"create_or_update_script", "replace_file_content", "create_scene", "save_scene",
 			"play_game", "get_runtime_errors", "take_viewport_screenshot", "write_files", "list_dir", "read_script",
-			AISidebarProjectSettingsTools.TOOL_NAME
+			"file_info", "search_code", AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for dt in default_tools:
 			active_tool_names[dt] = true
@@ -403,11 +403,9 @@ static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> 
 				return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
 			var path = safe_check["path"]
 			var val_res = AISidebarVerificationPipeline.validate_source(content, path)
-			if not val_res.get("success", false):
-				var err_obj = val_res.get("error", {})
-				var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
-				var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
-				return AISidebarToolResult.err(err_code, "Dosya doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
+			# Yalnız sözdizimi hatası engeller; derlenmeyen kod yazılır ve araç sonucunda raporlanır.
+			if AISidebarVerificationPipeline.blocks_write(val_res):
+				return AISidebarScriptTools._reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res)
 				
 		"replace_file_content":
 			var raw_path = args.get("file_path", "")
@@ -420,7 +418,7 @@ static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> 
 				return AISidebarToolResult.err("PERMISSION_DENIED", safe_check["reason"])
 			var path = safe_check["path"]
 			if not FileAccess.file_exists(path):
-				return AISidebarToolResult.err("FILE_NOT_FOUND", "Değiştirilecek dosya bulunamadı: " + path)
+				return AISidebarScriptTools.missing_file_error(str(path))
 			var file = FileAccess.open(path, FileAccess.READ)
 			if not file:
 				return AISidebarToolResult.err("READ_ERROR", "Dosya okunamadı: " + path)
@@ -442,11 +440,9 @@ static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> 
 				return AISidebarToolResult.err("MULTIPLE_TARGETS_FOUND", "Hedef kod dosyada birden fazla kez (" + str(occurrences) + " kez) bulundu: " + path)
 			var new_content = old_content.substr(0, first_idx) + replacement_code + old_content.substr(first_idx + target_code.length())
 			var val_res = AISidebarVerificationPipeline.validate_source(new_content, path)
-			if not val_res.get("success", false):
-				var err_obj = val_res.get("error", {})
-				var err_code = err_obj.get("code", "VALIDATION_FAILED") if err_obj is Dictionary else "VALIDATION_FAILED"
-				var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
-				return AISidebarToolResult.err(err_code, "Dosya doğrulaması başarısız, diske yazılmadı: " + err_msg, false, val_res)
+			# Yalnız sözdizimi hatası engeller; derlenmeyen kod yazılır ve araç sonucunda raporlanır.
+			if AISidebarVerificationPipeline.blocks_write(val_res):
+				return AISidebarScriptTools._reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res)
 
 		"write_files":
 			var files_arr = args.get("files", [])
@@ -458,12 +454,7 @@ static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> 
 					var safe_chk = AISidebarPathPolicy.is_safe_to_write(raw_p)
 					if not safe_chk["safe"]:
 						return AISidebarToolResult.err("PERMISSION_DENIED", "Güvenlik engeli: " + safe_chk["reason"] + " (" + raw_p + ")")
-			var val_res = AISidebarVerificationPipeline.validate_batch_files(files_arr)
-			if not val_res.get("success", false):
-				var err_obj = val_res.get("error", {})
-				var err_code = err_obj.get("code", "BATCH_VALIDATION_FAILED") if err_obj is Dictionary else "BATCH_VALIDATION_FAILED"
-				var err_msg = err_obj.get("message", "Doğrulama hatası") if err_obj is Dictionary else str(val_res.get("error", "Doğrulama hatası"))
-				return AISidebarToolResult.err(err_code, "Toplu dosya yazımı doğrulanamadı: " + err_msg, false, val_res)
+			# Doğrulama dosya dosya araçta yapılır (sağlam dosyalar yazılır, bozuklar raporlanır).
 
 		"create_scene":
 			var scene_path = args.get("scene_path", "")

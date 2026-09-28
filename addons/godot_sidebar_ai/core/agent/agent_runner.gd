@@ -93,6 +93,7 @@ var plan_was_approved: bool = false
 ## Kurtarılmamış başarısızlıklar (anahtar -> {"tool": String, "deferred": bool}).
 ## Aynı tool+hedef sonradan başarıyla çalışırsa silinir (recovery kanıtı).
 var unrecovered_failures: Dictionary = {}
+var _write_nudges: int = 0 # hatalı / yazılmamış dosya varken "bitti" diyen model kaç kez geri gönderildi
 ## Son completion hükmü (metrics'e yazılır; success/incomplete/failed/cancelled).
 var last_completion: Dictionary = {"verdict": "success", "reason": "Task completed."}
 ## Son durmanın makine kodu (AISidebarAgentStatus); başarılı görevde boş. Kararlar metne değil buna bakar.
@@ -179,6 +180,8 @@ func start_task(user_prompt: String, display_prompt: String = "", initial_vision
 	telemetry.reset()
 	plan_was_approved = false
 	unrecovered_failures.clear()
+	_write_nudges = 0
+	AISidebarScriptTools.reset_write_state()
 	last_completion = {"verdict": "success", "reason": "Task completed."}
 	last_stop_code = ""
 	
@@ -709,7 +712,17 @@ func _execute_tool_call(fn_name: String, tc_id: String, args: Dictionary, remain
 
 ## Completion Integrity Gate: toolsuz final metin tek başına SUCCESS değildir.
 func _evaluate_completion(text_content: String) -> void:
+	# Derlenmeyen / hiç yazılmamış dosya kaldıysa liste modele geri gider (en çok 2 kez), sonra "incomplete".
+	var open_writes := AISidebarScriptTools.open_write_problems()
+	if not open_writes.is_empty() and _write_nudges < 2 and context:
+		_write_nudges += 1
+		if not text_content.is_empty():
+			context.add_assistant_message(text_content)
+		context.add_user_message("SİSTEM: Görev henüz bitmedi. " + open_writes + " Bunları düzelt, sonra bitir.")
+		_run_next_step()
+		return
 	var gate_state = {
+		"write_problems": open_writes,
 		"tool_calls": telemetry.tool_calls_count,
 		"unrecovered": unrecovered_failures,
 		"plan_approved": plan_was_approved,
@@ -738,25 +751,14 @@ func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarCh
 		var c_type = AISidebarChangeSet.ChangeType.CREATE_FILE
 		if FileAccess.file_exists(path):
 			c_type = AISidebarChangeSet.ChangeType.MODIFY_FILE
-			var f = FileAccess.open(path, FileAccess.READ)
-			if f: old_c = f.get_as_text(); f.close()
+			old_c = FileAccess.get_file_as_string(path)
 		return AISidebarChangeSet.new(path, c_type, args.get("content", ""), old_c, "Script güncellemesi")
 	elif fn_name == "replace_file_content":
 		var path = args.get("file_path", "")
 		var target_code = args.get("target_code", "")
-		var replacement_code = args.get("replacement_code", "")
-		var old_c = ""
-		var new_c = ""
-		if FileAccess.file_exists(path):
-			var f = FileAccess.open(path, FileAccess.READ)
-			if f:
-				old_c = f.get_as_text()
-				f.close()
-				var idx = old_c.find(target_code)
-				if idx != -1:
-					new_c = old_c.substr(0, idx) + replacement_code + old_content_after(old_c, idx, target_code.length())
-				else:
-					new_c = old_c
+		var old_c = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+		var idx = old_c.find(target_code)
+		var new_c = old_c if idx == -1 else old_c.substr(0, idx) + str(args.get("replacement_code", "")) + old_c.substr(idx + target_code.length())
 		return AISidebarChangeSet.new(path, AISidebarChangeSet.ChangeType.MODIFY_FILE, new_c, old_c, "Cerrahi kod güncellemesi")
 	elif fn_name == "write_files":
 		var cs = AISidebarChangeSet.new("", AISidebarChangeSet.ChangeType.MODIFY_FILE, "", "", "Toplu dosya yazımı")
@@ -769,16 +771,12 @@ func _build_changeset_for_tool(fn_name: String, args: Dictionary) -> AISidebarCh
 				var c_type = AISidebarChangeSet.ChangeType.CREATE_FILE
 				if FileAccess.file_exists(f_p):
 					c_type = AISidebarChangeSet.ChangeType.MODIFY_FILE
-					var f_rd = FileAccess.open(f_p, FileAccess.READ)
-					if f_rd: old_txt = f_rd.get_as_text(); f_rd.close()
+					old_txt = FileAccess.get_file_as_string(f_p)
 				cs.add_sub_change(f_p, c_type, f_c, old_txt, f_p.get_file())
 		return cs
 	elif fn_name == "delete_node":
 		return AISidebarChangeSet.new(args.get("node_path", ""), AISidebarChangeSet.ChangeType.MUTATE_SCENE, "", "", "Düğüm silme: " + args.get("node_path", ""))
 	return null
-
-func old_content_after(s: String, idx: int, len_target: int) -> String:
-	return s.substr(idx + len_target)
 
 ## Runtime sahipliği yalnızca BAŞARILI icrayla değişir: play_game / restart_game verir,
 ## stop_game alır. Çağrının yapılmış olması yetmez.

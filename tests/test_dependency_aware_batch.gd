@@ -65,17 +65,21 @@ static func run() -> Dictionary:
 		failed += 1
 		errors.append("Test C Başarısız: Olmayan external resource tespit edilemedi: " + str(res_c))
 		
-	# Test D: Bir dosyada syntax error varsa diğer hiçbir dosya yazılmamalı
+	# Test D: Bir dosyada syntax error varsa yalnız o dosya yazılmaz; sağlam dosya yazılır (dosya dosya
+	# uygulama: tek bozuk dosya bütün batch'i silip modeli baştan yazdırıyordu).
 	var batch_d = [
 		{"file_path": path_a_gd, "content": "extends Node\nfunc _ready():\n\tpass\n"},
 		{"file_path": path_bad_gd, "content": "extends Node\nfunc broken_syntax(:\n"}
 	]
 	var res_d = AISidebarScriptTools.execute("write_files", {"files": batch_d})
-	if not res_d.get("success", false) and not FileAccess.file_exists(path_a_gd) and not FileAccess.file_exists(path_bad_gd):
+	if res_d.get("success", false) and FileAccess.file_exists(path_a_gd) and not FileAccess.file_exists(path_bad_gd):
 		passed += 1
 	else:
 		failed += 1
-		errors.append("Test D Başarısız: Syntax error içeren batch'te atomiklik bozuldu!")
+		errors.append("Test D Başarısız: Syntax error içeren batch dosya dosya uygulanmadı: " + str(res_d))
+	if FileAccess.file_exists(path_a_gd):
+		DirAccess.remove_absolute(path_a_gd)
+	AISidebarScriptTools.reset_write_state()
 		
 	# Test E: 3-File dependency graph (A.gd, B.tscn -> A.gd, C.tscn -> B.tscn)
 	var batch_e = [
