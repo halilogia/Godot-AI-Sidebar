@@ -850,7 +850,7 @@ func _complete_tool_turn(tool_name: String, tool_call_id: String, args: Dictiona
 	var fkey = failure_key(tool_name, args)
 	if is_valid:
 		AISidebarCompletionPolicy.clear_resolved(unrecovered_failures, fkey, tool_name, args)
-	else:
+	elif not AISidebarCompletionPolicy.is_probe_miss(tool_name, res_dict):
 		unrecovered_failures[fkey] = {"tool": tool_name, "deferred": false}
 	_set_state(AgentState.OBSERVING, AISidebarI18n.get_text("agent_state_observing"))
 	if context:

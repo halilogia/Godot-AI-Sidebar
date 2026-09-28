@@ -11,6 +11,21 @@ class_name AISidebarCompletionPolicy
 ##   plan_approved: bool, mutations_done: bool, write_problems: String (derlenmeyen / yazılmamış dosyalar)
 ## Çıktı: {"verdict": "success"|"incomplete"|"failed", "reason": String}
 
+## "Nereye bakacağını yanlış seçme" hataları: çalışan oyunda olmayan bir düğüme tıklamak / bakmak ya da editör
+## görünümü açık değilken görüntü almak işin eksik olduğunu göstermez; tamamlanma kapısını bloklamaz (araç
+## sonucunu model zaten görür). Yazma, okuma ve doğrulama hataları için sıkılık aynen sürer.
+const PROBE_TOOLS := ["send_input", "inspect_runtime_node", "inspect_runtime_tree", "take_viewport_screenshot", "take_runtime_screenshot"]
+const PROBE_MISS_CODES := ["NODE_NOT_FOUND", "NOT_CLICKABLE", "OFF_SCREEN", "BEHIND_CAMERA", "NO_CAMERA", "VIEWPORT_NOT_VISIBLE"]
+
+static func is_probe_miss(tool_name: String, res: Dictionary) -> bool:
+	if not tool_name in PROBE_TOOLS:
+		return false
+	var err_v: Variant = res.get("error", null)
+	if not (err_v is Dictionary):
+		return false
+	var err: Dictionary = err_v
+	return str(err.get("code", "")) in PROBE_MISS_CODES
+
 const WRITE_TOOLS := ["create_or_update_script", "replace_file_content", "write_files", "create_scene"]
 
 ## Başarılı bir yazma, aynı dosyaya ait ÖNCEKİ başarısız YAZMALARI çözülmüş sayar (reddedilen replace_file_content'in

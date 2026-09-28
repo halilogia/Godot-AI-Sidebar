@@ -101,6 +101,15 @@ static func run() -> Dictionary:
 		errors.append("E (limit failed + needs-review UI) failed.")
 	card_e.queue_free()
 
+	# F3) arama hatası (olmayan düğüme tıklama) tamamlanmayı bloklamaz; okuma / yazma hatası bloklar
+	var miss := {"success": false, "error": {"code": "NODE_NOT_FOUND", "message": "Node not found"}}
+	var other := {"success": false, "error": {"code": "FILE_NOT_FOUND", "message": "x"}}
+	if AISidebarCompletionPolicy.is_probe_miss("send_input", miss) and AISidebarCompletionPolicy.is_probe_miss("inspect_runtime_node", miss) 			and not AISidebarCompletionPolicy.is_probe_miss("read_script", miss) and not AISidebarCompletionPolicy.is_probe_miss("send_input", other) 			and not AISidebarCompletionPolicy.is_probe_miss("write_files", miss):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("F3 (probe miss classification) failed")
+
 	# F2) reddedilen yazma, aynı dosyanın başka bir yazma aracıyla yazılmasıyla çözülür
 	var rec2 = "res://tests/temp_gate_rec2.gd"
 	if FileAccess.file_exists(rec2):
