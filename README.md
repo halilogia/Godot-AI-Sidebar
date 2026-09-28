@@ -129,6 +129,23 @@ which is what lets the self-healing loop fix the *right* script.
 > Tools: `inspect_runtime_tree`, `inspect_runtime_node`, `get_runtime_errors`,
 > `play_game`, `stop_game`, `restart_game`, `take_runtime_screenshot`.
 
+The agent can also **drive and measure** the running game, not just look at it:
+
+- **`send_input`** plays a whole input sequence in one call (`steps`), holds
+  several actions together, clicks nodes and drags; every result lists the script
+  errors the game raised during the action.
+- **`wait_for_runtime`** waits inside the game until a node property meets a
+  condition (`==`, `>=`, `contains`, `exists` …); with a zero timeout it is an
+  instant assertion.
+- **`get_runtime_performance`** samples FPS, frame time and node / orphan growth
+  (a growing node count means a leak); **`trace_runtime_signals`** records which
+  signals fired and when.
+- **`get_output`** reads Godot's Output (terminal) log: what the editor printed
+  (autoload, import, plugin errors) and the game's `print()` lines. Secrets are
+  masked.
+- A script error no longer freezes the agent's game in the debugger, and errors
+  are read from the game itself (the log file is locked while it runs).
+
 ### It respects your permissions
 
 Not every operation should happen silently. A path policy blocks traversal
@@ -145,6 +162,16 @@ modes: **MANUAL**, **AUTO**, **FULL_AUTO**.
   standing instructions from `AGENTS.md` (`/learn` adds one).
 - **`validate_project`** — compiles every script in the real project context and
   lists each error with file, line and message.
+- **Several providers side by side** — 9Router, OpenRouter, OpenCode Zen, Ollama,
+  LM Studio … are kept as profiles shared by every project (stored once in your
+  editor's user folder); switch from the model bar. Thinking models get a
+  per-profile *reasoning effort* setting.
+- **Writes that survive mistakes** — only a syntax error blocks a write; code that
+  parses but does not compile yet is written and reported, and a batch is applied
+  file by file, so one bad file no longer discards the rest. The task is not
+  reported done while a written file still fails to compile.
+- **`file_info`, `find_files`, `search_code`** — exact-path check, name / path
+  pattern search and content search, three separate lookups.
 - **`send_input`** — presses keys, triggers input actions and clicks nodes in the
   running game.
 - **Report a bug (`/bug`)** — builds a local zip with environment, masked
