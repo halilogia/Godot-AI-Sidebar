@@ -19,9 +19,9 @@ const EXPECTED_SCENE_ARG := "expected_scene_path"
 const EXPOSED_TOOLS: Array[String] = [
 	"get_project_files", "search_project_assets", "analyze_project",
 	"get_scene_tree", "get_node_properties", "get_selected_nodes", "select_node", "open_scene",
-	"read_script", "file_info", "search_code", "validate_script", "validate_project", "get_godot_class_info",
+	"read_script", "file_info", "find_files", "search_code", "validate_script", "validate_project", "get_godot_class_info",
 	"play_game", "stop_game", "restart_game", "send_input",
-	"get_runtime_errors", "inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime",
+	"get_runtime_errors", "inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime", "get_runtime_performance", "trace_runtime_signals",
 	"take_editor_screenshot", "take_viewport_screenshot", "take_runtime_screenshot",
 	"inspect_ui_layout",
 ]

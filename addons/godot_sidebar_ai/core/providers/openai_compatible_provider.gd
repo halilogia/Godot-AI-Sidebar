@@ -277,7 +277,7 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 		var total_prov_dur = Time.get_ticks_msec() - _provider_req_start_msec
 		
 		if parsed.has("error"):
-			print("[TIMING] %s | PROVIDER_PARSE_ERROR | err=%s" % [get_ts(), parsed["error"]])
+			print("[TIMING] %s | PROVIDER_PARSE_ERROR | err=%s raw=%s" % [get_ts(), parsed["error"], response_str.left(400).replace("\n", " ")])
 			# Akışın içine gömülü upstream hatası (9Router: "JSON error injected into SSE stream"): yanıt
 			# bütünüyle atıldığı için akış başlamış olsa da yeniden gönderilir.
 			if _schedule_chat_retry(str(parsed["error"]), true):

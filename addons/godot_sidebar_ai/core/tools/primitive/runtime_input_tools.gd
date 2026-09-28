@@ -13,6 +13,8 @@ const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runt
 
 const TOOL_NAME := "send_input"
 const WAIT_TOOL := "wait_for_runtime"
+const PERF_TOOL := "get_runtime_performance"
+const TRACE_TOOL := "trace_runtime_signals"
 const MAX_HOLD_MSEC := 2000
 const MAX_STEPS := 30
 const MAX_STEP_WAIT_MSEC := 5000
@@ -38,6 +40,34 @@ static func get_schemas() -> Array:
 					"button": {"type": "string", "enum": ["left", "right"], "description": "Mouse button for kind=click (default: left)."},
 					"hold_ms": {"type": "integer", "description": "How long to hold the key / action / button, in milliseconds (default 80, max 2000)."},
 					"steps": {"type": "array", "description": "Instead of kind: several inputs played in order in ONE call, e.g. [{kind:'action', action:'move_right', hold_ms:800}, {kind:'wait', wait_ms:300}, {kind:'key', key:'Space'}]. Each step takes the same fields as a single input plus wait_ms (pause after the step); kind 'wait' only waits. Max 30 steps.", "items": {"type": "object"}},
+				},
+				"required": [],
+			},
+		},
+	}, {
+		"type": "function",
+		"function": {
+			"name": TRACE_TOOL,
+			"description": "Listens to a node's signals in the running game for a few seconds and returns them in order: which signal fired, when (ms) and with which arguments, plus which listened signals stayed silent. Use it instead of inspecting a node again and again, e.g. node_path 'Main/Game', signals ['score_changed', 'game_over'], then send_input while it listens (or call send_input right after starting the game). Without signals, the signals defined in the node's script are traced.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"node_path": {"type": "string", "description": "Node in the running game (e.g. 'Main/Game')."},
+					"signals": {"type": "array", "items": {"type": "string"}, "description": "Signal names to listen to (default: the node's script-defined signals)."},
+					"duration_ms": {"type": "integer", "description": "How long to listen, in milliseconds (default 3000, max 10000)."},
+				},
+				"required": ["node_path"],
+			},
+		},
+	}, {
+		"type": "function",
+		"function": {
+			"name": PERF_TOOL,
+			"description": "Measures the running game's health over a few seconds: average FPS, frame time (avg / p95 / worst), and how node count, object count, orphan nodes and memory changed (a growing node count means a leak or unbounded spawning). Returns warnings for low FPS, hitches, growth and orphans. Play the game and exercise it (send_input) while it samples, or run it right after a burst of activity.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"duration_ms": {"type": "integer", "description": "How long to sample, in milliseconds (default 2000, 200 to 10000)."},
 				},
 				"required": [],
 			},
@@ -160,6 +190,32 @@ static func _clean_value(v: Variant) -> Variant:
 		var s: String = v
 		return unescape_html(s)
 	return v
+
+static func execute_trace_async(args: Dictionary) -> Dictionary:
+	var node_path := str(args.get("node_path", "")).strip_edges()
+	if node_path.is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "node_path is required.")
+	var not_ready := readiness_error()
+	if not not_ready.is_empty():
+		return not_ready
+	var names: Array = args["signals"] if args.get("signals") is Array else []
+	var duration := clampi(int(str(args.get("duration_ms", 3000)).to_float()), 100, 10000)
+	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("trace_signals", [{"node_path": node_path, "signals": names, "duration_ms": duration}], 1.0, 4.0 + duration / 1000.0)
+	if resp.get("success", false) != true:
+		return AISidebarToolResult.err(str(resp.get("error", "TRACE_FAILED")), str(resp.get("message", "The game did not return a signal trace.")))
+	var n: int = resp.get("count", 0)
+	return AISidebarToolResult.ok(resp, "%d signal event(s) on %s in %d ms" % [n, node_path, duration])
+
+static func execute_perf_async(args: Dictionary) -> Dictionary:
+	var not_ready := readiness_error()
+	if not not_ready.is_empty():
+		return not_ready
+	var duration := clampi(int(str(args.get("duration_ms", 2000)).to_float()), 200, 10000)
+	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("perf", [{"duration_ms": duration}], 1.0, 4.0 + duration / 1000.0)
+	if resp.get("success", false) != true:
+		return AISidebarToolResult.err(str(resp.get("error", "PERF_FAILED")), str(resp.get("message", "The game did not return a performance report.")))
+	var ms: Dictionary = resp.get("frame_ms", {})
+	return AISidebarToolResult.ok(resp, "Performance: %s FPS avg, frame %s ms avg / %s p95 / %s worst" % [str(resp.get("fps_avg")), str(ms.get("avg")), str(ms.get("p95")), str(ms.get("worst"))])
 
 static func execute_wait_async(args: Dictionary) -> Dictionary:
 	var op := unescape_html(str(args.get("operator", "==")).strip_edges())

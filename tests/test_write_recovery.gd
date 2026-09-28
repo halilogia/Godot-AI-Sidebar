@@ -62,6 +62,12 @@ static func run() -> Dictionary:
 	var s6 := _data(AISidebarScriptTools.execute("search_code", {"query": "zz_no_such" + "_text_zz", "path": "res://tests"}))
 	checks.append(["W6 empty search does not claim missing file", (s6.get("matches", []) as Array).is_empty() and str(s6.get("message", "")).contains("does NOT")])
 
+	# W6b find_files: kalıp ad ya da yola uyar; bulunamayınca varlık hakkında yanıltmaz
+	var ff := _data(AISidebarScriptTools.execute("find_files", {"pattern": "temp_w_*.gd", "path": "res://tests"}))
+	var ff_plain := _data(AISidebarScriptTools.execute("find_files", {"pattern": "TEMP_W_GOOD", "path": "res://tests"}))
+	var ff_none := _data(AISidebarScriptTools.execute("find_files", {"pattern": "zz_nothing_here_zz*", "path": "res://tests"}))
+	checks.append(["W6b find_files wildcard / plain / none", (ff.get("files", []) as Array).has(GOOD) and (ff_plain.get("files", []) as Array) == [GOOD] and int(ff_none.get("count", -1)) == 0 and str(ff_none.get("message", "")).contains("file_info") and AISidebarScriptTools.path_matches("res://scenes/main/level_1.tscn", "scenes/*.tscn")])
+
 	# W7 açık sorunlar görevi bitirmez; düzeltilince kayıt temizlenir
 	var gate := AISidebarCompletionPolicy.evaluate({"write_problems": "Files on disk that do not compile: x"})
 	AISidebarScriptTools.execute("create_or_update_script", {"file_path": DIRTY, "content": GOOD_SRC.replace("good_marker_w", "fixed")})

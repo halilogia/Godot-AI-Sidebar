@@ -19,7 +19,7 @@ const AISidebarPermissionPolicy = preload("res://addons/godot_sidebar_ai/core/se
 ## (Okuma/inceleme + netleştirme + plan sunumu)
 const PLANNING_SAFE_TOOLS: Array = [
 	"search_tools", "ask_user", "propose_plan",
-	"analyze_project", "read_script", "file_info", "search_code", "get_project_files", "list_dir",
+	"analyze_project", "read_script", "file_info", "find_files", "search_code", "get_project_files", "list_dir",
 	"get_scene_tree", "get_active_scene_tree", "get_selected_nodes",
 	"get_open_scripts", "get_node_properties", "get_editor_errors",
 	"search_project_assets", "take_editor_screenshot", "take_viewport_screenshot",

@@ -9,6 +9,8 @@ extends RefCounted
 ##   I3 ana sahne ayarlanır, oyun çalışır, runtime köprüsünden ekran görüntüsü alınır
 ##   I4 görünmeyen viewport 2x2 "başarılı" ekran görüntüsü döndürmez
 ##   I5 send_input adım dizisi ve wait_for_runtime gerçek oyunda (anlık doğrulama, koşul, zaman aşımı)
+##   I6 oyun Engine.time_scale = 0 yapsa da bekleyen araçlar döner
+##   I7 get_runtime_performance ve trace_runtime_signals gerçek oyunda
 ## Geçici dosyalar DIR altında; sonda silinir. project.godot'u editor_smoke.ps1 bayt bayt geri koyar.
 
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
@@ -112,6 +114,16 @@ func _input_and_wait() -> void:
 	var t_err: Dictionary = timed_out.get("error", {}) if timed_out.get("error") is Dictionary else {}
 	var ok: bool = _ok(seq) and p_data.get("status") == "ASSERTION_PASSED" and m_data.get("status") == "CONDITION_MET" and t_err.get("code") == "TIMEOUT"
 	_check.call("i5_input_steps_and_wait_for_runtime", ok, "seq=%s passed=%s met=%s timeout=%s" % [seq.get("success"), p_data.get("status"), m_data.get("status"), t_err.get("code")])
+
+	# I7: performans ölçümü ve sinyal izleme gerçek oyunda
+	var perf := await _tool("get_runtime_performance", {"duration_ms": 400})
+	var trace := await _tool("trace_runtime_signals", {"node_path": "IntegMain", "signals": ["visibility_changed"], "duration_ms": 300})
+	var no_signals := await _tool("trace_runtime_signals", {"node_path": "IntegMain", "signals": ["nope_not_a_signal"], "duration_ms": 200})
+	var perf_data: Dictionary = perf.get("data", {}) if perf.get("data") is Dictionary else {}
+	var trace_data: Dictionary = trace.get("data", {}) if trace.get("data") is Dictionary else {}
+	var ns_err: Dictionary = no_signals.get("error", {}) if no_signals.get("error") is Dictionary else {}
+	var ok7: bool = _ok(perf) and int(perf_data.get("frames", 0)) > 0 and _ok(trace) and (trace_data.get("silent", []) as Array).has("visibility_changed") and ns_err.get("code") == "NO_SIGNALS"
+	_check.call("i7_performance_and_signal_trace", ok7, "perf=%s frames=%s trace=%s nosig=%s" % [perf.get("success"), perf_data.get("frames"), trace.get("success"), ns_err.get("code")])
 
 ## I6: oyun Engine.time_scale = 0 yapsa da (tur tabanlı oyun) send_input ve wait_for_runtime dönmeli;
 ## SceneTreeTimer'lı ilk sürüm burada "çalışma zamanı sorgusu zaman aşımı" veriyordu.

@@ -8,6 +8,8 @@ class_name AISidebarRuntimeBridge
 
 const AISidebarRuntimeInput = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_input.gd")
 const AISidebarRuntimeProbe = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_probe.gd")
+const AISidebarRuntimeMetrics = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_metrics.gd")
+const AISidebarRuntimeSignals = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_signals.gd")
 
 const CAPTURE_NAME: String = "godot_ai"
 var _is_registered: bool = false
@@ -104,6 +106,18 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		_send_input(req_id, spec)
 		return true
 
+	elif cmd == "perf":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
+		_measure(req_id, spec)
+		return true
+
+	elif cmd == "trace_signals":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
+		_trace_signals(req_id, spec)
+		return true
+
 	elif cmd == "wait_for":
 		var req_id := str(data[0]) if data.size() > 0 else ""
 		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
@@ -121,6 +135,18 @@ func _send_input(req_id: String, spec: Dictionary) -> void:
 	else:
 		res = await AISidebarRuntimeInput.perform(get_tree(), spec)
 	EngineDebugger.send_message("godot_ai:response", [req_id, res])
+
+## Sinyal izleme: süre boyunca dinlenir, olay listesi süre dolunca gider.
+func _trace_signals(req_id: String, spec: Dictionary) -> void:
+	var names: Array = spec["signals"] if spec.get("signals") is Array else []
+	var report: Dictionary = await AISidebarRuntimeSignals.trace(get_tree(), str(spec.get("node_path", "")), names, int(str(spec.get("duration_ms", 3000)).to_float()))
+	EngineDebugger.send_message("godot_ai:response", [req_id, report])
+
+## Performans örneği: süre boyunca kare süreleri ölçülür, rapor süre dolunca gider.
+func _measure(req_id: String, spec: Dictionary) -> void:
+	var report: Dictionary = await AISidebarRuntimeMetrics.measure(get_tree(), int(str(spec.get("duration_ms", 2000)).to_float()))
+	report["success"] = true
+	EngineDebugger.send_message("godot_ai:response", [req_id, report])
 
 ## Koşul oyunun içinde yoklanır; yanıt koşul sağlanınca ya da süre dolunca gönderilir.
 func _wait_for(req_id: String, spec: Dictionary) -> void:

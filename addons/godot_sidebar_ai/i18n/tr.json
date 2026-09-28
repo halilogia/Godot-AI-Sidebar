@@ -390,6 +390,7 @@
   "tool_title_get_project_files": "Proje dosyaları tarandı",
   "tool_title_read_script": "Script okundu: {file}",
   "tool_title_file_info": "Dosya bilgisi: {file}",
+  "tool_title_find_files": "Dosya arandı: {pattern}",
   "tool_title_search_code": "Kodda arandı: {query}",
   "tool_title_validate_script": "GDScript doğrulandı",
   "tool_title_play_game": "Oyun başlatıldı",

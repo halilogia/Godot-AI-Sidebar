@@ -139,6 +139,22 @@ static func get_schemas() -> Array:
 		{
 			"type": "function",
 			"function": {
+				"name": "find_files",
+				"description": "Finds files by name or path pattern when you do not know the exact path, e.g. '*inventory*.gd' or 'scenes/*.tscn' (* and ? wildcards, case-insensitive; a plain word matches anywhere in the path). Lists paths only: file_info checks one exact path, search_code searches file contents, read_script reads a file.",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"pattern": { "type": "string", "description": "Name or path pattern, e.g. '*player*.tscn', 'enemy', 'scripts/*.gd'." },
+						"path": { "type": "string", "description": "Folder to search. Default: res://" },
+						"max_results": { "type": "integer", "description": "Maximum paths. Default: 100." }
+					},
+					"required": ["pattern"]
+				}
+			}
+		},
+		{
+			"type": "function",
+			"function": {
 				"name": "search_code",
 				"description": "Searches the text of project files (.gd, .tscn, .tres, .gdshader, .cfg, .json) and returns file:line matches, e.g. where a class_name is declared or a signal is used. No match does NOT mean a file is missing; use file_info for that.",
 				"parameters": {
@@ -276,6 +292,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _file_info(args)
 		"search_code":
 			return _search_code(args)
+		"find_files":
+			return _find_files(args)
 		"create_or_update_script":
 			return _create_or_update_script(args)
 		"replace_file_content":
@@ -332,6 +350,53 @@ static func _file_info(args: Dictionary) -> Dictionary:
 	elif DirAccess.dir_exists_absolute(path):
 		info["is_directory"] = true
 	return AISidebarToolResult.ok(info)
+
+## Ad / yol kalıbı: * ve ? joker, büyük-küçük harf duyarsız; joker yoksa yolun her yerinde alt metin.
+static func path_matches(path: String, pattern: String) -> bool:
+	var p := path.to_lower()
+	var pat := pattern.to_lower().strip_edges()
+	if pat.is_empty():
+		return false
+	if not ("*" in pat or "?" in pat):
+		return p.contains(pat)
+	# Kalıp yol içinde herhangi bir yerden başlayabilir (klasör öneki verilmeden 'scenes/*.tscn').
+	return p.match(pat) or p.match("*/" + pat) or p.match("*" + pat)
+
+static func _find_files(args: Dictionary) -> Dictionary:
+	var pattern := str(args.get("pattern", ""))
+	if pattern.strip_edges().is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "pattern boş olamaz.")
+	var root := str(args.get("path", "res://"))
+	if root.is_empty():
+		root = "res://"
+	var max_results := maxi(1, int(args.get("max_results", 100)))
+	var all: Array[String] = []
+	_collect_all_files(root, all)
+	all.sort()
+	var found: Array = []
+	var total := 0
+	for f: String in all:
+		if path_matches(f, pattern):
+			total += 1
+			if found.size() < max_results:
+				found.append(f)
+	var out := {"pattern": pattern, "path": root, "count": total, "files": found, "truncated": total > found.size()}
+	if total == 0:
+		out["message"] = "No file path matches. The file may not exist, or it was never written (file_info on an exact path says which)."
+	return AISidebarToolResult.ok(out)
+
+static func _collect_all_files(dir: String, out: Array[String]) -> void:
+	for skip: String in SEARCH_SKIP:
+		if dir.begins_with(skip):
+			return
+	var d := DirAccess.open(dir)
+	if d == null:
+		return
+	for f: String in d.get_files():
+		if not f.ends_with(".import") and not f.ends_with(".uid"):
+			out.append(dir.path_join(f))
+	for sub: String in d.get_directories():
+		_collect_all_files(dir.path_join(sub), out)
 
 const SEARCH_EXTENSIONS := ["gd", "tscn", "tres", "gdshader", "cfg", "json"]
 const SEARCH_SKIP := ["res://.godot", "res://addons/godot_sidebar_ai"]

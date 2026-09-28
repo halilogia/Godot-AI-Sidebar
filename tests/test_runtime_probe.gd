@@ -5,6 +5,8 @@ extends RefCounted
 ## (AISidebarRuntimeInputTools.build_spec). Oyun gerektirmez: düğüm ağacı ağaç dışında kurulur.
 
 const AISidebarRuntimeProbe = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_probe.gd")
+const AISidebarRuntimeMetrics = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_metrics.gd")
+const AISidebarRuntimeSignals = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_signals.gd")
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 
 static func _met(root: Node, spec: Dictionary) -> Variant:
@@ -57,6 +59,36 @@ static func run() -> Dictionary:
 
 	# R8 model karşılaştırma işaretini HTML kaçışıyla yollarsa araç yine anlar
 	checks.append(["R8 html-escaped operator", AISidebarRuntimeInputTools.unescape_html("&gt;=") == ">=" and AISidebarRuntimeInputTools.unescape_html("&lt;") == "<" and AISidebarRuntimeInputTools.unescape_html("a &amp;&amp; b") == "a && b"])
+
+	# R9 performans özeti: kare süreleri, büyüme ve uyarılar
+	var frames: Array = []
+	for i in 100:
+		frames.append(16.0)
+	frames.append(150.0)
+	var rep := AISidebarRuntimeMetrics.summarize(frames, {"nodes": 100, "orphan_nodes": 0, "objects": 500, "memory_mb": 50.0}, {"nodes": 400, "orphan_nodes": 2, "objects": 900, "memory_mb": 60.0}, 1700)
+	var warn_text := " ".join(PackedStringArray(rep.get("warnings", [])))
+	var fm: Dictionary = rep.get("frame_ms", {})
+	checks.append(["R9 performance summary", int(rep.get("frames", 0)) == 101 and float(fm.get("worst", 0)) == 150.0 and float(fm.get("p95", 0)) == 16.0 and warn_text.contains("hitch") and warn_text.contains("grew by 300") and warn_text.contains("orphan") and float((rep["growth"]["nodes"] as Dictionary)["change"]) == 300.0])
+
+	# R10 sinyal izleme: betikte tanımlı sinyaller bulunur, çıkışlar sırayla kaydedilir, sessiz olan söylenir
+	var sig_script := GDScript.new()
+	sig_script.source_code = "extends Node
+signal score_changed(v)
+signal game_over
+"
+	sig_script.reload()
+	var game := Node.new()
+	game.set_script(sig_script)
+	var found := AISidebarRuntimeSignals.script_signals(game)
+	var session := AISidebarRuntimeSignals.begin(game, [], Time.get_ticks_msec())
+	game.emit_signal("score_changed", 10)
+	game.emit_signal("score_changed", 20)
+	var trace_report := AISidebarRuntimeSignals.finish(game, session)
+	var counts: Dictionary = trace_report.get("counts", {})
+	var trace_events: Array = trace_report.get("events", [])
+	var first_args: Array = (trace_events[0] as Dictionary).get("args", []) if not trace_events.is_empty() else []
+	checks.append(["R10 signal trace", found.has("score_changed") and found.has("game_over") and not found.has("ready") and trace_events.size() == 2 and int(counts.get("score_changed", 0)) == 2 and first_args == [10] and (trace_report.get("silent", []) as Array).has("game_over") and not game.is_connected("score_changed", (session["_calls"] as Array)[0][1])])
+	game.free()
 
 	root.free()
 	var passed := 0

@@ -147,12 +147,12 @@ static func requires_user_approval(tool_name: String, args: Dictionary = {}, mod
 static func _init_default_risks() -> void:
 	# READ_ONLY: Read, search, analyze, project inspection, scene tree inspection, runtime log/error, vision
 	var read_only_tools = [
-		"get_scene_tree", "read_script", "file_info", "search_code", "get_project_files", "search_project_assets",
+		"get_scene_tree", "read_script", "file_info", "find_files", "search_code", "get_project_files", "search_project_assets",
 		"get_selected_nodes", "get_node_properties", "get_editor_errors", "get_runtime_errors",
 		"search_tools", "ask_user", "propose_plan", "validate_script", "validate_project", "get_godot_class_info", "take_editor_screenshot",
 		"take_runtime_screenshot", "take_viewport_screenshot", "analyze_project",
 		"list_dir", "get_open_scripts", "open_script", "inspect_ui_layout",
-		"inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime", "activate_skill", "report_goal"
+		"inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime", "get_runtime_performance", "trace_runtime_signals", "activate_skill", "report_goal"
 	]
 	for t in read_only_tools:
 		_tool_risk_registry[t] = RiskLevel.READ_ONLY

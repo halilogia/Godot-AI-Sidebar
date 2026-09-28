@@ -191,7 +191,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	if has_script_intent:
 		var script_tools = [
 			"create_or_update_script", "replace_file_content", "validate_script", "validate_project", "write_files", "get_godot_class_info",
-			"delete_file", "list_dir", "get_open_scripts", "read_script", "file_info", "search_code", AISidebarProjectSettingsTools.TOOL_NAME
+			"delete_file", "list_dir", "get_open_scripts", "read_script", "file_info", "find_files", "search_code", AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for st in script_tools:
 			active_tool_names[st] = true
@@ -227,6 +227,16 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	for kw: String in ["input", "autoload", "main scene", "ana sahne", "project setting", "proje ayar", "project.godot", "tuş", "kontrol"]:
 		if kw in text:
 			active_tool_names[AISidebarProjectSettingsTools.TOOL_NAME] = true
+			break
+
+	# Sinyal izleme: sinyal / olay konuşulunca ve oyun çalıştırılıp davranış doğrulanacaksa.
+	if ("signal" in text or "sinyal" in text) and (has_runtime_intent or "trace" in text or "izle" in text):
+		active_tool_names["trace_runtime_signals"] = true
+
+	# Performans ölçümü: performans / FPS / takılma / sızıntı konuşulunca (her istekte araç listesini şişirmez).
+	for kw: String in ["performance", "performans", "fps", "lag", "stutter", "takıl", "yavaş", "slow", "leak", "sızıntı", "optimi", "profil", "memory", "bellek"]:
+		if kw in text:
+			active_tool_names["get_runtime_performance"] = true
 			break
 
 	# Hedef modu (/goal): tur istemi aracın adını içerir.
@@ -338,7 +348,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL] or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL] or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -357,6 +367,10 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		return await AISidebarRuntimeInputTools.execute_async(args)
 	if tool_name == AISidebarRuntimeInputTools.WAIT_TOOL:
 		return await AISidebarRuntimeInputTools.execute_wait_async(args)
+	if tool_name == AISidebarRuntimeInputTools.PERF_TOOL:
+		return await AISidebarRuntimeInputTools.execute_perf_async(args)
+	if tool_name == AISidebarRuntimeInputTools.TRACE_TOOL:
+		return await AISidebarRuntimeInputTools.execute_trace_async(args)
 	return await AISidebarEditorTools.execute_async(tool_name, args)
 
 static func _search_tools(args: Dictionary) -> Dictionary:
