@@ -151,8 +151,18 @@ static func execute_async(args: Dictionary) -> Dictionary:
 		return AISidebarToolResult.err(str(resp.get("error", "SEND_INPUT_FAILED")), msg)
 	return AISidebarToolResult.ok(resp, "Input sent: " + str(spec["kind"]))
 
+## Bazı modeller karşılaştırma işaretlerini HTML kaçışıyla yollar ("&gt;="): araç çağrısı boşa gitmesin.
+static func unescape_html(text: String) -> String:
+	return text.replace("&gt;", ">").replace("&lt;", "<").replace("&quot;", "\"").replace("&amp;", "&")
+
+static func _clean_value(v: Variant) -> Variant:
+	if v is String:
+		var s: String = v
+		return unescape_html(s)
+	return v
+
 static func execute_wait_async(args: Dictionary) -> Dictionary:
-	var op := str(args.get("operator", "=="))
+	var op := unescape_html(str(args.get("operator", "==")).strip_edges())
 	var node_path := str(args.get("node_path", "")).strip_edges()
 	var prop := str(args.get("property", "")).strip_edges()
 	if node_path.is_empty():
@@ -163,7 +173,7 @@ static func execute_wait_async(args: Dictionary) -> Dictionary:
 	if not not_ready.is_empty():
 		return not_ready
 	var timeout := clampi(int(str(args.get("timeout_ms", 3000)).to_float()), 0, MAX_WAIT_MSEC)
-	var spec := {"node_path": node_path, "property": prop, "operator": op, "value": args.get("value", null),
+	var spec := {"node_path": node_path, "property": prop, "operator": op, "value": _clean_value(args.get("value", null)),
 		"timeout_ms": timeout, "poll_ms": int(str(args.get("poll_ms", 100)).to_float())}
 	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("wait_for", [spec], 1.0, 3.0 + timeout / 1000.0)
 	var status := str(resp.get("status", resp.get("error", "WAIT_FAILED")))

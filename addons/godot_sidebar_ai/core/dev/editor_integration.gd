@@ -26,6 +26,7 @@ func run(host: Node, check: Callable) -> void:
 	await _stale_scene()
 	await _autoload()
 	await _play_and_bridge()
+	await _frozen_time_scale()
 	await _hidden_viewport()
 	_cleanup()
 
@@ -111,6 +112,27 @@ func _input_and_wait() -> void:
 	var t_err: Dictionary = timed_out.get("error", {}) if timed_out.get("error") is Dictionary else {}
 	var ok: bool = _ok(seq) and p_data.get("status") == "ASSERTION_PASSED" and m_data.get("status") == "CONDITION_MET" and t_err.get("code") == "TIMEOUT"
 	_check.call("i5_input_steps_and_wait_for_runtime", ok, "seq=%s passed=%s met=%s timeout=%s" % [seq.get("success"), p_data.get("status"), m_data.get("status"), t_err.get("code")])
+
+## I6: oyun Engine.time_scale = 0 yapsa da (tur tabanlı oyun) send_input ve wait_for_runtime dönmeli;
+## SceneTreeTimer'lı ilk sürüm burada "çalışma zamanı sorgusu zaman aşımı" veriyordu.
+func _frozen_time_scale() -> void:
+	var script := DIR + "/frozen.gd"
+	var scene := DIR + "/frozen.tscn"
+	var text := "[gd_scene load_steps=2 format=3]\n\n[ext_resource type=\"Script\" path=\"%s\" id=\"1_f\"]\n\n[node name=\"Frozen\" type=\"Node2D\"]\nscript = ExtResource(\"1_f\")\n" % script
+	await _tool("write_files", {"files": [
+		{"file_path": script, "content": "extends Node2D\n\nvar ticks: int = 0\n\nfunc _ready() -> void:\n\tEngine.time_scale = 0.0\n\nfunc _process(_d: float) -> void:\n\tticks += 1\n"},
+		{"file_path": scene, "content": text}]})
+	EditorInterface.get_resource_filesystem().scan()
+	await _wait(1.0)
+	await _tool("manage_project_settings", {"action": "set", "key": "application/run/main_scene", "value": scene})
+	await _tool("play_game", {})
+	await _wait(3.0)
+	var seq := await _tool("send_input", {"steps": [{"kind": "key", "key": "A", "hold_ms": 200, "wait_ms": 200}]})
+	var waited := await _tool("wait_for_runtime", {"node_path": "Frozen", "property": "ticks", "operator": ">", "value": 3, "timeout_ms": 2000})
+	var ok: bool = _ok(seq) and _ok(waited)
+	_check.call("i6_inputs_work_with_time_scale_zero", ok, "seq=%s wait=%s" % [str(seq.get("error", "ok")).left(90), str(waited.get("error", "ok")).left(90)])
+	await _tool("stop_game", {})
+	await _wait(0.5)
 
 func _hidden_viewport() -> void:
 	EditorInterface.set_main_screen_editor("Script")

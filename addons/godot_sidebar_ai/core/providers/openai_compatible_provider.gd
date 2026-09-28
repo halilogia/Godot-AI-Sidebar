@@ -338,6 +338,19 @@ static func is_transient_error(error_msg: String) -> bool:
 			return true
 	return false
 
+## Sohbet gövdesinin sonuna kısa bir kullanıcı notu ekler (boş yanıtı kıran "devam et"). Bozuk gövdede olduğu gibi döner.
+static func add_continue_note(body: String) -> String:
+	var json := JSON.new()
+	if json.parse(body) != OK or not (json.data is Dictionary):
+		return body
+	var data: Dictionary = json.data
+	var messages_v: Variant = data.get("messages", null)
+	if not (messages_v is Array):
+		return body
+	var messages: Array = messages_v
+	messages.append({"role": "user", "content": "Devam et: son araç sonucuna göre bir sonraki adımı at ya da işi bitirip özetle."})
+	return JSON.stringify(data)
+
 func _schedule_chat_retry(error_msg: String, whole_response_failed: bool = false) -> bool:
 	if _last_chat.is_empty() or (_chat_streamed and not whole_response_failed) or _chat_retries >= retry_delays.size() or not is_transient_error(error_msg):
 		return false
@@ -347,7 +360,10 @@ func _schedule_chat_retry(error_msg: String, whole_response_failed: bool = false
 	var delay: float = retry_delays[_chat_retries]
 	_chat_retries += 1
 	var token := _retry_token
-	print("[TIMING] %s | PROVIDER_RETRY | attempt=%d/%d delay=%.0fs err=%s" % [get_ts(), _chat_retries, retry_delays.size(), delay, error_msg.left(120)])
+	# Aynı istek boş yanıt getirmeye devam ediyorsa (benchmark: aynı 98 KB istek 4 kez boş döndü) ikinci
+	# denemeden itibaren isteğe "devam et" notu eklenir; kalıcı bağlama yazılmaz, yalnız bu yeniden gönderime.
+	var nudge := _chat_retries >= 2 and error_msg.to_lower().contains("empty response")
+	print("[TIMING] %s | PROVIDER_RETRY | attempt=%d/%d delay=%.0fs nudge=%s err=%s" % [get_ts(), _chat_retries, retry_delays.size(), delay, str(nudge), error_msg.left(120)])
 	var resend := func() -> void:
 		if token != _retry_token or _last_chat.is_empty() or network_manager == null:
 			return
@@ -355,7 +371,8 @@ func _schedule_chat_retry(error_msg: String, whole_response_failed: bool = false
 		_chat_streamed = false
 		_provider_req_start_msec = Time.get_ticks_msec()
 		var headers: PackedStringArray = _last_chat["headers"]
-		network_manager.post_request(str(_last_chat["url"]), headers, str(_last_chat["body"]))
+		var body := str(_last_chat["body"])
+		network_manager.post_request(str(_last_chat["url"]), headers, add_continue_note(body) if nudge else body)
 	if schedule_hook.is_valid():
 		schedule_hook.call(delay, resend)
 	else:

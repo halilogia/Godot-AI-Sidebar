@@ -28,7 +28,7 @@ static func perform(tree: SceneTree, spec: Dictionary) -> Dictionary:
 			down.physical_keycode = code
 			down.pressed = true
 			Input.parse_input_event(down)
-			await _wait(tree, hold)
+			await wait_ms(tree, hold)
 			var up: InputEventKey = down.duplicate()
 			up.pressed = false
 			Input.parse_input_event(up)
@@ -42,7 +42,7 @@ static func perform(tree: SceneTree, spec: Dictionary) -> Dictionary:
 			press.pressed = true
 			press.strength = 1.0
 			Input.parse_input_event(press)
-			await _wait(tree, hold)
+			await wait_ms(tree, hold)
 			var release := InputEventAction.new()
 			release.action = action
 			release.pressed = false
@@ -65,7 +65,7 @@ static func perform(tree: SceneTree, spec: Dictionary) -> Dictionary:
 			bdown.button_index = button
 			bdown.pressed = true
 			root.push_input(bdown, true)
-			await _wait(tree, hold)
+			await wait_ms(tree, hold)
 			var bup: InputEventMouseButton = bdown.duplicate()
 			bup.pressed = false
 			root.push_input(bup, true)
@@ -140,13 +140,16 @@ static func perform_steps(tree: SceneTree, steps: Array) -> Dictionary:
 			done.append(res)
 		else:
 			done.append({"kind": "wait"})
-		var wait_ms := int(str(step.get("wait_ms", 0)).to_float())
-		if wait_ms > 0:
-			await _wait(tree, wait_ms)
+		var pause_ms := int(str(step.get("wait_ms", 0)).to_float())
+		if pause_ms > 0:
+			await wait_ms(tree, pause_ms)
 	return {"success": true, "steps": done.size()}
 
-static func _wait(tree: SceneTree, msec: int) -> void:
-	if msec <= 0:
+## Gerçek saate göre bekler, kare sayacıyla (process_frame duraklatmada da yayılır). SceneTreeTimer oyunun
+## Engine.time_scale değerine bağlıdır: tur tabanlı bir oyun 0 yapınca bekleyen araçlar hiç dönmüyor,
+## editör "çalışma zamanı sorgusu zaman aşımı" görüyordu (benchmark: RPG ve kart oyunu).
+static func wait_ms(tree: SceneTree, msec: int) -> void:
+	await tree.process_frame
+	var end := Time.get_ticks_msec() + msec
+	while Time.get_ticks_msec() < end:
 		await tree.process_frame
-		return
-	await tree.create_timer(msec / 1000.0).timeout

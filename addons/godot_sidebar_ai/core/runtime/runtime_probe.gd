@@ -155,7 +155,7 @@ static func wait(tree: SceneTree, spec: Dictionary) -> Dictionary:
 			return _report(true, "ASSERTION_PASSED" if timeout == 0 else "CONDITION_MET", elapsed, polls, last, spec)
 		if elapsed >= timeout:
 			break
-		await tree.create_timer(poll / 1000.0, true, false, true).timeout
+		await AISidebarRuntimeInput.wait_ms(tree, poll)
 	return _report(false, "ASSERTION_FAILED" if timeout == 0 else "TIMEOUT", Time.get_ticks_msec() - start, polls, last, spec)
 
 ## Sonuç ve teşhis alanları: kaç kez yoklandı, düğüm / özellik bulundu mu, beklenen ve son değer.

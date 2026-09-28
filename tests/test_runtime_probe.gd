@@ -55,6 +55,9 @@ static func run() -> Dictionary:
 	var long_err: Dictionary = (too_long.get("error", {}) as Dictionary).get("error", {}) if too_long.get("error") is Dictionary else {}
 	checks.append(["R7 sequence total duration capped", str(long_err.get("message", "")).contains("in total")])
 
+	# R8 model karşılaştırma işaretini HTML kaçışıyla yollarsa araç yine anlar
+	checks.append(["R8 html-escaped operator", AISidebarRuntimeInputTools.unescape_html("&gt;=") == ">=" and AISidebarRuntimeInputTools.unescape_html("&lt;") == "<" and AISidebarRuntimeInputTools.unescape_html("a &amp;&amp; b") == "a && b"])
+
 	root.free()
 	var passed := 0
 	var errors: Array = []
