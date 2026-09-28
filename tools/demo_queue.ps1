@@ -7,7 +7,8 @@
 param(
     [string[]]$Genres = @(),
     [int]$TimeoutMin = 35,
-    [string]$Model = ""
+    [string]$Model = "",
+    [string]$Provider = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -36,7 +37,7 @@ foreach ($g in $Genres) {
     if (-not $Prompts.Contains($g)) { Write-QLog ("{0} SKIP unknown genre {1}" -f (Get-Date -Format "HH:mm:ss"), $g); continue }
     $prompt, $title = $Prompts[$g]
     Write-QLog ("{0} START {1}" -f (Get-Date -Format "HH:mm:ss"), $g)
-    & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin -Model $Model | Out-Null
+    & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin -Model $Model -Provider $Provider | Out-Null
     $proj = Get-ChildItem $root -Directory -Filter "*-$g" | Sort-Object Name | Select-Object -Last 1
     $res = Join-Path $proj.FullName "_bench\result.json"
     $status = "no_result"

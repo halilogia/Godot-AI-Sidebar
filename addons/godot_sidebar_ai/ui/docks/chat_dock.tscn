@@ -65,6 +65,16 @@ flat = true
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="ProviderSelector" type="OptionButton" parent="MainLayout/ModelBar"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.6
+focus_mode = 0
+text_overrun_behavior = 3
+clip_text = true
+fit_to_longest_item = false
+
 [node name="ModelSelector" type="OptionButton" parent="MainLayout/ModelBar"]
 layout_mode = 2
 size_flags_horizontal = 3

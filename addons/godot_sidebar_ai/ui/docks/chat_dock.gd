@@ -48,6 +48,7 @@ const AISidebarSkillsPanel = preload("res://addons/godot_sidebar_ai/ui/component
 @onready var copy_task_btn: Button = $MainLayout/HeaderBar/CopyTaskBtn
 @onready var model_bar: HBoxContainer = get_node_or_null("MainLayout/ModelBar")
 @onready var model_selector: OptionButton = $MainLayout/ModelBar/ModelSelector
+@onready var provider_selector: OptionButton = $MainLayout/ModelBar/ProviderSelector
 @onready var approve_mode_btn: Button = $MainLayout/ModelBar/ApproveModeBtn
 @onready var refresh_models_btn: Button = $MainLayout/ModelBar/RefreshModelsBtn
 @onready var settings_btn: Button = $MainLayout/ModelBar/SettingsBtn
@@ -91,8 +92,6 @@ var goals: AISidebarGoalController = null
 var goal_banner: AISidebarGoalBanner = AISidebarGoalBanner.new()
 ## Giriş kutusunun üstünde bağlam göstergesi (yalnız sağlayıcının bildirdiği token sayıları).
 var context_meter: AISidebarContextMeter = AISidebarContextMeter.new()
-## Kayıttan önceki sağlayıcı tipi (değişince model listesi temizlenir).
-var _last_provider_type: String = ""
 ## Kullanıcı mesajına geri dönüş ("Buraya geri dön").
 var rewind: AISidebarRewindController = AISidebarRewindController.new()
 ## Editör arka plandayken soru / onay / bitişte görev çubuğu uyarısı.
@@ -141,7 +140,6 @@ func rebuild_provider() -> void:
 		agent_host.rebuild_provider()
 
 func _ready() -> void:
-	_last_provider_type = str(AISidebarConfig.load_config().get("provider_type", ""))
 	_export_actions = AISidebarChatExportActions.new()
 	_export_actions.get_session = func(): return sessions.current
 	_export_actions.status_badge = status_badge
@@ -178,6 +176,10 @@ func _ready() -> void:
 	interaction.checklist_tracker = checklist_tracker
 	interaction.change_set_dialog = change_set_dialog
 	model_bar_controller.model_selector = model_selector
+	model_bar_controller.provider_selector = provider_selector
+	if provider_selector:
+		provider_selector.custom_minimum_size.x = AISidebarTheme.px(AISidebarTheme.SELECT_MIN_WIDTH)
+	model_bar_controller.on_provider_switched = _on_provider_switched
 	model_bar_controller.approve_mode_btn = approve_mode_btn
 	model_bar_controller.set_status = set_status_badge
 	_setup_history_panel()
@@ -262,6 +264,8 @@ func _ready() -> void:
 
 	# 4. Oturumu Başlat (Her açılışta daima temiz ve yeni bir sohbet başlat)
 	_start_new_chat_session()
+	if provider_selector:
+		provider_selector.item_selected.connect(model_bar_controller.on_provider_selected)
 	if model_selector:
 		model_selector.item_selected.connect(model_bar_controller.on_model_selected)
 		model_selector.item_selected.connect(func(_i: int) -> void: if agent_host: agent_host.refresh_budget_window())
@@ -289,6 +293,7 @@ func _ready() -> void:
 	# 5. Başlangıç Yüklemesi
 	update_ui_language()
 	set_status_badge(AISidebarI18n.get_text("status_ready"), AISidebarTheme.COLOR_SUCCESS)
+	model_bar_controller.load_profiles()
 	model_bar_controller.load_cached_models()
 	if agent_host and agent_host.has_provider():
 		agent_host.fetch_models()
@@ -449,6 +454,8 @@ func update_ui_language() -> void:
 		title_label.text = AISidebarI18n.get_text("app_title")
 	if model_selector:
 		model_selector.tooltip_text = AISidebarI18n.get_text("tooltip_model")
+	if provider_selector:
+		provider_selector.tooltip_text = AISidebarI18n.get_text("tooltip_provider")
 	if refresh_models_btn:
 		refresh_models_btn.tooltip_text = AISidebarI18n.get_text("tooltip_refresh")
 		AISidebarIconHelper.apply_icon(refresh_models_btn, "refresh")
@@ -486,11 +493,14 @@ func _on_settings_pressed() -> void:
 
 func _on_settings_saved() -> void:
 	update_ui_language()
-	# Sağlayıcı değiştiyse eski sağlayıcının model listesi hemen kalkar (yenisi gelene kadar boş).
-	var provider_type := str(AISidebarConfig.load_config().get("provider_type", ""))
-	if provider_type != _last_provider_type:
-		model_bar_controller.populate_model_selector([])
-	_last_provider_type = provider_type
+	# Profil ya da sağlayıcı değişmiş olabilir: seçici ve etkin profilin model listesi yeniden yüklenir.
+	model_bar_controller.load_profiles()
+	_on_provider_switched()
+
+## Etkin sağlayıcı profili değişti (Ayarlar ya da model çubuğundaki seçici): önce o profilin kayıtlı
+## model listesi gösterilir, sağlayıcı yeniden kurulur ve güncel liste çekilir.
+func _on_provider_switched() -> void:
+	model_bar_controller.load_cached_models()
 	rebuild_provider()
 	refresh_models()
 	if agent_host and agent_host.has_provider():

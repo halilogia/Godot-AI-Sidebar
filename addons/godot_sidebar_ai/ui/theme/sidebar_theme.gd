@@ -59,6 +59,10 @@ const ICON_SIZE_SM: int = 12
 const ICON_SIZE_MD: int = 14
 const ICON_SIZE_LG: int = 16
 
+# Denetim genişlikleri
+## Dar dock'ta (320 px) sağlayıcı seçicinin okunur kalan en küçük genişliği ("OpenRouter" gibi bir ad).
+const SELECT_MIN_WIDTH: int = 88
+
 # 4. Color Palette Tokens (Modern Slate & Midnight Dark)
 static var COLOR_BG_APP: Color = Color(0.07, 0.08, 0.11, 1.0)
 static var COLOR_BG_CARD: Color = Color(0.11, 0.13, 0.17, 0.98)

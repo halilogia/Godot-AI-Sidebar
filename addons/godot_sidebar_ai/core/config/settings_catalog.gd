@@ -9,6 +9,8 @@ class_name AISidebarSettingsCatalog
 ## bir ui/ dosyasında geçmelidir. Yeni ayar = aynı işte arayüz denetimi + buraya bir satır.
 
 const UI_KEYS := {
+	"provider_profiles": "Settings > Provider > Provider profiles (add, rename, delete; the shown profile is used on save)",
+	"active_provider_id": "Settings > Provider > Provider profiles; provider picker in the model bar (2+ profiles)",
 	"provider_type": "Settings > Provider",
 	"base_url": "Settings > Provider",
 	"api_key": "Settings > Provider",

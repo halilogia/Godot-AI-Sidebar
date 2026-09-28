@@ -1,8 +1,8 @@
 @tool
 extends RefCounted
 
-## Model çubuğu (SRP): model listesi (önbellek + provider'dan gelen), seçili modelin
-## kaydı ve onay modu butonu (Manuel → Otomatik → Tam otomatik döngüsü).
+## Model çubuğu (SRP): sağlayıcı profili seçici (iki ya da daha çok profil varken görünür), model listesi
+## (önbellek + provider'dan gelen), seçili modelin kaydı ve onay modu butonu (Manuel → Otomatik → Tam otomatik).
 ## Provider'ın kurulması ChatDock'ta kalır; bu sınıf yalnızca model çubuğunu yönetir.
 
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
@@ -13,6 +13,10 @@ const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_t
 const AISidebarIconHelper = preload("res://addons/godot_sidebar_ai/ui/components/icon_helper.gd")
 
 var model_selector: OptionButton = null
+var provider_selector: OptionButton = null
+## func() — etkin profil değişti: ChatDock sağlayıcıyı yeniden kurar ve model listesini çeker.
+var on_provider_switched: Callable = func() -> void: pass
+var _profile_ids: Array[String] = []
 var approve_mode_btn: Button = null
 ## func(text: String, color: Color) — durum rozeti.
 var set_status: Callable = func(_t, _c): pass
@@ -70,6 +74,32 @@ func on_approve_mode_pressed() -> void:
 			next_mode = AISidebarPermissionPolicy.AutoApproveMode.MANUAL
 	AISidebarPermissionPolicy.set_auto_approve_mode(next_mode)
 	update_approve_mode_ui()
+
+## Profil seçici config'teki profillerle doldurulur; tek profil varken gizlidir (çubuk değişmez).
+func load_profiles() -> void:
+	if not provider_selector:
+		return
+	var cfg := AISidebarConfig.load_config()
+	var active := str(cfg.get("active_provider_id", ""))
+	provider_selector.clear()
+	_profile_ids.clear()
+	for prof: Dictionary in AISidebarConfig.profiles(cfg):
+		_profile_ids.append(str(prof.get("id", "")))
+		provider_selector.add_item(str(prof.get("name", "?")))
+		if _profile_ids[-1] == active:
+			provider_selector.selected = _profile_ids.size() - 1
+	provider_selector.visible = _profile_ids.size() >= 2
+
+func on_provider_selected(index: int) -> void:
+	if index < 0 or index >= _profile_ids.size():
+		return
+	var cfg := AISidebarConfig.load_config()
+	if str(cfg.get("active_provider_id", "")) == _profile_ids[index]:
+		return
+	if AISidebarConfig.activate_profile(cfg, _profile_ids[index]):
+		AISidebarConfig.save_config(cfg)
+		load_cached_models()
+		on_provider_switched.call()
 
 func load_cached_models() -> void:
 	var cfg = AISidebarConfig.load_config()

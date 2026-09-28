@@ -10,6 +10,9 @@ class_name AISidebarConfig
 ##   - config.json eksik ya da bozuksa yedekten geri yüklenir (bozuk dosya config.json.corrupt olarak
 ##     saklanır) ve last_recovery ile bildirilir; panel bunu kullanıcıya bir kez söyler.
 ##   - config_version ve migrate(): eski sürümün ayar dosyası yeni biçime taşınır.
+##   - Sağlayıcı profilleri (provider_profiles, active_provider_id): birden çok sağlayıcı (9Router, OpenRouter,
+##     Ollama …) yan yana saklanır. Etkin profilin değerleri düz anahtarlarda da durur (base_url, api_key,
+##     selected_model …); kod bunları okur, save_config düz anahtarları etkin profile geri yazar.
 ##   Sıfırlamak için config.json ve config.json.bak birlikte silinir.
 
 const CONFIG_PATH = "res://addons/godot_sidebar_ai/config.json"
@@ -17,7 +20,10 @@ const BACKUP_PATH = "res://addons/godot_sidebar_ai/config.json.bak"
 const CORRUPT_PATH = "res://addons/godot_sidebar_ai/config.json.corrupt"
 const TEMP_PATH = "res://addons/godot_sidebar_ai/config.json.tmp"
 ## Ayar dosyası biçiminin sürümü; biçim değişince artırılır ve migrate() adımı eklenir.
-const CONFIG_VERSION := 2
+const CONFIG_VERSION := 3
+## Profile ait ayarlar: sağlayıcı değişince bunlar da değişir (model seçimi dahil).
+const PROFILE_KEYS: Array[String] = ["provider_type", "base_url", "api_key", "selected_model", "cached_models",
+	"stream", "report_usage", "context_window", "vision_capable"]
 
 ## Son yüklemede yapılan kurtarma ("" | "restored_missing" | "restored_corrupt"); panel okur ve sıfırlar.
 static var last_recovery: String = ""
@@ -49,6 +55,8 @@ const DEFAULT_CONFIG = {
 	"require_delete_approval": true,
 	"require_overwrite_approval": true,
 	"auto_approve_mode": "MANUAL",
+	"provider_profiles": [],
+	"active_provider_id": "",
 	"config_version": CONFIG_VERSION
 }
 
@@ -86,14 +94,78 @@ static func migrate(cfg: Dictionary) -> Dictionary:
 		# v1 → v2: sabit adım sınırı kaldırıldı (ajan büyük işte yarıda kesilmesin).
 		cfg.erase("max_agent_steps")
 		cfg.erase("max_iterations")
+	if version < 3 or profiles(cfg).is_empty():
+		# v2 → v3: tek sağlayıcı ayarı ilk profil olur (mevcut 9Router ayarı kaybolmaz).
+		var first := profile_from(cfg)
+		first["id"] = "default"
+		first["name"] = _name_from_url(str(cfg.get("base_url", "")))
+		cfg["provider_profiles"] = [first]
+		cfg["active_provider_id"] = "default"
 	cfg["config_version"] = CONFIG_VERSION
 	return cfg
+
+## Kayıtlı sağlayıcı profilleri (sözlük olmayan girdiler atlanır; sözlükler yerinde, kopya değil).
+static func profiles(cfg: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var list_v: Variant = cfg.get("provider_profiles", [])
+	if list_v is Array:
+		var list: Array = list_v
+		for prof_v: Variant in list:
+			if prof_v is Dictionary:
+				var prof: Dictionary = prof_v
+				out.append(prof)
+	return out
+
+## Düz anahtarlardaki (etkin) sağlayıcı ayarları, profil biçiminde.
+static func profile_from(cfg: Dictionary) -> Dictionary:
+	var p: Dictionary = {}
+	for k: String in PROFILE_KEYS:
+		p[k] = _copy(cfg.get(k, DEFAULT_CONFIG.get(k)))
+	return p
+
+## Etkin profil (yoksa boş sözlük; sözlük yerindedir).
+static func active_profile(cfg: Dictionary) -> Dictionary:
+	var id := str(cfg.get("active_provider_id", ""))
+	for prof: Dictionary in profiles(cfg):
+		if str(prof.get("id", "")) == id:
+			return prof
+	return {}
+
+## Düz anahtarları etkin profile yazar (model seçimi, model listesi gibi değişiklikler profilde kalsın).
+static func sync_active_profile(cfg: Dictionary) -> void:
+	var prof := active_profile(cfg)
+	if not prof.is_empty():
+		prof.merge(profile_from(cfg), true)
+
+## Başka profile geçer: önce etkin profil güncellenir, sonra hedefin değerleri düz anahtarlara kopyalanır.
+static func activate_profile(cfg: Dictionary, id: String) -> bool:
+	sync_active_profile(cfg)
+	for prof: Dictionary in profiles(cfg):
+		if str(prof.get("id", "")) == id:
+			for k: String in PROFILE_KEYS:
+				if prof.has(k):
+					cfg[k] = _copy(prof[k])
+			cfg["active_provider_id"] = id
+			return true
+	return false
+
+static func _copy(v: Variant) -> Variant:
+	if v is Array:
+		var arr: Array = v
+		return arr.duplicate()
+	return v
+
+## Adresten okunur profil adı (ör. "openrouter.ai", "localhost:20128").
+static func _name_from_url(url: String) -> String:
+	var host := url.trim_prefix("https://").trim_prefix("http://").get_slice("/", 0)
+	return host if not host.is_empty() else "Provider"
 
 static func save_config(config: Dictionary) -> bool:
 	var dir_path := CONFIG_PATH.get_base_dir()
 	if not DirAccess.dir_exists_absolute(dir_path):
 		DirAccess.make_dir_recursive_absolute(dir_path)
 	config["config_version"] = CONFIG_VERSION
+	sync_active_profile(config)
 	# Son sağlam dosya yedeklenir; bozuk dosya yedeği ezmez.
 	if _read_json(CONFIG_PATH) != null:
 		DirAccess.copy_absolute(ProjectSettings.globalize_path(CONFIG_PATH), ProjectSettings.globalize_path(BACKUP_PATH))

@@ -31,7 +31,13 @@ static func apply(dock: Control) -> void:
 		_variation(btn, AISidebarThemeBuilder.HEADER_BUTTON)
 
 	# 3. Model çubuğu (onay modu hapının ton varyasyonu moda göre ModelBarController'da atanır)
-	_variation(dock.model_selector, AISidebarThemeBuilder.SELECT)
+	# Model çubuğundaki açılır listeler: model ve sağlayıcı profili seçicisi.
+	var model_sel: Variant = dock.model_selector
+	if model_sel is Control:
+		var ms: Control = model_sel
+		for child: Node in ms.get_parent().get_children():
+			if child is OptionButton:
+				_variation(child, AISidebarThemeBuilder.SELECT)
 	for btn: Variant in [dock.refresh_models_btn, dock.settings_btn]:
 		_variation(btn, AISidebarThemeBuilder.ICON_BUTTON)
 

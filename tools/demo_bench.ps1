@@ -15,7 +15,8 @@ param(
     [int]$TimeoutMin = 25,
     [string]$Root = "",
     [string]$GodotPath = "",
-    [string]$Model = ""
+    [string]$Model = "",
+    [string]$Provider = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,6 +44,23 @@ New-Item -ItemType Directory (Join-Path $Project "addons") | Out-Null
 # config.json da kopyalanır: sağlayıcı ve model kullanıcınınkiyle aynıdır.
 Copy-Item -Recurse (Join-Path $Repo "addons\godot_sidebar_ai") (Join-Path $Project "addons\godot_sidebar_ai")
 [IO.File]::WriteAllText((Join-Path $Out "prompt.txt"), $Prompt, $utf8)
+# -Provider: kopyadaki config'te bu adlı (ya da kimlikli) sağlayıcı profili etkin olur (Ayarlar → Sağlayıcı
+# profilleri). Aynı demoyu 9Router ve doğrudan OpenRouter ile koşup sağlayıcı hatalarını ayırmak için.
+if ($Provider) {
+    $cfgPath = Join-Path $Project "addons\godot_sidebar_ai\config.json"
+    $cfgObj = [IO.File]::ReadAllText($cfgPath) | ConvertFrom-Json
+    $prof = @($cfgObj.provider_profiles) | Where-Object { $_.name -eq $Provider -or $_.id -eq $Provider } | Select-Object -First 1
+    if (-not $prof) {
+        Write-Host "[demo_bench] Sağlayıcı profili yok: $Provider (Ayarlar → Sağlayıcı profilleri'nde ekleyin)." -ForegroundColor Red
+        exit 1
+    }
+    foreach ($k in @("provider_type", "base_url", "api_key", "selected_model", "cached_models", "stream", "report_usage", "context_window", "vision_capable")) {
+        if ($prof.PSObject.Properties[$k]) { $cfgObj | Add-Member -NotePropertyName $k -NotePropertyValue $prof.$k -Force }
+    }
+    $cfgObj.active_provider_id = $prof.id
+    [IO.File]::WriteAllText($cfgPath, ($cfgObj | ConvertTo-Json -Depth 20), $utf8)
+    Write-Host "[demo_bench] Sağlayıcı: $($prof.name) ($($prof.base_url))"
+}
 # -Model: yalnız kopyadaki config.json'da seçili model değişir (kullanıcının ayarı olduğu gibi kalır).
 if ($Model) {
     $cfgPath = Join-Path $Project "addons\godot_sidebar_ai\config.json"

@@ -15,7 +15,7 @@ const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarActivityGroup = preload("res://addons/godot_sidebar_ai/ui/components/activity_group.gd")
 
 ## Bütün senaryolar (ui_shots hepsini çeker).
-const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "approval_write", "plan", "runtime", "error", "queue", "goal", "context"]
+const NAMES: Array[String] = ["welcome", "hero", "clarification", "approval", "approval_write", "plan", "runtime", "error", "queue", "goal", "context", "providers"]
 
 class SilentProvider extends AISidebarAIProvider:
 	func send_chat(_messages: Array, _tools_schema: Array) -> void:
@@ -85,6 +85,20 @@ func _scenario_context(dock, r) -> void:
 	host.budget.window = 128000
 	host.provider.usage_reported.emit({"prompt_tokens": 61200, "completion_tokens": 1800, "prompt_tokens_details": {"cached_tokens": 52000}})
 	host.provider.usage_reported.emit({"prompt_tokens": 104300, "completion_tokens": 2100, "prompt_tokens_details": {"cached_tokens": 96400}})
+
+## Sağlayıcı profilleri: iki ya da daha çok profil varken model çubuğunda sağlayıcı seçici görünür (son
+## senaryo: seçici görünür kalır, config'e dokunulmaz).
+func _scenario_providers(dock, r) -> void:
+	var sel: OptionButton = dock.provider_selector
+	sel.clear()
+	sel.add_item("9Router")
+	sel.add_item("OpenRouter")
+	sel.selected = 1
+	sel.visible = true
+	var models: OptionButton = dock.model_selector
+	models.clear()
+	models.add_item("openrouter/space-bunny-alpha")
+	r.text_received.emit("user", _t("Make a snake demo", "Snake demosu yap"))
 
 func _t(en: String, tr: String) -> String:
 	return tr if _lang == "tr" else en

@@ -62,7 +62,10 @@ $runs = @(
 $failed = $false
 foreach ($r in $runs) {
     $args = @("--path", $Root, "-s", "res://tools/ui_shots.gd", "--", $r.dir, $r.lang) + $r.extra
+    # Godot uyarıları stderr'e yazar; PowerShell 5.1 "Stop" altında bunu hata sayıp betiği kesiyordu.
+    $ErrorActionPreference = "Continue"
     $lines = & $GodotBin @args 2>&1 | ForEach-Object { "$_" }
+    $ErrorActionPreference = "Stop"
     $lines | Where-Object { $_ -match "OVERFLOW|SCRIPT ERROR" } | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
     if ($LASTEXITCODE -ne 0) { $failed = $true }
 }

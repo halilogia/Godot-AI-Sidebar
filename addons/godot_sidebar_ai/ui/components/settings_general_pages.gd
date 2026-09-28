@@ -3,7 +3,8 @@ extends RefCounted
 class_name AISidebarSettingsGeneralPages
 
 ## Ayarlar penceresinin genel sayfaları (kodla, AISidebarSettingsUi ile kurulur):
-##   Sağlayıcı: sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable, report_usage)
+##   Sağlayıcı: profiller (provider_profiles: yan yana kayıtlı sağlayıcılar; kaydederken gösterilen profil
+##          etkin olur), sağlayıcı seçimi, uç nokta (base_url, api_key), gelişmiş (stream, vision_capable, report_usage)
 ##   Model & Parametreler: temperature, goal_max_rounds (/goal),
 ##          context_window (bağlam penceresi; 0 = sağlayıcının model listesinden)
 ##   Genel: language, ui_animations, auto_approve_mode, require_delete_approval, require_overwrite_approval,
@@ -16,12 +17,19 @@ const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_t
 const AISidebarGoalSession = preload("res://addons/godot_sidebar_ai/core/agent/goal_session.gd")
 const AISidebarMotion = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_motion.gd")
 const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components/settings_ui_kit.gd")
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 
 const DEFAULT_TEMPERATURE := 0.20
 const PROVIDERS: Array[String] = ["antigravity_cli", "openai_compatible"]
 const LANGUAGES: Array[String] = ["tr", "en"]
 const MODES: Array[String] = ["MANUAL", "AUTO", "FULL_AUTO"]
 
+var profile_opt: OptionButton
+var profile_name_edit: LineEdit
+var profile_delete_btn: Button
+## Pencerede düzenlenen profillerin kopyası ve formda gösterilen profil.
+var _profiles: Array[Dictionary] = []
+var _shown: int = 0
 var provider_opt: OptionButton
 var provider_hint: Label
 var endpoint_box: VBoxContainer
@@ -47,6 +55,20 @@ var on_bug_report: Callable = func() -> void: pass
 
 func build_provider_page() -> VBoxContainer:
 	var page := AISidebarSettingsUi.page()
+	var profs := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_profiles"), AISidebarI18n.get_text("settings_profiles_hint"))
+	var prof_row := AISidebarSettingsUi.row(profs)
+	profile_opt = AISidebarSettingsUi.option_button()
+	profile_opt.name = "ProfileOpt"
+	profile_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	profile_opt.item_selected.connect(_on_profile_selected)
+	prof_row.add_child(profile_opt)
+	prof_row.add_child(AISidebarSettingsUi.button(AISidebarI18n.get_text("btn_profile_add"), _on_profile_add))
+	profile_delete_btn = AISidebarSettingsUi.button(AISidebarI18n.get_text("btn_profile_delete"), _on_profile_delete)
+	prof_row.add_child(profile_delete_btn)
+	profile_name_edit = AISidebarSettingsUi.line_edit()
+	profile_name_edit.text_changed.connect(func(t: String) -> void: profile_opt.set_item_text(_shown, t if not t.strip_edges().is_empty() else "?"))
+	AISidebarSettingsUi.form_row(profs, AISidebarI18n.get_text("settings_profile_name"), profile_name_edit)
+
 	var prov := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_provider"))
 	provider_opt = AISidebarSettingsUi.option_button()
 	provider_opt.add_item(AISidebarI18n.get_text("provider_antigravity"), 0)
@@ -159,21 +181,21 @@ func build_language_page() -> VBoxContainer:
 	return page
 
 func load_from(cfg: Dictionary) -> void:
-	provider_opt.selected = maxi(0, PROVIDERS.find(str(cfg.get("provider_type", "openai_compatible"))))
-	_apply_provider_state()
-	base_url_edit.text = str(cfg.get("base_url", ""))
-	api_key_edit.text = str(cfg.get("api_key", ""))
-	stream_check.button_pressed = cfg.get("stream", true) == true
-	usage_check.button_pressed = cfg.get("report_usage", true) == true
-	var window: float = cfg.get("context_window", 0)
-	context_spin.value = window
-	var vision: Variant = cfg.get("vision_capable", null)
-	if not (vision is bool):
-		vision_opt.selected = 0
-	elif vision == true:
-		vision_opt.selected = 1
-	else:
-		vision_opt.selected = 2
+	AISidebarConfig.sync_active_profile(cfg)
+	_profiles.clear()
+	for prof: Dictionary in AISidebarConfig.profiles(cfg):
+		_profiles.append(prof.duplicate(true))
+	if _profiles.is_empty():
+		var first := AISidebarConfig.profile_from(cfg)
+		first["id"] = "default"
+		first["name"] = AISidebarConfig._name_from_url(str(cfg.get("base_url", "")))
+		_profiles.append(first)
+	_shown = 0
+	for i in _profiles.size():
+		if str(_profiles[i].get("id", "")) == str(cfg.get("active_provider_id", "")):
+			_shown = i
+	_fill_profile_opt()
+	_load_profile(_profiles[_shown])
 	var temperature: float = cfg.get("temperature", DEFAULT_TEMPERATURE)
 	temp_slider.value = temperature
 	_on_temp_changed(temp_slider.value)
@@ -189,13 +211,14 @@ func load_from(cfg: Dictionary) -> void:
 	overwrite_check.button_pressed = cfg.get("require_overwrite_approval", true) == true
 
 func write_to(cfg: Dictionary) -> void:
-	cfg["provider_type"] = PROVIDERS[provider_opt.selected]
-	cfg["base_url"] = base_url_edit.text.strip_edges()
-	cfg["api_key"] = api_key_edit.text.strip_edges()
-	cfg["stream"] = stream_check.button_pressed
-	cfg["report_usage"] = usage_check.button_pressed
-	cfg["context_window"] = int(context_spin.value)
-	cfg["vision_capable"] = null if vision_opt.selected == 0 else (vision_opt.selected == 1)
+	# Profiller yazılır; kaydederken formda gösterilen profil etkin olur ve değerleri düz anahtarlara geçer.
+	_store_profile(_profiles[_shown])
+	var saved: Array = []
+	for prof: Dictionary in _profiles:
+		saved.append(prof.duplicate(true))
+	cfg["provider_profiles"] = saved
+	cfg["active_provider_id"] = ""
+	AISidebarConfig.activate_profile(cfg, str(_profiles[_shown].get("id", "")))
 	cfg["temperature"] = snappedf(temp_slider.value, 0.05)
 	cfg["goal_max_rounds"] = int(goal_rounds_spin.value)
 	cfg["language"] = LANGUAGES[lang_opt.selected]
@@ -207,6 +230,68 @@ func write_to(cfg: Dictionary) -> void:
 	cfg["auto_approve_mode"] = MODES[mode_opt.selected]
 	cfg["require_delete_approval"] = delete_check.button_pressed
 	cfg["require_overwrite_approval"] = overwrite_check.button_pressed
+
+## Formdaki sağlayıcı alanları → profil (ve tersi).
+func _store_profile(prof: Dictionary) -> void:
+	prof["name"] = profile_name_edit.text.strip_edges()
+	prof["provider_type"] = PROVIDERS[provider_opt.selected]
+	prof["base_url"] = base_url_edit.text.strip_edges()
+	prof["api_key"] = api_key_edit.text.strip_edges()
+	prof["stream"] = stream_check.button_pressed
+	prof["report_usage"] = usage_check.button_pressed
+	prof["context_window"] = int(context_spin.value)
+	prof["vision_capable"] = null if vision_opt.selected == 0 else (vision_opt.selected == 1)
+
+func _load_profile(prof: Dictionary) -> void:
+	profile_name_edit.text = str(prof.get("name", ""))
+	provider_opt.selected = maxi(0, PROVIDERS.find(str(prof.get("provider_type", "openai_compatible"))))
+	_apply_provider_state()
+	base_url_edit.text = str(prof.get("base_url", ""))
+	api_key_edit.text = str(prof.get("api_key", ""))
+	stream_check.button_pressed = prof.get("stream", true) == true
+	usage_check.button_pressed = prof.get("report_usage", true) == true
+	var window: float = prof.get("context_window", 0)
+	context_spin.value = window
+	var vision: Variant = prof.get("vision_capable", null)
+	if not (vision is bool):
+		vision_opt.selected = 0
+	elif vision == true:
+		vision_opt.selected = 1
+	else:
+		vision_opt.selected = 2
+
+func _fill_profile_opt() -> void:
+	profile_opt.clear()
+	for prof: Dictionary in _profiles:
+		profile_opt.add_item(str(prof.get("name", "?")))
+	profile_opt.selected = _shown
+	profile_delete_btn.disabled = _profiles.size() < 2
+
+func _on_profile_selected(index: int) -> void:
+	_store_profile(_profiles[_shown])
+	_shown = index
+	_load_profile(_profiles[_shown])
+
+func _on_profile_add() -> void:
+	_store_profile(_profiles[_shown])
+	var prof := AISidebarConfig.profile_from({})
+	prof["id"] = "p%d" % Time.get_ticks_usec()
+	prof["name"] = AISidebarI18n.get_text("settings_profile_new_name")
+	prof["base_url"] = ""
+	_profiles.append(prof)
+	_shown = _profiles.size() - 1
+	_fill_profile_opt()
+	_load_profile(prof)
+	if profile_name_edit.is_inside_tree():
+		profile_name_edit.grab_focus()
+
+func _on_profile_delete() -> void:
+	if _profiles.size() < 2:
+		return
+	_profiles.remove_at(_shown)
+	_shown = 0
+	_fill_profile_opt()
+	_load_profile(_profiles[_shown])
 
 func selected_language() -> String:
 	return LANGUAGES[lang_opt.selected]
