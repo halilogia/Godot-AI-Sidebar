@@ -8,3 +8,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-27 23:33 | platformer | **85** | başarılı | 11.7 dk | 37 | 3 | a | 116 / 212 | 12.7 s |
 | 2026-09-27 23:46 | topdown-shooter | **95** | başarılı | 7.6 dk | 26 | 5 | a | 91 / 167 | 4.6 s |
 | 2026-09-27 23:59 | card-game | **40** | bitti, başarısız | 31.5 dk | 127 | 22 | a | 160 / 354 | 39.9 s |
+| 2026-09-28 18:46 | grand-strategy | **55** | bitti, başarısız | 13.8 dk | 44 | 7 | a | 214 / 606 | 60.8 s |

@@ -38,6 +38,11 @@ static func compact_messages(raw_messages: Array, keep_recent_tools: int = KEEP_
 
 	for i in range(raw_messages.size()):
 		var msg = raw_messages[i].duplicate(true)
+		# Eski asistan mesajlarında yazma araçlarının dosya içerikleri kısa nota iner: reddedilen denemeler
+		# dahil her yazılan dosya her istekte yeniden gidiyordu (grand strateji: asistan mesajları 192 KB).
+		if cutoff_index != -1 and i < cutoff_index and msg is Dictionary:
+			var md: Dictionary = msg
+			_slim_assistant_writes(md)
 		if msg is Dictionary and msg.get("role") == "tool":
 			# Eğer bu tool sonucu son keep_recent_tools içinde değilse sıkıştır
 			if cutoff_index != -1 and i < cutoff_index:
@@ -53,6 +58,52 @@ static func compact_messages(raw_messages: Array, keep_recent_tools: int = KEEP_
 		compacted.append(msg)
 
 	return compacted
+
+const WRITE_CONTENT_KEYS := ["content", "tscn_content", "replacement_code", "target_code"]
+const WRITE_CONTENT_KEEP := 200
+
+static func _slim_assistant_writes(msg: Dictionary) -> void:
+	if msg.get("role") != "assistant":
+		return
+	var calls_v: Variant = msg.get("tool_calls", null)
+	if not (calls_v is Array):
+		return
+	var calls: Array = calls_v
+	for tc_v: Variant in calls:
+		if not (tc_v is Dictionary):
+			continue
+		var tc: Dictionary = tc_v
+		var fn_v: Variant = tc.get("function", null)
+		if fn_v is Dictionary:
+			var fn: Dictionary = fn_v
+			fn["arguments"] = compact_write_arguments(str(fn.get("name", "")), str(fn.get("arguments", "")))
+
+## Yazma aracının argümanlarındaki büyük içerik alanlarını kısa nota çevirir (yol ve boyut kalır).
+static func compact_write_arguments(tool_name: String, args_json: String) -> String:
+	if not tool_name in ["write_files", "create_or_update_script", "replace_file_content", "create_scene"]:
+		return args_json
+	var json := JSON.new()
+	if json.parse(args_json) != OK or not (json.data is Dictionary):
+		return args_json
+	var args: Dictionary = json.data
+	_slim_content(args)
+	var files_v: Variant = args.get("files", null)
+	if files_v is Array:
+		var files: Array = files_v
+		for f: Variant in files:
+			if f is Dictionary:
+				var fd: Dictionary = f
+				_slim_content(fd)
+	return JSON.stringify(args)
+
+static func _slim_content(d: Dictionary) -> void:
+	var path := str(d.get("file_path", d.get("scene_path", "")))
+	for key: String in WRITE_CONTENT_KEYS:
+		var v: Variant = d.get(key, null)
+		if v is String:
+			var s: String = v
+			if s.length() > WRITE_CONTENT_KEEP:
+				d[key] = "[%d chars for %s; omitted from history, read_script shows the file on disk]" % [s.length(), path]
 
 ## Okuma sonucunun dosya yolu (başarısızsa ya da yoksa "").
 static func _read_path(content_str: String) -> String:

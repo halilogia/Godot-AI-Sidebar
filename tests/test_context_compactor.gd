@@ -101,6 +101,19 @@ static func run() -> Dictionary:
 	var sent_diff := str((ctx3.messages[ctx3.messages.size() - 1] as Dictionary).get("content", ""))
 	checks.append(["T10 long diff: changed lines only", sent_diff.length() < 2500 and sent_diff.contains("new_call") and not sent_diff.contains("unchanged line")])
 
+	# T11 eski asistan mesajındaki yazma içeriği nota iner; yol kalır. Son penceredeki çağrı tam kalır.
+	var big_src := "extends Node\n" + "var x := 1\n".repeat(3000)
+	var w_args := JSON.stringify({"files": [{"file_path": "res://big.gd", "content": big_src}]})
+	var hist: Array = [{"role": "user", "content": "yap"},
+		{"role": "assistant", "content": null, "tool_calls": [{"id": "w1", "type": "function", "function": {"name": "write_files", "arguments": w_args}}]},
+		_tool_msg("w1", "write_files", AISidebarToolResult.ok({"written_files": ["res://big.gd"]}))]
+	for i in range(4):
+		hist.append({"role": "assistant", "content": null, "tool_calls": [{"id": "a%d" % i, "type": "function", "function": {"name": "analyze_project", "arguments": "{}"}}]})
+		hist.append(_tool_msg("a%d" % i, "analyze_project", analyze))
+	var slimmed := AISidebarContextCompactor.compact_messages(hist, 2)
+	var old_args := str(((slimmed[1] as Dictionary)["tool_calls"][0] as Dictionary)["function"]["arguments"])
+	checks.append(["T11 old write content omitted", old_args.length() < 500 and old_args.contains("res://big.gd") and old_args.contains("chars")])
+
 	for c in checks:
 		if c[1]:
 			passed += 1
