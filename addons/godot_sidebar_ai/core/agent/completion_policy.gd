@@ -14,7 +14,7 @@ class_name AISidebarCompletionPolicy
 ## "Nereye bakacağını yanlış seçme" hataları: çalışan oyunda olmayan bir düğüme tıklamak / bakmak ya da editör
 ## görünümü açık değilken görüntü almak işin eksik olduğunu göstermez; tamamlanma kapısını bloklamaz (araç
 ## sonucunu model zaten görür). Yazma, okuma ve doğrulama hataları için sıkılık aynen sürer.
-const PROBE_TOOLS := ["send_input", "inspect_runtime_node", "inspect_runtime_tree", "take_viewport_screenshot", "take_runtime_screenshot"]
+const PROBE_TOOLS := ["send_input", "inspect_runtime_node", "inspect_runtime_tree", "take_viewport_screenshot", "take_runtime_screenshot", "inspect_ui_layout"]
 const PROBE_MISS_CODES := ["NODE_NOT_FOUND", "NOT_CLICKABLE", "OFF_SCREEN", "BEHIND_CAMERA", "NO_CAMERA", "VIEWPORT_NOT_VISIBLE"]
 
 static func is_probe_miss(tool_name: String, res: Dictionary) -> bool:
