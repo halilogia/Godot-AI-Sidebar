@@ -69,4 +69,15 @@ data: [DONE]
 		failed += 1
 		errors.append("SSE dedup parse failed: '" + str(parsed_dup.get("thinking", "")) + "'")
 
+	# Test 6: Modelin kendi biçimi araç adına karışırsa ad temizlenir (argümanlar zaten doğru gelir)
+	var leaked := "<tool_call>\n<invoke name=\"send_input"
+	var names_ok: bool = AISidebarSSEParser.clean_tool_name(leaked) == "send_input" \
+		and AISidebarSSEParser.clean_tool_name("play_game") == "play_game" \
+		and AISidebarSSEParser.clean_tool_name(" functions.read_script") == "read_script"
+	if names_ok:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("clean_tool_name failed: " + AISidebarSSEParser.clean_tool_name(leaked))
+
 	return {"name": "SSEParserTests", "passed": passed, "failed": failed, "errors": errors}

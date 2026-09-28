@@ -157,10 +157,11 @@ static func parse_response(raw_text: String) -> Dictionary:
 			var parsed_args = JSON.parse_string(tc["arguments_str"])
 			if parsed_args is Dictionary:
 				args_obj = parsed_args
-		if not str(tc.get("name", "")).is_empty():
+		var tool_name := clean_tool_name(str(tc.get("name", "")))
+		if not tool_name.is_empty():
 			final_tools.append({
 				"id": tc.get("id", ""),
-				"name": tc.get("name", ""),
+				"name": tool_name,
 				"arguments": args_obj
 			})
 
@@ -182,3 +183,18 @@ static func parse_response(raw_text: String) -> Dictionary:
 	if usage != null:
 		out["usage"] = usage
 	return out
+
+## Bazı modeller kendi araç çağrısı biçimini ada karıştırır (`<tool_call> <invoke name="send_input`);
+## argümanlar doğru gelir, yalnız ad bozuktur. Ad bir tanımlayıcı değilse içindeki name="..." (yoksa son
+## tanımlayıcı) alınır; aksi halde "Bilinmeyen araç" hatası adımı boşa harcıyordu.
+static func clean_tool_name(raw: String) -> String:
+	var name := raw.strip_edges()
+	var ident := RegEx.create_from_string("^[A-Za-z_][A-Za-z0-9_]*$")
+	if name.is_empty() or ident.search(name) != null:
+		return name
+	var attr := RegEx.create_from_string("name\\s*=\\s*\"?([A-Za-z_][A-Za-z0-9_]*)")
+	var m := attr.search(name)
+	if m != null:
+		return m.get_string(1)
+	var all := RegEx.create_from_string("[A-Za-z_][A-Za-z0-9_]*").search_all(name)
+	return all[-1].get_string() if not all.is_empty() else name
