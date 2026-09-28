@@ -42,9 +42,14 @@ static func _read(node: Node, prop: String) -> Dictionary:
 	if parts.is_empty():
 		return {"found": false}
 	var head := parts[0]
-	if not head in node:
+	var value: Variant
+	if head in node:
+		value = node.get(head)
+	elif head == "child_count":
+		# inspect_runtime_node bunu "child_count" diye gösterir; Godot'da özellik değil, yöntemdir.
+		value = node.get_child_count()
+	else:
 		return {"found": false}
-	var value: Variant = node.get(head)
 	for i in range(1, parts.size()):
 		var key := parts[i]
 		if value is Dictionary:

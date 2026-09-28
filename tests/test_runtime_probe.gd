@@ -41,6 +41,9 @@ static func run() -> Dictionary:
 	# R5 sayı karşılaştırması tür karışık (int / float) ve sayı olmayanla > yanlış
 	checks.append(["R5 compare types", AISidebarRuntimeProbe.compare(3, "==", 3.0) and not AISidebarRuntimeProbe.compare("a", ">", 1) and AISidebarRuntimeProbe.compare([1, "x"], "contains", "x")])
 
+	# R4b child_count sanal özelliği (inspect çıktısındaki ad)
+	checks.append(["R4b child_count virtual property", _met(root, {"node_path": "Main", "property": "child_count", "operator": "==", "value": 2}) == true and _met(root, {"node_path": "Main", "property": "child_count", "operator": ">", "value": "1"}) == true])
+
 	# R5b metin olarak gelen sayı / bool gerçek türe çevrilir
 	checks.append(["R5b string-typed expected values", AISidebarRuntimeProbe.compare(3, ">=", "1") and not AISidebarRuntimeProbe.compare(3, "<", "1") and AISidebarRuntimeProbe.compare(true, "==", "true") and AISidebarRuntimeProbe.compare(2.5, "==", "2.5") and AISidebarRuntimeProbe.compare("abc", "==", "abc") and not AISidebarRuntimeProbe.compare(0, "==", "abc")])
 
