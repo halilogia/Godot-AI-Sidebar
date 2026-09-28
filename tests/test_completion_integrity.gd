@@ -128,6 +128,18 @@ static func run() -> Dictionary:
 	if FileAccess.file_exists(rec2):
 		DirAccess.remove_absolute(rec2)
 
+	# F4) validate_script başarısızlığı, dosya sonradan başarıyla yazılınca çözülür
+	var rec3 = "res://tests/temp_gate_rec3.gd"
+	if FileAccess.file_exists(rec3):
+		DirAccess.remove_absolute(rec3)
+	var unrec := {"validate_script|" + rec3: {"tool": "validate_script", "deferred": false}, "read_script|" + rec3: {"tool": "read_script", "deferred": false}}
+	AISidebarCompletionPolicy.clear_resolved(unrec, "create_or_update_script|" + rec3, "create_or_update_script", {"file_path": rec3})
+	if not unrec.has("validate_script|" + rec3) and unrec.has("read_script|" + rec3):
+		passed += 1
+	else:
+		failed += 1
+		errors.append("F4 (write clears validate_script failure only) failed: " + str(unrec.keys()))
+
 	# F) recovery: aynı iş retry ile düzelirse success (affetme kanıtı)
 	var rec_path = "res://tests/temp_gate_rec.gd"
 	if FileAccess.file_exists(rec_path):

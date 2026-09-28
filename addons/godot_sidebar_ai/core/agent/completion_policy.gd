@@ -51,7 +51,9 @@ static func clear_resolved(unrecovered: Dictionary, fkey: String, tool_name: Str
 		return
 	for key: Variant in unrecovered.keys():
 		var parts := str(key).split("|", true, 1)
-		if parts.size() < 2 or not parts[0] in WRITE_TOOLS:
+		# Aynı dosyanın eski validate_script başarısızlığı da çözülür: yazma derleme denetiminden geçti ve tamamlanma
+		# kapısı diskteki dosyayı ayrıca yeniden doğrular (open_write_problems).
+		if parts.size() < 2 or not (parts[0] in WRITE_TOOLS or parts[0] == "validate_script"):
 			continue
 		for target: String in parts[1].split(","):
 			if not target.is_empty() and target in written:
