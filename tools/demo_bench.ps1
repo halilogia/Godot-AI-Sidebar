@@ -48,6 +48,8 @@ if ($Model) {
     $cfgPath = Join-Path $Project "addons\godot_sidebar_ai\config.json"
     $cfg = [IO.File]::ReadAllText($cfgPath)
     $cfg = [regex]::Replace($cfg, '"selected_model":\s*"[^"]*"', ('"selected_model": "' + $Model + '"'))
+    # Model listesinde yoksa editör açılışta seçimi listenin ilk modeline çevirir (liste eski olabilir).
+    $cfg = ([regex]'"cached_models":\s*\[').Replace($cfg, ('"cached_models": ["' + $Model + '", '), 1)
     [IO.File]::WriteAllText($cfgPath, $cfg, $utf8)
     Write-Host "[demo_bench] Model: $Model"
 }
