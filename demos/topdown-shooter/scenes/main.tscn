@@ -1,158 +1,139 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene format=3 uid="uid://b0ap1v82ytljb"]
 
-[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
-[ext_resource type="Script" path="res://scripts/arena_floor.gd" id="2_floor"]
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="3_player"]
+[ext_resource type="Script" uid="uid://dnexcujhqrt8q" path="res://scripts/Main.gd" id="1"]
+[ext_resource type="Script" uid="uid://be42ly0gws76o" path="res://scripts/Backdrop.gd" id="2"]
+[ext_resource type="Script" uid="uid://b31tt1u0ysfc6" path="res://scripts/Arena.gd" id="3"]
+[ext_resource type="Script" uid="uid://cxxvwln0jlyms" path="res://scripts/Player.gd" id="4"]
+[ext_resource type="Script" uid="uid://d0j8o14y734f3" path="res://scripts/Fx.gd" id="5"]
+[ext_resource type="Script" uid="uid://dcsertw38m7hy" path="res://scripts/Hud.gd" id="6"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_top"]
-size = Vector2(2480, 40)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_bottom"]
-size = Vector2(2480, 40)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_left"]
-size = Vector2(40, 1600)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_right"]
-size = Vector2(40, 1600)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.06, 0.07, 0.09, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
+[sub_resource type="StyleBoxFlat" id="PanelStyle"]
+bg_color = Color(0.106, 0.141, 0.188, 0.92)
 border_width_bottom = 2
-border_color = Color(1, 1, 1, 0.18)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+border_color = Color(0.31, 0.82, 0.77, 0.35)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fill"]
-bg_color = Color(0.25, 0.8, 1, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+[node name="Main" type="Node2D" unique_id=670111524]
+script = ExtResource("1")
 
-[node name="Main" type="Node2D"]
-script = ExtResource("1_game")
+[node name="BackLayer" type="CanvasLayer" parent="." unique_id=1920111759]
+layer = -1
 
-[node name="Arena" type="Node2D" parent="."]
-
-[node name="Floor" type="Node2D" parent="Arena"]
-script = ExtResource("2_floor")
-
-[node name="Walls" type="StaticBody2D" parent="Arena"]
-collision_layer = 4
-collision_mask = 0
-
-[node name="Top" type="CollisionShape2D" parent="Arena/Walls"]
-position = Vector2(1200, -20)
-shape = SubResource("RectangleShape2D_top")
-
-[node name="Bottom" type="CollisionShape2D" parent="Arena/Walls"]
-position = Vector2(1200, 1620)
-shape = SubResource("RectangleShape2D_bottom")
-
-[node name="Left" type="CollisionShape2D" parent="Arena/Walls"]
-position = Vector2(-20, 800)
-shape = SubResource("RectangleShape2D_left")
-
-[node name="Right" type="CollisionShape2D" parent="Arena/Walls"]
-position = Vector2(2420, 800)
-shape = SubResource("RectangleShape2D_right")
-
-[node name="Entities" type="Node2D" parent="."]
-
-[node name="Bullets" type="Node2D" parent="Entities"]
-groups = ["bullets"]
-
-[node name="Enemies" type="Node2D" parent="Entities"]
-
-[node name="Player" parent="Entities" instance=ExtResource("3_player")]
-position = Vector2(1200, 800)
-
-[node name="HUD" type="CanvasLayer" parent="."]
-
-[node name="HealthBar" type="ProgressBar" parent="HUD"]
-offset_left = 24.0
-offset_top = 24.0
-offset_right = 324.0
-offset_bottom = 48.0
-theme_override_styles/background = SubResource("StyleBoxFlat_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_fill")
-value = 100.0
-show_percentage = false
-
-[node name="ScoreLabel" type="Label" parent="HUD"]
-offset_left = 24.0
-offset_top = 56.0
-offset_right = 324.0
-offset_bottom = 82.0
-theme_override_colors/font_color = Color(1, 0.9, 0.5, 1)
-theme_override_font_sizes/font_size = 22
-text = "SKOR 0"
-
-[node name="WaveLabel" type="Label" parent="HUD"]
-offset_left = 24.0
-offset_top = 82.0
-offset_right = 324.0
-offset_bottom = 108.0
-theme_override_colors/font_color = Color(0.6, 0.95, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = "DALGA 0"
-
-[node name="StatusLabel" type="Label" parent="HUD"]
-offset_left = 24.0
-offset_top = 108.0
-offset_right = 424.0
-offset_bottom = 134.0
-theme_override_colors/font_color = Color(0.85, 0.85, 0.9, 1)
-theme_override_font_sizes/font_size = 16
-text = "Hazir"
-
-[node name="GameOver" type="Control" parent="HUD"]
-visible = false
+[node name="Backdrop" type="Control" parent="BackLayer" unique_id=988642799]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2")
 
-[node name="Dim" type="ColorRect" parent="HUD/GameOver"]
-layout_mode = 1
+[node name="Arena" type="Node2D" parent="." unique_id=1404415995]
+position = Vector2(200, 100)
+script = ExtResource("3")
+
+[node name="World" type="Node2D" parent="." unique_id=564771018]
+position = Vector2(200, 100)
+
+[node name="Player" type="CharacterBody2D" parent="World" unique_id=373224177]
+position = Vector2(440, 280)
+scale = Vector2(1.4, 1.4)
+script = ExtResource("4")
+
+[node name="Muzzle" type="Node2D" parent="World/Player" unique_id=1069089991]
+position = Vector2(26, 0)
+
+[node name="Fx" type="Node2D" parent="." unique_id=1449327879]
+position = Vector2(200, 100)
+script = ExtResource("5")
+
+[node name="Camera" type="Camera2D" parent="." unique_id=1691925817]
+position = Vector2(640, 380)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1313673056]
+script = ExtResource("6")
+
+[node name="Panel" type="Panel" parent="HUD" unique_id=1594262395]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 16.0
+offset_right = 220.0
+offset_bottom = 76.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("PanelStyle")
+
+[node name="Score" type="Label" parent="HUD/Panel" unique_id=122899260]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 11.0
+offset_right = 160.0
+offset_bottom = 49.0
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+theme_override_font_sizes/font_size = 22
+text = "SCORE 0"
+
+[node name="Wave" type="Label" parent="HUD/Panel" unique_id=46291474]
+layout_mode = 0
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -60.0
+offset_top = 11.0
+offset_right = 60.0
+offset_bottom = 49.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.31, 0.82, 0.77, 1)
+theme_override_font_sizes/font_size = 22
+text = "WAVE 1"
+horizontal_alignment = 1
+
+[node name="HP" type="Label" parent="HUD/Panel" unique_id=1063108802]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -160.0
+offset_top = 11.0
+offset_right = -20.0
+offset_bottom = 49.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.95, 0.33, 0.36, 1)
+theme_override_font_sizes/font_size = 22
+text = "HP 5"
+horizontal_alignment = 2
+
+[node name="Banner" type="Label" parent="HUD" unique_id=1671935147]
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -60.0
+offset_right = 300.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.96, 0.77, 0.27, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.07, 0.09, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 40
+text = "WAVE 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Damage" type="ColorRect" parent="HUD" unique_id=1213587934]
+modulate = Color(1, 1, 1, 0)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.6)
-
-[node name="Center" type="CenterContainer" parent="HUD/GameOver"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-
-[node name="Panel" type="VBoxContainer" parent="HUD/GameOver/Center"]
-layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="Title" type="Label" parent="HUD/GameOver/Center/Panel"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
-theme_override_font_sizes/font_size = 56
-text = "GAME OVER"
-horizontal_alignment = 1
-
-[node name="FinalScore" type="Label" parent="HUD/GameOver/Center/Panel"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 24
-text = "Skor: 0"
-horizontal_alignment = 1
-
-[node name="Hint" type="Label" parent="HUD/GameOver/Center/Panel"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
-theme_override_font_sizes/font_size = 20
-text = "R tusu ile yeniden basla"
-horizontal_alignment = 1
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.95, 0.33, 0.36, 1)

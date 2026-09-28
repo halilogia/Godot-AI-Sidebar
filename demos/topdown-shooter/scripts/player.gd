@@ -1,85 +1,77 @@
 class_name Player
 extends CharacterBody2D
 
-## WASD ile hareket, fareye nisan, sol tik ile ates.
+const SPEED := 340.0
+const RADIUS := 14.0
+const BULLET_SCENE := preload("res://scripts/Bullet.gd")
 
-signal health_changed(current: int, maximum: int)
-signal died
+var arena_rect := Rect2(0, 0, 800, 500)
+var muzzle_t := 0.0
+var fire_cooldown := 0.16
+var alive := true
 
-@export var speed: float = 285.0
-@export var max_health: int = 100
-@export var fire_interval: float = 0.16
-@export var invulnerability_time: float = 0.7
-@export var bullet_scene: PackedScene
+@onready var muzzle: Node2D = $Muzzle
 
-var health: int = 0
-var alive: bool = true
-
-var _fire_timer: float = 0.0
-var _invuln_timer: float = 0.0
-
-@onready var _body: Polygon2D = $Body
-@onready var _muzzle: Node2D = $Muzzle
-
+var aim_dir := Vector2.ZERO
 
 func _ready() -> void:
 	add_to_group("player")
-	health = max_health
-	health_changed.emit(health, max_health)
-
+	var cs := CollisionShape2D.new()
+	var c := CircleShape2D.new()
+	c.radius = RADIUS
+	cs.shape = c
+	add_child(cs)
 
 func _physics_process(delta: float) -> void:
-	_fire_timer = maxf(_fire_timer - delta, 0.0)
-	_tick_invulnerability(delta)
 	if not alive:
 		return
-
-	velocity = Input.get_vector("move_left", "move_right", "move_up", "move_down") * speed
+	var input := Vector2.ZERO
+	input.x = Input.get_axis("move_left", "move_right")
+	input.y = Input.get_axis("move_up", "move_down")
+	velocity = input.limit_length(1.0) * SPEED
 	move_and_slide()
-	_aim_at_mouse()
-
-	if Input.is_action_pressed("shoot") and _fire_timer <= 0.0:
+	var h := Vector2(arena_rect.size.x * 0.5, 0)
+	position.x = clampf(position.x, arena_rect.position.x + RADIUS, arena_rect.position.x + h.x - RADIUS)
+	position.y = clampf(position.y, arena_rect.position.y + RADIUS, arena_rect.position.y + arena_rect.size.y - RADIUS)
+	if input.length() > 0.1:
+		aim_dir = input.normalized()
+		rotation = lerp_angle(rotation, aim_dir.angle(), delta * 12.0)
+	fire_cooldown -= delta
+	muzzle_t = maxf(0.0, muzzle_t - delta)
+	if Input.is_action_pressed("shoot") and fire_cooldown <= 0.0:
+		fire_cooldown = 0.16
 		shoot()
-
-
-func _aim_at_mouse() -> void:
-	var to_mouse := get_global_mouse_position() - global_position
-	if to_mouse.length_squared() > 1.0:
-		rotation = to_mouse.angle()
-
+	queue_redraw()
 
 func shoot() -> void:
-	_fire_timer = fire_interval
-	var container := get_tree().get_first_node_in_group("bullets")
-	if container == null or bullet_scene == null:
-		return
-	var bullet := bullet_scene.instantiate()
-	bullet.set("direction", Vector2.RIGHT.rotated(rotation))
-	container.add_child(bullet)
-	bullet.global_position = _muzzle.global_position
-
+	var b := BULLET_SCENE.new()
+	get_parent().add_child(b)
+	var dir := (get_global_mouse_position() - global_position).normalized()
+	if Input.get_last_mouse_velocity().length() < 1.0:
+		if aim_dir.length() > 0.1:
+			dir = aim_dir
+		else:
+			dir = Vector2.RIGHT.rotated(rotation)
+	b.direction = dir
+	b.global_position = muzzle.global_position
+	muzzle_t = 0.07
+	queue_redraw()
 
 func take_damage(amount: int) -> void:
-	if not alive or _invuln_timer > 0.0:
+	if not alive:
 		return
-	health = maxi(health - amount, 0)
-	_invuln_timer = invulnerability_time
-	health_changed.emit(health, max_health)
-	if health <= 0:
+	Global.game_health = maxi(0, Global.game_health - amount)
+	Global.health_changed.emit(Global.game_health)
+	Global.damage_flash = 0.1
+	Global.shake = 6.0
+	if Global.game_health <= 0:
 		alive = false
-		velocity = Vector2.ZERO
-		died.emit()
+		Global.player_died.emit()
 
-
-func heal(amount: int) -> void:
-	health = mini(health + amount, max_health)
-	health_changed.emit(health, max_health)
-
-
-func _tick_invulnerability(delta: float) -> void:
-	if _invuln_timer <= 0.0:
-		_body.modulate.a = 1.0
-		return
-	_invuln_timer = maxf(_invuln_timer - delta, 0.0)
-	# Yanip sonme ile dokunulmazlik gostergesi.
-	_body.modulate.a = 0.35 + 0.65 * absf(sin(_invuln_timer * 28.0))
+func _draw() -> void:
+	var pts := PackedVector2Array([Vector2(20, 0), Vector2(-13, 13), Vector2(-7, 0), Vector2(-13, -13)])
+	draw_colored_polygon(pts, Palette.PRIMARY)
+	var pts2 := PackedVector2Array([Vector2(20, 0), Vector2(-13, 13), Vector2(-7, 0), Vector2(-13, -13)])
+	draw_polyline(pts2 + PackedVector2Array([pts2[0]]), Color(0, 0, 0, 0.35), 3.0)
+	if muzzle_t > 0.0:
+		draw_circle(Vector2(26, 0), 7.0 * (muzzle_t / 0.07), Palette.ACCENT)
