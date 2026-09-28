@@ -58,6 +58,42 @@ static func run() -> Dictionary:
 	for c: Control in built:
 		c.free()
 
+	# G: kullanıcı düzeyi (küresel) sağlayıcı deposu
+	var saved_enabled := AISidebarConfig.global_store_enabled
+	var saved_dir := AISidebarConfig.global_store_dir_override
+	AISidebarConfig.global_store_dir_override = "user://ai_sidebar_test_global"
+	var gpath := AISidebarConfig.global_store_path()
+	if FileAccess.file_exists(gpath):
+		DirAccess.remove_absolute(gpath)
+	# G0 kapalıyken dokunmaz
+	AISidebarConfig.global_store_enabled = false
+	var g0 := AISidebarConfig._with_global_profiles(_two_profiles())
+	checks.append(["G0 disabled store leaves config and file alone", (g0["provider_profiles"] as Array).size() == 2 and not FileAccess.file_exists(gpath)])
+	AISidebarConfig.global_store_enabled = true
+	# G1 ilk proje: profiller depoya tohumlanır
+	var g1 := AISidebarConfig._with_global_profiles(_two_profiles())
+	var stored: Variant = AISidebarConfig._read_global_profiles()
+	checks.append(["G1 first project seeds the store", FileAccess.file_exists(gpath) and stored is Array and (stored as Array).size() == 2 and (g1["provider_profiles"] as Array).size() == 2])
+	# G2 ikinci proje: kendi profili yok (yeni proje) -> küresel listeyi görür, etkin kimlik korunur
+	var fresh := AISidebarConfig.migrate({"config_version": 2, "base_url": "http://localhost:20128/v1", "api_key": "k9", "selected_model": "a"})
+	var g2 := AISidebarConfig._with_global_profiles(fresh)
+	checks.append(["G2 second project sees the shared list, no duplicate for same address+key", (g2["provider_profiles"] as Array).size() == 2])
+	# G3 aynı kimlik, başka sağlayıcı: ikisi de kalır, kimlik çakışması çözülür, etkin profil izlenir
+	var other := AISidebarConfig.migrate({"config_version": 2, "base_url": "https://opencode.ai/zen/v1", "api_key": "ko", "selected_model": "space-bunny-free"})
+	var g3 := AISidebarConfig._with_global_profiles(other)
+	var ids := {}
+	for prof: Dictionary in AISidebarConfig.profiles(g3):
+		ids[str(prof.get("id", ""))] = true
+	var active3 := AISidebarConfig.active_profile(g3)
+	checks.append(["G3 same id, different provider: both kept, ids unique, active follows", (g3["provider_profiles"] as Array).size() == 3 and ids.size() == 3 and str(active3.get("base_url", "")) == "https://opencode.ai/zen/v1"])
+	# G4 depo kalıcı: yeni bir "proje" hepsini görür
+	var g4 := AISidebarConfig._with_global_profiles(AISidebarConfig.migrate({"config_version": 2, "base_url": "http://x.example/v1", "api_key": ""}))
+	checks.append(["G4 store persists across projects", (g4["provider_profiles"] as Array).size() == 4])
+	if FileAccess.file_exists(gpath):
+		DirAccess.remove_absolute(gpath)
+	AISidebarConfig.global_store_enabled = saved_enabled
+	AISidebarConfig.global_store_dir_override = saved_dir
+
 	var passed := 0
 	var errors: Array = []
 	for c: Array in checks:

@@ -215,6 +215,8 @@
   "settings_card_profiles": "Provider profiles",
   "settings_profiles_hint": "Keep several providers (e.g. 9Router, OpenRouter) side by side without overwriting their settings. Each profile has its own address, key and model choice. The profile shown when you save is used; you can also switch in the chat panel.",
   "settings_profile_name": "Name",
+  "settings_profile_preset": "Preset",
+  "settings_profile_preset_pick": "Choose a preset…",
   "settings_profile_new_name": "New provider",
   "btn_profile_add": "New",
   "btn_profile_delete": "Delete",

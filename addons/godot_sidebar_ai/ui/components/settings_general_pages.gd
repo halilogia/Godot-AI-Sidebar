@@ -20,12 +20,22 @@ const AISidebarSettingsUi = preload("res://addons/godot_sidebar_ai/ui/components
 const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 
 const DEFAULT_TEMPERATURE := 0.20
+## Sağlayıcı şablonları (ad, adres): profil ekleyince adresi doğru doldurur. Özel adres yazmak yine serbest.
+const PRESETS: Array = [
+	["9Router", "http://localhost:20128/v1"],
+	["OpenRouter", "https://openrouter.ai/api/v1"],
+	["OpenCode Zen", "https://opencode.ai/zen/v1"],
+	["OpenAI", "https://api.openai.com/v1"],
+	["Ollama", "http://localhost:11434/v1"],
+	["LM Studio", "http://localhost:1234/v1"],
+]
 const PROVIDERS: Array[String] = ["antigravity_cli", "openai_compatible"]
 const LANGUAGES: Array[String] = ["tr", "en"]
 const MODES: Array[String] = ["MANUAL", "AUTO", "FULL_AUTO"]
 
 var profile_opt: OptionButton
 var profile_name_edit: LineEdit
+var preset_opt: OptionButton
 var profile_delete_btn: Button
 ## Pencerede düzenlenen profillerin kopyası ve formda gösterilen profil.
 var _profiles: Array[Dictionary] = []
@@ -68,6 +78,12 @@ func build_provider_page() -> VBoxContainer:
 	profile_name_edit = AISidebarSettingsUi.line_edit()
 	profile_name_edit.text_changed.connect(func(t: String) -> void: profile_opt.set_item_text(_shown, t if not t.strip_edges().is_empty() else "?"))
 	AISidebarSettingsUi.form_row(profs, AISidebarI18n.get_text("settings_profile_name"), profile_name_edit)
+	preset_opt = AISidebarSettingsUi.option_button()
+	preset_opt.add_item(AISidebarI18n.get_text("settings_profile_preset_pick"))
+	for preset: Array in PRESETS:
+		preset_opt.add_item(str(preset[0]))  # i18n-ignore: hizmet adı
+	preset_opt.item_selected.connect(_on_preset_selected)
+	AISidebarSettingsUi.form_row(profs, AISidebarI18n.get_text("settings_profile_preset"), preset_opt)
 
 	var prov := AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_provider"))
 	provider_opt = AISidebarSettingsUi.option_button()
@@ -79,7 +95,7 @@ func build_provider_page() -> VBoxContainer:
 	prov.add_child(provider_hint)
 
 	endpoint_box = AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_endpoint"), AISidebarI18n.get_text("settings_endpoint_hint"))
-	base_url_edit = AISidebarSettingsUi.line_edit("http://127.0.0.1:20128/v1")
+	base_url_edit = AISidebarSettingsUi.line_edit("https://openrouter.ai/api/v1")
 	base_url_edit.name = "BaseUrlEdit"
 	AISidebarSettingsUi.form_row(endpoint_box, AISidebarI18n.get_text("settings_base_url"), base_url_edit)
 	api_key_edit = AISidebarSettingsUi.line_edit(AISidebarI18n.get_text("settings_api_key_placeholder"))
@@ -284,6 +300,18 @@ func _on_profile_add() -> void:
 	_load_profile(prof)
 	if profile_name_edit.is_inside_tree():
 		profile_name_edit.grab_focus()
+
+## Şablon seçilince adres doldurulur; ad boşsa ya da varsayılan yeni ad ise şablon adı olur.
+func _on_preset_selected(index: int) -> void:
+	if index <= 0 or index > PRESETS.size():
+		return
+	var preset: Array = PRESETS[index - 1]
+	base_url_edit.text = str(preset[1])
+	var current := profile_name_edit.text.strip_edges()
+	if current.is_empty() or current == AISidebarI18n.get_text("settings_profile_new_name"):
+		profile_name_edit.text = str(preset[0])
+		profile_name_edit.text_changed.emit(profile_name_edit.text)
+	preset_opt.selected = 0
 
 func _on_profile_delete() -> void:
 	if _profiles.size() < 2:

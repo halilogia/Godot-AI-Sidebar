@@ -10,6 +10,10 @@ class_name AISidebarConfig
 ##   - config.json eksik ya da bozuksa yedekten geri yüklenir (bozuk dosya config.json.corrupt olarak
 ##     saklanır) ve last_recovery ile bildirilir; panel bunu kullanıcıya bir kez söyler.
 ##   - config_version ve migrate(): eski sürümün ayar dosyası yeni biçime taşınır.
+##   - Sağlayıcı profilleri KULLANICI düzeyindedir: liste (ad, adres, anahtar, model listesi) editörün kullanıcı
+##     klasöründeki tek dosyada (providers.json) durur, bütün projeler aynı listeyi görür; projede yalnız hangi
+##     profilin etkin olduğu ve düz anahtarlar (etkin profilin değerleri) kalır. Depo yalnız normal editör
+##     oturumunda açılır (plugin.gd); testler, benchmark ve duman testi kullanıcının dosyasına dokunmaz.
 ##   - Sağlayıcı profilleri (provider_profiles, active_provider_id): birden çok sağlayıcı (9Router, OpenRouter,
 ##     Ollama …) yan yana saklanır. Etkin profilin değerleri düz anahtarlarda da durur (base_url, api_key,
 ##     selected_model …); kod bunları okur, save_config düz anahtarları etkin profile geri yazar.
@@ -24,6 +28,88 @@ const CONFIG_VERSION := 3
 ## Profile ait ayarlar: sağlayıcı değişince bunlar da değişir (model seçimi dahil).
 const PROFILE_KEYS: Array[String] = ["provider_type", "base_url", "api_key", "selected_model", "cached_models",
 	"stream", "report_usage", "context_window", "vision_capable"]
+
+## Kullanıcı düzeyi sağlayıcı deposu (bkz. sınıf başlığı). Yalnız plugin.gd normal oturumda açar.
+static var global_store_enabled: bool = false
+## Testler için klasör; boşsa <ayar klasörü>/Godot/godot_ai_sidebar.
+static var global_store_dir_override: String = ""
+
+static func global_store_path() -> String:
+	var dir := global_store_dir_override
+	if dir.is_empty():
+		dir = OS.get_config_dir().path_join("Godot").path_join("godot_ai_sidebar")
+	return dir.path_join("providers.json")
+
+## Küresel dosyadaki profiller; dosya yoksa ya da bozuksa null.
+static func _read_global_profiles() -> Variant:
+	var d: Variant = _read_json(global_store_path())
+	if d == null:
+		return null
+	var dict: Dictionary = d
+	var list_v: Variant = dict.get("provider_profiles", null)
+	return list_v if list_v is Array else null
+
+static func _write_global_profiles(profiles_list: Array) -> void:
+	var path := global_store_path()
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({"provider_profiles": profiles_list}, "\t"))
+	f.close()
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+	DirAccess.rename_absolute(tmp, path)
+
+## Projenin (eski) profilleri küresel depoya katılır (kimliğe göre birleşim), liste küresel olandan gelir.
+## Etkin profil listede yoksa ilki etkin olur. Depo kapalıysa dokunmaz.
+static func _with_global_profiles(cfg: Dictionary) -> Dictionary:
+	if not global_store_enabled:
+		return cfg
+	var project_list: Array = []
+	for prof: Dictionary in profiles(cfg):
+		project_list.append(prof.duplicate(true))
+	var stored: Variant = _read_global_profiles()
+	var merged: Array = []
+	if stored is Array:
+		var stored_list: Array = stored
+		merged = stored_list.duplicate(true)
+		var added := false
+		for p: Dictionary in project_list:
+			var same := false
+			var id_taken := false
+			for m: Variant in merged:
+				var md: Dictionary = m
+				var same_url := str(md.get("base_url", "")) == str(p.get("base_url", ""))
+				if same_url and (str(md.get("id", "")) == str(p.get("id", "")) or str(md.get("api_key", "")) == str(p.get("api_key", ""))):
+					same = true
+				if str(md.get("id", "")) == str(p.get("id", "")):
+					id_taken = true
+			if same:
+				continue
+			if id_taken:
+				# Aynı kimlik başka bir sağlayıcıya ait (iki proje de "default" üretmiş): yeni kimlik verilir.
+				var old_id := str(p.get("id", ""))
+				var new_id := "p%d" % Time.get_ticks_usec()
+				p["id"] = new_id
+				if str(cfg.get("active_provider_id", "")) == old_id:
+					cfg["active_provider_id"] = new_id
+			merged.append(p)
+			added = true
+		if added:
+			_write_global_profiles(merged)
+	else:
+		merged = project_list
+		if not merged.is_empty():
+			_write_global_profiles(merged)
+	if merged.is_empty():
+		return cfg
+	cfg["provider_profiles"] = merged
+	if active_profile(cfg).is_empty():
+		var first: Dictionary = merged[0]
+		activate_profile(cfg, str(first.get("id", "")))
+	return cfg
 
 ## Son yüklemede yapılan kurtarma ("" | "restored_missing" | "restored_corrupt"); panel okur ve sıfırlar.
 static var last_recovery: String = ""
@@ -66,7 +152,7 @@ static func load_config() -> Dictionary:
 		var main_exists := FileAccess.file_exists(CONFIG_PATH)
 		var backup: Variant = _read_json(BACKUP_PATH)
 		if backup == null:
-			return DEFAULT_CONFIG.duplicate(true)
+			return _with_global_profiles(DEFAULT_CONFIG.duplicate(true))
 		# Ana dosya eksik ya da bozuk, yedek sağlam: yedekten geri yükle (bozuk dosya incelenmek üzere saklanır).
 		if main_exists:
 			DirAccess.copy_absolute(ProjectSettings.globalize_path(CONFIG_PATH), ProjectSettings.globalize_path(CORRUPT_PATH))
@@ -82,7 +168,7 @@ static func load_config() -> Dictionary:
 		cfg[k] = loaded[k]
 	if not loaded.has("config_version"):
 		cfg["config_version"] = 0
-	return migrate(cfg)
+	return _with_global_profiles(migrate(cfg))
 
 ## Eski biçimdeki ayarları güncel biçime taşır (saf). Her biçim değişikliği bir adım ekler.
 static func migrate(cfg: Dictionary) -> Dictionary:
@@ -166,13 +252,21 @@ static func save_config(config: Dictionary) -> bool:
 		DirAccess.make_dir_recursive_absolute(dir_path)
 	config["config_version"] = CONFIG_VERSION
 	sync_active_profile(config)
+	var to_write: Dictionary = config
+	if global_store_enabled:
+		# Liste kullanıcı düzeyinde durur; proje dosyasında anahtarlar / adresler kopyalanmaz (silinen profil
+		# başka projenin eski kopyasından geri gelmesin).
+		var plist: Array = config.get("provider_profiles", [])
+		_write_global_profiles(plist)
+		to_write = config.duplicate(true)
+		to_write.erase("provider_profiles")
 	# Son sağlam dosya yedeklenir; bozuk dosya yedeği ezmez.
 	if _read_json(CONFIG_PATH) != null:
 		DirAccess.copy_absolute(ProjectSettings.globalize_path(CONFIG_PATH), ProjectSettings.globalize_path(BACKUP_PATH))
 	var tmp := FileAccess.open(TEMP_PATH, FileAccess.WRITE)
 	if not tmp:
 		return false
-	tmp.store_string(JSON.stringify(config, "\t"))
+	tmp.store_string(JSON.stringify(to_write, "\t"))
 	tmp.close()
 	var target := ProjectSettings.globalize_path(CONFIG_PATH)
 	if FileAccess.file_exists(CONFIG_PATH):

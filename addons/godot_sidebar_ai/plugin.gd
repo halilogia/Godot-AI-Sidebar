@@ -3,6 +3,7 @@ extends EditorPlugin
 
 const AISidebarEditorSmoke = preload("res://addons/godot_sidebar_ai/core/dev/editor_smoke.gd")
 const AISidebarDemoBench = preload("res://addons/godot_sidebar_ai/core/dev/demo_bench.gd")
+const AISidebarConfig = preload("res://addons/godot_sidebar_ai/core/config/api_config.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const DOCK_SCENE_PATH: String = "res://addons/godot_sidebar_ai/ui/docks/chat_dock.tscn"
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
@@ -20,6 +21,9 @@ var agent_host: AISidebarAgentHost = null
 var mcp_bridge: AISidebarMcpBridgeControl = null
 
 func _enter_tree() -> void:
+	# Sağlayıcı profilleri kullanıcı düzeyinde (bütün projeler): yalnız normal oturumda (dock ilk ayar yüklemesinden
+	# önce açılır); duman testi ve benchmark editörleri kullanıcının dosyasına yazmaz.
+	AISidebarConfig.global_store_enabled = AISidebarEditorSmoke.requested_out_dir().is_empty() and AISidebarDemoBench.requested_out_dir().is_empty()
 	# 1. Hata Ayıklayıcı Eklentisi & Runtime Bridge
 	debugger_plugin = AISidebarDebuggerPlugin.new()
 	add_debugger_plugin(debugger_plugin)

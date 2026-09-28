@@ -46,9 +46,18 @@ Copy-Item -Recurse (Join-Path $Repo "addons\godot_sidebar_ai") (Join-Path $Proje
 [IO.File]::WriteAllText((Join-Path $Out "prompt.txt"), $Prompt, $utf8)
 # Profil verilmediyse listedeki İLK profil kullanılır: kullanıcı editörde başka bir profili etkinleştirmiş olsa da
 # (config.json kopyalanır) benchmark sağlayıcısı belli olsun.
+# Profil listesi: kopyadaki config'te (eski biçim) ya da kullanıcı düzeyi depoda (%APPDATA%\Godot\godot_ai_sidebar\providers.json).
+function Get-Profiles([string]$cfgPath) {
+    $c = [IO.File]::ReadAllText($cfgPath) | ConvertFrom-Json
+    $list = @($c.provider_profiles) | ? { $_ }
+    if ($list.Count -eq 0) {
+        $store = Join-Path $env:APPDATA "Godot\godot_ai_sidebar\providers.json"
+        if (Test-Path $store) { $list = @(([IO.File]::ReadAllText($store) | ConvertFrom-Json).provider_profiles) | ? { $_ } }
+    }
+    return $list
+}
 if (-not $Provider) {
-    $probeCfg = [IO.File]::ReadAllText((Join-Path $Project "addons\godot_sidebar_ai\config.json")) | ConvertFrom-Json
-    $firstProfile = @($probeCfg.provider_profiles)[0]
+    $firstProfile = @(Get-Profiles (Join-Path $Project "addons\godot_sidebar_ai\config.json"))[0]
     if ($firstProfile) { $Provider = [string]$firstProfile.id }
 }
 # -Provider: kopyadaki config'te bu adlı (ya da kimlikli) sağlayıcı profili etkin olur (Ayarlar → Sağlayıcı
@@ -56,7 +65,7 @@ if (-not $Provider) {
 if ($Provider) {
     $cfgPath = Join-Path $Project "addons\godot_sidebar_ai\config.json"
     $cfgObj = [IO.File]::ReadAllText($cfgPath) | ConvertFrom-Json
-    $prof = @($cfgObj.provider_profiles) | Where-Object { $_.name -eq $Provider -or $_.id -eq $Provider } | Select-Object -First 1
+    $prof = @(Get-Profiles $cfgPath) | Where-Object { $_.name -eq $Provider -or $_.id -eq $Provider } | Select-Object -First 1
     if (-not $prof) {
         Write-Host "[demo_bench] Sağlayıcı profili yok: $Provider (Ayarlar → Sağlayıcı profilleri'nde ekleyin)." -ForegroundColor Red
         exit 1

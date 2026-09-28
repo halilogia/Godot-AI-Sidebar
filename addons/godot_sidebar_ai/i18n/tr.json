@@ -215,6 +215,8 @@
   "settings_card_profiles": "Sağlayıcı profilleri",
   "settings_profiles_hint": "Birden çok sağlayıcıyı (ör. 9Router, OpenRouter) ayarlarını silmeden yan yana kaydet. Her profilin kendi adresi, anahtarı ve model seçimi olur. Kaydederken seçili olan profil kullanılır; sohbet panelinden de değiştirilebilir.",
   "settings_profile_name": "Ad",
+  "settings_profile_preset": "Şablon",
+  "settings_profile_preset_pick": "Şablon seç…",
   "settings_profile_new_name": "Yeni sağlayıcı",
   "btn_profile_add": "Yeni",
   "btn_profile_delete": "Sil",
