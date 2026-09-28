@@ -143,6 +143,7 @@ static func validate_script_source(source_code: String, file_path: String = "", 
 		var detail := AISidebarProjectValidator.format_errors(compile_errors)
 		if detail.is_empty():
 			detail = "no line reported (engine error %d)" % reload_err
+		detail += _autoload_hint(compile_errors)
 		return {
 			"status": VerificationStatus.FAILED,
 			"success": false,
@@ -206,6 +207,22 @@ static func _references_batch_file(source_code: String, file_path: String, batch
 		if cls != own and _mentions_identifier(source_code, cls):
 			return true
 	return false
+
+## Büyük harfle başlayan tanımsız bir ad çoğu zaman henüz eklenmemiş bir autoload'dur (benchmark: Main.gd
+## "Game"i kullanıyor, Game'in betiği aynı batch'te; batch reddedilince autoload da eklenemiyor, kısır döngü).
+## Doğru sıra ipucu olarak eklenir.
+static func _autoload_hint(errors: Array) -> String:
+	var re := RegEx.new()
+	re.compile("Identifier \"([A-Z][A-Za-z0-9_]*)\" not declared")
+	for e: Variant in errors:
+		var msg := str(e)
+		if e is Dictionary:
+			var ed: Dictionary = e
+			msg = str(ed.get("message", ""))
+		var m := re.search(msg)
+		if m != null:
+			return " — If %s is meant to be an autoload: write its script first on its own, add it with manage_project_settings add_autoload, then write the files that use %s." % [m.get_string(1), m.get_string(1)]
+	return ""
 
 ## Başarısızlık yalnız batch'teki başka bir dosyadan mı geliyor (kök neden değil mi)?
 static func _is_dependency_failure(val_res: Dictionary, batch_map: Dictionary) -> bool:

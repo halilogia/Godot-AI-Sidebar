@@ -25,7 +25,7 @@ static func get_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": TOOL_NAME,
-			"description": "Reads or changes project settings through Godot's ProjectSettings API (project.godot itself cannot be written as a file). Actions: get / set a setting (e.g. application/run/main_scene, display/window/size/viewport_width); add_input_action / remove_input_action (keys like W, Space, Up; mouse buttons 1-3); add_autoload / remove_autoload (a singleton script or scene). project.godot is backed up before every change. Use it for the main scene, input actions and autoloads a game needs.",
+			"description": "Reads or changes project settings through Godot's ProjectSettings API (project.godot itself cannot be written as a file). Actions: get / set a setting (e.g. application/run/main_scene, display/window/size/viewport_width); add_input_action / remove_input_action (keys like W, Space, Up; mouse buttons 1-3); add_autoload / remove_autoload (a singleton script or scene; order: write the singleton script first, add the autoload, then write scripts that use its name — they do not validate before it exists). project.godot is backed up before every change. Use it for the main scene, input actions and autoloads a game needs.",
 			"parameters": {
 				"type": "object",
 				"properties": {

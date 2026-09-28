@@ -161,7 +161,12 @@ static func run() -> Dictionary:
 	var root_ok: bool = not root_res.get("success", false) and str(root_err.get("file_path", "")).ends_with("temp_root_enemy.gd") and str(root_err.get("message", "")).contains("undefined_root_call")
 	if not root_ok:
 		errors.append("Test G: root cause not reported: " + str(root_err.get("message", "")).left(200))
-	if root_ok and disk_ok and real_reported and g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
+	# Henüz eklenmemiş autoload'a başvuran betik: hata doğru sırayı söyler (kısır döngü benchmark'ı).
+	var al_res = AISidebarVerificationPipeline.validate_batch_files([{"file_path": "res://tests/temp_uses_autoload.gd", "content": "extends Node\nfunc _ready() -> void:\n\tTempGameAutoload.start()\n"}])
+	var al_hint: bool = str((al_res.get("error", {}) as Dictionary).get("message", "")).contains("add_autoload")
+	if not al_hint:
+		errors.append("Test G: autoload order hint missing")
+	if al_hint and root_ok and disk_ok and real_reported and g_ok.get("success", false) and not g_bad.get("success", false) and g_self_ok.get("success", false) and not g_self_bad.get("success", false):
 		passed += 1
 	else:
 		failed += 1

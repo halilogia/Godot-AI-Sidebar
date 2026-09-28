@@ -386,11 +386,11 @@ static func _search_tools(args: Dictionary) -> Dictionary:
 	for s: Dictionary in scored:
 		matches.append({"name": s["name"], "description": s["description"]})
 
-	return AISidebarToolResult.ok({
-		"query": query,
-		"count": matches.size(),
-		"tools": matches
-	})
+	var out := {"query": query, "count": matches.size(), "tools": matches}
+	# Skill'ler köprü ajanlarının sync_project adımını da anlatır; sidebar ajanı her görevde onu arıyordu.
+	if query.contains("sync"):
+		out["note"] = "sync_project exists only for external (MCP bridge) agents. Here the write tools sync the editor themselves: no sync step is needed."
+	return AISidebarToolResult.ok(out)
 
 ## Diske yazmadan veya onay sormadan önce kod doğrulaması (Pipeline Gate)
 static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> Dictionary:
