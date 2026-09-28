@@ -40,6 +40,7 @@ foreach ($g in $Genres) {
             $status += " LIBRARY"
         }
     }
+    if ($proj) { & (Join-Path $PSScriptRoot "demo_score.ps1") -Project $proj.FullName -Genre $g | Out-Null }
     Add-Content -Path $qlog -Encoding UTF8 -Value ("{0} DONE {1} {2} {3}" -f (Get-Date -Format "HH:mm:ss"), $g, $status, $proj.FullName)
 }
 Add-Content -Path $qlog -Encoding UTF8 -Value ("{0} QUEUE_END" -f (Get-Date -Format "HH:mm:ss"))
