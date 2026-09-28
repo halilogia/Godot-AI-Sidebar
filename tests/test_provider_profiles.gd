@@ -89,6 +89,19 @@ static func run() -> Dictionary:
 	# G4 depo kalıcı: yeni bir "proje" hepsini görür
 	var g4 := AISidebarConfig._with_global_profiles(AISidebarConfig.migrate({"config_version": 2, "base_url": "http://x.example/v1", "api_key": ""}))
 	checks.append(["G4 store persists across projects", (g4["provider_profiles"] as Array).size() == 4])
+	# G5 bayat düz anahtarlar başka sağlayıcıyı gösterse de etkin profil kaynaktır; otomatik eşleme adres / anahtarı bozmaz
+	var stale := _two_profiles()
+	stale["base_url"] = "https://opencode.ai/zen/v1"
+	stale["api_key"] = "ko"
+	stale["active_provider_id"] = "default"
+	var g5 := AISidebarConfig._with_global_profiles(stale)
+	var prof5 := AISidebarConfig.active_profile(g5)
+	g5["base_url"] = "https://elsewhere.example/v1"
+	g5["api_key"] = "leak"
+	g5["selected_model"] = "m2"
+	AISidebarConfig.sync_active_profile(g5)
+	var prof5b := AISidebarConfig.active_profile(g5)
+	checks.append(["G5 active profile is the source; sync never writes address/key", str(prof5.get("id")) == "default" and g5.get("selected_model") == "m2" and prof5b["base_url"] != "https://elsewhere.example/v1" and prof5b["api_key"] != "leak" and prof5b["selected_model"] == "m2"])
 	if FileAccess.file_exists(gpath):
 		DirAccess.remove_absolute(gpath)
 	AISidebarConfig.global_store_enabled = saved_enabled

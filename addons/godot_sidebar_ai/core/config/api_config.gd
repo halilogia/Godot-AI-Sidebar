@@ -25,6 +25,10 @@ const CORRUPT_PATH = "res://addons/godot_sidebar_ai/config.json.corrupt"
 const TEMP_PATH = "res://addons/godot_sidebar_ai/config.json.tmp"
 ## Ayar dosyası biçiminin sürümü; biçim değişince artırılır ve migrate() adımı eklenir.
 const CONFIG_VERSION := 3
+## Kimliği belirleyen alanlar (hangi sağlayıcı): yalnız Ayarlar'daki profil formu değiştirir. Düz anahtarlardan
+## profile geri yazılmaz; etkin kimlik ile düz anahtarlar bir an uyuşmasa bile (iki oturum, eski proje kopyası)
+## bir profilin adresine / anahtarına başka sağlayıcınınki yazılamaz.
+const IDENTITY_KEYS: Array[String] = ["provider_type", "base_url", "api_key"]
 ## Profile ait ayarlar: sağlayıcı değişince bunlar da değişir (model seçimi dahil).
 const PROFILE_KEYS: Array[String] = ["provider_type", "base_url", "api_key", "selected_model", "cached_models",
 	"stream", "report_usage", "context_window", "vision_capable"]
@@ -106,9 +110,12 @@ static func _with_global_profiles(cfg: Dictionary) -> Dictionary:
 	if merged.is_empty():
 		return cfg
 	cfg["provider_profiles"] = merged
-	if active_profile(cfg).is_empty():
+	# Etkin profilin değerleri düz anahtarlara PROFİLDEN gelir (kaynak profil): projenin eski / bayat düz
+	# anahtarları başka bir sağlayıcıyı gösterse de ekran ve istekler etkin profile uyar.
+	var active_id := str(cfg.get("active_provider_id", ""))
+	if not apply_profile(cfg, active_id):
 		var first: Dictionary = merged[0]
-		activate_profile(cfg, str(first.get("id", "")))
+		apply_profile(cfg, str(first.get("id", "")))
 	return cfg
 
 ## Son yüklemede yapılan kurtarma ("" | "restored_missing" | "restored_corrupt"); panel okur ve sıfırlar.
@@ -220,12 +227,15 @@ static func active_profile(cfg: Dictionary) -> Dictionary:
 ## Düz anahtarları etkin profile yazar (model seçimi, model listesi gibi değişiklikler profilde kalsın).
 static func sync_active_profile(cfg: Dictionary) -> void:
 	var prof := active_profile(cfg)
-	if not prof.is_empty():
-		prof.merge(profile_from(cfg), true)
+	if prof.is_empty():
+		return
+	var live := profile_from(cfg)
+	for k: String in IDENTITY_KEYS:
+		live.erase(k)
+	prof.merge(live, true)
 
-## Başka profile geçer: önce etkin profil güncellenir, sonra hedefin değerleri düz anahtarlara kopyalanır.
-static func activate_profile(cfg: Dictionary, id: String) -> bool:
-	sync_active_profile(cfg)
+## Profilin değerlerini düz anahtarlara kopyalar (geri yazma yapmaz). Etkin profil kimliğini ayarlar.
+static func apply_profile(cfg: Dictionary, id: String) -> bool:
 	for prof: Dictionary in profiles(cfg):
 		if str(prof.get("id", "")) == id:
 			for k: String in PROFILE_KEYS:
@@ -234,6 +244,11 @@ static func activate_profile(cfg: Dictionary, id: String) -> bool:
 			cfg["active_provider_id"] = id
 			return true
 	return false
+
+## Başka profile geçer: önce etkin profil güncellenir, sonra hedefin değerleri düz anahtarlara kopyalanır.
+static func activate_profile(cfg: Dictionary, id: String) -> bool:
+	sync_active_profile(cfg)
+	return apply_profile(cfg, id)
 
 static func _copy(v: Variant) -> Variant:
 	if v is Array:
