@@ -32,7 +32,7 @@ static func run() -> Dictionary:
 
 	# T1 sınıflandırma
 	var t := AISidebarOpenAICompatibleProvider.is_transient_error
-	checks.append(["T1 transient classification", t.call("HTTP 502: fetch failed") and t.call("HTTP 529: Endpoint is unavailable") and t.call("HTTP 429: rate limit") and t.call("Connect Timeout Error") and not t.call("HTTP 401: invalid key") and not t.call("HTTP 400: bad request")])
+	checks.append(["T1 transient classification", t.call("HTTP 502: fetch failed") and t.call("HTTP 529: Endpoint is unavailable") and t.call("HTTP 429: rate limit") and t.call("Connect Timeout Error") and t.call("Provider returned an empty response") and not t.call("HTTP 401: invalid key") and not t.call("HTTP 400: bad request")])
 
 	# T2 geçici hata: ajana iletilmez, yeniden deneme zamanlanır
 	var s2 := _setup()

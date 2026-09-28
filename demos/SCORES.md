@@ -10,3 +10,7 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-27 23:59 | card-game | **40** | bitti, başarısız | 31.5 dk | 127 | 22 | a | 160 / 354 | 39.9 s |
 | 2026-09-28 18:46 | grand-strategy | **55** | bitti, başarısız | 13.8 dk | 44 | 7 | a | 214 / 606 | 60.8 s |
 | 2026-09-28 19:11 | grand-strategy | **70** | bitti, başarısız | 7.5 dk | 21 | 5 | a | 98 / 179 | 19.5 s |
+| 2026-09-28 19:27 | match3 | **65** | bitti, başarısız | 18.4 dk | 27 | 5 | a | 103 / 196 | 100.4 s |
+| 2026-09-28 19:45 | snake | **75** | bitti, başarısız | 4.6 dk | 11 | 2 | a | 44 / 81 | 101.4 s |
+| 2026-09-28 19:50 | tower-defense | **65** | bitti, başarısız | 10.8 dk | 33 | 2 | a | 94 / 153 | 87.9 s |
+| 2026-09-28 20:05 | snake | **70** | bitti, başarısız | 3.1 dk | 32 | 0 | openrouter/space-bunny-alpha | 46 / 72 | 6 s |

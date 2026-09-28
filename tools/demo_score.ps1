@@ -54,8 +54,13 @@ if (-not (Test-Path $file)) {
 }
 $status = if ($r) { if ($r.status -eq "completed" -and $m.success) { "başarılı" } elseif ($r.status -eq "completed") { "bitti, başarısız" } else { $r.status } } else { "sonuç yok" }
 $elapsed = if ($r) { "$([Math]::Round([double]$r.elapsed_s / 60, 1)) dk" } else { "-" }
-$cfg = Join-Path $Repo "addons\godot_sidebar_ai\config.json"
-$model = if (Test-Path $cfg) { (Get-Content $cfg -Raw -Encoding UTF8 | ConvertFrom-Json).selected_model } else { "?" }
+# Çalıştırmanın gerçekten kullandığı model (editör günlüğü; -Model kullanıcının ayarından farklı olabilir).
+$edLog = Join-Path $Project "_bench\editor.log"
+$model = "?"
+if (Test-Path $edLog) {
+    $hit = Select-String -Path $edLog -Pattern "LLM_REQUEST_START \| model=(\S+)" | Select-Object -First 1
+    if ($hit) { $model = $hit.Matches[0].Groups[1].Value }
+}
 # Çalıştırmanın tarihi proje klasörünün adından (demo_bench.ps1: yyyyMMdd-HHmmss-<ad>).
 $stamp = Split-Path -Leaf $Project
 $when = if ($stamp -match '^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})') { "$($Matches[1])-$($Matches[2])-$($Matches[3]) $($Matches[4]):$($Matches[5])" } else { Get-Date -Format 'yyyy-MM-dd HH:mm' }

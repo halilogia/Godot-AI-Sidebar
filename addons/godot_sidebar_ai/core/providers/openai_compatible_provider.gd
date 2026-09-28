@@ -333,7 +333,7 @@ func _on_network_failed(endpoint_type: String, error_msg: String) -> void:
 static func is_transient_error(error_msg: String) -> bool:
 	var m := error_msg.to_lower()
 	for key: String in ["http 5", "http 429", "timeout", "timed out", "econnreset", "connection reset", "cannot connect", "fetch failed",
-			"injected into sse", "upstream", "unavailable", "overloaded"]:
+			"injected into sse", "upstream", "unavailable", "overloaded", "empty response"]:
 		if m.contains(key):
 			return true
 	return false
