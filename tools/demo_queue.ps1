@@ -12,7 +12,8 @@ param(
     [int]$TimeoutMin = 35,
     [string]$Model = "",
     [string]$Provider = "",
-    [switch]$Loop
+    [switch]$Loop,
+    [int]$PauseMin = 15
 )
 
 $ErrorActionPreference = "Continue"
@@ -48,10 +49,25 @@ foreach ($g in $Genres) {
     if (Test-Path $stopFile) { break }
     if (-not $Prompts.Contains($g)) { Write-QLog ("{0} SKIP unknown genre {1}" -f (Get-Date -Format "HH:mm:ss"), $g); continue }
     $prompt, $title = $Prompts[$g]
-    Write-QLog ("{0} START {1}" -f (Get-Date -Format "HH:mm:ss"), $g)
-    & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin -Model $Model -Provider $Provider | Out-Null
-    $proj = Get-ChildItem $root -Directory -Filter "*-$g" | Sort-Object Name | Select-Object -Last 1
-    $res = Join-Path $proj.FullName "_bench\result.json"
+    # Anında biten koşu (kota / ağ kesintisi: birkaç saniye, 1 adım) puanlanmaz ve silinir; kuyruk bekleyip
+    # aynı türü yeniden dener. (Günlük ücretsiz model kotası dolunca kuyruk tabloyu çöple dolduruyordu.)
+    do {
+        Write-QLog ("{0} START {1}" -f (Get-Date -Format "HH:mm:ss"), $g)
+        & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin -Model $Model -Provider $Provider | Out-Null
+        $proj = Get-ChildItem $root -Directory -Filter "*-$g" | Sort-Object Name | Select-Object -Last 1
+        $res = Join-Path $proj.FullName "_bench\result.json"
+        $instant = $false
+        if (Test-Path $res) {
+            $probe = Get-Content $res -Raw -Encoding UTF8 | ConvertFrom-Json
+            $instant = ([double]$probe.elapsed_s -le 10) -and ([int]$probe.metrics.used_steps -le 1)
+            if ($instant) {
+                Write-QLog ("{0} PAUSE {1}: run ended in {2}s ({3}); waiting {4} min" -f (Get-Date -Format "HH:mm:ss"), $g, $probe.elapsed_s, ([string]$probe.metrics.completion_reason).Substring(0, [Math]::Min(90, ([string]$probe.metrics.completion_reason).Length)), $PauseMin)
+                Remove-Item -Recurse -Force $proj.FullName
+                for ($w = 0; $w -lt $PauseMin * 6 -and -not (Test-Path $stopFile); $w++) { Start-Sleep -Seconds 10 }
+            }
+        }
+    } while ($instant -and -not (Test-Path $stopFile))
+    if (Test-Path $stopFile) { break }
     $status = "no_result"
     if (Test-Path $res) {
         $r = Get-Content $res -Raw -Encoding UTF8 | ConvertFrom-Json
