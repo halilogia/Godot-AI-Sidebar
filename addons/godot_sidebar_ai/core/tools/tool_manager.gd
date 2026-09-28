@@ -182,7 +182,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 		# Runtime / Debug odaklı dar araç seti (~12 araç)
 		var runtime_tools = [
 			"play_game", "stop_game", "restart_game", "get_runtime_errors",
-			"inspect_runtime_tree", "inspect_runtime_node", "send_input",
+			"inspect_runtime_tree", "inspect_runtime_node", "send_input", "wait_for_runtime",
 			"take_runtime_screenshot", "take_viewport_screenshot", "create_or_update_script", "replace_file_content", "validate_script", "read_script"
 		]
 		for rt in runtime_tools:
@@ -338,7 +338,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name == AISidebarRuntimeInputTools.TOOL_NAME or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL] or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -355,6 +355,8 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		
 	if tool_name == AISidebarRuntimeInputTools.TOOL_NAME:
 		return await AISidebarRuntimeInputTools.execute_async(args)
+	if tool_name == AISidebarRuntimeInputTools.WAIT_TOOL:
+		return await AISidebarRuntimeInputTools.execute_wait_async(args)
 	return await AISidebarEditorTools.execute_async(tool_name, args)
 
 static func _search_tools(args: Dictionary) -> Dictionary:

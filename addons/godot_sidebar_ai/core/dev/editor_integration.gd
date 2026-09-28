@@ -8,6 +8,7 @@ extends RefCounted
 ##   I2 manage_project_settings ile eklenen autoload'u kullanan betik doğrulamadan geçer
 ##   I3 ana sahne ayarlanır, oyun çalışır, runtime köprüsünden ekran görüntüsü alınır
 ##   I4 görünmeyen viewport 2x2 "başarılı" ekran görüntüsü döndürmez
+##   I5 send_input adım dizisi ve wait_for_runtime gerçek oyunda (anlık doğrulama, koşul, zaman aşımı)
 ## Geçici dosyalar DIR altında; sonda silinir. project.godot'u editor_smoke.ps1 bayt bayt geri koyar.
 
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
@@ -94,8 +95,22 @@ func _play_and_bridge() -> void:
 	var data: Dictionary = shot.get("data", {}) if shot.get("data") is Dictionary else {}
 	var ok := _ok(set_main) and _ok(played) and _ok(shot) and _width(data) >= 16
 	_check.call("i3_play_and_runtime_screenshot", ok, str(shot.get("error", "")).left(160))
+	await _input_and_wait()
 	await _tool("stop_game", {})
 	await _wait(0.5)
+
+## I5 (oyun açıkken): send_input dizisi tek çağrıda oynar; wait_for_runtime oyunun içinde yoklar ve
+## anlık doğrulama / koşul / zaman aşımı sonuçlarını ayırır.
+func _input_and_wait() -> void:
+	var seq := await _tool("send_input", {"steps": [{"kind": "key", "key": "A", "hold_ms": 50, "wait_ms": 100}, {"kind": "wait", "wait_ms": 100}, {"kind": "key", "key": "Space"}]})
+	var passed := await _tool("wait_for_runtime", {"node_path": "IntegMain", "operator": "exists", "timeout_ms": 0})
+	var met := await _tool("wait_for_runtime", {"node_path": "/root/IntegMain", "property": "visible", "operator": "==", "value": true, "timeout_ms": 1000})
+	var timed_out := await _tool("wait_for_runtime", {"node_path": "IntegMain/Nope", "operator": "exists", "timeout_ms": 300})
+	var p_data: Dictionary = passed.get("data", {}) if passed.get("data") is Dictionary else {}
+	var m_data: Dictionary = met.get("data", {}) if met.get("data") is Dictionary else {}
+	var t_err: Dictionary = timed_out.get("error", {}) if timed_out.get("error") is Dictionary else {}
+	var ok: bool = _ok(seq) and p_data.get("status") == "ASSERTION_PASSED" and m_data.get("status") == "CONDITION_MET" and t_err.get("code") == "TIMEOUT"
+	_check.call("i5_input_steps_and_wait_for_runtime", ok, "seq=%s passed=%s met=%s timeout=%s" % [seq.get("success"), p_data.get("status"), m_data.get("status"), t_err.get("code")])
 
 func _hidden_viewport() -> void:
 	EditorInterface.set_main_screen_editor("Script")

@@ -7,6 +7,7 @@ class_name AISidebarRuntimeBridge
 ## güvenli ve semantik sahne ağacı (Remote Scene Tree) ve düğüm denetimini sağlar.
 
 const AISidebarRuntimeInput = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_input.gd")
+const AISidebarRuntimeProbe = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_probe.gd")
 
 const CAPTURE_NAME: String = "godot_ai"
 var _is_registered: bool = false
@@ -103,11 +104,27 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		_send_input(req_id, spec)
 		return true
 
+	elif cmd == "wait_for":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
+		_wait_for(req_id, spec)
+		return true
+
 	return false
 
-## Girdi basılı tutma süresi kadar sürer; yanıt bırakma olayından sonra gönderilir.
+## Girdi basılı tutma süresi kadar sürer; yanıt bırakma olayından sonra gönderilir. "steps" varsa dizi.
 func _send_input(req_id: String, spec: Dictionary) -> void:
-	var res: Dictionary = await AISidebarRuntimeInput.perform(get_tree(), spec)
+	var res: Dictionary
+	if spec.get("steps") is Array:
+		var steps: Array = spec["steps"]
+		res = await AISidebarRuntimeInput.perform_steps(get_tree(), steps)
+	else:
+		res = await AISidebarRuntimeInput.perform(get_tree(), spec)
+	EngineDebugger.send_message("godot_ai:response", [req_id, res])
+
+## Koşul oyunun içinde yoklanır; yanıt koşul sağlanınca ya da süre dolunca gönderilir.
+func _wait_for(req_id: String, spec: Dictionary) -> void:
+	var res: Dictionary = await AISidebarRuntimeProbe.wait(get_tree(), spec)
 	EngineDebugger.send_message("godot_ai:response", [req_id, res])
 
 ## Çalışan OYUNUN kendi viewport görüntüsünü yakalar (editör ekranı değil,

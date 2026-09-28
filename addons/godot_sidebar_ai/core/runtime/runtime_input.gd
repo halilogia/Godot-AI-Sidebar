@@ -125,6 +125,26 @@ static func _project_actions() -> PackedStringArray:
 			out.append(s)
 	return out
 
+## Girdi dizisi: adımlar sırayla oynatılır (her adımın ardından wait_ms kadar beklenir; kind="wait" yalnız
+## bekler). İlk başarısız adımda durur. Tek mesajla gider: ajan her tuş için ayrı tur harcamaz.
+static func perform_steps(tree: SceneTree, steps: Array) -> Dictionary:
+	var done: Array = []
+	for i in steps.size():
+		var step: Dictionary = steps[i] if steps[i] is Dictionary else {}
+		if str(step.get("kind", "")) != "wait":
+			var res: Dictionary = await perform(tree, step)
+			if res.get("success", false) != true:
+				res["failed_step"] = i
+				res["steps_done"] = done
+				return res
+			done.append(res)
+		else:
+			done.append({"kind": "wait"})
+		var wait_ms := int(str(step.get("wait_ms", 0)).to_float())
+		if wait_ms > 0:
+			await _wait(tree, wait_ms)
+	return {"success": true, "steps": done.size()}
+
 static func _wait(tree: SceneTree, msec: int) -> void:
 	if msec <= 0:
 		await tree.process_frame

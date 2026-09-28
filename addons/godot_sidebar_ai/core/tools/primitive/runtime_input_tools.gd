@@ -2,15 +2,21 @@
 extends RefCounted
 class_name AISidebarRuntimeInputTools
 
-## `send_input`: çalışan oyuna tuş, input action ya da fare tıklaması gönderir (debugger kanalı →
-## oyundaki RuntimeBridge → AISidebarRuntimeInput). Yalnız editörden başlatılmış oyuna gider,
-## proje dosyalarına dokunmaz; yazıcı kilidine tabi değildir (oyun kontrolü, play_game gibi).
+## `send_input`: çalışan oyuna tuş, input action ya da fare tıklaması gönderir; `steps` ile bir dizi girdi
+## (ve aradaki beklemeler) tek çağrıda oynatılır (debugger kanalı → oyundaki RuntimeBridge →
+## AISidebarRuntimeInput). `wait_for_runtime`: bir düğüm özelliği koşulu sağlanana kadar oyunun içinde
+## bekler; timeout_ms=0 anlık doğrulamadır (AISidebarRuntimeProbe). Yalnız editörden başlatılmış oyuna
+## gider, proje dosyalarına dokunmaz; yazıcı kilidine tabi değildir (oyun kontrolü, play_game gibi).
 
 const AISidebarToolResult = preload("res://addons/godot_sidebar_ai/core/types/tool_result.gd")
 const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd")
 
 const TOOL_NAME := "send_input"
+const WAIT_TOOL := "wait_for_runtime"
 const MAX_HOLD_MSEC := 2000
+const MAX_STEPS := 30
+const MAX_STEP_WAIT_MSEC := 5000
+const MAX_WAIT_MSEC := 15000
 
 static func get_schemas() -> Array:
 	return [{
@@ -29,8 +35,27 @@ static func get_schemas() -> Array:
 					"y": {"type": "number", "description": "For kind=click without node_path: vertical position as a fraction of the game view (0.0 to 1.0)."},
 					"button": {"type": "string", "enum": ["left", "right"], "description": "Mouse button for kind=click (default: left)."},
 					"hold_ms": {"type": "integer", "description": "How long to hold the key / action / button, in milliseconds (default 80, max 2000)."},
+					"steps": {"type": "array", "description": "Instead of kind: several inputs played in order in ONE call, e.g. [{kind:'action', action:'move_right', hold_ms:800}, {kind:'wait', wait_ms:300}, {kind:'key', key:'Space'}]. Each step takes the same fields as a single input plus wait_ms (pause after the step); kind 'wait' only waits. Max 30 steps.", "items": {"type": "object"}},
 				},
-				"required": ["kind"],
+				"required": [],
+			},
+		},
+	}, {
+		"type": "function",
+		"function": {
+			"name": WAIT_TOOL,
+			"description": "Waits inside the running game until a node property meets a condition, then reports how long it took (CONDITION_MET) or TIMEOUT with the last value. With timeout_ms 0 it is an instant check: ASSERTION_PASSED / ASSERTION_FAILED. Use it after send_input instead of inspecting repeatedly, e.g. node_path 'Main/UI/GameOver', property 'visible', operator '==', value true, timeout_ms 5000.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"node_path": {"type": "string", "description": "Node in the running game (e.g. 'Main/Player' or '/root/Main/Player')."},
+					"property": {"type": "string", "description": "Property or script variable; nested with dots (e.g. 'health', 'visible', 'position.y'). Optional for exists / not_exists (then the node itself)."},
+					"operator": {"type": "string", "enum": ["==", "!=", ">", ">=", "<", "<=", "exists", "not_exists", "contains"], "description": "Comparison (default ==). contains: substring, array item or dictionary key."},
+					"value": {"description": "Expected value (number, bool or string)."},
+					"timeout_ms": {"type": "integer", "description": "How long to wait (default 3000, max 15000). 0: check once now."},
+					"poll_ms": {"type": "integer", "description": "How often to check inside the game (default 100)."},
+				},
+				"required": ["node_path"],
 			},
 		},
 	}]
@@ -48,6 +73,11 @@ static func readiness_error() -> Dictionary:
 
 ## Argümanları doğrular ve oyuna gidecek sade sözlüğe çevirir. Dönüş: {"spec"} ya da {"error": ToolResult}.
 static func build_spec(args: Dictionary) -> Dictionary:
+	var steps_v: Variant = args.get("steps", null)
+	if steps_v is Array:
+		var steps: Array = steps_v
+		if not steps.is_empty():
+			return _build_steps(steps)
 	var kind := str(args.get("kind", ""))
 	if not kind in ["key", "action", "click"]:
 		return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind must be key, action or click.")}
@@ -72,6 +102,32 @@ static func build_spec(args: Dictionary) -> Dictionary:
 			spec["button"] = "right" if str(args.get("button", "left")) == "right" else "left"
 	return {"spec": spec}
 
+## Dizi: her adım tek girdi gibi doğrulanır (kind="wait" yalnız bekler); toplam süre editör zaman aşımına girer.
+static func _build_steps(steps: Array) -> Dictionary:
+	if steps.size() > MAX_STEPS:
+		return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "At most %d steps per call." % MAX_STEPS)}
+	var out: Array = []
+	var total_ms := 0
+	for i in steps.size():
+		if not (steps[i] is Dictionary):
+			return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "steps[%d] must be an object." % i)}
+		var step: Dictionary = steps[i]
+		var wait_ms := clampi(int(str(step.get("wait_ms", 0)).to_float()), 0, MAX_STEP_WAIT_MSEC)
+		var spec: Dictionary = {"kind": "wait"}
+		if str(step.get("kind", "wait")) != "wait":
+			var one := build_spec(step)
+			if one.has("error"):
+				var e: Dictionary = one["error"]
+				var err: Dictionary = e["error"]
+				return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "steps[%d]: %s" % [i, str(err.get("message", ""))])}
+			spec = one["spec"]
+			var hold: int = spec["hold_ms"]
+			total_ms += hold
+		spec["wait_ms"] = wait_ms
+		total_ms += wait_ms
+		out.append(spec)
+	return {"spec": {"kind": "steps", "steps": out, "hold_ms": total_ms}}
+
 static func execute_async(args: Dictionary) -> Dictionary:
 	var built := build_spec(args)
 	if built.has("error"):
@@ -84,5 +140,36 @@ static func execute_async(args: Dictionary) -> Dictionary:
 	var hold_sec := hold_ms / 1000.0
 	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("send_input", [spec], 1.0, 3.0 + hold_sec)
 	if resp.get("success", false) != true:
-		return AISidebarToolResult.err(str(resp.get("error", "SEND_INPUT_FAILED")), str(resp.get("message", "The input could not be delivered to the game.")))
+		var msg := str(resp.get("message", "The input could not be delivered to the game."))
+		if resp.has("failed_step"):
+			var failed_step: int = resp["failed_step"]
+			msg = "steps[%d] failed: %s (earlier steps were played)" % [failed_step, msg]
+		return AISidebarToolResult.err(str(resp.get("error", "SEND_INPUT_FAILED")), msg)
 	return AISidebarToolResult.ok(resp, "Input sent: " + str(spec["kind"]))
+
+static func execute_wait_async(args: Dictionary) -> Dictionary:
+	var op := str(args.get("operator", "=="))
+	var node_path := str(args.get("node_path", "")).strip_edges()
+	var prop := str(args.get("property", "")).strip_edges()
+	if node_path.is_empty():
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "node_path is required.")
+	if not op in ["exists", "not_exists"] and (prop.is_empty() or not args.has("value")):
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "property and value are required for operator " + op + ".")
+	var not_ready := readiness_error()
+	if not not_ready.is_empty():
+		return not_ready
+	var timeout := clampi(int(str(args.get("timeout_ms", 3000)).to_float()), 0, MAX_WAIT_MSEC)
+	var spec := {"node_path": node_path, "property": prop, "operator": op, "value": args.get("value", null),
+		"timeout_ms": timeout, "poll_ms": int(str(args.get("poll_ms", 100)).to_float())}
+	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("wait_for", [spec], 1.0, 3.0 + timeout / 1000.0)
+	var status := str(resp.get("status", resp.get("error", "WAIT_FAILED")))
+	var cond := "%s %s %s" % [prop if not prop.is_empty() else node_path, op, JSON.stringify(args.get("value", null)) if args.has("value") else ""]
+	if resp.get("success", false) == true:
+		var elapsed: int = resp.get("elapsed_ms", 0)
+		return AISidebarToolResult.ok(resp, "%s: %s (%d ms)" % [status, cond.strip_edges(), elapsed])
+	var msg := str(resp.get("message", ""))
+	if status in ["TIMEOUT", "ASSERTION_FAILED"]:
+		msg = "%s: %s on %s; actual value: %s" % [status, cond.strip_edges(), node_path, JSON.stringify(resp.get("actual"))]
+		if resp.has("missing"):
+			msg += " (the %s was not found)" % str(resp["missing"])
+	return AISidebarToolResult.err(status, msg, true, resp)

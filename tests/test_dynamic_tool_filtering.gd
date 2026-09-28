@@ -61,8 +61,8 @@ static func run() -> Dictionary:
 	for s in runtime_schemas:
 		runtime_names.append(s["function"]["name"])
 		
-	# Üst sınır 18: açık skill varken activate_skill çekirdek araçtır (katalog modele onu çağırmasını söyler); runtime kümesinde send_input var.
-	var is_runtime_optimized = (runtime_schemas.size() >= 8 and runtime_schemas.size() <= 18)
+	# Üst sınır 19: açık skill varken activate_skill çekirdek araçtır (katalog modele onu çağırmasını söyler); runtime kümesinde send_input ve wait_for_runtime var.
+	var is_runtime_optimized = (runtime_schemas.size() >= 8 and runtime_schemas.size() <= 19)
 	var has_necessary_runtime = ("play_game" in runtime_names and "get_runtime_errors" in runtime_names and "create_or_update_script" in runtime_names and "validate_script" in runtime_names and "read_script" in runtime_names)
 	var has_no_unrelated_scene = (not "add_node" in runtime_names and not "create_scene" in runtime_names and not "delete_node" in runtime_names)
 	

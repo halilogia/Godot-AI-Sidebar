@@ -51,6 +51,7 @@ const TestLongTask = preload("res://tests/test_long_task.gd")
 const TestProviderRetry = preload("res://tests/test_provider_retry.gd")
 const TestWriteRecovery = preload("res://tests/test_write_recovery.gd")
 const TestProviderProfiles = preload("res://tests/test_provider_profiles.gd")
+const TestRuntimeProbe = preload("res://tests/test_runtime_probe.gd")
 const TestNetworkRecovery = preload("res://tests/test_network_recovery.gd")
 const TestViewportScreenshot = preload("res://tests/test_viewport_screenshot.gd")
 const TestUIUXQueueAndInput = preload("res://tests/test_ui_ux_queue_and_input.gd")
@@ -232,6 +233,7 @@ func _init() -> void:
 		TestProviderRetry,
 		TestWriteRecovery,
 		TestProviderProfiles,
+		TestRuntimeProbe,
 		TestNetworkRecovery,
 		TestViewportScreenshot,
 		TestUIUXQueueAndInput,
