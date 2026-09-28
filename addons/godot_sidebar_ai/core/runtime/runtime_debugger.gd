@@ -88,6 +88,7 @@ func play(current_scene_only: bool = false) -> Dictionary:
 	_last_observation.is_process_alive = true
 	_last_observation.elapsed_msec = 0
 	
+	AISidebarDebuggerPlugin.ignore_error_breaks = true
 	if current_scene_only:
 		EditorInterface.play_current_scene()
 	else:
@@ -108,6 +109,7 @@ func stop() -> Dictionary:
 		return AISidebarToolResult.err("EDITOR_REQUIRED", "Oyun durdurma editör gerektirir.")
 		
 	EditorInterface.stop_playing_scene()
+	AISidebarDebuggerPlugin.ignore_error_breaks = false
 	_is_monitoring = false
 	if _last_observation:
 		_last_observation.status = AISidebarRuntimeObservation.RuntimeStatus.STOPPED

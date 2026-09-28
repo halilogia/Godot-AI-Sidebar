@@ -9,6 +9,11 @@ class_name AISidebarDebuggerPlugin
 signal response_received(request_id: String, payload: Dictionary)
 
 static var instance: AISidebarDebuggerPlugin = null
+## Ajanın başlattığı oyunda betik hatası oyunu hata ayıklayıcıda DURDURMASIN (Godot'nun "hata molalarını
+## yoksay" ayarı oyuna gönderilir; hata yine günlüğe düşer). Aksi halde oyun ilk hatada donar: inspect
+## çalışır ama send_input / wait_for_runtime gibi bekleyen araçlar zaman aşımına düşer (benchmark: RPG,
+## tower defense, kart oyunu). Kullanıcının kendi başlattığı oyunlar etkilenmez (play_game açar, stop_game kapatır).
+static var ignore_error_breaks: bool = false
 
 var _sessions: Dictionary = {}
 var _pending_requests: Dictionary = {}
@@ -26,9 +31,21 @@ func _notification(what: int) -> void:
 ## _setup_session'ı tekrar çağırmaz. `stopped`'da silmek ikinci çalıştırmadan itibaren runtime
 ## araçlarını (ekran görüntüsü, canlı ağaç) öldürüyordu; canlılık her erişimde is_active() ile sınanır.
 func _setup_session(session_id: int) -> void:
-	var session = get_session(session_id)
+	var session: EditorDebuggerSession = get_session(session_id)
 	if session:
 		_sessions[session_id] = session
+		session.started.connect(func() -> void: apply_run_options(session))
+
+## Oyun bağlanınca (ve bağlantının oturması için bir saniye sonra yine) çalıştırma seçeneklerini gönderir.
+func apply_run_options(session: EditorDebuggerSession) -> void:
+	if not ignore_error_breaks:
+		return
+	session.send_message("set_ignore_error_breaks", [true])
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null:
+		tree.create_timer(1.0).timeout.connect(func() -> void:
+			if ignore_error_breaks and is_instance_valid(session) and session.is_active():
+				session.send_message("set_ignore_error_breaks", [true]))
 
 ## Capture eşleşmesi (prefix-toleranslı): editör tam mesaj da geçse önek de geçse yakalar.
 static func matches_capture(capture: String) -> bool:
@@ -74,7 +91,7 @@ func get_active_session() -> EditorDebuggerSession:
 
 ## Çalışan oyuna event-loop uyumlu, ana akışı kilitlemeyen zaman aşımlı asenkron sorgu gönderir
 func query_async(command: String, args: Array = [], timeout_sec: float = 3.0) -> Dictionary:
-	var session = get_active_session()
+	var session: EditorDebuggerSession = get_active_session()
 	if not session:
 		return {"success": false, "error": "NO_ACTIVE_SESSION", "message": "Aktif bir oyun oturumu bulunamadı."}
 		
@@ -106,12 +123,18 @@ func query_async(command: String, args: Array = [], timeout_sec: float = 3.0) ->
 	if not req_entry["completed"]:
 		_pending_requests.erase(req_id)
 		print("[TIMING] %d | DBG_QUERY_TIMEOUT | cmd=%s req=%s" % [Time.get_ticks_msec(), command, req_id])
+		if session.is_breaked():
+			return paused_result()
 		return timeout_result(timeout_sec)
 
 	var res = req_entry["payload"]
 	_pending_requests.erase(req_id)
 	print("[TIMING] %d | DBG_QUERY_RESPONSE | cmd=%s req=%s" % [Time.get_ticks_msec(), command, req_id])
 	return res
+
+## Oyun hata ayıklayıcıda durmuş (betik hatası ya da kesme noktası): zaman aşımı yerine gerçek neden.
+static func paused_result() -> Dictionary:
+	return {"success": false, "error": "GAME_PAUSED_IN_DEBUGGER", "message": "The game is paused in the Godot debugger (a script error or breakpoint stopped it), so it cannot answer. The error is in the editor's Debugger tab. Fix the script and call restart_game."}
 
 static func timeout_result(timeout_sec: float) -> Dictionary:
 	return {"success": false, "error": "RUNTIME_QUERY_TIMEOUT", "message": "Çalışma zamanı sorgusu zaman aşımına uğradı (%.1f sn)." % timeout_sec}

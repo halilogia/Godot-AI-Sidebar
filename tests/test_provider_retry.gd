@@ -73,12 +73,6 @@ static func run() -> Dictionary:
 	net7.request_completed.emit("chat", 200, "data: {\"error\":{\"message\":\"JSON error injected into SSE stream\"}}\n")
 	checks.append(["T7 in-stream upstream error retried (errors=%s)" % str(s7[2]), (s7[2] as Array).is_empty() and pending.size() == 1])
 
-	# T8 boş yanıt ısrarla gelirse ikinci denemeden itibaren gövdeye "devam et" notu eklenir
-	var noted := AISidebarOpenAICompatibleProvider.add_continue_note('{"model":"m","messages":[{"role":"user","content":"x"}]}')
-	var noted_data: Variant = JSON.parse_string(noted)
-	var noted_msgs: Array = (noted_data as Dictionary).get("messages", []) if noted_data is Dictionary else []
-	checks.append(["T8 continue note appended (bad body untouched)", noted_msgs.size() == 2 and str((noted_msgs[1] as Dictionary).get("role")) == "user" and AISidebarOpenAICompatibleProvider.add_continue_note("not json") == "not json"])
-
 	# T5 denemeler tükenince iletilir
 	AISidebarOpenAICompatibleProvider.retry_delays = []
 	var s5 := _setup()

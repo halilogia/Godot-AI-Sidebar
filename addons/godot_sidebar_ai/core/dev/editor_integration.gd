@@ -11,8 +11,10 @@ extends RefCounted
 ##   I5 send_input adım dizisi ve wait_for_runtime gerçek oyunda (anlık doğrulama, koşul, zaman aşımı)
 ##   I6 oyun Engine.time_scale = 0 yapsa da bekleyen araçlar döner
 ##   I7 get_runtime_performance ve trace_runtime_signals gerçek oyunda
+##   I8 oyun betiği hata verse de oyun donmaz (hata molaları yoksayılır), send_input döner
 ## Geçici dosyalar DIR altında; sonda silinir. project.godot'u editor_smoke.ps1 bayt bayt geri koyar.
 
+const AISidebarDebuggerPlugin = preload("res://addons/godot_sidebar_ai/core/runtime/debugger_plugin.gd")
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 
 const DIR := "res://tests/tmp_integration"
@@ -29,6 +31,7 @@ func run(host: Node, check: Callable) -> void:
 	await _autoload()
 	await _play_and_bridge()
 	await _frozen_time_scale()
+	await _error_break()
 	await _hidden_viewport()
 	_cleanup()
 
@@ -152,6 +155,46 @@ func _frozen_time_scale() -> void:
 	var waited := await _tool("wait_for_runtime", {"node_path": "Frozen", "property": "ticks", "operator": ">", "value": 3, "timeout_ms": 2000})
 	var ok: bool = _ok(seq) and _ok(waited)
 	_check.call("i6_inputs_work_with_time_scale_zero", ok, "seq=%s wait=%s" % [str(seq.get("error", "ok")).left(90), str(waited.get("error", "ok")).left(90)])
+	await _tool("stop_game", {})
+	await _wait(0.5)
+
+## I8: oyun betiği tıklamada hata verse de oyun hata ayıklayıcıda durmaz (play_game hata molalarını yoksaydırır);
+## send_input döner, düğüm hâlâ okunur.
+func _error_break() -> void:
+	var script := DIR + "/breaker.gd"
+	var scene := DIR + "/breaker.tscn"
+	var text := "[gd_scene load_steps=2 format=3]
+
+[ext_resource type=\"Script\" path=\"%s\" id=\"1_b\"]
+
+[node name=\"Breaker\" type=\"Node2D\"]
+script = ExtResource(\"1_b\")
+" % script
+	await _tool("write_files", {"files": [
+		{"file_path": script, "content": "extends Node2D
+
+var hits: int = 0
+
+func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.pressed:
+		hits += 1
+		var n = null
+		n.foo()
+"},
+		{"file_path": scene, "content": text}]})
+	EditorInterface.get_resource_filesystem().scan()
+	await _wait(1.0)
+	await _tool("manage_project_settings", {"action": "set", "key": "application/run/main_scene", "value": scene})
+	await _tool("play_game", {})
+	await _wait(3.0)
+	var click := await _tool("send_input", {"kind": "click", "x": 0.5, "y": 0.5})
+	var dbg := AISidebarDebuggerPlugin.instance
+	var breaked := false
+	if dbg != null and dbg.get_active_session() != null:
+		breaked = dbg.get_active_session().is_breaked()
+	var after := await _tool("inspect_runtime_node", {"node_path": "Breaker"})
+	var ok8: bool = _ok(click) and not breaked and _ok(after)
+	_check.call("i8_script_error_does_not_freeze_the_game", ok8, "click=%s breaked=%s" % [str(click.get("error", "ok")).left(60), str(breaked)])
 	await _tool("stop_game", {})
 	await _wait(0.5)
 
