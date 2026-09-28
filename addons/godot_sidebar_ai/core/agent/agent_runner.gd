@@ -551,13 +551,16 @@ func _dispatch_tool_calls(text_content: String, thinking_content: String, tool_c
 
 ## Tek çağrı: tekrar koruması → netleştirme / plan araya girişi → plan fazı engeli → icra.
 func _process_tool_call(tool_calls: Array, tc_idx: int) -> ToolCallFlow:
-	var tc = tool_calls[tc_idx]
+	var tc: Dictionary = tool_calls[tc_idx]
 	var fn_name: String = tc.get("name", "")
 	var tc_id: String = tc.get("id", "call_default")
 	var args: Dictionary = tc.get("arguments", {})
 	var remaining = tool_calls.slice(tc_idx + 1)
 	
 	telemetry.tool_calls_count += 1
+	if tc.get("arguments_invalid", false): # argümanlar kesilmiş / geçersiz JSON: çalıştırılmaz, model nedenini öğrenir
+		context.add_tool_result_message(tc_id, fn_name, AISidebarToolResult.invalid_arguments(fn_name))
+		return ToolCallFlow.NEXT
 	if not fn_name in _unlocked_tools:
 		_unlocked_tools.append(fn_name)
 	
@@ -608,11 +611,13 @@ func _guard_stagnation(fn_name: String, tc_id: String, args: Dictionary, remaini
 		last_completion = {"verdict": "failed", "reason": AISidebarI18n.get_text("agent_reason_repeated", {"tool": fn_name}), "stop_code": last_stop_code}
 		_finish_task(false)
 		return true
+	# Katı gateway'ler her tool_call için sonuç ister ve sonuç asistan çağrısının HEMEN ardından gelmelidir:
+	# uyarı mesajı bütün sonuçlardan sonra eklenir (araya girince sağlayıcı "400 invalid request" dönüyordu).
 	if context:
-		context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
-		# Katı gateway'ler her tool_call için sonuç ister; tekrar da kayıtsız kalmaz.
 		context.add_tool_result_message(tc_id, fn_name, AISidebarToolResult.err("DUPLICATE_CALL", "'" + fn_name + "' zaten çalıştırıldı; yukarıdaki sonuç geçerlidir.", true))
 	_defer_remaining_calls(remaining, "DEFERRED_AFTER_STAGNATION_WARNING", "Tekrarlanan çağrı nedeniyle yeni tura geçildi; bu çağrı ertelendi.")
+	if context:
+		context.add_user_message("SİSTEM BİLGİSİ: '" + fn_name + "' aracı zaten çalıştırıldı. Sonuç yukarıda mevcuttur. Lütfen aynı aracı tekrar çağırmadan yanıt verin.")
 	_run_next_step()
 	return true
 

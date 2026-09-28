@@ -15,6 +15,10 @@ static func ok(data: Variant = null, message: String = "") -> Dictionary:
 		res["message"] = message
 	return res
 
+## Modelin çağrısının argümanları kesilmiş ya da geçerli JSON değil (çoğunlukla çıktı çok uzayınca): araç çalışmaz.
+static func invalid_arguments(tool_name: String) -> Dictionary:
+	return err("TOOL_ARGUMENTS_INVALID", "The arguments of your %s call were cut off or are not valid JSON (usually because the output got too long), so nothing ran. Call it again with less content: at most 3-4 files per call, each short, and keep your reasoning brief." % tool_name, true)
+
 static func err(code: String, message: String, recoverable: bool = true, extra_data: Variant = null) -> Dictionary:
 	return {
 		"success": false,

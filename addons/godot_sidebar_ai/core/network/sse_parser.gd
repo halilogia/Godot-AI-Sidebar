@@ -130,12 +130,16 @@ static func parse_response(raw_text: String) -> Dictionary:
 					for tc in msg["tool_calls"]:
 						var fn = tc.get("function", {})
 						var args = fn.get("arguments", "{}")
+						var bad_args := false
 						if args is String:
-							args = JSON.parse_string(args)
+							var arg_text: String = args
+							args = JSON.parse_string(arg_text)
+							bad_args = not (args is Dictionary) and not arg_text.strip_edges().is_empty()
 						raw_tool_calls.append({
 							"id": tc.get("id", ""),
 							"name": fn.get("name", ""),
-							"arguments": args if args is Dictionary else {}
+							"arguments": args if args is Dictionary else {},
+							"arguments_invalid": bad_args
 						})
 
 	# Metin içindeki <think> veya <thought> bloklarını ayıkla
@@ -151,18 +155,23 @@ static func parse_response(raw_text: String) -> Dictionary:
 	var final_tools: Array = []
 	for tc in raw_tool_calls:
 		var args_obj = {}
+		var args_invalid := false
 		if tc.has("arguments") and tc["arguments"] is Dictionary:
 			args_obj = tc["arguments"]
+			args_invalid = bool(tc.get("arguments_invalid", false))
 		elif tc.has("arguments_str") and not str(tc["arguments_str"]).is_empty():
 			var parsed_args = JSON.parse_string(tc["arguments_str"])
 			if parsed_args is Dictionary:
 				args_obj = parsed_args
+			else:
+				args_invalid = true # akış yarıda kesildi ya da geçersiz JSON
 		var tool_name := clean_tool_name(str(tc.get("name", "")))
 		if not tool_name.is_empty():
 			final_tools.append({
 				"id": tc.get("id", ""),
 				"name": tool_name,
-				"arguments": args_obj
+				"arguments": args_obj,
+				"arguments_invalid": args_invalid
 			})
 
 	var clean_content = total_content.strip_edges()

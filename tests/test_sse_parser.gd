@@ -80,4 +80,21 @@ data: [DONE]
 		failed += 1
 		errors.append("clean_tool_name failed: " + AISidebarSSEParser.clean_tool_name(leaked))
 
+	# Test 7: yarıda kesilen araç argümanı "geçersiz" işaretlenir (sessizce {} sayılmaz); geçerli olan işaretlenmez
+	var cut := "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"function\":{\"name\":\"write_files\",\"arguments\":\"{\\\"files\\\": [{\\\"file_path\\\"\"}}]}}]}
+
+data: [DONE]
+"
+	var whole := "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"c2\",\"function\":{\"name\":\"play_game\",\"arguments\":\"{}\"}}]}}]}
+
+data: [DONE]
+"
+	var cut_tools: Array = AISidebarSSEParser.parse_response(cut).get("tool_calls", [])
+	var whole_tools: Array = AISidebarSSEParser.parse_response(whole).get("tool_calls", [])
+	if cut_tools.size() == 1 and (cut_tools[0] as Dictionary).get("arguments_invalid") == true and whole_tools.size() == 1 and (whole_tools[0] as Dictionary).get("arguments_invalid") == false:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("truncated tool arguments not flagged: " + str(cut_tools) + " / " + str(whole_tools))
+
 	return {"name": "SSEParserTests", "passed": passed, "failed": failed, "errors": errors}
