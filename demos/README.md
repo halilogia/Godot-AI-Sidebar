@@ -21,11 +21,18 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [Top-down yarış](topdown-racing/) | top-down yarış oyunu demosu yap | 9.1 dk | 81 | 90 | 2026-09-29 |
 
 ## Galeri
+| [3D birinci şahıs](fps-3d/) | 3D birinci şahıs yürüme ve toplama demosu yap | 2.4 dk | 24 | 37 | 2026-09-29 |
+
+## Galeri
 
 <!-- galeri -->
 **endless-runner**
 
 ![endless-runner](endless-runner/screenshot.png)
+
+**fps-3d**
+
+![fps-3d](fps-3d/screenshot.png)
 
 **platformer**
 
