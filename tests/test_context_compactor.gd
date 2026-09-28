@@ -87,6 +87,20 @@ static func run() -> Dictionary:
 	var head := str((ctx2.messages[0] as Dictionary).get("content", ""))
 	checks.append(["T8 fallback compaction", short_kept and head.begins_with("[ÖNCEKİ AJAN") and "res://s0.gd" in head and "oyun yap" in head])
 
+	# T9 ekran görüntüsünün base64'ü modele metin olarak gitmez (her istekte 50-75 KB'tı); kayıt tutar.
+	var ctx3 = AISidebarAgentContext.new()
+	ctx3.begin_task("shot")
+	var big_b64 := "A".repeat(60000)
+	ctx3.add_tool_result_message("s1", "take_runtime_screenshot", AISidebarToolResult.ok({"base64": big_b64, "width": 640, "height": 360, "has_vision_data": true, "path": "user://x.png"}))
+	var sent := str((ctx3.messages[ctx3.messages.size() - 1] as Dictionary).get("content", ""))
+	checks.append(["T9 screenshot base64 not sent as text", sent.length() < 2000 and sent.contains("640x360") and JSON.stringify(ctx3.get_transcript().to_data()).contains("AAAAAAAAAA")])
+
+	# T10 uzun diff'ten modele yalnız değişen satırlar gider (dosyanın başı değil).
+	var long_diff := "--- a\n+++ b\n" + "  unchanged line\n".repeat(400) + "- old_call()\n+ new_call()\n"
+	ctx3.add_tool_result_message("r1", "replace_file_content", AISidebarToolResult.ok({"diff": long_diff, "file_path": "res://x.gd"}))
+	var sent_diff := str((ctx3.messages[ctx3.messages.size() - 1] as Dictionary).get("content", ""))
+	checks.append(["T10 long diff: changed lines only", sent_diff.length() < 2500 and sent_diff.contains("new_call") and not sent_diff.contains("unchanged line")])
+
 	for c in checks:
 		if c[1]:
 			passed += 1

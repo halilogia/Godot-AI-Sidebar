@@ -21,7 +21,9 @@ const COMPACT_KEEP := 16
 ## Asıl koruma bütçedir (compact_now); bu eşik düşük olursa ajan kendi yazdığı kodu unutur.
 const FALLBACK_COMPACT_AT := 120
 const FALLBACK_KEEP := 40
-const WRITE_TOOLS := ["write_files", "create_or_update_script", "replace_file_content", "create_scene"]
+## Modele giden araç sonucundaki diff'in üst sınırı (karakter).
+const MODEL_DIFF_MAX := 1500
+const WRITE_TOOLS :=["write_files", "create_or_update_script", "replace_file_content", "create_scene"]
 const COMPACT_REQUESTS_HEADER := "Kullanıcının istekleri ve şartları (aynen korunur):"
 const COMPACT_REQUEST_MAX_CHARS := 600
 const COMPACT_REQUESTS_MAX := 12
@@ -140,6 +142,34 @@ func add_assistant_tool_call_message(text: String, tool_calls: Array, thinking: 
 		tc_data["thinking_truncated"] = thought["truncated"]
 	get_transcript().record("tool_call", tc_data)
 
+## Modele giden araç sonucu: ekran görüntüsünün base64'ü metinden çıkarılır. Görüntü destekleyen sağlayıcıya
+## ayrıca gerçek görsel olarak gider; metin olarak her istekte yeniden gönderilen 50-75 KB base64 modele
+## bir şey anlatmıyor, isteği şişirip yavaşlatıyordu (kart oyunu benchmark'ı: 5 görüntü = 360 KB).
+## Kayıt (export) tam sonucu tutar.
+static func _for_model(result: Dictionary) -> Dictionary:
+	var data_v: Variant = result.get("data", null)
+	if not (data_v is Dictionary):
+		return result
+	var data: Dictionary = data_v
+	var diff_long: bool = str(data.get("diff", "")).length() > MODEL_DIFF_MAX
+	if not data.has("base64") and not diff_long:
+		return result
+	var slim := data.duplicate()
+	if slim.has("base64"):
+		var b64: String = str(slim.get("base64", ""))
+		slim["base64"] = "[image %sx%s, %d KB: sent to the model as an image when the provider supports vision; saved at path]" % [slim.get("width", "?"), slim.get("height", "?"), b64.length() / 1024]
+	# replace_file_content'in diff'i dosyanın tamamını taşıyordu (ort. 6,5 KB): model değişikliği zaten biliyor.
+	if diff_long:
+		var diff: String = str(slim.get("diff", ""))
+		var changed := PackedStringArray()
+		for line: String in diff.split("\n"):
+			if line.begins_with("+") or line.begins_with("-"):
+				changed.append(line)
+		slim["diff"] = "\n".join(changed).left(MODEL_DIFF_MAX) + "\n… [changed lines only, %d chars total diff; read_script shows the file]" % diff.length()
+	var out := result.duplicate()
+	out["data"] = slim
+	return out
+
 ## OpenAI Uyumlu Tool Sonucu mesajı ekler
 func add_tool_result_message(tool_call_id: String, tool_name: String, result: Dictionary) -> void:
 	recent_actions.append(tool_name)
@@ -151,7 +181,7 @@ func add_tool_result_message(tool_call_id: String, tool_name: String, result: Di
 		"role": "tool",
 		"tool_call_id": final_id,
 		"name": tool_name,
-		"content": JSON.stringify(result)
+		"content": JSON.stringify(_for_model(result))
 	})
 	var payload_flagged = AISidebarTaskTranscript.truncate_flagged(
 		AISidebarTaskTranscript.redact_secrets(JSON.stringify(result)),
