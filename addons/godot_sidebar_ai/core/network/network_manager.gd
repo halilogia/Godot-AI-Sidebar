@@ -70,7 +70,11 @@ func _start_httpclient_request(endpoint_type: String, method: int, url: String, 
 	print("[TIMING] %s | CONNECT_START | endpoint=%s host=%s port=%d path=%s" % [get_ts(), endpoint_type, parsed_url["host"], parsed_url["port"], _path])
 	
 	_client = HTTPClient.new()
-	var err = _client.connect_to_host(parsed_url["host"], parsed_url["port"])
+	# https:// adresi TLS ile bağlanır. (Şema ayrıştırılıp atılıyordu: HTTPS uçlarına düz HTTP gidiyor,
+	# sunucu "400 The plain HTTP request was sent to HTTPS port" dönüyordu.)
+	var use_ssl: bool = parsed_url.get("ssl", false)
+	var tls: TLSOptions = TLSOptions.client() if use_ssl else null
+	var err = _client.connect_to_host(parsed_url["host"], parsed_url["port"], tls)
 	if err != OK:
 		print("[TIMING] %s | CONNECT_ERROR | err=%d" % [get_ts(), err])
 		_client = null
