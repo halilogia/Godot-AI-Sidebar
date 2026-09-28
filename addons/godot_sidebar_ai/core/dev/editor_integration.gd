@@ -115,6 +115,13 @@ func _input_and_wait() -> void:
 	var ok: bool = _ok(seq) and p_data.get("status") == "ASSERTION_PASSED" and m_data.get("status") == "CONDITION_MET" and t_err.get("code") == "TIMEOUT"
 	_check.call("i5_input_steps_and_wait_for_runtime", ok, "seq=%s passed=%s met=%s timeout=%s" % [seq.get("success"), p_data.get("status"), m_data.get("status"), t_err.get("code")])
 
+	# I5b: aynı anda birden çok action ve sürükle-bırak
+	var multi := await _tool("send_input", {"kind": "actions", "actions": ["ui_left", "ui_right"], "hold_ms": 100})
+	var drag := await _tool("send_input", {"kind": "drag", "x": 0.2, "y": 0.5, "to_x": 0.8, "to_y": 0.5, "hold_ms": 300})
+	var bad_drag := await _tool("send_input", {"kind": "drag", "x": 0.2, "y": 0.5, "to_x": 2.0, "to_y": 0.5})
+	var bd_err: Dictionary = bad_drag.get("error", {}) if bad_drag.get("error") is Dictionary else {}
+	_check.call("i5b_multi_action_and_drag", _ok(multi) and _ok(drag) and bd_err.get("code") == "OUT_OF_RANGE", "multi=%s drag=%s bad=%s" % [str(multi.get("error", "ok")).left(80), str(drag.get("error", "ok")).left(80), bd_err.get("code")])
+
 	# I7: performans ölçümü ve sinyal izleme gerçek oyunda
 	var perf := await _tool("get_runtime_performance", {"duration_ms": 400})
 	var trace := await _tool("trace_runtime_signals", {"node_path": "IntegMain", "signals": ["visibility_changed"], "duration_ms": 300})

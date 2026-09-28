@@ -31,7 +31,11 @@ static func get_schemas() -> Array:
 			"parameters": {
 				"type": "object",
 				"properties": {
-					"kind": {"type": "string", "enum": ["key", "action", "click"], "description": "What to send."},
+					"kind": {"type": "string", "enum": ["key", "action", "actions", "click", "drag"], "description": "What to send. actions: several input actions held together (e.g. move_right + jump). drag: press at the start, move, release at the end (node_path or x, y start; to_node_path or to_x, to_y end; hold_ms is the drag duration)."},
+					"actions": {"type": "array", "items": {"type": "string"}, "description": "For kind=actions: input actions to hold at the same time."},
+					"to_node_path": {"type": "string", "description": "For kind=drag: node to drop on."},
+					"to_x": {"type": "number", "description": "For kind=drag without to_node_path: end position as a fraction of the game view."},
+					"to_y": {"type": "number", "description": "For kind=drag without to_node_path: end position as a fraction of the game view."},
 					"key": {"type": "string", "description": "For kind=key: key name, e.g. Space, Escape, Enter, A, 1, Up, F1."},
 					"action": {"type": "string", "description": "For kind=action: an input action defined in the project's Input Map."},
 					"node_path": {"type": "string", "description": "For kind=click: path of the node to click in the running game (e.g. 'Main/UI/StartButton')."},
@@ -111,8 +115,8 @@ static func build_spec(args: Dictionary) -> Dictionary:
 		if not steps.is_empty():
 			return _build_steps(steps)
 	var kind := str(args.get("kind", ""))
-	if not kind in ["key", "action", "click"]:
-		return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind must be key, action or click.")}
+	if not kind in ["key", "action", "actions", "click", "drag"]:
+		return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind must be key, action, actions, click or drag.")}
 	var spec := {"kind": kind, "hold_ms": clampi(int(str(args.get("hold_ms", 80)).to_float()), 0, MAX_HOLD_MSEC)}
 	match kind:
 		"key":
@@ -123,6 +127,21 @@ static func build_spec(args: Dictionary) -> Dictionary:
 			if str(args.get("action", "")).strip_edges().is_empty():
 				return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind=action needs action.")}
 			spec["action"] = str(args["action"])
+		"actions":
+			var list: Array = args["actions"] if args.get("actions") is Array else []
+			if list.is_empty():
+				return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind=actions needs actions (a list of input action names).")}
+			spec["actions"] = list
+		"drag":
+			var has_from := not str(args.get("node_path", "")).strip_edges().is_empty() or (args.has("x") and args.has("y"))
+			var has_to := not str(args.get("to_node_path", "")).strip_edges().is_empty() or (args.has("to_x") and args.has("to_y"))
+			if not has_from or not has_to:
+				return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind=drag needs a start (node_path or x, y) and an end (to_node_path or to_x, to_y).")}
+			for k: String in ["node_path", "x", "y", "to_node_path", "to_x", "to_y"]:
+				if args.has(k):
+					spec[k] = args[k]
+			spec["hold_ms"] = clampi(int(str(args.get("hold_ms", 300)).to_float()), 100, MAX_HOLD_MSEC)
+			spec["button"] = "right" if str(args.get("button", "left")) == "right" else "left"
 		"click":
 			if not str(args.get("node_path", "")).strip_edges().is_empty():
 				spec["node_path"] = str(args["node_path"])

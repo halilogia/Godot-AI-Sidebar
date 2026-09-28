@@ -52,6 +52,15 @@ static func run() -> Dictionary:
 	var bad_err: Dictionary = (bad.get("error", {}) as Dictionary).get("error", {}) if bad.get("error") is Dictionary else {}
 	checks.append(["R6 steps spec (single kept, sequence built, bad step named)", (single.get("spec", {}) as Dictionary).get("kind") == "action" and seq_spec.get("kind") == "steps" and (seq_spec.get("steps", []) as Array).size() == 3 and int(seq_spec.get("hold_ms", 0)) == 1180 and str(bad_err.get("message", "")).begins_with("steps[1]")])
 
+	# R6b drag ve actions doğrulaması
+	var drag_ok := AISidebarRuntimeInputTools.build_spec({"kind": "drag", "x": 0.2, "y": 0.5, "to_x": 0.8, "to_y": 0.5, "hold_ms": 500})
+	var drag_bad := AISidebarRuntimeInputTools.build_spec({"kind": "drag", "x": 0.2, "y": 0.5})
+	var multi_ok := AISidebarRuntimeInputTools.build_spec({"kind": "actions", "actions": ["move_right", "jump"], "hold_ms": 300})
+	var multi_bad := AISidebarRuntimeInputTools.build_spec({"kind": "actions"})
+	var drag_spec: Dictionary = drag_ok.get("spec", {})
+	var multi_spec: Dictionary = multi_ok.get("spec", {})
+	checks.append(["R6b drag / actions specs", drag_spec.get("kind") == "drag" and int(drag_spec.get("hold_ms", 0)) == 500 and drag_spec.has("to_x") and drag_bad.has("error") and (multi_spec.get("actions", []) as Array).size() == 2 and multi_bad.has("error")])
+
 	# R7 dizinin toplam süresi sınırlı (4 × (2000 + 5000) ms > 15000)
 	var long_steps: Array = []
 	for i in 4:

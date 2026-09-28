@@ -6,6 +6,8 @@ class_name AISidebarRuntimeInput
 ## gerektiren kabul kriterleri elle test edilmek zorundaydı.
 ##   key    : InputEventKey, Input.parse_input_event ile (Input.is_key_pressed / action durumları görür)
 ##   action : InputEventAction, InputMap'te tanımlı olmalı
+##   actions: birden çok input action aynı anda basılı tutulur (ör. sağa + zıpla)
+##   drag   : fare düğmesi başlangıç konumunda basılır, hareketle bitiş konumuna sürüklenir, orada bırakılır
 ##   click  : fare hareketi + düğme bas / bırak, kök viewport'a yerel koordinatla (GUI, _input,
 ##            _unhandled_input alır). Konum: düğüm yolu (Control merkezi, Node2D konumu, Node3D kamera
 ##            izdüşümü) ya da görünümün oranı (x, y: 0..1).
@@ -48,6 +50,58 @@ static func perform(tree: SceneTree, spec: Dictionary) -> Dictionary:
 			release.pressed = false
 			Input.parse_input_event(release)
 			return {"success": true, "kind": kind, "action": action, "hold_ms": hold}
+		"actions":
+			var names: Array = spec["actions"] if spec.get("actions") is Array else []
+			if names.is_empty():
+				return {"success": false, "error": "MISSING_ACTIONS", "message": "kind=actions needs a list of input actions."}
+			for n: Variant in names:
+				if not InputMap.has_action(str(n)):
+					return {"success": false, "error": "UNKNOWN_ACTION", "message": "Input action '%s' is not defined. Defined actions: %s" % [str(n), ", ".join(_project_actions())]}
+			for n: Variant in names:
+				var p := InputEventAction.new()
+				p.action = str(n)
+				p.pressed = true
+				p.strength = 1.0
+				Input.parse_input_event(p)
+			await wait_ms(tree, hold)
+			for n: Variant in names:
+				var r := InputEventAction.new()
+				r.action = str(n)
+				r.pressed = false
+				Input.parse_input_event(r)
+			return {"success": true, "kind": kind, "actions": names, "hold_ms": hold}
+		"drag":
+			var from := click_position(tree.root, spec)
+			if from.get("ok", false) != true:
+				return {"success": false, "error": str(from.get("error", "DRAG_START")), "message": "drag start: " + str(from.get("message", ""))}
+			var to_spec := {"node_path": spec.get("to_node_path", ""), "x": spec.get("to_x", null), "y": spec.get("to_y", null)}
+			if to_spec["x"] == null:
+				to_spec.erase("x")
+				to_spec.erase("y")
+			var dest := click_position(tree.root, to_spec)
+			if dest.get("ok", false) != true:
+				return {"success": false, "error": str(dest.get("error", "DRAG_END")), "message": "drag end: " + str(dest.get("message", ""))}
+			var a: Vector2 = from["position"]
+			var b: Vector2 = dest["position"]
+			var drag_button := MOUSE_BUTTON_RIGHT if str(spec.get("button", "left")) == "right" else MOUSE_BUTTON_LEFT
+			var drag_ms := clampi(int(str(spec.get("hold_ms", 300)).to_float()), 100, MAX_HOLD_MSEC)
+			var vp := tree.root
+			await _mouse(vp, drag_button, true, a)
+			var started := Time.get_ticks_msec()
+			while true:
+				var t := clampf(float(Time.get_ticks_msec() - started) / drag_ms, 0.0, 1.0)
+				var at := a.lerp(b, t)
+				var mv := InputEventMouseMotion.new()
+				mv.position = at
+				mv.global_position = at
+				mv.relative = (b - a) * 0.1
+				mv.button_mask = MOUSE_BUTTON_MASK_RIGHT if drag_button == MOUSE_BUTTON_RIGHT else MOUSE_BUTTON_MASK_LEFT
+				vp.push_input(mv, true)
+				if t >= 1.0:
+					break
+				await tree.process_frame
+			await _mouse(vp, drag_button, false, b)
+			return {"success": true, "kind": kind, "from": [snappedf(a.x, 0.1), snappedf(a.y, 0.1)], "to": [snappedf(b.x, 0.1), snappedf(b.y, 0.1)], "duration_ms": drag_ms}
 		"click":
 			var target := click_position(tree.root, spec)
 			if target.get("ok", false) != true:
@@ -70,7 +124,17 @@ static func perform(tree: SceneTree, spec: Dictionary) -> Dictionary:
 			bup.pressed = false
 			root.push_input(bup, true)
 			return {"success": true, "kind": kind, "position": [snappedf(pos.x, 0.1), snappedf(pos.y, 0.1)], "viewport_size": [root.get_visible_rect().size.x, root.get_visible_rect().size.y]}
-	return {"success": false, "error": "INVALID_KIND", "message": "kind must be key, action or click."}
+	return {"success": false, "error": "INVALID_KIND", "message": "kind must be key, action, actions, click or drag."}
+
+## Fare düğmesi olayı (basma / bırakma) kök viewport'a.
+static func _mouse(vp: Viewport, button: MouseButton, pressed: bool, at: Vector2) -> void:
+	var e := InputEventMouseButton.new()
+	e.position = at
+	e.global_position = at
+	e.button_index = button
+	e.pressed = pressed
+	vp.push_input(e, true)
+	await vp.get_tree().process_frame
 
 ## Tıklanacak viewport konumu: düğüm yolu ya da görünüm oranı (x, y: 0..1).
 static func click_position(root: Viewport, spec: Dictionary) -> Dictionary:
