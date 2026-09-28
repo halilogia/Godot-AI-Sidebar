@@ -16,6 +16,8 @@ const WAIT_TOOL := "wait_for_runtime"
 const MAX_HOLD_MSEC := 2000
 const MAX_STEPS := 30
 const MAX_STEP_WAIT_MSEC := 5000
+## Bir dizinin toplam süresi (basılı tutma + bekleme): kör uzun makro yerine arada etkisine bakılsın.
+const MAX_SEQUENCE_MSEC := 15000
 const MAX_WAIT_MSEC := 15000
 
 static func get_schemas() -> Array:
@@ -63,7 +65,7 @@ static func get_schemas() -> Array:
 ## Oyun ve debugger hazır mı; değilse hata sonucu, hazırsa {}.
 static func readiness_error() -> Dictionary:
 	if not Engine.is_editor_hint() or not ClassDB.class_exists("EditorInterface"):
-		return AISidebarToolResult.err("EDITOR_REQUIRED", "send_input needs the Godot editor.")
+		return AISidebarToolResult.err("EDITOR_REQUIRED", "Runtime tools (send_input, wait_for_runtime) need the Godot editor.")
 	if not EditorInterface.is_playing_scene():
 		return AISidebarToolResult.err("GAME_NOT_RUNNING", "The game is not running; call play_game first.")
 	var dbg := AISidebarDebuggerPlugin.instance
@@ -126,6 +128,8 @@ static func _build_steps(steps: Array) -> Dictionary:
 		spec["wait_ms"] = wait_ms
 		total_ms += wait_ms
 		out.append(spec)
+	if total_ms > MAX_SEQUENCE_MSEC:
+		return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "The steps take %d ms in total; at most %d ms per call (split the sequence and check the effect in between)." % [total_ms, MAX_SEQUENCE_MSEC])}
 	return {"spec": {"kind": "steps", "steps": out, "hold_ms": total_ms}}
 
 static func execute_async(args: Dictionary) -> Dictionary:

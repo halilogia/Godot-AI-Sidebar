@@ -47,6 +47,14 @@ static func run() -> Dictionary:
 	var bad_err: Dictionary = (bad.get("error", {}) as Dictionary).get("error", {}) if bad.get("error") is Dictionary else {}
 	checks.append(["R6 steps spec (single kept, sequence built, bad step named)", (single.get("spec", {}) as Dictionary).get("kind") == "action" and seq_spec.get("kind") == "steps" and (seq_spec.get("steps", []) as Array).size() == 3 and int(seq_spec.get("hold_ms", 0)) == 1180 and str(bad_err.get("message", "")).begins_with("steps[1]")])
 
+	# R7 dizinin toplam süresi sınırlı (4 × (2000 + 5000) ms > 15000)
+	var long_steps: Array = []
+	for i in 4:
+		long_steps.append({"kind": "key", "key": "A", "hold_ms": 2000, "wait_ms": 5000})
+	var too_long := AISidebarRuntimeInputTools.build_spec({"steps": long_steps})
+	var long_err: Dictionary = (too_long.get("error", {}) as Dictionary).get("error", {}) if too_long.get("error") is Dictionary else {}
+	checks.append(["R7 sequence total duration capped", str(long_err.get("message", "")).contains("in total")])
+
 	root.free()
 	var passed := 0
 	var errors: Array = []

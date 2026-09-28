@@ -144,18 +144,28 @@ static func wait(tree: SceneTree, spec: Dictionary) -> Dictionary:
 	var poll := maxi(MIN_POLL_MSEC, int(str(spec.get("poll_ms", 100)).to_float()))
 	var start := Time.get_ticks_msec()
 	var last: Dictionary = {}
+	var polls := 0
 	while true:
 		last = evaluate(tree.root, spec)
+		polls += 1
 		if last.has("error"):
 			return {"success": false, "error": str(last["error"]), "message": str(last.get("message", ""))}
 		var elapsed := Time.get_ticks_msec() - start
 		if last.get("met", false) == true:
-			return {"success": true, "status": "ASSERTION_PASSED" if timeout == 0 else "CONDITION_MET", "elapsed_ms": elapsed, "actual": last.get("actual")}
+			return _report(true, "ASSERTION_PASSED" if timeout == 0 else "CONDITION_MET", elapsed, polls, last, spec)
 		if elapsed >= timeout:
 			break
 		await tree.create_timer(poll / 1000.0, true, false, true).timeout
-	var status := "ASSERTION_FAILED" if timeout == 0 else "TIMEOUT"
-	var out := {"success": false, "error": status, "status": status, "elapsed_ms": Time.get_ticks_msec() - start, "actual": last.get("actual")}
-	if last.has("missing"):
-		out["missing"] = last["missing"]
+	return _report(false, "ASSERTION_FAILED" if timeout == 0 else "TIMEOUT", Time.get_ticks_msec() - start, polls, last, spec)
+
+## Sonuç ve teşhis alanları: kaç kez yoklandı, düğüm / özellik bulundu mu, beklenen ve son değer.
+static func _report(ok: bool, status: String, elapsed: int, polls: int, last: Dictionary, spec: Dictionary) -> Dictionary:
+	var missing := str(last.get("missing", ""))
+	var out := {"success": ok, "status": status, "elapsed_ms": elapsed, "poll_count": polls,
+		"operator": str(spec.get("operator", "==")), "expected": spec.get("value", null), "actual": last.get("actual"),
+		"node_found": missing != "node", "property_found": missing.is_empty()}
+	if not ok:
+		out["error"] = status
+		if not missing.is_empty():
+			out["missing"] = missing
 	return out
