@@ -22,6 +22,7 @@ Prototypes look "1980s" for the same few reasons: the play field is small in a b
 ## Checklist (check each against the screenshot)
 
 - [ ] The play field fills at least ~70% of the window's shorter side. No big empty margins. Design for 1280x720 with the stretch mode set to canvas items and the aspect set to expand.
+- [ ] Nothing overlaps the play field: HUD bars and panels never cover part of it. In the screenshot, check the edges of the field explicitly: the first and last row/column of a board must be fully visible, and no unit or tile may sit under a panel. Compute the field position from the HUD height (field top = HUD bottom + margin), do not guess.
 - [ ] Text has contrast 4.5:1 or has an outline; no dark text on a dark unit or tile. Font sizes: title 32+, HUD 20-24, body 16+.
 - [ ] UI uses a custom Theme (rounded panels, styled buttons with hover/pressed states), not default grey Godot controls.
 - [ ] Background is not one flat colour: a gradient, a second layer, or a pattern behind the field.
