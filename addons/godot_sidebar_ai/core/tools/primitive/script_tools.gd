@@ -256,7 +256,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "validate_project",
-				"description": "Compiles every GDScript in the project with its real path and project context (class_name, preload, types) and checks that scenes and resources point to existing dependencies. Returns each error with file, line and message, plus scope, engine and duration_ms. Use it after changing several scripts or before claiming the project compiles; validate_script is the quick single-file check. Does not execute scripts or prove runtime behavior.",
+				"description": "Compiles every GDScript in the project with its real path and project context (class_name, preload, types) and checks that scenes and resources point to existing dependencies and that autoload and main-scene entries in project settings point to existing files. Returns each error with file, line and message, plus scope, engine and duration_ms. Use it after changing several scripts or before claiming the project compiles; validate_script is the quick single-file check. Does not execute scripts or prove runtime behavior.",
 				"parameters": {
 					"type": "object",
 					"properties": {

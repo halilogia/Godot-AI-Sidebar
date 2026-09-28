@@ -81,6 +81,16 @@ static func run(root: String = "res://") -> Dictionary:
 			if not target.is_empty() and not ResourceLoader.exists(target):
 				errors.append({"kind": "dependency", "file": path, "line": 0, "message": "Missing dependency: " + target})
 
+	# Proje ayarları yalnız tüm projede denetlenir: kırık autoload / ana sahne kaydı Godot'nun Output'unda
+	# "Failed to create an autoload" olarak görünür ve oyun açılmaz (görev geri alınınca dosya silinir, kayıt kalır).
+	if root == "res://":
+		var settings := {}
+		for prop: Dictionary in ProjectSettings.get_property_list():
+			var pname := str(prop.get("name", ""))
+			if pname.begins_with("autoload/") or pname == "application/run/main_scene":
+				settings[pname] = str(ProjectSettings.get_setting(pname, ""))
+		errors.append_array(setting_errors(settings))
+
 	var total := errors.size()
 	return {
 		"scope": "project" if root == "res://" else root,
@@ -94,6 +104,22 @@ static func run(root: String = "res://") -> Dictionary:
 		"validation_scope": "project_compilation_and_dependencies",
 		"runtime_verified": false,
 	}
+
+## Proje ayarlarındaki kırık yollar: {ayar adı: değer} → hata listesi. Autoload değeri "*res://yol" biçimindedir
+## ("*" tekil düğüm bayrağı); uid:// ya da yolu olmayan değerler ResourceLoader ile sınanır.
+static func setting_errors(settings: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for key: Variant in settings.keys():
+		var name := str(key)
+		var target := str(settings[key]).trim_prefix("*").strip_edges()
+		if target.is_empty() or not (target.begins_with("res://") or target.begins_with("uid://")):
+			continue
+		if ResourceLoader.exists(target):
+			continue
+		var what := "Autoload '%s'" % name.trim_prefix("autoload/") if name.begins_with("autoload/") else "Main scene"
+		out.append({"kind": "project_setting", "file": "project.godot", "line": 0,
+			"message": "%s points to a missing file: %s (remove the entry with manage_project_settings remove_autoload / set, or write the file)" % [what, target]})
+	return out
 
 ## get_dependencies girdisi ("uid://…::Tür::res://yol" ya da "res://yol::Tür") içindeki yol.
 static func _dependency_path(dep: String) -> String:

@@ -55,6 +55,15 @@ static func run() -> Dictionary:
 	var w_bad := _run({"action": "set", "key": "display/window/size/viewport_width", "value": "wide"})
 	checks.append(["T6 type coercion", w_ok["success"] and typeof(w_val) == TYPE_INT and int(w_val) == 1600 and not w_bad["success"]])
 
+	# T7 validate_project: kırık autoload / ana sahne kaydı hata sayılır, var olan dosya sayılmaz
+	var broken := AISidebarProjectValidator.setting_errors({
+		"autoload/GameState": "*res://scripts/core/__missing_game_state__.gd",
+		"autoload/Fine": "*res://addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd",
+		"application/run/main_scene": "res://__missing_main__.tscn",
+		"application/run/other": "not a path"})
+	var msgs := " | ".join(PackedStringArray(broken.map(func(e: Dictionary) -> String: return str(e["message"]))))
+	checks.append(["T7 broken autoload / main scene reported", broken.size() == 2 and msgs.contains("GameState") and msgs.contains("Main scene") and not msgs.contains("Fine")])
+
 	for k: String in touched:
 		ProjectSettings.set_setting(k, saved[k])
 	ProjectSettings.set_setting("input/tmp_move_left", null)
