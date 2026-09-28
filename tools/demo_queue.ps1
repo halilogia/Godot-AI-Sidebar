@@ -6,7 +6,8 @@
 
 param(
     [string[]]$Genres = @(),
-    [int]$TimeoutMin = 35
+    [int]$TimeoutMin = 35,
+    [string]$Model = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -21,14 +22,21 @@ $Prompts = [ordered]@{
     "fps-3d"         = @("3D birinci şahıs yürüme ve toplama demosu yap", "3D birinci şahıs")
     "topdown-racing" = @("top-down yarış oyunu demosu yap", "Top-down yarış")
 }
+# -File ile "a","b" tek bir "a,b" dizgesi olarak gelir.
+$Genres = @($Genres | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 if ($Genres.Count -eq 0) { $Genres = @($Prompts.Keys) }
 $root = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "ai_sidebar_bench"
 New-Item -ItemType Directory -Force $root | Out-Null
 $qlog = Join-Path $root "queue.log"
+# Günlük başka bir süreçte açıksa (izleyici) kuyruk durmasın.
+function Write-QLog([string]$line) {
+    for ($i = 0; $i -lt 5; $i++) { try { Add-Content -Path $qlog -Encoding UTF8 -Value $line -ErrorAction Stop; return } catch { Start-Sleep -Milliseconds 500 } }
+}
 foreach ($g in $Genres) {
+    if (-not $Prompts.Contains($g)) { Write-QLog ("{0} SKIP unknown genre {1}" -f (Get-Date -Format "HH:mm:ss"), $g); continue }
     $prompt, $title = $Prompts[$g]
-    Add-Content -Path $qlog -Encoding UTF8 -Value ("{0} START {1}" -f (Get-Date -Format "HH:mm:ss"), $g)
-    & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin | Out-Null
+    Write-QLog ("{0} START {1}" -f (Get-Date -Format "HH:mm:ss"), $g)
+    & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin -Model $Model | Out-Null
     $proj = Get-ChildItem $root -Directory -Filter "*-$g" | Sort-Object Name | Select-Object -Last 1
     $res = Join-Path $proj.FullName "_bench\result.json"
     $status = "no_result"
@@ -41,6 +49,6 @@ foreach ($g in $Genres) {
         }
     }
     if ($proj) { & (Join-Path $PSScriptRoot "demo_score.ps1") -Project $proj.FullName -Genre $g | Out-Null }
-    Add-Content -Path $qlog -Encoding UTF8 -Value ("{0} DONE {1} {2} {3}" -f (Get-Date -Format "HH:mm:ss"), $g, $status, $proj.FullName)
+    Write-QLog ("{0} DONE {1} {2} {3}" -f (Get-Date -Format "HH:mm:ss"), $g, $status, $proj.FullName)
 }
-Add-Content -Path $qlog -Encoding UTF8 -Value ("{0} QUEUE_END" -f (Get-Date -Format "HH:mm:ss"))
+Write-QLog ("{0} QUEUE_END" -f (Get-Date -Format "HH:mm:ss"))

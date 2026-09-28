@@ -14,7 +14,8 @@ param(
     [string]$Name = "demo",
     [int]$TimeoutMin = 25,
     [string]$Root = "",
-    [string]$GodotPath = ""
+    [string]$GodotPath = "",
+    [string]$Model = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,6 +43,14 @@ New-Item -ItemType Directory (Join-Path $Project "addons") | Out-Null
 # config.json da kopyalanır: sağlayıcı ve model kullanıcınınkiyle aynıdır.
 Copy-Item -Recurse (Join-Path $Repo "addons\godot_sidebar_ai") (Join-Path $Project "addons\godot_sidebar_ai")
 [IO.File]::WriteAllText((Join-Path $Out "prompt.txt"), $Prompt, $utf8)
+# -Model: yalnız kopyadaki config.json'da seçili model değişir (kullanıcının ayarı olduğu gibi kalır).
+if ($Model) {
+    $cfgPath = Join-Path $Project "addons\godot_sidebar_ai\config.json"
+    $cfg = [IO.File]::ReadAllText($cfgPath)
+    $cfg = [regex]::Replace($cfg, '"selected_model":\s*"[^"]*"', ('"selected_model": "' + $Model + '"'))
+    [IO.File]::WriteAllText($cfgPath, $cfg, $utf8)
+    Write-Host "[demo_bench] Model: $Model"
+}
 
 $log = Join-Path $Out "editor.log"
 $errLog = Join-Path $Out "editor.err.log"
