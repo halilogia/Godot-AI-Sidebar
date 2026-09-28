@@ -24,8 +24,15 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [3D birinci şahıs](fps-3d/) | 3D birinci şahıs yürüme ve toplama demosu yap | 2.4 dk | 24 | 37 | 2026-09-29 |
 
 ## Galeri
+| [Kart oyunu](card-game/) | kart oyunu demosu yap | 5.9 dk | 66 | 68 | 2026-09-29 |
+
+## Galeri
 
 <!-- galeri -->
+**card-game**
+
+![card-game](card-game/screenshot.png)
+
 **endless-runner**
 
 ![endless-runner](endless-runner/screenshot.png)
