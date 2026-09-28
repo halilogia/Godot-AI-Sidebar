@@ -33,10 +33,23 @@ if ($r) {
 }
 $score = $completion + $runtime + $time + $fails + $steps
 
+# Eklentinin kendi maliyeti (puana girmez, optimizasyon için): model isteklerinin boyutu (editor.log
+# REQUEST_SENT, sohbet = method=2) ve modelin dışında geçen süre (araçlar, doğrulama, bekleme).
+$reqAvg = "-"; $reqMax = "-"
+$elog = Join-Path $bench "editor.log"
+if (Test-Path $elog) {
+    $sizes = Select-String -Path $elog -Pattern "REQUEST_SENT \| method=2 bytes=(\d+)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+    if ($sizes) {
+        $reqAvg = [int](($sizes | Measure-Object -Average).Average / 1024)
+        $reqMax = [int](($sizes | Measure-Object -Maximum).Maximum / 1024)
+    }
+}
+$pluginS = if ($m) { [Math]::Round([double]$m.elapsed_seconds - [double]$m.llm_time_s, 1) } else { "-" }
+
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $file = Join-Path $Repo "demos\SCORES.md"
 if (-not (Test-Path $file)) {
-    $head = "# Ajan puan tablosu`n`nHer satır bir ``tools/demo_bench.ps1`` çalıştırması (başarısızlar dahil). Puan ``tools/demo_score.ps1``'deki kurala göre yalnız ölçümlerden hesaplanır: tamamlanma 40, oyunu çalıştırıp doğrulama 20, süre 15, başarısız araç 15, adım 10.`n`n| Tarih | Tür | Puan | Durum | Süre | Adım | Başarısız araç | Model |`n|---|---|---|---|---|---|---|---|`n"
+    $head = "# Ajan puan tablosu`n`nHer satır bir ``tools/demo_bench.ps1`` çalıştırması (başarısızlar dahil). Puan ``tools/demo_score.ps1``'deki kurala göre yalnız ölçümlerden hesaplanır: tamamlanma 40, oyunu çalıştırıp doğrulama 20, süre 15, başarısız araç 15, adım 10. Son iki sütun eklentinin kendi maliyeti (puana girmez): model isteklerinin ortalama / en büyük boyutu ve modelin dışında geçen süre.`n`n| Tarih | Tür | Puan | Durum | Süre | Adım | Başarısız araç | Model | İstek KB ort / max | Eklenti süresi |`n|---|---|---|---|---|---|---|---|---|---|`n"
     [IO.File]::WriteAllText($file, $head, $utf8)
 }
 $status = if ($r) { if ($r.status -eq "completed" -and $m.success) { "başarılı" } elseif ($r.status -eq "completed") { "bitti, başarısız" } else { $r.status } } else { "sonuç yok" }
@@ -46,6 +59,6 @@ $model = if (Test-Path $cfg) { (Get-Content $cfg -Raw -Encoding UTF8 | ConvertFr
 # Çalıştırmanın tarihi proje klasörünün adından (demo_bench.ps1: yyyyMMdd-HHmmss-<ad>).
 $stamp = Split-Path -Leaf $Project
 $when = if ($stamp -match '^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})') { "$($Matches[1])-$($Matches[2])-$($Matches[3]) $($Matches[4]):$($Matches[5])" } else { Get-Date -Format 'yyyy-MM-dd HH:mm' }
-$row = "| $when | $Genre | **$score** | $status | $elapsed | $(if ($m) { $m.used_steps } else { '-' }) | $(if ($m) { $m.failed_tools } else { '-' }) | $model |`n"
+$row = "| $when | $Genre | **$score** | $status | $elapsed | $(if ($m) { $m.used_steps } else { '-' }) | $(if ($m) { $m.failed_tools } else { '-' }) | $model | $reqAvg / $reqMax | $pluginS s |`n"
 [IO.File]::AppendAllText($file, $row, $utf8)
 Write-Host "[demo_score] $Genre = $score ($status)"

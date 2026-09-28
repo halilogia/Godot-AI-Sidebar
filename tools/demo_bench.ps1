@@ -6,7 +6,7 @@
 #   ... -Name platformer -TimeoutMin 25 -Root D:\bench
 #
 # Proje: <Root>\<tarih>-<Name>\ (varsayılan Root: Belgeler\ai_sidebar_bench); eklenti depodaki klasöre
-# junction ile bağlıdır. Sonuç: <proje>\_bench\ (prompt.txt, export.md, export.json, result.json, editor.log).
+# kopyalanır (yalıtım). Sonuç: <proje>\_bench\ (prompt.txt, export.md, export.json, result.json, editor.log).
 # Oyunu sonra açıp F5 ile deneyebilirsin. Ekran gerekir (editör ve oyun penceresi açılır).
 
 param(
@@ -37,7 +37,10 @@ New-Item -ItemType File (Join-Path $Out ".gdignore") | Out-Null
 $projectGodot = "config_version=5`n`n[application]`n`nconfig/name=`"$Name`"`nconfig/features=PackedStringArray(`"4.7`")`n`n[editor_plugins]`n`nenabled=PackedStringArray(`"res://addons/godot_sidebar_ai/plugin.cfg`")`n"
 [IO.File]::WriteAllText((Join-Path $Project "project.godot"), $projectGodot, $utf8)
 New-Item -ItemType Directory (Join-Path $Project "addons") | Out-Null
-New-Item -ItemType Junction -Path (Join-Path $Project "addons\godot_sidebar_ai") -Target (Join-Path $Repo "addons\godot_sidebar_ai") | Out-Null
+# Eklentinin KOPYASI (junction değil): çalıştırma, depodaki testlerden (ConfigSafetyTests config.json'ı
+# bozup geri yazar), çalışma sırasında yapılan kod değişikliklerinden ve kullanıcının ayarlarından yalıtılır.
+# config.json da kopyalanır: sağlayıcı ve model kullanıcınınkiyle aynıdır.
+Copy-Item -Recurse (Join-Path $Repo "addons\godot_sidebar_ai") (Join-Path $Project "addons\godot_sidebar_ai")
 [IO.File]::WriteAllText((Join-Path $Out "prompt.txt"), $Prompt, $utf8)
 
 $log = Join-Path $Out "editor.log"
