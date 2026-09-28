@@ -23,6 +23,10 @@ class _EngineErrors extends Logger:
 	var items: Array[String] = []
 	var _mutex := Mutex.new()
 	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, _error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		# Doğrulamanın geçici derlemeleri (bellek içi kopya, batch aynası) beklenen gürültüdür; sonucu
+		# araç sonucunda zaten görünür. Canlı günlüğü boğmasın, gerçek hatayı gizlemesin.
+		if file.begins_with("gdscript://") or file.contains("ai_sidebar_verify"):
+			return
 		var msg := rationale if not rationale.is_empty() else code
 		_mutex.lock()
 		items.append("%s:%d %s (%s)" % [file, line, msg, function])
