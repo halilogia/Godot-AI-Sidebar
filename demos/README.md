@@ -11,6 +11,9 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [Endless runner](endless-runner/) | endless runner oyun demosu yap | 7 dk | 60 | 69 | 2026-09-29 |
 
 ## Galeri
+| [Snake](snake/) | snake oyunu demosu yap | 5.7 dk | 58 | 65 | 2026-09-29 |
+
+## Galeri
 
 <!-- galeri -->
 **endless-runner**
@@ -20,6 +23,10 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 **platformer**
 
 ![platformer](platformer/screenshot.png)
+
+**snake**
+
+![snake](snake/screenshot.png)
 
 **topdown-shooter**
 

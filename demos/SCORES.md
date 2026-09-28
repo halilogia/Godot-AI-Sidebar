@@ -28,3 +28,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 00:53 | match3 | **50** | bitti, başarısız | 14.2 dk | 92 | 7 | space-bunny-free | 83 / 224 | 12.9 s |
 | 2026-09-29 01:07 | turn-based-rpg | **65** | bitti, başarısız | 5.6 dk | 55 | 4 | space-bunny-free | 69 / 149 | 13 s |
 | 2026-09-29 01:21 | endless-runner | **95** | başarılı | 7 dk | 60 | 1 | space-bunny-free | 86 / 143 | 17.7 s |
+| 2026-09-29 01:28 | snake | **90** | başarılı | 5.7 dk | 58 | 4 | space-bunny-free | 71 / 275 | 14.4 s |
