@@ -392,6 +392,7 @@
   "tool_title_get_project_files": "Scanned project files",
   "tool_title_read_script": "Read script: {file}",
   "tool_title_file_info": "File info: {file}",
+  "tool_title_get_output": "Read output: {source}",
   "tool_title_find_files": "Found files: {pattern}",
   "tool_title_search_code": "Searched code: {query}",
   "tool_title_validate_script": "Validated GDScript source",

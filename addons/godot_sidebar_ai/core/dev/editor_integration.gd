@@ -144,7 +144,7 @@ func _frozen_time_scale() -> void:
 	var scene := DIR + "/frozen.tscn"
 	var text := "[gd_scene load_steps=2 format=3]\n\n[ext_resource type=\"Script\" path=\"%s\" id=\"1_f\"]\n\n[node name=\"Frozen\" type=\"Node2D\"]\nscript = ExtResource(\"1_f\")\n" % script
 	await _tool("write_files", {"files": [
-		{"file_path": script, "content": "extends Node2D\n\nvar ticks: int = 0\n\nfunc _ready() -> void:\n\tEngine.time_scale = 0.0\n\nfunc _process(_d: float) -> void:\n\tticks += 1\n"},
+		{"file_path": script, "content": "extends Node2D\n\nvar ticks: int = 0\n\nfunc _ready() -> void:\n\tprint(\"I9_GAME_MARKER token=abcdef1234567890\")\n\tEngine.time_scale = 0.0\n\nfunc _process(_d: float) -> void:\n\tticks += 1\n"},
 		{"file_path": scene, "content": text}]})
 	EditorInterface.get_resource_filesystem().scan()
 	await _wait(1.0)
@@ -155,6 +155,26 @@ func _frozen_time_scale() -> void:
 	var waited := await _tool("wait_for_runtime", {"node_path": "Frozen", "property": "ticks", "operator": ">", "value": 3, "timeout_ms": 2000})
 	var ok: bool = _ok(seq) and _ok(waited)
 	_check.call("i6_inputs_work_with_time_scale_zero", ok, "seq=%s wait=%s" % [str(seq.get("error", "ok")).left(90), str(waited.get("error", "ok")).left(90)])
+
+	# I9: get_output okur: editörün kendi hatası (push_error) ve oyunun print satırı; sırlar maskelenir.
+	push_error("I9_EDITOR_PROBE")
+	await _wait(0.3)
+	var out := await _tool("get_output", {"source": "both", "contains": "I9_"})
+	var out_data: Dictionary = out.get("data", {}) if out.get("data") is Dictionary else {}
+	var ed_lines: Array = out_data.get("editor", [])
+	var game_lines: Array = out_data.get("game", [])
+	var editor_ok := false
+	for l: Variant in ed_lines:
+		if str(l).contains("I9_EDITOR_PROBE"):
+			editor_ok = true
+	var game_ok := false
+	var leaked := false
+	for l: Variant in game_lines:
+		if str(l).contains("I9_GAME_MARKER"):
+			game_ok = true
+		if str(l).contains("abcdef1234567890"):
+			leaked = true
+	_check.call("i9_get_output_editor_and_game", _ok(out) and editor_ok and game_ok and not leaked, "editor=%s game=%s leaked=%s lines=%d/%d" % [str(editor_ok), str(game_ok), str(leaked), ed_lines.size(), game_lines.size()])
 	await _tool("stop_game", {})
 	await _wait(0.5)
 

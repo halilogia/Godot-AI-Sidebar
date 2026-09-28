@@ -31,6 +31,8 @@ static func human_title(tool_name: String, args: Dictionary) -> String:
 			return AISidebarI18n.get_text("tool_title_read_script", {"file": str(args.get("file_path", "")).get_file()})
 		"file_info":
 			return AISidebarI18n.get_text("tool_title_file_info", {"file": str(args.get("file_path", "")).get_file()})
+		"get_output":
+			return AISidebarI18n.get_text("tool_title_get_output", {"source": str(args.get("source", "both"))})
 		"find_files":
 			return AISidebarI18n.get_text("tool_title_find_files", {"pattern": str(args.get("pattern", "")).left(40)})
 		"search_code":

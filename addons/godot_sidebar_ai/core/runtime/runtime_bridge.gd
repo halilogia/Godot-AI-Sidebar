@@ -19,13 +19,20 @@ var _is_registered: bool = false
 ## Başka iş parçacığından da gelebilir, kilitle korunur. En son MAX_KEPT hata saklanır.
 class ErrorSink extends Logger:
 	const MAX_KEPT := 100
+	const MAX_OUTPUT := 200
 	var entries: Array[Dictionary] = []
 	var total: int = 0
+	## Oyunun Output satırları (print, hata, uyarı; en yeni sonda): get_output aracı okur.
+	var output: Array[Dictionary] = []
 	var _mutex := Mutex.new()
 
 	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
 		# Uyarılar hata sayılmaz; doğrulama derlemelerinin geçici betikleri (gdscript://) gürültüdür.
-		if error_type == Logger.ERROR_TYPE_WARNING or file.begins_with("gdscript://"):
+		if file.begins_with("gdscript://"):
+			return
+		var shown := rationale if not rationale.is_empty() else code
+		_keep_output("warning" if error_type == Logger.ERROR_TYPE_WARNING else "error", "%s (%s:%d)" % [shown, file, line])
+		if error_type == Logger.ERROR_TYPE_WARNING:
 			return
 		var entry := {"file": file, "line": line, "function": function, "message": rationale if not rationale.is_empty() else code, "error_type": "SCRIPT_ERROR" if error_type == Logger.ERROR_TYPE_SCRIPT else "RUNTIME_ERROR"}
 		_mutex.lock()
@@ -35,8 +42,33 @@ class ErrorSink extends Logger:
 			entries.pop_front()
 		_mutex.unlock()
 
-	func _log_message(_message: String, _error: bool) -> void:
-		pass
+	func _log_message(message: String, error: bool) -> void:
+		var text := message.strip_edges()
+		if not text.is_empty():
+			_keep_output("error" if error else "message", text)
+
+	func _keep_output(kind: String, text: String) -> void:
+		var line := text if text.length() <= 400 else text.left(400) + "..."
+		_mutex.lock()
+		output.append({"kind": kind, "text": line})
+		if output.size() > MAX_OUTPUT:
+			output.pop_front()
+		_mutex.unlock()
+
+	## level "errors": yalnız hata ve uyarı; contains: büyük-küçük harf duyarsız süzgeç; en yeni sonda.
+	func recent_output(level: String, limit: int, contains: String) -> Array:
+		var needle := contains.to_lower()
+		_mutex.lock()
+		var snapshot: Array[Dictionary] = output.duplicate()
+		_mutex.unlock()
+		var out: Array = []
+		for e: Dictionary in snapshot:
+			if level == "errors" and str(e["kind"]) == "message":
+				continue
+			if not needle.is_empty() and not str(e["text"]).to_lower().contains(needle):
+				continue
+			out.append(e)
+		return out.slice(maxi(0, out.size() - limit))
 
 	## total = işaret olarak bir eylemden önce okunur; since(işaret) o günden beri gelen hatalar.
 	func since(mark: int) -> Array:
@@ -151,6 +183,13 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 	elif cmd == "errors":
 		var req_id := str(data[0]) if data.size() > 0 else ""
 		EngineDebugger.send_message("godot_ai:response", [req_id, {"success": true, "total": _sink.total, "errors": _sink.since(0)}])
+		return true
+
+	elif cmd == "output":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
+		var lim: int = clampi(int(str(spec.get("limit", 40)).to_float()), 1, 200)
+		EngineDebugger.send_message("godot_ai:response", [req_id, {"success": true, "lines": _sink.recent_output(str(spec.get("level", "all")), lim, str(spec.get("contains", "")))}])
 		return true
 
 	elif cmd == "perf":

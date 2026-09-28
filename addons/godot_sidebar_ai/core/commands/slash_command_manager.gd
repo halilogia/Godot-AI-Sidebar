@@ -507,7 +507,7 @@ static func _handle_debug(args: String, _context: Dictionary) -> Dictionary:
 	var target = args.strip_edges()
 	var prompt = ""
 	if target.is_empty():
-		prompt = "get_editor_errors ve get_runtime_errors araçlarını kullanarak editör ve runtime hata loglarını, stack trace ve uyarıları topla. Hataların kaynak kod bağlamını analiz et, kök nedeni teşhis et ve çözüm öner."
+		prompt = "get_output (editör ve oyun çıktısı) ve get_runtime_errors araçlarını kullanarak editör ve runtime hata loglarını, stack trace ve uyarıları topla. Hataların kaynak kod bağlamını analiz et, kök nedeni teşhis et ve çözüm öner."
 	else:
 		prompt = "Belirtilen problem ('" + target + "') ve mevcut hata logları üzerinden hata analizi yap. Hatanın kaynağını bul, stack trace'i incele ve çözüm öner."
 		

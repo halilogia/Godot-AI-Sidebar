@@ -17,6 +17,7 @@ const AISidebarGameIntentTools = preload("res://addons/godot_sidebar_ai/core/too
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
 const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
 const AISidebarSkillTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/skill_tools.gd")
+const AISidebarOutputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/output_tools.gd")
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 const AISidebarRulesTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/rules_tools.gd")
 const AISidebarGoalTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/goal_tools.gd")
@@ -95,6 +96,7 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarGameIntentTools.get_schemas())
 	schemas.append_array(AISidebarUITelemetryTools.get_schemas())
 	schemas.append_array(AISidebarRuntimeInputTools.get_schemas())
+	schemas.append_array(AISidebarOutputTools.get_schemas())
 	schemas.append_array(AISidebarRulesTools.get_schemas())
 	schemas.append_array(AISidebarGoalTools.get_schemas())
 	schemas.append_array(AISidebarApiTools.get_schemas())
@@ -229,6 +231,12 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names[AISidebarProjectSettingsTools.TOOL_NAME] = true
 			break
 
+	# Output (terminal) günlüğü: çıktı / konsol / günlük / print / hata okuma konuşulunca (araç listesini şişirmez).
+	for kw: String in ["output", "çıktı", "cikti", "konsol", "console", "terminal", "log ", "logu", "günlük", "print(", "debug", "hata ayıkla", "autoload", "yükleme hata", "import hata", "eklenti hata"]:
+		if kw in text:
+			active_tool_names["get_output"] = true
+			break
+
 	# Sinyal izleme: sinyal / olay konuşulunca ve oyun çalıştırılıp davranış doğrulanacaksa.
 	if ("signal" in text or "sinyal" in text) and (has_runtime_intent or "trace" in text or "izle" in text):
 		active_tool_names["trace_runtime_signals"] = true
@@ -348,7 +356,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL] or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -371,6 +379,8 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		return await AISidebarRuntimeInputTools.execute_perf_async(args)
 	if tool_name == AISidebarRuntimeInputTools.TRACE_TOOL:
 		return await AISidebarRuntimeInputTools.execute_trace_async(args)
+	if tool_name == AISidebarOutputTools.TOOL_NAME:
+		return await AISidebarOutputTools.execute_async(args)
 	return await AISidebarEditorTools.execute_async(tool_name, args)
 
 static func _search_tools(args: Dictionary) -> Dictionary:

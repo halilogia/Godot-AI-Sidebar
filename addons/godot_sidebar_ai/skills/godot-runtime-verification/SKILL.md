@@ -21,6 +21,7 @@ A feature is done only when each acceptance criterion has evidence from the runn
    - `wait_for_runtime` waits until a node property meets a condition (`Main/Player`, `health`, `>`, `0`, timeout 3 s) and reports how long it took; with timeout 0 it is an instant check. Use it instead of inspecting again and again. Numbers may be given as text.
    - `trace_runtime_signals` records which signals a node emits and when (for example the score-changed and game-over signals); `get_runtime_performance` samples FPS, frame time and node/orphan growth (a growing node count is a leak).
    - Every input result lists the new runtime errors: script errors the game logged during that action. `get_runtime_errors` also sees the running game's errors. Read them before the next step.
+   - `get_output` reads Godot's Output (terminal) log: source editor (autoload, import, plugin and script-loading errors the editor printed) or game (its print lines and errors). Use it when something fails with no clear error elsewhere, and to read print debugging from the game.
    Mark a criterion "needs manual play test" only when it cannot be driven this way (e.g. depends on feel or timing you cannot measure).
 5. **Repeat runs** when a change matters: `restart_game` gives a fresh run.
 6. **Stop:** `stop_game`.

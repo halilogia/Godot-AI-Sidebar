@@ -219,7 +219,7 @@ static func run() -> Dictionary:
 		and insp_res.get("action") == "run_agent" and ("Player" in insp_res.get("prompt", "")) \
 		and test_res.get("action") == "run_agent" and ("validate_script" in test_res.get("prompt", "")) \
 		and run_res.get("action") == "run_agent" and ("play_game" in run_res.get("prompt", "")) \
-		and deb_res.get("action") == "run_agent" and ("get_editor_errors" in deb_res.get("prompt", "")) \
+		and deb_res.get("action") == "run_agent" and ("get_output" in deb_res.get("prompt", "")) \
 		and fix_res.get("action") == "run_agent" and ("Verification Pipeline" in fix_res.get("prompt", "")) \
 		and rev_res.get("action") == "run_agent" and ("6 kriter" in rev_res.get("prompt", "")) \
 		and exp_res.get("action") == "run_agent" and ("res://player.gd" in exp_res.get("prompt", "")):
