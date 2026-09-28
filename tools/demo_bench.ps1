@@ -44,6 +44,13 @@ New-Item -ItemType Directory (Join-Path $Project "addons") | Out-Null
 # config.json da kopyalanır: sağlayıcı ve model kullanıcınınkiyle aynıdır.
 Copy-Item -Recurse (Join-Path $Repo "addons\godot_sidebar_ai") (Join-Path $Project "addons\godot_sidebar_ai")
 [IO.File]::WriteAllText((Join-Path $Out "prompt.txt"), $Prompt, $utf8)
+# Profil verilmediyse listedeki İLK profil kullanılır: kullanıcı editörde başka bir profili etkinleştirmiş olsa da
+# (config.json kopyalanır) benchmark sağlayıcısı belli olsun.
+if (-not $Provider) {
+    $probeCfg = [IO.File]::ReadAllText((Join-Path $Project "addons\godot_sidebar_ai\config.json")) | ConvertFrom-Json
+    $firstProfile = @($probeCfg.provider_profiles)[0]
+    if ($firstProfile) { $Provider = [string]$firstProfile.id }
+}
 # -Provider: kopyadaki config'te bu adlı (ya da kimlikli) sağlayıcı profili etkin olur (Ayarlar → Sağlayıcı
 # profilleri). Aynı demoyu 9Router ve doğrudan OpenRouter ile koşup sağlayıcı hatalarını ayırmak için.
 if ($Provider) {
