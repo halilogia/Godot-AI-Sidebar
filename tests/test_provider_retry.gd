@@ -65,6 +65,14 @@ static func run() -> Dictionary:
 	net4.request_failed.emit("chat", "HTTP 502: upstream reset")
 	checks.append(["T4 no retry after streaming", (s4[2] as Array).size() == 1])
 
+	# T7 akışın içine gömülü upstream hatası: akış başlamış olsa da yeniden gönderilir
+	pending.clear()
+	var s7 := _setup()
+	var net7: CountingNet = s7[0]
+	net7.response_chunk_received.emit("chat", "data: {\"choices\":[{\"delta\":{\"content\":\"yarim\"}}]}\n")
+	net7.request_completed.emit("chat", 200, "data: {\"error\":{\"message\":\"JSON error injected into SSE stream\"}}\n")
+	checks.append(["T7 in-stream upstream error retried (errors=%s)" % str(s7[2]), (s7[2] as Array).is_empty() and pending.size() == 1])
+
 	# T5 denemeler tükenince iletilir
 	AISidebarOpenAICompatibleProvider.retry_delays = []
 	var s5 := _setup()

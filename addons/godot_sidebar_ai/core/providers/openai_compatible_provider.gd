@@ -278,6 +278,10 @@ func _on_network_completed(endpoint_type: String, response_code: int, response_s
 		
 		if parsed.has("error"):
 			print("[TIMING] %s | PROVIDER_PARSE_ERROR | err=%s" % [get_ts(), parsed["error"]])
+			# Akışın içine gömülü upstream hatası (9Router: "JSON error injected into SSE stream"): yanıt
+			# bütünüyle atıldığı için akış başlamış olsa da yeniden gönderilir.
+			if _schedule_chat_retry(str(parsed["error"]), true):
+				return
 			error_occurred.emit(parsed["error"])
 		else:
 			var usage: Variant = parsed.get("usage", null)
@@ -328,13 +332,14 @@ func _on_network_failed(endpoint_type: String, error_msg: String) -> void:
 ## Geçici hata mı (sunucu / ağ tarafı; yeniden denemek anlamlı)?
 static func is_transient_error(error_msg: String) -> bool:
 	var m := error_msg.to_lower()
-	for key: String in ["http 5", "http 429", "timeout", "timed out", "econnreset", "connection reset", "cannot connect", "fetch failed"]:
+	for key: String in ["http 5", "http 429", "timeout", "timed out", "econnreset", "connection reset", "cannot connect", "fetch failed",
+			"injected into sse", "upstream", "unavailable", "overloaded"]:
 		if m.contains(key):
 			return true
 	return false
 
-func _schedule_chat_retry(error_msg: String) -> bool:
-	if _last_chat.is_empty() or _chat_streamed or _chat_retries >= retry_delays.size() or not is_transient_error(error_msg):
+func _schedule_chat_retry(error_msg: String, whole_response_failed: bool = false) -> bool:
+	if _last_chat.is_empty() or (_chat_streamed and not whole_response_failed) or _chat_retries >= retry_delays.size() or not is_transient_error(error_msg):
 		return false
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null and not schedule_hook.is_valid():
@@ -347,6 +352,7 @@ func _schedule_chat_retry(error_msg: String) -> bool:
 		if token != _retry_token or _last_chat.is_empty() or network_manager == null:
 			return
 		_stream_buffer = ""
+		_chat_streamed = false
 		_provider_req_start_msec = Time.get_ticks_msec()
 		var headers: PackedStringArray = _last_chat["headers"]
 		network_manager.post_request(str(_last_chat["url"]), headers, str(_last_chat["body"]))
