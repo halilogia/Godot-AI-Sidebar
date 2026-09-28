@@ -16,6 +16,7 @@ const UI_KEYS := {
 	"api_key": "Settings > Provider",
 	"stream": "Settings > Provider > Advanced",
 	"vision_capable": "Settings > Provider > Advanced",
+	"reasoning_effort": "Settings > Provider > Advanced (reasoning effort of thinking models: auto, low, medium, high)",
 	"report_usage": "Settings > Provider > Advanced (ask the endpoint for token usage)",
 	"context_window": "Settings > Model & Parameters > Context window",
 	"selected_model": "Model bar (dock header)",

@@ -13,7 +13,8 @@ param(
     [string]$Model = "",
     [string]$Provider = "",
     [switch]$Loop,
-    [int]$PauseMin = 15
+    [int]$PauseMin = 15,
+    [string]$Reasoning = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -53,7 +54,7 @@ foreach ($g in $Genres) {
     # aynı türü yeniden dener. (Günlük ücretsiz model kotası dolunca kuyruk tabloyu çöple dolduruyordu.)
     do {
         Write-QLog ("{0} START {1}" -f (Get-Date -Format "HH:mm:ss"), $g)
-        & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin -Model $Model -Provider $Provider | Out-Null
+        & (Join-Path $PSScriptRoot "demo_bench.ps1") -Prompt $prompt -Name $g -TimeoutMin $TimeoutMin -Model $Model -Provider $Provider -Reasoning $Reasoning | Out-Null
         $proj = Get-ChildItem $root -Directory -Filter "*-$g" | Sort-Object Name | Select-Object -Last 1
         $res = Join-Path $proj.FullName "_bench\result.json"
         $instant = $false

@@ -16,7 +16,8 @@ param(
     [string]$Root = "",
     [string]$GodotPath = "",
     [string]$Model = "",
-    [string]$Provider = ""
+    [string]$Provider = "",
+    [string]$Reasoning = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -76,6 +77,15 @@ if ($Provider) {
     $cfgObj.active_provider_id = $prof.id
     [IO.File]::WriteAllText($cfgPath, ($cfgObj | ConvertTo-Json -Depth 20), $utf8)
     Write-Host "[demo_bench] Sağlayıcı: $($prof.name) ($($prof.base_url))"
+}
+# -Reasoning low|medium|high: düşünen modellerin akıl yürütme çabası (yalnız kopyadaki config'te). Yavaş düşünen
+# modeller her adımda dakikalarca düşünüp zaman aşımına giriyordu.
+if ($Reasoning) {
+    $cfgPath = Join-Path $Project "addons\godot_sidebar_ai\config.json"
+    $rc = [IO.File]::ReadAllText($cfgPath) | ConvertFrom-Json
+    $rc | Add-Member -NotePropertyName reasoning_effort -NotePropertyValue $Reasoning -Force
+    [IO.File]::WriteAllText($cfgPath, ($rc | ConvertTo-Json -Depth 20), $utf8)
+    Write-Host "[demo_bench] Akıl yürütme çabası: $Reasoning"
 }
 # -Model: yalnız kopyadaki config.json'da seçili model değişir (kullanıcının ayarı olduğu gibi kalır).
 if ($Model) {

@@ -210,7 +210,7 @@
     "unsafe_call_argument": 7
   },
   "core/verification/verification_pipeline.gd": {
-    "untyped_declaration": 34,
+    "untyped_declaration": 33,
     "unsafe_method_access": 8,
     "unsafe_call_argument": 13
   },

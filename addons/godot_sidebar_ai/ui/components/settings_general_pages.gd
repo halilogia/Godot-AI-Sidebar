@@ -30,6 +30,7 @@ const PRESETS: Array = [
 	["LM Studio", "http://localhost:1234/v1"],
 ]
 const PROVIDERS: Array[String] = ["antigravity_cli", "openai_compatible"]
+const EFFORTS: Array[String] = ["", "low", "medium", "high"]
 const LANGUAGES: Array[String] = ["tr", "en"]
 const MODES: Array[String] = ["MANUAL", "AUTO", "FULL_AUTO"]
 
@@ -48,6 +49,7 @@ var api_key_edit: LineEdit
 var stream_check: CheckBox
 var vision_opt: OptionButton
 var usage_check: CheckBox
+var effort_opt: OptionButton
 var context_spin: SpinBox
 var temp_slider: HSlider
 var temp_badge: Label
@@ -113,6 +115,11 @@ func build_provider_page() -> VBoxContainer:
 	vision_opt.add_item(AISidebarI18n.get_text("settings_vision_off"), 2)
 	AISidebarSettingsUi.form_row(adv, AISidebarI18n.get_text("settings_vision"), vision_opt)
 	adv.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_vision_hint")))
+	effort_opt = AISidebarSettingsUi.option_button()
+	for key: String in ["settings_effort_auto", "settings_effort_low", "settings_effort_medium", "settings_effort_high"]:
+		effort_opt.add_item(AISidebarI18n.get_text(key))
+	AISidebarSettingsUi.form_row(adv, AISidebarI18n.get_text("settings_effort"), effort_opt)
+	adv.add_child(AISidebarSettingsUi.hint_label(AISidebarI18n.get_text("settings_effort_hint")))
 	usage_check = CheckBox.new()
 	usage_check.text = AISidebarI18n.get_text("settings_report_usage")
 	adv.add_child(usage_check)
@@ -255,6 +262,7 @@ func _store_profile(prof: Dictionary) -> void:
 	prof["api_key"] = api_key_edit.text.strip_edges()
 	prof["stream"] = stream_check.button_pressed
 	prof["report_usage"] = usage_check.button_pressed
+	prof["reasoning_effort"] = EFFORTS[effort_opt.selected]
 	prof["context_window"] = int(context_spin.value)
 	prof["vision_capable"] = null if vision_opt.selected == 0 else (vision_opt.selected == 1)
 
@@ -266,6 +274,7 @@ func _load_profile(prof: Dictionary) -> void:
 	api_key_edit.text = str(prof.get("api_key", ""))
 	stream_check.button_pressed = prof.get("stream", true) == true
 	usage_check.button_pressed = prof.get("report_usage", true) == true
+	effort_opt.selected = maxi(0, EFFORTS.find(str(prof.get("reasoning_effort", ""))))
 	var window: float = prof.get("context_window", 0)
 	context_spin.value = window
 	var vision: Variant = prof.get("vision_capable", null)

@@ -202,6 +202,9 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 	# Sağlayıcı → Gelişmiş'ten kapatılır.
 	if use_stream and config.get("report_usage", true) == true:
 		body_dict["stream_options"] = {"include_usage": true}
+	var effort := str(config.get("reasoning_effort", ""))
+	if effort in ["low", "medium", "high"]:
+		body_dict["reasoning_effort"] = effort
 	
 	if not tools_schema.is_empty():
 		body_dict["tools"] = tools_schema

@@ -51,6 +51,14 @@ static func run() -> Dictionary:
 	var active := AISidebarConfig.active_profile(cfg5)
 	checks.append(["P5 settings page adds a profile and activates it", shown_default and shown_or and saved.size() == 3 and cfg5["base_url"] == "http://localhost:11434/v1" and active.get("name") == "Ollama" and (saved[1] as Dictionary)["api_key"] == "kor"])
 
+	# P7 akıl yürütme çabası profile yazılır ve geri okunur
+	pages.effort_opt.selected = 1
+	var eff_profile := {}
+	pages._store_profile(eff_profile)
+	pages.effort_opt.selected = 0
+	pages._load_profile(eff_profile)
+	checks.append(["P7 reasoning effort stored per profile", eff_profile.get("reasoning_effort") == "low" and pages.effort_opt.selected == 1])
+
 	# P6 silme: son profil silinemez
 	pages._on_profile_delete()
 	pages._on_profile_delete()
