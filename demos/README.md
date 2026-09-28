@@ -18,6 +18,9 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [Top-down shooter](topdown-shooter/) | top-down shooter demosu yap | 6.7 dk | 89 | 88 | 2026-09-29 |
 
 ## Galeri
+| [Top-down yarış](topdown-racing/) | top-down yarış oyunu demosu yap | 9.1 dk | 81 | 90 | 2026-09-29 |
+
+## Galeri
 
 <!-- galeri -->
 **endless-runner**
@@ -31,6 +34,10 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 **snake**
 
 ![snake](snake/screenshot.png)
+
+**topdown-racing**
+
+![topdown-racing](topdown-racing/screenshot.png)
 
 **topdown-shooter**
 

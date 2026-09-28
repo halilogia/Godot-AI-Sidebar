@@ -32,3 +32,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 01:34 | tower-defense | **45** | bitti, başarısız | 15.8 dk | 165 | 12 | space-bunny-free | 81 / 149 | 88.1 s |
 | 2026-09-29 01:50 | platformer | **95** | başarılı | 5 dk | 57 | 0 | space-bunny-free | 83 / 208 | 17.3 s |
 | 2026-09-29 01:56 | topdown-shooter | **90** | başarılı | 6.7 dk | 89 | 1 | space-bunny-free | 64 / 105 | 19.6 s |
+| 2026-09-29 02:03 | topdown-racing | **90** | başarılı | 9.1 dk | 81 | 1 | space-bunny-free | 70 / 137 | 56.8 s |
