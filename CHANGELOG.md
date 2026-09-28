@@ -9,7 +9,48 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+### Demo benchmark bulguları (2026-09-28/29): ajan güvenilirliği ve gözlem araçları
+* **Yazma kurtarma:** Yalnız sözdizimi hatası yazımı engeller; derlenmeyen kod (tanımsız sınıf, bağımlılık sırası) diske yazılır ve `WRITTEN_WITH_ERRORS` olarak raporlanır. `write_files` dosya dosya uygulanır (tek bozuk dosya bütün toplu yazımı silmez). Her yazma sonucu `operation_status`, `disk_state`, `verification_status`, `retry_strategy` taşır; reddedilen dosyayı yamamaya kalkan ajana nedeni söylenir; derlenmeyen dosya kalmışken görev bitmez.
+* **Yeni araçlar:** `file_info` (dosya diskte mi), `find_files` (ad / yol kalıbıyla arama), `search_code` (içerik araması), `wait_for_runtime` (oyunun içinde koşul bekleme; `timeout_ms` 0 anlık doğrulama), `get_runtime_performance` (FPS, kare süresi, düğüm / yetim düğüm büyümesi), `trace_runtime_signals` (sinyal olayları), `get_output` (editör ve oyunun Output çıktısı; sırlar maskelenir). `send_input` artık `steps` (dizi), `actions` (aynı anda birden çok action) ve `drag` destekliyor.
+* **Oyun donmaları giderildi:** Ajanın oyununda betik hatası oyunu hata ayıklayıcıda durduruyordu (`send_input` / `wait_for_runtime` zaman aşımı). `play_game` artık hata molalarını yoksaydırır; beklemeler gerçek saatle yapılır (`Engine.time_scale = 0` engellemez). Oyun çalışırken günlük dosyası kilitli olduğundan `get_runtime_errors` "temiz" görünüyordu: hatalar artık oyunun kendi hata dinleyicisinden alınır ve `send_input` sonucunda `new_runtime_errors` olarak görünür.
+* **Çoklu sağlayıcı profilleri, kullanıcı düzeyinde:** 9Router, OpenRouter, OpenCode Zen, Ollama vb. yan yana kaydedilir (`%APPDATA%\Godot\godot_ai_sidebar\providers.json`, bütün projelerde aynı liste); model çubuğunda sağlayıcı seçici; profil şablonları. Adres ve anahtar yalnız Ayarlar'daki profil formundan değişir.
+* **Düzeltme: HTTPS sağlayıcılar hiç çalışmıyordu:** Ağ katmanı `https://` adresine TLS olmadan bağlanıyordu ("400 plain HTTP request was sent to HTTPS port"); yalnız yerel `http://` uçları çalışıyordu. Artık TLS ile bağlanır.
+* **Sağlayıcı dayanıklılığı:** 5xx / 429 / ağ hataları ve akışa gömülü upstream hataları 5, 15, 30, 60, 120 sn beklemeyle yeniden denenir; boş yanıt geçici hata sayılır; modelin araç adına karıştırdığı kendi biçimi (`<tool_call>…`) temizlenir; HTML kaçışlı işaretler (`&gt;=`) ve metin olarak gelen sayılar `wait_for_runtime`'da anlaşılır.
+* **`validate_project` proje ayarlarını da denetler:** Var olmayan bir dosyayı gösteren autoload ya da ana sahne kaydı hata sayılır.
+* **Bağlam:** Eski araç sonuçları ve eski `write_files` içerikleri modele gönderilen geçmişten atılır (istek boyutu 606 KB'tan 100 KB civarına), ekran görüntüsü base64'ü modele gitmez.
+* **Yeni skill'ler:** `godot-visual-polish` (kompozisyon, arayüz teması, ışık, vuruş efekti, tür notları; kod örnekleri çalıştırılarak doğrulandı); `godot-runtime-verification` yeni araçlara göre güncellendi.
+* **Geliştirici araçları:** `tools/demo_queue.ps1 -Loop -Provider … -Model …` (otomatik demo döngüsü, kota / kesintide bekleyip yeniden dener), `tools/demo_bench.ps1`, `tools/demo_score.ps1` (`demos/SCORES.md`), `tools/game_shot.gd`, `tools/capture_window.ps1`, gerçek editör senaryoları I1–I9 (`tools/editor_smoke.ps1`).
+
+### Eklenenler
+* **`get_godot_class_info` aracı:** Ajan bir Godot sınıfının yöntem, özellik, sinyal ya da sabitinden emin değilse uydurmak yerine çalışan motorun gerçek API'sine bakıyor (kurulu sürüm, ör. 4.7.2). Sistem istemi ve köprü talimatı bunu söylüyor. İnternet gerekmez.
+* **Plan yalnız istenince (`/plan`):** Ajan artık her "oyuncu / harita / sistem" isteğinde plan ekranı açmıyor, doğrudan işe başlıyor. Önce plan istediğin işte `/plan istek` yaz; her istekte plan istersen Ayarlar → Genel → Planlama → "Her istekte önce plan yap". Önceden plan kararı kelime listesiyle veriliyordu ve oyun isteklerinin çoğu plana düşüyordu.
+* **Buraya geri dön:** Kendi mesaj balonundaki geri al düğmesi sohbeti o mesajdan önceki haline döndürür: ajanın o mesajdan sonra yaptığı dosya değişiklikleri geri alınır, sonraki mesajlar silinir ve mesaj düzenlemen için giriş kutusuna döner. Onay penceresi kaç dosya değişikliğinin geri alınacağını söyler. Sahnedeki düğüm değişiklikleri buna dahil değil (Ctrl+Z).
+
+### Eylem / Plan modu (yayınlanmadı)
+* **Bildirimler:** Başka bir penceredeyken ajan soru sorunca, onay / plan onayı beklerken ya da işi bitince (veya hatayla durunca) görev çubuğundaki Godot simgesi yanıp söner. Editöre bakarken uyarmaz. Ayarlar → Genel → Bildirimler ile kapatılır.
+* **Bildirim sesi:** İsteğe bağlı kısa bir "ding" (Ayarlar → Genel → Bildirim sesi; varsayılan kapalı).
+* **`sync-example.bat` hep canlı bağlantı kuruyor:** Proje bir kez seçilince eklenti repo her değiştiğinde kendiliğinden güncel kalıyor; bir defalık kopya için `-Copy`.
+* **Sabit adım sınırı kaldırıldı:** Ajan bir istekte "en fazla 20 işlem" ile kesilmiyor; büyük işi bitene kadar sürdürüyor. Bozuk döngüleri tekrar, hata düzeltme ve boş yanıt korumaları ile Durdur düğmesi kesiyor. Ayarlar'daki "Bir istekte en fazla işlem" alanı kalktı, eski değer ayar dosyasından temizleniyor. Adım göstergesi yalnız "Adım 3".
+* **Model çubuğunda Eylem / Plan düğmesi:** Eylem (varsayılan) = ajan büyük işi kendi içinde aşamalara bölüp (veri → scriptler → sahneler → UI → doğrulama) doğrudan yapar, plan onayı için durmaz. Plan = önce inceler, görünür plan sunar, onayını bekler. `/plan` tek istek için Plan. Ayarlar → Genel → Planlama ile aynı ayar.
+* **Soru politikası:** Ajan yalnız eksik bilgi sonucu ciddi değiştiriyorsa, varsayım güvenli değilse ve yanlış seçim pahalıysa soruyor; sabit bir soru sınırı yok. Yalnız arada hiç iş yapmadan üst üste üçüncü kez soru sorarsa engelleniyor ("varsayımını söyle ve devam et"). Tam Otomatik modda da gerekirse soru sorabiliyor.
+
+### Düzeltmeler (yayınlanmadı)
+* **Derleme hatası gerçek satırı söylüyor:** `write_files` ve `create_or_update_script` bir betiği derleyemeyince modele yalnız "Derleme kodu: 43" dönüyordu; model 43'ü satır numarası sanıp uzun uzun satır sayıyordu. Artık gerçek satır ve mesaj dönüyor (ör. `line 4: Cannot assign a value of type String…`).
+* **Plan aracı yalnız istenince:** Model normal isteklerde plan aracını görmüyor; plan yalnız `/plan` ya da planlama açıkken.
+* Düşünce kartındaki kısaltma notu anlaşılır ve iki dilli ("düşünce çok uzun, burada kısaltıldı; hata değil").
+
+### Değişenler
+* **Daha az soru, daha çok iş:** Ajan artık açık yazılmış bir istekte (ör. "HOI4 tarzı arayüz yap") netleştirme sorusu sormuyor; en yakın yorumu seçip varsayımını tek cümleyle söyleyerek başlıyor. Soru yalnız iki yorum birbirini dışlıyor ve istekte hiçbir ipucu yoksa. Önceden her mesajla giden kural "harita / sistem" gibi isteklerde soru sormayı zorunlu kılıyordu.
+
+## [3.0.1] - 2026-09-27 (Düzeltme: sağlayıcı değişince donma, /goal tamamlanma kontrolü, bağlam sıkıştırması)
+
+### Değişenler
+* **Varsayılan sağlayıcı OpenAI uyumlu:** Yeni kurulumda Antigravity CLI yerine OpenAI uyumlu sağlayıcı (9Router adresi) seçili geliyor; `agy` kurulu olmayan kullanıcı ilk açılışta hata görmüyor. Mevcut ayarlar değişmez.
+
 ### Düzeltmeler
+* **Uzun cevap paneli taşırmıyor:** Netleştirme sorusuna uzun bir seçenekle cevap verilince "Yanıtlandı: …" satırı sarılmıyor, paneli sağa taşırıp daraltılamaz hale getiriyordu. Artık sarılıyor.
+* **Sağlayıcı değiştirince editör donmuyor:** Antigravity CLI yanıt vermeden beklerken (ör. Google girişini beklerken) Ayarlar'dan sağlayıcı değiştirilince editör kalıcı olarak donuyordu. Süreç artık önce (alt süreçleriyle) kapatılıyor, sonra bağlantısı; kapanış anında bitiyor.
+* **Sağlayıcı değişince model listesi hemen güncelleniyor:** Kaydedince eski sağlayıcının modelleri hemen kalkıyor ve "Modeller çekiliyor" görünüyor. Liste alınamazsa hata üstteki rozette görünüyor (önceden sessizce eski liste kalıyordu). Seçili model yeni listede yoksa ilk model seçiliyor; önceden seçici başka, istek başka modeli kullanabiliyordu.
 * **`/goal` hatayla biten turda "tamamlandı" saymıyor:** Ajan "tamamlandı" dese bile tur hatayla bittiyse hedef başarılı sayılmıyor; bir sonraki tur doğruluyor.
 * **Bağlam sıkıştırması kullanıcının şartlarını silmiyor:** Uzun görevlerde eski adımlar özetlenirken kullanıcının istekleri ve şartları ("save JSON olsun", "UI mavi olmasın") özette aynen kalıyor; önceden tek bir genel cümleye iniyordu.
 
