@@ -23,3 +23,8 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-28 22:02 | tower-defense | **55** | bitti, başarısız | 12.2 dk | 45 | 7 | openrouter/space-bunny-alpha | 73 / 128 | 138.4 s |
 | 2026-09-28 22:56 | turn-based-rpg | **50** | bitti, başarısız | 18.9 dk | 130 | 9 | openrouter/space-bunny-alpha | 103 / 223 | 106.5 s |
 | 2026-09-28 23:15 | match3 | **75** | bitti, başarısız | 6.7 dk | 17 | 0 | openrouter/space-bunny-alpha | 66 / 94 | 3.2 s |
+| 2026-09-28 23:48 | match3 | **55** | bitti, başarısız | 5.7 dk | 7 | 0 | oc/space-bunny-free | 34 / 51 | 125.8 s |
+| 2026-09-29 00:33 | turn-based-rpg | **50** | bitti, başarısız | 11 dk | 7 | 1 | space-bunny-free | 36 / 46 | 1.9 s |
+| 2026-09-29 00:53 | match3 | **50** | bitti, başarısız | 14.2 dk | 92 | 7 | space-bunny-free | 83 / 224 | 12.9 s |
+| 2026-09-29 01:07 | turn-based-rpg | **65** | bitti, başarısız | 5.6 dk | 55 | 4 | space-bunny-free | 69 / 149 | 13 s |
+| 2026-09-29 01:21 | endless-runner | **95** | başarılı | 7 dk | 60 | 1 | space-bunny-free | 86 / 143 | 17.7 s |

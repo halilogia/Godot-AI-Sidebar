@@ -35,6 +35,18 @@ Copy-Item (Join-Path $bench "prompt.txt"), (Join-Path $bench "result.json") $pro
 # Godot bu klasörü içe aktarmasın.
 New-Item -ItemType File -Force (Join-Path $proof ".gdignore") | Out-Null
 
+# Ekran görüntüsü (GitHub galerisi): projenin ilk kareleri, oyunun kendi viewport'undan (tools/game_shot.gd).
+try {
+    . (Join-Path $PSScriptRoot "find_godot.ps1")
+    $godot = Resolve-GodotBin ""
+    if ($godot) {
+        $shot = Join-Path $Dest "screenshot.png"
+        $ErrorActionPreference = "Continue"
+        & $godot --path $Project -s (Join-Path $PSScriptRoot "game_shot.gd") -- $shot 4 2>&1 | Out-Null
+        $ErrorActionPreference = "Stop"
+    }
+} catch { Write-Host "[demo_library] ekran görüntüsü alınamadı: $_" -ForegroundColor Yellow }
+
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $readme = Join-Path $Lib "README.md"
 if (-not (Test-Path $readme)) {
@@ -46,4 +58,5 @@ $m = $result.metrics
 $row = "| [$Title]($Genre/) | $prompt | $([Math]::Round($result.elapsed_s / 60, 1)) dk | $($m.used_steps) | $($m.tool_calls) | $(Get-Date -Format 'yyyy-MM-dd') |`n"
 $lines = [IO.File]::ReadAllText($readme, $utf8) -split "`n" | Where-Object { $_ -notmatch "^\| \[.*\]\($([regex]::Escape($Genre))/\)" }
 [IO.File]::WriteAllText($readme, (($lines -join "`n").TrimEnd() + "`n" + $row), $utf8)
+& (Join-Path $PSScriptRoot "demo_gallery.ps1") | Out-Null
 Write-Host "[demo_library] $Genre -> $Dest"

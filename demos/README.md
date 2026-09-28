@@ -8,3 +8,21 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 |---|---|---|---|---|---|
 | [Platformer](platformer/) | platformer oyun demosu yap | 11.7 dk | 37 | 48 | 2026-09-27 |
 | [Top-down shooter](topdown-shooter/) | top-down shooter demosu yap | 7.6 dk | 26 | 40 | 2026-09-27 |
+| [Endless runner](endless-runner/) | endless runner oyun demosu yap | 7 dk | 60 | 69 | 2026-09-29 |
+
+## Galeri
+
+<!-- galeri -->
+**endless-runner**
+
+![endless-runner](endless-runner/screenshot.png)
+
+**platformer**
+
+![platformer](platformer/screenshot.png)
+
+**topdown-shooter**
+
+![topdown-shooter](topdown-shooter/screenshot.png)
+
+<!-- /galeri -->

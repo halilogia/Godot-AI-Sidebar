@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://bginvrrsihda4"]
+
+[ext_resource type="Script" uid="uid://bv64exqs3qmgf" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://cecp2ue1403vs" path="res://scripts/player.gd" id="2_player"]
+[ext_resource type="Script" uid="uid://ga6loqyt5kro" path="res://scripts/ui_root.gd" id="3_ui"]
+
+[sub_resource type="RectangleShape2D" id="r_static"]
+size = Vector2(1280, 180)
+
+[sub_resource type="RectangleShape2D" id="r_body"]
+size = Vector2(40, 62)
+
+[node name="Main" type="Node2D" unique_id=977512766]
+script = ExtResource("1_main")
+
+[node name="BackLayer" type="CanvasLayer" parent="." unique_id=686036288]
+layer = -10
+
+[node name="Sky" type="ColorRect" parent="BackLayer" unique_id=923259506]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.063, 0.071, 0.145, 1)
+
+[node name="World" type="Node2D" parent="." unique_id=784144624]
+
+[node name="Ground" type="StaticBody2D" parent="World" unique_id=407318830]
+position = Vector2(640, 630)
+
+[node name="Collision" type="CollisionShape2D" parent="World/Ground" unique_id=380598788]
+shape = SubResource("r_static")
+
+[node name="Player" type="CharacterBody2D" parent="World" unique_id=1392016613]
+position = Vector2(300, 500)
+script = ExtResource("2_player")
+
+[node name="Sprite" type="Polygon2D" parent="World/Player" unique_id=334864741]
+color = Color(0.298, 0.902, 0.702, 1)
+polygon = PackedVector2Array(-22, 34, 22, 34, 16, -34, -16, -34)
+
+[node name="Visor" type="Polygon2D" parent="World/Player" unique_id=93905560]
+color = Color(0.09, 0.12, 0.29, 1)
+polygon = PackedVector2Array(-14, -14, 14, -14, 10, -4, -10, -4)
+
+[node name="Shadow" type="Polygon2D" parent="World/Player" unique_id=774796793]
+z_index = -1
+color = Color(0.039, 0.047, 0.102, 0.5)
+polygon = PackedVector2Array(-22, 40, 22, 40, 30, 48, -30, 48)
+
+[node name="HitShape" type="CollisionShape2D" parent="World/Player" unique_id=114775529]
+shape = SubResource("r_body")
+
+[node name="Hitbox" type="Area2D" parent="World/Player" unique_id=210165802]
+monitorable = false
+
+[node name="HitShape" type="CollisionShape2D" parent="World/Player/Hitbox" unique_id=273519142]
+shape = SubResource("r_body")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1294160999]
+
+[node name="Root" type="Control" parent="HUD" unique_id=1525991387]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("3_ui")
