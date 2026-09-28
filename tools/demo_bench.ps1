@@ -78,6 +78,13 @@ if ($Provider) {
     [IO.File]::WriteAllText($cfgPath, ($cfgObj | ConvertTo-Json -Depth 20), $utf8)
     Write-Host "[demo_bench] Sağlayıcı: $($prof.name) ($($prof.base_url))"
 }
+# Kullanıcının config'inde saklı (eski) sistem istemi silinir: benchmark her zaman güncel varsayılan istemle koşar.
+$spCfg = Join-Path $Project "addons\godot_sidebar_ai\config.json"
+$sp = [IO.File]::ReadAllText($spCfg) | ConvertFrom-Json
+if ($sp.PSObject.Properties["system_prompt"]) {
+    $sp.PSObject.Properties.Remove("system_prompt")
+    [IO.File]::WriteAllText($spCfg, ($sp | ConvertTo-Json -Depth 20), $utf8)
+}
 # -Reasoning low|medium|high: düşünen modellerin akıl yürütme çabası (yalnız kopyadaki config'te). Yavaş düşünen
 # modeller her adımda dakikalarca düşünüp zaman aşımına giriyordu.
 if ($Reasoning) {
