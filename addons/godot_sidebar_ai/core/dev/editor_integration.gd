@@ -159,7 +159,8 @@ func _frozen_time_scale() -> void:
 	await _wait(0.5)
 
 ## I8: oyun betiği tıklamada hata verse de oyun hata ayıklayıcıda durmaz (play_game hata molalarını yoksaydırır);
-## send_input döner, düğüm hâlâ okunur.
+## send_input döner; hata hem send_input sonucunda hem get_runtime_errors'ta görünür (günlük dosyası oyun
+## çalışırken kilitli: hatalar oyunun kendi hata dinleyicisinden gelir).
 func _error_break() -> void:
 	var script := DIR + "/breaker.gd"
 	var scene := DIR + "/breaker.tscn"
@@ -192,9 +193,18 @@ func _unhandled_input(e: InputEvent) -> void:
 	var breaked := false
 	if dbg != null and dbg.get_active_session() != null:
 		breaked = dbg.get_active_session().is_breaked()
-	var after := await _tool("inspect_runtime_node", {"node_path": "Breaker"})
-	var ok8: bool = _ok(click) and not breaked and _ok(after)
-	_check.call("i8_script_error_does_not_freeze_the_game", ok8, "click=%s breaked=%s" % [str(click.get("error", "ok")).left(60), str(breaked)])
+	var errs := await _tool("get_runtime_errors", {})
+	var click_data: Dictionary = click.get("data", {}) if click.get("data") is Dictionary else {}
+	var reported: Array = click_data.get("new_runtime_errors", [])
+	var errs_data: Dictionary = errs.get("data", {}) if errs.get("data") is Dictionary else {}
+	var listed: Array = errs_data.get("errors", [])
+	var mentions_foo := false
+	for e_v: Variant in listed:
+		var e: Dictionary = e_v
+		if str(e.get("message", "")).contains("foo"):
+			mentions_foo = true
+	var ok8: bool = _ok(click) and not breaked and not reported.is_empty() and mentions_foo
+	_check.call("i8_script_error_does_not_freeze_the_game", ok8, "click=%s breaked=%s reported=%d listed=%d foo=%s" % [str(click.get("error", "ok")).left(60), str(breaked), reported.size(), listed.size(), str(mentions_foo)])
 	await _tool("stop_game", {})
 	await _wait(0.5)
 

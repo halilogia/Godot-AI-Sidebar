@@ -14,6 +14,46 @@ const AISidebarRuntimeSignals = preload("res://addons/godot_sidebar_ai/core/runt
 const CAPTURE_NAME: String = "godot_ai"
 var _is_registered: bool = false
 
+## Oyunun hata dinleyicisi: betik / motor hataları köprüde tutulur. Günlük dosyası oyun çalışırken oyun
+## süreci tarafından kilitli (editör açamaz, get_runtime_errors "temiz" sanıyordu); hatalar buradan sorulur.
+## Başka iş parçacığından da gelebilir, kilitle korunur. En son MAX_KEPT hata saklanır.
+class ErrorSink extends Logger:
+	const MAX_KEPT := 100
+	var entries: Array[Dictionary] = []
+	var total: int = 0
+	var _mutex := Mutex.new()
+
+	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		# Uyarılar hata sayılmaz; doğrulama derlemelerinin geçici betikleri (gdscript://) gürültüdür.
+		if error_type == Logger.ERROR_TYPE_WARNING or file.begins_with("gdscript://"):
+			return
+		var entry := {"file": file, "line": line, "function": function, "message": rationale if not rationale.is_empty() else code, "error_type": "SCRIPT_ERROR" if error_type == Logger.ERROR_TYPE_SCRIPT else "RUNTIME_ERROR"}
+		_mutex.lock()
+		entries.append(entry)
+		total += 1
+		if entries.size() > MAX_KEPT:
+			entries.pop_front()
+		_mutex.unlock()
+
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
+	## total = işaret olarak bir eylemden önce okunur; since(işaret) o günden beri gelen hatalar.
+	func since(mark: int) -> Array:
+		_mutex.lock()
+		var fresh := maxi(0, total - mark)
+		var out: Array = entries.slice(maxi(0, entries.size() - fresh)) if fresh > 0 else []
+		_mutex.unlock()
+		return out
+
+	func mark() -> int:
+		_mutex.lock()
+		var t := total
+		_mutex.unlock()
+		return t
+
+var _sink := ErrorSink.new()
+
 func _ready() -> void:
 	# Oyun get_tree().paused ile duraklatılsa da köprü çalışır (duraklatma menüsü açıkken de ekran
 	# görüntüsü, düğüm okuma ve girdi gönderme; yoksa işleyicideki await'ler duraklatmada asılı kalırdı).
@@ -33,12 +73,14 @@ func _try_register_capture() -> void:
 	if EngineDebugger.is_active():
 		if not EngineDebugger.has_capture(CAPTURE_NAME):
 			EngineDebugger.register_message_capture(CAPTURE_NAME, _on_debugger_message)
+			OS.add_logger(_sink)
 		_is_registered = true
 		set_process(false)
 
 func _exit_tree() -> void:
 	if EngineDebugger.is_active() and EngineDebugger.has_capture(CAPTURE_NAME):
 		EngineDebugger.unregister_message_capture(CAPTURE_NAME)
+		OS.remove_logger(_sink)
 
 ## Komut normalizasyonu (önek-toleranslı): tam veya çıplak komut adı da çalışır.
 static func normalize_command(message: String) -> String:
@@ -106,6 +148,11 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		_send_input(req_id, spec)
 		return true
 
+	elif cmd == "errors":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		EngineDebugger.send_message("godot_ai:response", [req_id, {"success": true, "total": _sink.total, "errors": _sink.since(0)}])
+		return true
+
 	elif cmd == "perf":
 		var req_id := str(data[0]) if data.size() > 0 else ""
 		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
@@ -129,11 +176,13 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 ## Girdi basılı tutma süresi kadar sürer; yanıt bırakma olayından sonra gönderilir. "steps" varsa dizi.
 func _send_input(req_id: String, spec: Dictionary) -> void:
 	var res: Dictionary
+	var before := _sink.mark()
 	if spec.get("steps") is Array:
 		var steps: Array = spec["steps"]
 		res = await AISidebarRuntimeInput.perform_steps(get_tree(), steps)
 	else:
 		res = await AISidebarRuntimeInput.perform(get_tree(), spec)
+	res["new_errors"] = _sink.since(before)
 	EngineDebugger.send_message("godot_ai:response", [req_id, res])
 
 ## Sinyal izleme: süre boyunca dinlenir, olay listesi süre dolunca gider.
@@ -150,7 +199,9 @@ func _measure(req_id: String, spec: Dictionary) -> void:
 
 ## Koşul oyunun içinde yoklanır; yanıt koşul sağlanınca ya da süre dolunca gönderilir.
 func _wait_for(req_id: String, spec: Dictionary) -> void:
+	var before := _sink.mark()
 	var res: Dictionary = await AISidebarRuntimeProbe.wait(get_tree(), spec)
+	res["new_errors"] = _sink.since(before)
 	EngineDebugger.send_message("godot_ai:response", [req_id, res])
 
 ## Çalışan OYUNUN kendi viewport görüntüsünü yakalar (editör ekranı değil,

@@ -261,7 +261,7 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen editör aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in ["inspect_runtime_tree", "inspect_runtime_node", "take_runtime_screenshot"]
+	return tool_name in ["inspect_runtime_tree", "inspect_runtime_node", "take_runtime_screenshot", "get_runtime_errors"]
 
 static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
 	match tool_name:
@@ -271,6 +271,8 @@ static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
 			return await _inspect_runtime_node(args)
 		"take_runtime_screenshot":
 			return await _take_runtime_screenshot_async(args)
+		"get_runtime_errors":
+			return await _get_runtime_errors_async(args)
 		_:
 			return execute(tool_name, args)
 
@@ -428,6 +430,22 @@ static func _get_runtime_errors(args: Dictionary) -> Dictionary:
 	var debugger = AISidebarRuntimeDebugger.new()
 	var checkpoint_ms = int(args.get("checkpoint_msec", 1500))
 	var obs = debugger.observe_runtime(checkpoint_ms)
+	return AISidebarToolResult.ok(obs.to_dict(), obs.get_observation_verdict())
+
+## Oyun çalışırken günlük dosyası oyun süreci tarafından kilitli ve okunamaz (bu yüzden "temiz" görünüyordu);
+## hatalar oyunun kendi hata dinleyicisinden (köprü) sorulup günlük gözlemine eklenir.
+static func _get_runtime_errors_async(args: Dictionary) -> Dictionary:
+	var debugger := AISidebarRuntimeDebugger.new()
+	var checkpoint_ms: int = args.get("checkpoint_msec", 1500)
+	var obs: AISidebarRuntimeObservation = debugger.observe_runtime(checkpoint_ms)
+	var dbg := AISidebarDebuggerPlugin.instance
+	if dbg != null and dbg.has_active_session():
+		var resp: Dictionary = await dbg.query_async("errors", [], 2.0)
+		var live: Array = resp["errors"] if resp.get("errors") is Array else []
+		for e_v: Variant in live:
+			var e: Dictionary = e_v
+			var line: int = e.get("line", 0)
+			obs.add_error(str(e.get("message", "")), str(e.get("file", "")), line, str(e.get("function", "")), str(e.get("error_type", "RUNTIME_ERROR")))
 	return AISidebarToolResult.ok(obs.to_dict(), obs.get_observation_verdict())
 
 ## Ekran görüntüsü kayıt yolu: boşsa varsayılan, sonra PathPolicy yazma kontrolü.

@@ -181,6 +181,28 @@ static func _build_steps(steps: Array) -> Dictionary:
 		return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "The steps take %d ms in total; at most %d ms per call (split the sequence and check the effect in between)." % [total_ms, MAX_SEQUENCE_MSEC])}
 	return {"spec": {"kind": "steps", "steps": out, "hold_ms": total_ms}}
 
+## Eylem sırasında oyunda çıkan yeni betik hataları (oyunun hata dinleyicisi yanıta ekler) araç sonucuna yazılır:
+## ajan tıklamanın oyunda hata verdiğini sonuçta görür (benchmark: hata yalnız günlükteydi, ajan çırpındı).
+static func annotate_errors(res: Dictionary, resp: Dictionary) -> Dictionary:
+	var errs: Array = resp["new_errors"] if resp.get("new_errors") is Array else []
+	if errs.is_empty():
+		return res
+	var shown: Array = []
+	for e_v: Variant in errs.slice(0, 3):
+		var e: Dictionary = e_v
+		shown.append("%s:%s %s" % [str(e.get("file", "")), str(e.get("line", "")), str(e.get("message", "")).left(160)])
+	var note := " | The game logged %d new error(s) meanwhile: %s" % [errs.size(), " ; ".join(PackedStringArray(shown))]
+	if res.get("success", false) == true:
+		var data: Dictionary = res["data"] if res.get("data") is Dictionary else {}
+		data["new_runtime_errors"] = shown
+		res["data"] = data
+		res["message"] = str(res.get("message", "")) + note
+	else:
+		var err: Dictionary = res["error"] if res.get("error") is Dictionary else {}
+		err["message"] = str(err.get("message", "")) + note
+		res["error"] = err
+	return res
+
 static func execute_async(args: Dictionary) -> Dictionary:
 	var built := build_spec(args)
 	if built.has("error"):
@@ -197,8 +219,8 @@ static func execute_async(args: Dictionary) -> Dictionary:
 		if resp.has("failed_step"):
 			var failed_step: int = resp["failed_step"]
 			msg = "steps[%d] failed: %s (earlier steps were played)" % [failed_step, msg]
-		return AISidebarToolResult.err(str(resp.get("error", "SEND_INPUT_FAILED")), msg)
-	return AISidebarToolResult.ok(resp, "Input sent: " + str(spec["kind"]))
+		return annotate_errors(AISidebarToolResult.err(str(resp.get("error", "SEND_INPUT_FAILED")), msg), resp)
+	return annotate_errors(AISidebarToolResult.ok(resp, "Input sent: " + str(spec["kind"])), resp)
 
 ## Bazı modeller karşılaştırma işaretlerini HTML kaçışıyla yollar ("&gt;="): araç çağrısı boşa gitmesin.
 static func unescape_html(text: String) -> String:
@@ -255,10 +277,10 @@ static func execute_wait_async(args: Dictionary) -> Dictionary:
 	var cond := "%s %s %s" % [prop if not prop.is_empty() else node_path, op, JSON.stringify(args.get("value", null)) if args.has("value") else ""]
 	if resp.get("success", false) == true:
 		var elapsed: int = resp.get("elapsed_ms", 0)
-		return AISidebarToolResult.ok(resp, "%s: %s (%d ms)" % [status, cond.strip_edges(), elapsed])
+		return annotate_errors(AISidebarToolResult.ok(resp, "%s: %s (%d ms)" % [status, cond.strip_edges(), elapsed]), resp)
 	var msg := str(resp.get("message", ""))
 	if status in ["TIMEOUT", "ASSERTION_FAILED"]:
 		msg = "%s: %s on %s; actual value: %s" % [status, cond.strip_edges(), node_path, JSON.stringify(resp.get("actual"))]
 		if resp.has("missing"):
 			msg += " (the %s was not found)" % str(resp["missing"])
-	return AISidebarToolResult.err(status, msg, true, resp)
+	return annotate_errors(AISidebarToolResult.err(status, msg, true, resp), resp)
