@@ -6,12 +6,14 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 
 | Tür | İstem | Süre | Adım | Araç | Tarih |
 |---|---|---|---|---|---|
-| [Platformer](platformer/) | platformer oyun demosu yap | 11.7 dk | 37 | 48 | 2026-09-27 |
 | [Top-down shooter](topdown-shooter/) | top-down shooter demosu yap | 7.6 dk | 26 | 40 | 2026-09-27 |
 | [Endless runner](endless-runner/) | endless runner oyun demosu yap | 7 dk | 60 | 69 | 2026-09-29 |
 
 ## Galeri
 | [Snake](snake/) | snake oyunu demosu yap | 5.7 dk | 58 | 65 | 2026-09-29 |
+
+## Galeri
+| [Platformer](platformer/) | platformer oyun demosu yap | 5 dk | 57 | 56 | 2026-09-29 |
 
 ## Galeri
 

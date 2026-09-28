@@ -10,13 +10,18 @@ config_version=5
 
 [application]
 
-config/name="platformer2"
+config/name="platformer"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7")
 
 [autoload]
 
 GodotAIRuntimeBridge="*uid://bgiygufd0h4lw"
+
+[display]
+
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [editor_plugins]
 
