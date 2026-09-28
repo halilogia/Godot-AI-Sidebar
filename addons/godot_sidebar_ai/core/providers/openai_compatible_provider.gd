@@ -15,6 +15,17 @@ var network_manager: AISidebarNetworkManager
 var _provider_req_start_msec: int = 0
 var _stream_buffer: String = ""
 
+## Geçici sağlayıcı hatasında (5xx, 429, bağlantı zaman aşımı) sohbet isteği bu aralıklarla (sn) yeniden
+## gönderilir; tek bir 502 / 529 uzun bir görevi öldürüyordu (benchmark: 9Router kombosunun upstream'i
+## opencode.ai 10 sn'de bağlanamadı). Yalnız yanıt akmaya başlamadan düşen istek yeniden gönderilir.
+static var retry_delays: Array = [5.0, 15.0, 30.0]
+## Testler zamanlayıcıyı takar (headless test _init'inde SceneTree yok): func(delay: float, cb: Callable).
+static var schedule_hook: Callable = Callable()
+var _last_chat: Dictionary = {}
+var _chat_retries: int = 0
+var _chat_streamed: bool = false
+var _retry_token: int = 0
+
 static func get_ts() -> String:
 	var dt = Time.get_time_dict_from_system()
 	var ms = Time.get_ticks_msec() % 1000
@@ -76,6 +87,9 @@ func supports_vision() -> bool:
 
 func cancel() -> void:
 	_stream_buffer = ""
+	# Bekleyen yeniden deneme iptal edilir (durdurulan görev sonradan istek göndermesin).
+	_retry_token += 1
+	_last_chat = {}
 	if network_manager:
 		network_manager.cancel_all()
 
@@ -198,6 +212,10 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 	_provider_req_start_msec = Time.get_ticks_msec()
 	print("[TIMING] %s | LLM_REQUEST_START | model=%s messages=%d tools=%d stream=%s" % [get_ts(), model, payload_messages.size(), tools_schema.size(), str(use_stream)])
 	
+	_last_chat = {"url": chat_url, "headers": headers, "body": body_str}
+	_chat_retries = 0
+	_chat_streamed = false
+	_retry_token += 1
 	var err = network_manager.post_request(chat_url, headers, body_str)
 	if err != OK:
 		error_occurred.emit(AISidebarI18n.get_text("provider_request_failed", {"error": str(err)}))
@@ -205,7 +223,7 @@ func send_multimodal_chat(messages: Array, tools_schema: Array, images: Array) -
 func _on_network_chunk(endpoint_type: String, chunk_str: String) -> void:
 	if endpoint_type != "chat":
 		return
-		
+	_chat_streamed = true
 	_stream_buffer += chunk_str
 	var lines = _stream_buffer.split("\n")
 	# Son tamamlanmamış olabilecek satırı tamponda tut
@@ -303,4 +321,37 @@ func _on_network_failed(endpoint_type: String, error_msg: String) -> void:
 	if endpoint_type == "models":
 		models_failed.emit(AISidebarI18n.get_text("provider_models_failed", {"error": error_msg}))
 		return
+	if _schedule_chat_retry(error_msg):
+		return
 	error_occurred.emit(error_msg)
+
+## Geçici hata mı (sunucu / ağ tarafı; yeniden denemek anlamlı)?
+static func is_transient_error(error_msg: String) -> bool:
+	var m := error_msg.to_lower()
+	for key: String in ["http 5", "http 429", "timeout", "timed out", "econnreset", "connection reset", "cannot connect", "fetch failed"]:
+		if m.contains(key):
+			return true
+	return false
+
+func _schedule_chat_retry(error_msg: String) -> bool:
+	if _last_chat.is_empty() or _chat_streamed or _chat_retries >= retry_delays.size() or not is_transient_error(error_msg):
+		return false
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null and not schedule_hook.is_valid():
+		return false
+	var delay: float = retry_delays[_chat_retries]
+	_chat_retries += 1
+	var token := _retry_token
+	print("[TIMING] %s | PROVIDER_RETRY | attempt=%d/%d delay=%.0fs err=%s" % [get_ts(), _chat_retries, retry_delays.size(), delay, error_msg.left(120)])
+	var resend := func() -> void:
+		if token != _retry_token or _last_chat.is_empty() or network_manager == null:
+			return
+		_stream_buffer = ""
+		_provider_req_start_msec = Time.get_ticks_msec()
+		var headers: PackedStringArray = _last_chat["headers"]
+		network_manager.post_request(str(_last_chat["url"]), headers, str(_last_chat["body"]))
+	if schedule_hook.is_valid():
+		schedule_hook.call(delay, resend)
+	else:
+		tree.create_timer(delay).timeout.connect(resend)
+	return true
