@@ -15,3 +15,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-28 19:50 | tower-defense | **65** | bitti, başarısız | 10.8 dk | 33 | 2 | a | 94 / 153 | 87.9 s |
 | 2026-09-28 20:05 | snake | **70** | bitti, başarısız | 3.1 dk | 32 | 0 | openrouter/space-bunny-alpha | 46 / 72 | 6 s |
 | 2026-09-28 20:08 | match3 | **60** | bitti, başarısız | 9.7 dk | 74 | 4 | openrouter/space-bunny-alpha | 88 / 179 | 17.8 s |
+| 2026-09-28 20:18 | tower-defense | **50** | bitti, başarısız | 23.4 dk | 187 | 4 | openrouter/space-bunny-alpha | 82 / 142 | 39.6 s |
