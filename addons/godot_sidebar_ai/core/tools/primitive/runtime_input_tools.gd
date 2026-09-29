@@ -15,6 +15,7 @@ const TOOL_NAME := "send_input"
 const WAIT_TOOL := "wait_for_runtime"
 const PERF_TOOL := "get_runtime_performance"
 const TRACE_TOOL := "trace_runtime_signals"
+const UI_AUDIT_TOOL := "audit_runtime_ui"
 const MAX_HOLD_MSEC := 2000
 const MAX_STEPS := 30
 const MAX_STEP_WAIT_MSEC := 5000
@@ -62,6 +63,13 @@ static func get_schemas() -> Array:
 				},
 				"required": ["node_path"],
 			},
+		},
+	}, {
+		"type": "function",
+		"function": {
+			"name": UI_AUDIT_TOOL,
+			"description": "Audits the running game's on-screen text (Labels, Buttons, RichTextLabels, LineEdits) with measurements instead of eyesight: text partly off screen, text wider than its box, texts overlapping each other, and text with low WCAG contrast against the pixels behind it (under 3:1). Each issue names the node and the problem. Call it once near the end, after the game is running and showing its main screen, then fix what it lists (nodes are in the play scene tree; use inspect_runtime_node to find the script or scene that owns them). An empty list means nothing measurable was wrong, not that the design is good.",
+			"parameters": {"type": "object", "properties": {}, "required": []},
 		},
 	}, {
 		"type": "function",
@@ -246,6 +254,15 @@ static func execute_trace_async(args: Dictionary) -> Dictionary:
 		return AISidebarToolResult.err(str(resp.get("error", "TRACE_FAILED")), str(resp.get("message", "The game did not return a signal trace.")))
 	var n: int = resp.get("count", 0)
 	return AISidebarToolResult.ok(resp, "%d signal event(s) on %s in %d ms" % [n, node_path, duration])
+
+static func execute_ui_audit_async() -> Dictionary:
+	var not_ready := readiness_error()
+	if not not_ready.is_empty():
+		return not_ready
+	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("ui_audit", [{}], 1.0, 5.0)
+	if resp.get("success", false) != true:
+		return AISidebarToolResult.err(str(resp.get("error", "UI_AUDIT_FAILED")), str(resp.get("message", "The game did not return a UI audit.")))
+	return AISidebarToolResult.ok(resp, str(resp.get("summary", "")))
 
 static func execute_perf_async(args: Dictionary) -> Dictionary:
 	var not_ready := readiness_error()

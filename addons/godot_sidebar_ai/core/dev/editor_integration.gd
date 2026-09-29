@@ -32,6 +32,7 @@ func run(host: Node, check: Callable) -> void:
 	await _play_and_bridge()
 	await _frozen_time_scale()
 	await _mouse_fidelity()
+	await _ui_audit()
 	await _error_break()
 	await _hidden_viewport()
 	_cleanup()
@@ -223,6 +224,78 @@ func _input(e: InputEvent) -> void:
 	var got_global := _vec(str(vars.get("seen_global", "")))
 	var near := got_event.distance_to(want) < 3.0 and got_local.distance_to(want) < 3.0 and got_global.distance_to(want) < 3.0
 	_check.call("i10_click_position_matches_mouse_position", _ok(click) and clicks >= 1 and near, "want=%s event=%s local=%s global=%s" % [want, got_event, got_local, got_global])
+	await _tool("stop_game", {})
+	await _wait(0.5)
+
+## I11: audit_runtime_ui gerçek oyunda düşük kontrastı, üst üste binmeyi ve ekran dışı metni bulur; temiz metni suçlamaz.
+func _ui_audit() -> void:
+	var scene := DIR + "/audit.tscn"
+	var text := "[gd_scene format=3]
+
+[node name=\"Audit\" type=\"Control\"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name=\"Bg\" type=\"ColorRect\" parent=\".\"]
+layout_mode = 0
+offset_right = 1152.0
+offset_bottom = 648.0
+color = Color(0.7, 0.62, 0.45, 1)
+
+[node name=\"Faint\" type=\"Label\" parent=\".\"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 100.0
+offset_right = 400.0
+offset_bottom = 140.0
+theme_override_colors/font_color = Color(0.75, 0.68, 0.5, 1)
+text = \"Faint text on tan\"
+
+[node name=\"Clear\" type=\"Label\" parent=\".\"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 300.0
+offset_right = 500.0
+offset_bottom = 340.0
+theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
+text = \"Clear dark text\"
+
+[node name=\"A\" type=\"Label\" parent=\".\"]
+layout_mode = 0
+offset_left = 600.0
+offset_top = 200.0
+offset_right = 800.0
+offset_bottom = 240.0
+theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
+text = \"Overlap A\"
+
+[node name=\"B\" type=\"Label\" parent=\".\"]
+layout_mode = 0
+offset_left = 610.0
+offset_top = 205.0
+offset_right = 810.0
+offset_bottom = 245.0
+theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
+text = \"Overlap B\"
+"
+	await _tool("write_files", {"files": [{"file_path": scene, "content": text}]})
+	EditorInterface.get_resource_filesystem().scan()
+	await _wait(1.0)
+	await _tool("manage_project_settings", {"action": "set", "key": "application/run/main_scene", "value": scene})
+	await _tool("play_game", {})
+	await _wait(3.0)
+	var res := await _tool("audit_runtime_ui", {})
+	var data: Dictionary = res.get("data", {}) if res.get("data") is Dictionary else {}
+	var codes := {}
+	var nodes := ""
+	for i: Variant in data.get("issues", []):
+		if i is Dictionary:
+			codes[str((i as Dictionary).get("code", ""))] = true
+			nodes += str((i as Dictionary).get("node", "")) + ";"
+	var ok := _ok(res) and codes.has("LOW_CONTRAST") and codes.has("OVERLAP") and nodes.contains("Faint") and not nodes.contains("Clear")
+	_check.call("i11_ui_audit_finds_contrast_and_overlap", ok, "codes=%s nodes=%s" % [str(codes.keys()), nodes.left(160)])
 	await _tool("stop_game", {})
 	await _wait(0.5)
 

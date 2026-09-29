@@ -10,6 +10,7 @@ const AISidebarRuntimeInput = preload("res://addons/godot_sidebar_ai/core/runtim
 const AISidebarRuntimeProbe = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_probe.gd")
 const AISidebarRuntimeMetrics = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_metrics.gd")
 const AISidebarRuntimeSignals = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_signals.gd")
+const AISidebarRuntimeUiAudit = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_ui_audit.gd")
 
 const CAPTURE_NAME: String = "godot_ai"
 var _is_registered: bool = false
@@ -190,6 +191,13 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
 		var lim: int = clampi(int(str(spec.get("limit", 40)).to_float()), 1, 200)
 		EngineDebugger.send_message("godot_ai:response", [req_id, {"success": true, "lines": _sink.recent_output(str(spec.get("level", "all")), lim, str(spec.get("contains", "")))}])
+		return true
+
+	elif cmd == "ui_audit":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		var report: Dictionary = AISidebarRuntimeUiAudit.audit(get_tree())
+		report["success"] = true
+		EngineDebugger.send_message("godot_ai:response", [req_id, report])
 		return true
 
 	elif cmd == "perf":

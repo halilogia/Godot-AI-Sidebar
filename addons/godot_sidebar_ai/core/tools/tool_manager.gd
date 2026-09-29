@@ -247,6 +247,12 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names["get_runtime_performance"] = true
 			break
 
+	# Arayüz denetimi: kontrast / taşma / üst üste binme / okunabilirlik konuşulunca.
+	for kw: String in ["kontrast", "contrast", "overlap", "üst üste", "okunab", "readab", "clipped", "taşan", "overflow", "ui audit", "arayüz denet"]:
+		if kw in text:
+			active_tool_names["audit_runtime_ui"] = true
+			break
+
 	# Hedef modu (/goal): tur istemi aracın adını içerir.
 	if AISidebarGoalTools.TOOL_NAME in text:
 		active_tool_names[AISidebarGoalTools.TOOL_NAME] = true
@@ -356,7 +362,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -377,6 +383,8 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		return await AISidebarRuntimeInputTools.execute_wait_async(args)
 	if tool_name == AISidebarRuntimeInputTools.PERF_TOOL:
 		return await AISidebarRuntimeInputTools.execute_perf_async(args)
+	if tool_name == AISidebarRuntimeInputTools.UI_AUDIT_TOOL:
+		return await AISidebarRuntimeInputTools.execute_ui_audit_async()
 	if tool_name == AISidebarRuntimeInputTools.TRACE_TOOL:
 		return await AISidebarRuntimeInputTools.execute_trace_async(args)
 	if tool_name == AISidebarOutputTools.TOOL_NAME:
