@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://b1r2i4hacfmo1"]
+
+[ext_resource type="Script" uid="uid://cxrlxkdewkuxr" path="res://scripts/Main.gd" id="1"]
+[ext_resource type="Script" uid="uid://dk2j2we1tsthe" path="res://scripts/Level.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="3"]
+
+[sub_resource type="Environment" id="env"]
+background_color = Color(0.0627451, 0.101961, 0.168627, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.562745, 0.694118, 0.905882, 1)
+ambient_light_energy = 0.6
+tonemap_mode = 2
+fog_enabled = true
+fog_light_color = Color(0.0627451, 0.101961, 0.168627, 1)
+fog_density = 0.012
+
+[sub_resource type="StyleBoxFlat" id="sb_panel"]
+bg_color = Color(0.0627451, 0.101961, 0.168627, 0.8)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.309804, 0.764706, 0.968627, 0.6)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="LabelSettings" id="ls_score"]
+font_size = 22
+font_color = Color(0.909804, 0.945098, 1, 1)
+outline_size = 6
+outline_color = Color(0.0313726, 0.0470588, 0.0784314, 0.85)
+
+[sub_resource type="LabelSettings" id="ls_hint"]
+font_color = Color(0.784314, 0.847059, 0.933333, 1)
+outline_size = 6
+outline_color = Color(0.0313726, 0.0470588, 0.0784314, 0.85)
+
+[node name="Main" type="Node3D" unique_id=736544901]
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1412372164]
+environment = SubResource("env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=7327685]
+transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 0, 12, 0)
+light_color = Color(0.827451, 0.905882, 1, 1)
+light_energy = 0.8
+shadow_enabled = true
+
+[node name="Level" type="Node3D" parent="." unique_id=68694631]
+script = ExtResource("2")
+
+[node name="Coins" type="Node3D" parent="Level" unique_id=1080258408]
+
+[node name="Player" parent="." unique_id=2061744174 instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
+
+[node name="HUD" type="Control" parent="." unique_id=863717232]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="HUD" unique_id=1459169306]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 300.0
+offset_bottom = 68.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("sb_panel")
+
+[node name="Margin" type="MarginContainer" parent="HUD/Panel" unique_id=781632145]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="HUD/Panel/Margin" unique_id=1423706869]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Score" type="Label" parent="HUD/Panel/Margin/VBox" unique_id=102619944]
+layout_mode = 2
+text = "TOPLANDI  0 / 0"
+label_settings = SubResource("ls_score")
+
+[node name="Hint" type="Label" parent="HUD" unique_id=284181084]
+layout_mode = 0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -44.0
+offset_right = 560.0
+offset_bottom = -16.0
+text = "WASD yur  -  Space zipla  -  Fare ile bak  -  R yeniden basla"
+label_settings = SubResource("ls_hint")
+
+[node name="Crosshair" type="Label" parent="HUD" unique_id=1539188456]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -6.0
+offset_top = -14.0
+offset_right = 6.0
+offset_bottom = 14.0
+text = "+"
+label_settings = SubResource("ls_hint")

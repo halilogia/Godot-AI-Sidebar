@@ -1,21 +1,29 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/Collectible.gd" id="1"]
 
-[sub_resource type="SphereMesh" id="sph"]
-radius = 0.35
-height = 0.7
+[sub_resource type="StandardMaterial3D" id="mat_coin"]
+albedo_color = Color(1, 0.819608, 0.4, 1)
+metallic = 0.6
+roughness = 0.25
+emission_enabled = true
+emission = Color(1, 0.819608, 0.4, 1)
+emission_energy_multiplier = 0.6
 
-[sub_resource type="SphereShape3D" id="sphs"]
-radius = 0.6
+[sub_resource type="BoxMesh" id="mesh_coin"]
+material = SubResource("mat_coin")
+size = Vector3(0.35, 0.35, 0.35)
+
+[sub_resource type="SphereShape3D" id="shape_coin"]
+radius = 0.45
 
 [node name="Collectible" type="Area3D"]
 script = ExtResource("1")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = SubResource("sph")
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.9)
+mesh = SubResource("mesh_coin")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-shape = SubResource("sphs")
-
-[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.9)
+shape = SubResource("shape_coin")

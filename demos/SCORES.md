@@ -44,3 +44,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 03:11 | platformer | **90** | başarılı | 9.1 dk | 106 | 2 | space-bunny-free | 76 / 118 | 39.9 s |
 | 2026-09-29 03:21 | topdown-shooter | **95** | başarılı | 4.9 dk | 56 | 1 | space-bunny-free | 66 / 104 | 17.3 s |
 | 2026-09-29 03:27 | topdown-racing | **80** | başarılı | 11.5 dk | 94 | 5 | space-bunny-free | 71 / 198 | 36.6 s |
+| 2026-09-29 03:38 | fps-3d | **95** | başarılı | 3.8 dk | 44 | 1 | space-bunny-free | 66 / 141 | 14.1 s |

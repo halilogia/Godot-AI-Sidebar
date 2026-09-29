@@ -1,39 +1,41 @@
 class_name Player
 extends CharacterBody3D
 
-const SPEED := 6.0
-const ACCEL := 12.0
-const JUMP_VELOCITY := 6.0
+const SPEED := 5.0
+const ACCEL := 60.0
+const JUMP := 5.0
 const MOUSE_SENS := 0.0022
 
 @onready var head: Node3D = $Head
-@onready var camera: Camera3D = $Head/Camera3D
 
-
-func _ready() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-
+var yaw := 0.0
+var pitch := 0.0
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * MOUSE_SENS)
-		head.rotation.x = clampf(head.rotation.x - event.relative.y * MOUSE_SENS, -1.4, 1.4)
-	elif event.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-
+		var m := event as InputEventMouseMotion
+		yaw -= m.relative.x * MOUSE_SENS
+		pitch = clampf(pitch - m.relative.y * MOUSE_SENS, -1.3, 1.3)
+		rotation.y = yaw
+		head.rotation.x = pitch
 
 func _physics_process(delta: float) -> void:
-	if not is_on_floor():
-		velocity.y -= 20.0 * delta
-	if Input.is_action_just_pressed("jump") and is_on_floor():
-		velocity.y = JUMP_VELOCITY
+	if is_on_floor():
+		velocity.y = 0.0
+	else:
+		velocity.y -= 9.8 * delta
 
-	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	var dir := (transform.basis * Vector3(input.x, 0.0, input.y))
-	dir.y = 0.0
-	dir = dir.normalized()
+	var input := Vector2(
+		Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),
+		Input.get_action_strength("move_back") - Input.get_action_strength("move_forward")
+	)
+	if input.length() > 1.0:
+		input = input.normalized()
+	var dir := transform.basis * Vector3(input.x, 0.0, input.y)
+	var target := dir.limit_length(1.0) * SPEED
+	velocity.x = move_toward(velocity.x, target.x, ACCEL * delta)
+	velocity.z = move_toward(velocity.z, target.z, ACCEL * delta)
 
-	var target := dir * SPEED
-	velocity.x = move_toward(velocity.x, target.x, ACCEL * SPEED * delta)
-	velocity.z = move_toward(velocity.z, target.z, ACCEL * SPEED * delta)
+	if Input.is_action_pressed("jump") and is_on_floor():
+		velocity.y = JUMP
 	move_and_slide()
