@@ -5,6 +5,7 @@ extends RefCounted
 
 const AISidebarRuntimeUiAudit = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_ui_audit.gd")
 const AISidebarRuntimePhysicsDoctor = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_physics_doctor.gd")
+const AISidebarRuntimeState = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_state.gd")
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 
 static func run() -> Dictionary:
@@ -49,6 +50,19 @@ static func run() -> Dictionary:
 		codes2.append(str(i["code"]))
 	checks.append(["P2 matching layers are not accused", not ("NO_MATCHING_LAYER" in codes2)])
 	root.free()
+	# S1 durum enjeksiyonu: sayı (metinden), vektör bileşeni, tür uyuşmazlığı, engelli özellik
+	var host := Node2D.new()
+	host.name = "Host"
+	var holder := Node.new()
+	holder.add_child(host)
+	host.position = Vector2(10, 20)
+	var r1 := AISidebarRuntimeState.set_value(holder, {"node_path": "Host", "property": "rotation", "value": "1.5"})
+	var r2 := AISidebarRuntimeState.set_value(holder, {"node_path": "Host", "property": "position.x", "value": 99})
+	var r3 := AISidebarRuntimeState.set_value(holder, {"node_path": "Host", "property": "visible", "value": "abc"})
+	var r4 := AISidebarRuntimeState.set_value(holder, {"node_path": "Host", "property": "script", "value": 1})
+	var r5 := AISidebarRuntimeState.set_value(holder, {"node_path": "Host", "property": "nope", "value": 1})
+	checks.append(["S1 set_runtime_property: number from text, vector component, type mismatch, blocked and unknown property", r1.get("success") == true and is_equal_approx(host.rotation, 1.5) and r2.get("success") == true and is_equal_approx(host.position.x, 99.0) and is_equal_approx(host.position.y, 20.0) and r3.get("error") == "TYPE_MISMATCH" and r4.get("error") == "PROPERTY_BLOCKED" and r5.get("error") == "PROPERTY_NOT_FOUND"])
+	holder.free()
 	var passed := 0
 	var errors: Array = []
 	for c: Array in checks:

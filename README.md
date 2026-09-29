@@ -142,7 +142,8 @@ The agent can also **drive and measure** the running game, not just look at it:
   signals fired and when. **`audit_runtime_ui`** measures on-screen text:
   off-screen or overflowing text, overlapping labels and low contrast against
   the pixels behind it. **`diagnose_physics`** finds why a trigger or hit box does
-  nothing: layer / mask mismatches, disabled shapes, monitoring off.
+  nothing: layer / mask mismatches, disabled shapes, monitoring off. **`set_runtime_property`** injects a value into the running
+  game (score 99, health 0) to test win / game-over states without playing for minutes.
 - **`get_output`** reads Godot's Output (terminal) log: what the editor printed
   (autoload, import, plugin errors) and the game's `print()` lines. Secrets are
   masked.

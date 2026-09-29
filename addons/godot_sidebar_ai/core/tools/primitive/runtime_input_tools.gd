@@ -17,6 +17,7 @@ const PERF_TOOL := "get_runtime_performance"
 const TRACE_TOOL := "trace_runtime_signals"
 const UI_AUDIT_TOOL := "audit_runtime_ui"
 const PHYSICS_TOOL := "diagnose_physics"
+const SET_PROP_TOOL := "set_runtime_property"
 const MAX_HOLD_MSEC := 2000
 const MAX_STEPS := 30
 const MAX_STEP_WAIT_MSEC := 5000
@@ -63,6 +64,21 @@ static func get_schemas() -> Array:
 					"duration_ms": {"type": "integer", "description": "How long to listen, in milliseconds (default 3000, max 10000)."},
 				},
 				"required": ["node_path"],
+			},
+		},
+	}, {
+		"type": "function",
+		"function": {
+			"name": SET_PROP_TOOL,
+			"description": "Sets a property or script variable on a node in the RUNNING game (this play session only, project files stay unchanged) and returns the old and new value. Use it to test key states directly instead of playing for minutes: set score to 99 and check the win screen, set health to 0 and check game over, teleport the player next to a goal. Then verify the reaction with wait_for_runtime / inspect_runtime_node / a screenshot. The result proves how the game reacts to that state, NOT that a player can reach it: still play the normal path at least once. Numbers and booleans may be given as text; single components like position.x work.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"node_path": {"type": "string", "description": "Node in the running game (e.g. 'Main/Player')."},
+					"property": {"type": "string", "description": "Property or script variable (e.g. 'score', 'health', 'visible', 'position.x')."},
+					"value": {"description": "New value (number, bool or string; the type must match the current one)."},
+				},
+				"required": ["node_path", "property", "value"],
 			},
 		},
 	}, {
@@ -288,6 +304,18 @@ static func name_list(v: Variant) -> Array:
 			out.append(part)
 		return out
 	return []
+
+static func execute_set_prop_async(args: Dictionary) -> Dictionary:
+	var not_ready := readiness_error()
+	if not not_ready.is_empty():
+		return not_ready
+	if not args.has("value"):
+		return AISidebarToolResult.err("INVALID_ARGUMENT", "node_path, property and value are required.")
+	var spec := {"node_path": str(args.get("node_path", "")), "property": str(args.get("property", "")), "value": _clean_value(args.get("value", null))}
+	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("set_property", [spec], 1.0, 5.0)
+	if resp.get("success", false) != true:
+		return AISidebarToolResult.err(str(resp.get("error", "SET_PROPERTY_FAILED")), str(resp.get("message", "The game did not accept the change.")))
+	return AISidebarToolResult.ok(resp, "%s.%s: %s -> %s (injected)" % [str(resp.get("node")), str(resp.get("property")), str(resp.get("old_value")), str(resp.get("new_value"))])
 
 static func execute_physics_async(args: Dictionary) -> Dictionary:
 	var not_ready := readiness_error()

@@ -23,6 +23,7 @@ A feature is done only when each acceptance criterion has evidence from the runn
    - Every input result lists the new runtime errors: script errors the game logged during that action. `get_runtime_errors` also sees the running game's errors. Read them before the next step.
    - `get_output` reads Godot's Output (terminal) log: source editor (autoload, import, plugin and script-loading errors the editor printed) or game (its print lines and errors). Use it when something fails with no clear error elsewhere, and to read print debugging from the game.
    - `diagnose_physics` explains a pickup, goal, hit box or wall that does nothing (layer / mask mismatch, disabled shape, monitoring off); call it before guessing layer numbers.
+   - `set_runtime_property` sets a node property or script variable in the running game (this session only): set score to 99 and check the win screen, health to 0 and check game over, instead of playing for minutes. It proves the reaction, not that a player can reach the state: still play the normal path once.
    Mark a criterion "needs manual play test" only when it cannot be driven this way (e.g. depends on feel or timing you cannot measure).
 5. **Repeat runs** when a change matters: `restart_game` gives a fresh run.
 6. **Stop:** `stop_game`.

@@ -247,6 +247,12 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names["get_runtime_performance"] = true
 			break
 
+	# Çalışan oyunda durum enjeksiyonu: kazan / kaybet / oyun sonu gibi kilit durumları doğrudan denemek.
+	for kw: String in ["game over", "oyun sonu", "kazan", "kaybet", "win screen", "zafer", "victory", "inject", "enjekte", "skoru", "canı 0", "set_runtime"]:
+		if kw in text:
+			active_tool_names["set_runtime_property"] = true
+			break
+
 	# Fizik teşhisi: çarpışma / tetikleyici / layer-mask konuşulunca.
 	for kw: String in ["collision", "çarpış", "carpis", "layer", "mask", "trigger", "tetik", "body_entered", "area2d", "area3d", "fizik", "physics", "içinden geç", "geçiyor", "clip through"]:
 		if kw in text:
@@ -368,7 +374,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarRuntimeInputTools.SET_PROP_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -389,6 +395,8 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		return await AISidebarRuntimeInputTools.execute_wait_async(args)
 	if tool_name == AISidebarRuntimeInputTools.PERF_TOOL:
 		return await AISidebarRuntimeInputTools.execute_perf_async(args)
+	if tool_name == AISidebarRuntimeInputTools.SET_PROP_TOOL:
+		return await AISidebarRuntimeInputTools.execute_set_prop_async(args)
 	if tool_name == AISidebarRuntimeInputTools.PHYSICS_TOOL:
 		return await AISidebarRuntimeInputTools.execute_physics_async(args)
 	if tool_name == AISidebarRuntimeInputTools.UI_AUDIT_TOOL:

@@ -305,7 +305,7 @@ text = \"Overlap B\"
 func _physics_doctor() -> void:
 	var scene := DIR + "/physics.tscn"
 	var script := DIR + "/physics.gd"
-	var code := "extends Node2D\n\nfunc _ready() -> void:\n\t$Goal.body_entered.connect(_on_goal)\n\nfunc _on_goal(_b: Node2D) -> void:\n\tpass\n"
+	var code := "extends Node2D\n\nvar score: int = 0\n\nfunc _ready() -> void:\n\t$Goal.body_entered.connect(_on_goal)\n\nfunc _on_goal(_b: Node2D) -> void:\n\tpass\n"
 	var text := "[gd_scene load_steps=4 format=3]
 
 [ext_resource type=\"Script\" path=\"%s\" id=\"1_p\"]
@@ -344,6 +344,14 @@ shape = SubResource(\"1\")
 			var issue: Dictionary = i
 			codes[str(issue.get("code", ""))] = true
 	_check.call("i12_physics_doctor_finds_layer_mismatch", _ok(res) and codes.has("NO_MATCHING_LAYER") and not codes.has("NO_SHAPE"), "codes=%s summary=%s" % [str(codes.keys()), str(data.get("summary", ""))])
+	# I13: set_runtime_property enjekte eder; değişken gerçekten değişir, tür uyuşmazlığı reddedilir.
+	var set_res := await _tool("set_runtime_property", {"node_path": "Physics", "property": "score", "value": "99"})
+	var bad_res := await _tool("set_runtime_property", {"node_path": "Physics", "property": "score", "value": "abc"})
+	var seen := await _tool("inspect_runtime_node", {"node_path": "Physics"})
+	var seen_data: Dictionary = seen.get("data", {}) if seen.get("data") is Dictionary else {}
+	var seen_node: Dictionary = seen_data.get("node", seen_data)
+	var seen_vars: Dictionary = seen_node.get("script_vars", {}) if seen_node.get("script_vars") is Dictionary else {}
+	_check.call("i13_set_runtime_property_injects_state", _ok(set_res) and not _ok(bad_res) and str(seen_vars.get("score", "")).to_int() == 99, "set=%s bad=%s score=%s" % [str(_ok(set_res)), str(bad_res.get("error", "")).left(30), str(seen_vars.get("score"))])
 	await _tool("stop_game", {})
 	await _wait(0.5)
 
