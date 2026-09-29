@@ -4,6 +4,8 @@
 #
 #   powershell -ExecutionPolicy Bypass -File .\tools\demo_history.ps1
 
+param([switch]$HtmlOnly)   # -HtmlOnly: ekran goruntusu almadan yalniz sayfayi yeniden kur
+
 $ErrorActionPreference = "Continue"
 $Repo = Split-Path -Parent $PSScriptRoot
 $out = Join-Path $Repo "archives\history"
@@ -33,7 +35,7 @@ if (Test-Path $scoreFile) {
 $n = 0
 foreach ($r in $runs) {
     $png = Join-Path $shots ($r.Name + ".png")
-    if (-not (Test-Path $png) -and $godot -and (Test-Path (Join-Path $r.FullName "project.godot"))) {
+    if (-not $HtmlOnly -and -not (Test-Path $png) -and $godot -and (Test-Path (Join-Path $r.FullName "project.godot"))) {
         # Kosunun kopyasi uzerinde cekilir: koprü autoload'u (eklenti bu klasorde olmayabilir) cikarilir.
         $tmp = Join-Path $env:TEMP ("hist_" + $r.Name)
         if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
@@ -57,7 +59,7 @@ foreach ($r in $runs) {
     $byGenre[$g] += $r
 }
 $html = New-Object System.Text.StringBuilder
-[void]$html.AppendLine('<!doctype html><meta charset="utf-8"><title>Demo gecmisi</title><style>body{font-family:sans-serif;background:#12141c;color:#e8e8ee;margin:24px}h2{margin-top:36px;border-bottom:1px solid #333;padding-bottom:6px}.g{display:flex;flex-wrap:wrap;gap:14px}.c{width:300px}.c img{width:300px;border:1px solid #333;border-radius:6px;background:#000}.c div{font-size:12px;color:#aab;margin-top:4px}.no{width:300px;height:169px;display:flex;align-items:center;justify-content:center;border:1px dashed #444;color:#778;border-radius:6px}</style><h1>Demo gecmisi (yeniden eskiye)</h1>')
+[void]$html.AppendLine('<!doctype html><meta charset="utf-8"><title>Demo gecmisi</title><style>body{font-family:sans-serif;background:#12141c;color:#e8e8ee;margin:24px}h2{margin-top:36px;border-bottom:1px solid #333;padding-bottom:6px}.g{display:flex;flex-wrap:wrap;gap:14px}.c{width:300px}.w{position:relative}.c img{width:300px;display:block;border:1px solid #333;border-radius:6px;background:#000;cursor:zoom-in}.z{position:absolute;right:6px;top:6px;border:0;border-radius:50%;width:32px;height:32px;font-size:18px;line-height:32px;cursor:pointer;background:rgba(18,20,28,.8);color:#fff}.z:hover{background:#3b82f6}.c .t{font-size:12px;color:#aab;margin-top:4px}.no{width:300px;height:169px;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;box-sizing:border-box;border:1px dashed #444;color:#778;border-radius:6px;font-size:12px}#lb{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:9;cursor:zoom-out}#lb.on{display:flex}#lb img{max-width:94vw;max-height:84vh;border-radius:8px;background:#000}#lb p{margin:12px 0 0;color:#dde;font-size:14px}#lb small{color:#889}</style><h1>Demo gecmisi (yeniden eskiye)</h1><p style="color:#889">Buyutmek icin resme ya da sag ustteki pusula simgesine tikla. Ok tuslari: onceki / sonraki. Esc ya da tik: kapat.</p><div id="lb"><img id="lbi"><p id="lbt"></p><small>&larr; &rarr; gez &nbsp; Esc kapat</small></div>')
 foreach ($g in ($byGenre.Keys | Sort-Object)) {
     [void]$html.AppendLine("<h2>$g ($($byGenre[$g].Count) kosu)</h2><div class='g'>")
     foreach ($r in ($byGenre[$g] | Sort-Object Name -Descending)) {
@@ -66,10 +68,12 @@ foreach ($g in ($byGenre.Keys | Sort-Object)) {
         $info = if ($scores.ContainsKey($key)) { $scores[$key] } else { "puan kaydi yok" }
         $when = "$($stamp.Substring(6,2)).$($stamp.Substring(4,2)) $($stamp.Substring(9,2)):$($stamp.Substring(11,2))"
         $png = Join-Path $shots ($r.Name + ".png")
-        $img = if (Test-Path $png) { "<img src='shots/$($r.Name).png'>" } else { "<div class='no'>ekran goruntusu yok</div>" }
-        [void]$html.AppendLine("<div class='c'>$img<div>$when - $info</div></div>")
+        $cap = "$g - $when - $info"
+        $img = if (Test-Path $png) { "<div class='w'><img class='s' src='shots/$($r.Name).png' data-cap='$cap'><button class='z' title='Buyut'>&#129517;</button></div>" } else { "<div class='no'>ekran goruntusu yok (bu kosuda oynanabilir sahne olusmamis)</div>" }
+        [void]$html.AppendLine("<div class='c'>$img<div class='t'>$when - $info</div></div>")
     }
     [void]$html.AppendLine("</div>")
 }
+[void]$html.AppendLine("<script>var L=[].slice.call(document.querySelectorAll('img.s')),lb=document.getElementById('lb'),lbi=document.getElementById('lbi'),lbt=document.getElementById('lbt'),cur=0;function show(i){cur=(i+L.length)%L.length;lbi.src=L[cur].src;lbt.textContent=L[cur].getAttribute('data-cap')+'  ('+(cur+1)+'/'+L.length+')';lb.className='on'}L.forEach(function(im,i){im.onclick=function(){show(i)};im.nextElementSibling.onclick=function(){show(i)}});lb.onclick=function(){lb.className=''};document.onkeydown=function(e){if(lb.className!=='on')return;if(e.key==='Escape')lb.className='';if(e.key==='ArrowRight')show(cur+1);if(e.key==='ArrowLeft')show(cur-1)}</script>")
 [IO.File]::WriteAllText((Join-Path $out "index.html"), $html.ToString(), $utf8)
 Write-Host "[demo_history] $($runs.Count) kosu -> $out\index.html"
