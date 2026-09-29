@@ -76,6 +76,15 @@ foreach ($g in $Genres) {
         $scoreOut = (& (Join-Path $PSScriptRoot "demo_score.ps1") -Project $proj.FullName -Genre $g 6>&1 | Out-String)
         if ($scoreOut -match "= (\d+) \(") { $score = [int]$Matches[1] }
     }
+    # Koşunun sohbet kaydı (gitignore'lu archives/chat_archive/<koşu adı>/): kopya, bench klasörü yerinde kalır.
+    if ($proj) {
+        $arch = Join-Path (Split-Path -Parent $PSScriptRoot) ("archives\chat_archive\" + $proj.Name)
+        New-Item -ItemType Directory -Force $arch | Out-Null
+        foreach ($f in "export.md", "export.json", "live.jsonl", "prompt.txt", "result.json") {
+            $src = Join-Path $proj.FullName ("_bench\" + $f)
+            if (Test-Path $src) { Copy-Item $src $arch -Force }
+        }
+    }
     if (Test-Path $res) {
         $r = Get-Content $res -Raw -Encoding UTF8 | ConvertFrom-Json
         $status = "{0} {1}s steps={2} failed={3}" -f $r.status, $r.elapsed_s, $r.metrics.used_steps, $r.metrics.failed_tools
