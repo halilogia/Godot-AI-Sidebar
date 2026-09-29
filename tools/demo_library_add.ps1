@@ -22,14 +22,14 @@ $Dest = Join-Path $Lib $Genre
 if ([string]::IsNullOrWhiteSpace($Title)) { $Title = $Genre }
 $bench = Join-Path $Project "_bench"
 $result = Get-Content (Join-Path $bench "result.json") -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($result.status -ne "completed" -or -not $result.metrics.success) {
+if (-not $Force -and ($result.status -ne "completed" -or -not $result.metrics.success)) {
     throw "Demo başarılı değil (status=$($result.status)); kütüphaneye eklenmez."
 }
 # Kütüphanedeki sürüm daha yüksek puanlıysa değiştirilmez (çıkış kodu 3): yeni koşu eskisinden kötü olabilir.
 # -Force: puan görünümü ölçmediği için elle "bu görsel olarak daha iyi" denen sürümü zorla koyar.
 $scoreFile = Join-Path $Dest "BENCH\score.txt"
 $pinFile = Join-Path $Dest "BENCH\pinned.txt"
-if (-not $Force -and -not $Latest -and (Test-Path $pinFile)) {
+if (-not $Force -and (Test-Path $pinFile)) {
     Write-Host "[demo_library] ${Genre}: elle seçilmiş sürüm sabit (BENCH/pinned.txt); değiştirilmedi."
     exit 3
 }
