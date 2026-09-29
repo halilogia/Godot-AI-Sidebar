@@ -1,0 +1,13 @@
+{
+  "name": "godot-ai-sidebar",
+  "version": "3.0.0",
+  "description": "Godot 4 game-development skills (runtime verification, visual polish with 11 per-genre look recipes, scene authoring, debugging, refactoring) and a one-command connector to the Godot AI Sidebar MCP bridge, so Claude Code can play, measure and screenshot your running game.",
+  "author": {
+    "name": "Halil Emre",
+    "url": "https://github.com/halilogia"
+  },
+  "homepage": "https://github.com/halilogia/Godot-AI-Sidebar",
+  "repository": "https://github.com/halilogia/Godot-AI-Sidebar",
+  "license": "GPL-3.0-only",
+  "keywords": ["godot", "gamedev", "gdscript", "mcp", "game-development", "visual-polish", "runtime-testing"]
+}

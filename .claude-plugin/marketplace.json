@@ -1,0 +1,15 @@
+{
+  "name": "godot-ai-sidebar",
+  "description": "Godot AI Sidebar for coding agents: Godot 4 skills plus a connector to the sidebar's MCP bridge.",
+  "owner": {
+    "name": "Halil Emre",
+    "url": "https://github.com/halilogia"
+  },
+  "plugins": [
+    {
+      "name": "godot-ai-sidebar",
+      "source": "./addons/godot_sidebar_ai",
+      "description": "Godot 4 game-development skills (runtime verification, per-genre visual polish, scene authoring, debugging, refactor) and /godot-connect for the sidebar's MCP bridge."
+    }
+  ]
+}

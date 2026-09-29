@@ -251,6 +251,16 @@ rules, skills, the MCP bridge and settings: **[docs/USER_GUIDE.en.md](docs/USER_
 (Türkçe: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)). Inside the editor, the **Help** (?) button
 in the panel header shows the same essentials, with the command list generated from the plugin.
 
+## Claude Code plugin (one line)
+
+Install the skills and the connector into Claude Code (any project, any machine):
+
+```bash
+claude plugin marketplace add halilogia/Godot-AI-Sidebar && claude plugin install godot-ai-sidebar@godot-ai-sidebar
+```
+
+You get 7 Godot 4 skills (runtime verification, visual polish with a look recipe for each of 11 game genres, scene authoring, feature development, debugging, refactoring, headless CI) and the `/godot-connect` command. In a project that has the sidebar plugin enabled, run `/godot-connect` once: it reads the bridge port and token from the project's config and registers the MCP server for you. Restart Claude Code, keep the Godot editor open, and Claude can play, measure and screenshot your running game.
+
 ## Use it from Claude Code (MCP)
 
 External agents such as **Claude Code** can drive the open Godot editor through the
