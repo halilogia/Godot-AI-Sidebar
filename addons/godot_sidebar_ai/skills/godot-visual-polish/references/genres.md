@@ -1,6 +1,6 @@
 # What each genre must show clearly
 
-Read only your genre's section. Each lists the visual problems that made real generated demos look weak, and the fix.
+Short index. The full recipe for each genre is in `references/genres/<genre>.md` (fps-3d, turn-based-rpg, grand-strategy, card-game, platformer, tower-defense, topdown-shooter, match3, endless-runner, racing, snake): read that file for your genre. This page lists the visual problems that made real generated demos look weak, and the fix.
 
 ## Tower defense
 - The path must contrast with buildable ground (dark path on light grass, or the reverse); buildable cells get a subtle grid/hover highlight; the tile under the mouse gets a placement preview (ghost tower + range circle).

@@ -18,7 +18,7 @@ Prototypes look "1980s" for the same few reasons: the play field is small in a b
    - `references/lighting-3d.md`: WorldEnvironment, sun, shadows, materials
    - `references/characters.md`: drawing people and creatures from primitives (read when the game has characters)
    - `references/juice.md`: hit flash, screen shake, particles, floating numbers
-   - `references/genres.md`: what each game genre must show clearly (read only your genre's section)
+   - `references/genres/<genre>.md`: the detailed look recipe for YOUR genre (read exactly one; it lists layout numbers, layers, code, feedback and screenshot checks): `fps-3d`, `turn-based-rpg`, `grand-strategy`, `card-game`, `platformer`, `tower-defense`, `topdown-shooter`, `match3`, `endless-runner`, `racing`, `snake`. `references/genres.md` is the short index; for a genre not listed, use the closest one.
 
 ## Checklist (check each against the screenshot)
 
