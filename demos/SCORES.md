@@ -48,3 +48,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 03:43 | grand-strategy | **60** | bitti, başarısız | 9.7 dk | 98 | 4 | space-bunny-free | 98 / 267 | 18.1 s |
 | 2026-09-29 03:53 | card-game | **55** | bitti, başarısız | 11.4 dk | 91 | 5 | space-bunny-free | 72 / 135 | 12.1 s |
 | 2026-09-29 04:04 | match3 | **80** | başarılı | 12 dk | 107 | 5 | space-bunny-free | 100 / 323 | 40.2 s |
+| 2026-09-29 04:17 | turn-based-rpg | **90** | başarılı | 7 dk | 79 | 2 | space-bunny-free | 76 / 143 | 13.4 s |
