@@ -26,6 +26,12 @@ A feature is done only when each acceptance criterion has evidence from the runn
 5. **Repeat runs** when a change matters: `restart_game` gives a fresh run.
 6. **Stop:** `stop_game`.
 
+## Knowing when to stop
+
+- Stop when the requested core game runs and each criterion has evidence. Do not add features nobody asked for (finish screens, extra levels); list them as suggestions.
+- Before finishing, look at the last screenshot once for overlapping or low-contrast text, labels left over from an earlier state (for example a "pick a card" prompt after the card was played) and clipped elements. Fix what you see.
+- If a behavior cannot be checked with input after three tries (for example walking blindly toward a far goal), stop and report it as "needs manual play test" instead of looping.
+
 ## Report format
 
 | Criterion | Evidence | Result |
