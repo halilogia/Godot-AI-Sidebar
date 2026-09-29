@@ -10,7 +10,15 @@ $readme = Join-Path $Lib "README.md"
 if (-not (Test-Path $readme)) { exit 0 }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $text = [IO.File]::ReadAllText($readme, $utf8)
-$text = [regex]::Replace($text, "(?s)\r?\n*<!-- galeri -->.*?<!-- /galeri -->\r?\n*", "`n")
+# Üst bölüm (tablo başlığına kadar) + tür başına tek satır; yinelenen "## Galeri" başlıkları ve eski galeri bloğu atılır.
+$all = $text -split "`r?`n"
+$sep = 0
+for ($i = 0; $i -lt $all.Count; $i++) { if ($all[$i] -match '^\|---') { $sep = $i; break } }
+$rows = @{}
+foreach ($l in $all[($sep + 1)..($all.Count - 1)]) {
+    if ($l -match '^\| \[[^\]]*\]\(([^/]+)/\)') { $rows[$Matches[1]] = $l }
+}
+$text = (($all[0..$sep] + ($rows.Keys | Sort-Object | ForEach-Object { $rows[$_] })) -join "`n") + "`n"
 
 $items = Get-ChildItem $Lib -Directory | Where-Object { Test-Path (Join-Path $_.FullName "screenshot.png") } | Sort-Object Name
 if ($items.Count -gt 0) {

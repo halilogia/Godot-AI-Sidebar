@@ -51,3 +51,15 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 04:17 | turn-based-rpg | **90** | başarılı | 7 dk | 79 | 2 | space-bunny-free | 76 / 143 | 13.4 s |
 | 2026-09-29 04:24 | endless-runner | **75** | başarılı | 13.8 dk | 132 | 7 | space-bunny-free | 81 / 132 | 53 s |
 | 2026-09-29 04:38 | snake | **95** | başarılı | 4.7 dk | 48 | 1 | space-bunny-free | 59 / 103 | 11.2 s |
+| 2026-09-29 04:43 | tower-defense | **85** | başarılı | 7.3 dk | 74 | 3 | space-bunny-free | 77 / 146 | 14.7 s |
+| 2026-09-29 05:05 | grand-strategy | **95** | başarılı | 6.3 dk | 45 | 0 | space-bunny-free | 93 / 238 | 18.2 s |
+| 2026-09-29 05:11 | card-game | **55** | bitti, başarısız | 5.2 dk | 63 | 6 | space-bunny-free | 67 / 117 | 9.6 s |
+| 2026-09-29 05:17 | platformer | **60** | bitti, başarısız | 8.4 dk | 82 | 4 | space-bunny-free | 78 / 124 | 47 s |
+| 2026-09-29 05:25 | tower-defense | **80** | başarılı | 10.9 dk | 105 | 5 | space-bunny-free | 80 / 131 | 43.2 s |
+| 2026-09-29 05:37 | snake | **45** | bitti, başarısız | 14 dk | 146 | 13 | space-bunny-free | 74 / 106 | 119.9 s |
+| 2026-09-29 05:51 | grand-strategy | **95** | başarılı | 4.7 dk | 48 | 0 | space-bunny-free | 76 / 253 | 7.3 s |
+| 2026-09-29 05:56 | card-game | **95** | başarılı | 4.4 dk | 52 | 0 | space-bunny-free | 64 / 140 | 7.7 s |
+| 2026-09-29 06:01 | platformer | **25** | timeout | 35 dk | 182 | 9 | space-bunny-free | 80 / 122 | 155.4 s |
+| 2026-09-29 06:36 | tower-defense | **60** | bitti, başarısız | 16.4 dk | 62 | 2 | space-bunny-free | 72 / 153 | 13 s |
+| 2026-09-29 06:53 | snake | **70** | bitti, başarısız | 3.4 dk | 33 | 2 | space-bunny-free | 55 / 95 | 4.8 s |
+| 2026-09-29 06:57 | grand-strategy | **60** | bitti, başarısız | 7.8 dk | 89 | 4 | space-bunny-free | 77 / 136 | 20.4 s |
