@@ -31,6 +31,7 @@ func run(host: Node, check: Callable) -> void:
 	await _autoload()
 	await _play_and_bridge()
 	await _frozen_time_scale()
+	await _mouse_fidelity()
 	await _error_break()
 	await _hidden_viewport()
 	_cleanup()
@@ -177,6 +178,60 @@ func _frozen_time_scale() -> void:
 	_check.call("i9_get_output_editor_and_game", _ok(out) and editor_ok and game_ok and not leaked, "editor=%s game=%s leaked=%s lines=%d/%d" % [str(editor_ok), str(game_ok), str(leaked), ed_lines.size(), game_lines.size()])
 	await _tool("stop_game", {})
 	await _wait(0.5)
+
+## I10: oyun tıklamayı event.position yerine get_local_mouse_position() ile okuyorsa da sentetik tıklama doğru
+## konumu vermeli (benchmark: grand strateji oyunu böyle okuyordu).
+func _mouse_fidelity() -> void:
+	var script := DIR + "/mouse.gd"
+	var scene := DIR + "/mouse.tscn"
+	var text := "[gd_scene load_steps=2 format=3]
+
+[ext_resource type=\"Script\" path=\"%s\" id=\"1_m\"]
+
+[node name=\"MouseProbe\" type=\"Node2D\"]
+script = ExtResource(\"1_m\")
+" % script
+	var code := "extends Node2D
+
+var seen_local: Vector2 = Vector2(-1, -1)
+var seen_event: Vector2 = Vector2(-1, -1)
+var seen_global: Vector2 = Vector2(-1, -1)
+var clicks: int = 0
+
+func _input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.pressed:
+		clicks += 1
+		seen_local = get_local_mouse_position()
+		seen_global = get_global_mouse_position()
+		seen_event = e.position
+"
+	await _tool("write_files", {"files": [{"file_path": script, "content": code}, {"file_path": scene, "content": text}]})
+	EditorInterface.get_resource_filesystem().scan()
+	await _wait(1.0)
+	await _tool("manage_project_settings", {"action": "set", "key": "application/run/main_scene", "value": scene})
+	await _tool("play_game", {})
+	await _wait(3.0)
+	var click := await _tool("send_input", {"kind": "click", "x": 0.25, "y": 0.5})
+	var seen := await _tool("inspect_runtime_node", {"node_path": "MouseProbe"})
+	var data: Dictionary = seen.get("data", {}) if seen.get("data") is Dictionary else {}
+	var node_info: Dictionary = data.get("node", data)
+	var vars: Dictionary = node_info.get("script_vars", {}) if node_info.get("script_vars") is Dictionary else {}
+	var clicks: int = vars.get("clicks", 0)
+	var want := Vector2(0.25 * 1152.0, 0.5 * 648.0)
+	var got_event := _vec(str(vars.get("seen_event", "")))
+	var got_local := _vec(str(vars.get("seen_local", "")))
+	var got_global := _vec(str(vars.get("seen_global", "")))
+	var near := got_event.distance_to(want) < 3.0 and got_local.distance_to(want) < 3.0 and got_global.distance_to(want) < 3.0
+	_check.call("i10_click_position_matches_mouse_position", _ok(click) and clicks >= 1 and near, "want=%s event=%s local=%s global=%s" % [want, got_event, got_local, got_global])
+	await _tool("stop_game", {})
+	await _wait(0.5)
+
+## "(288.0, 324.0)" biçimindeki metin -> Vector2 (okunamazsa çok uzak bir nokta).
+static func _vec(text: String) -> Vector2:
+	var parts := text.trim_prefix("(").trim_suffix(")").split(",")
+	if parts.size() != 2:
+		return Vector2(-9999, -9999)
+	return Vector2(parts[0].strip_edges().to_float(), parts[1].strip_edges().to_float())
 
 ## I8: oyun betiği tıklamada hata verse de oyun hata ayıklayıcıda durmaz (play_game hata molalarını yoksaydırır);
 ## send_input döner; hata hem send_input sonucunda hem get_runtime_errors'ta görünür (günlük dosyası oyun

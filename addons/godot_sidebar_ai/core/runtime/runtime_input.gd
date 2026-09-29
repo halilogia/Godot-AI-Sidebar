@@ -96,7 +96,7 @@ static func perform(tree: SceneTree, spec: Dictionary) -> Dictionary:
 				mv.global_position = at
 				mv.relative = (b - a) * 0.1
 				mv.button_mask = MOUSE_BUTTON_MASK_RIGHT if drag_button == MOUSE_BUTTON_RIGHT else MOUSE_BUTTON_MASK_LEFT
-				vp.push_input(mv, true)
+				send_mouse(vp, mv, at)
 				if t >= 1.0:
 					break
 				await tree.process_frame
@@ -112,17 +112,17 @@ static func perform(tree: SceneTree, spec: Dictionary) -> Dictionary:
 			var motion := InputEventMouseMotion.new()
 			motion.position = pos
 			motion.global_position = pos
-			root.push_input(motion, true)
+			send_mouse(root, motion, pos)
 			var bdown := InputEventMouseButton.new()
 			bdown.position = pos
 			bdown.global_position = pos
 			bdown.button_index = button
 			bdown.pressed = true
-			root.push_input(bdown, true)
+			send_mouse(root, bdown, pos)
 			await wait_ms(tree, hold)
 			var bup: InputEventMouseButton = bdown.duplicate()
 			bup.pressed = false
-			root.push_input(bup, true)
+			send_mouse(root, bup, pos)
 			return {"success": true, "kind": kind, "position": [snappedf(pos.x, 0.1), snappedf(pos.y, 0.1)], "viewport_size": [root.get_visible_rect().size.x, root.get_visible_rect().size.y]}
 	return {"success": false, "error": "INVALID_KIND", "message": "kind must be key, action, actions, click or drag."}
 
@@ -133,8 +133,22 @@ static func _mouse(vp: Viewport, button: MouseButton, pressed: bool, at: Vector2
 	e.global_position = at
 	e.button_index = button
 	e.pressed = pressed
-	vp.push_input(e, true)
+	send_mouse(vp, e, at)
 	await vp.get_tree().process_frame
+
+## Fare olayı pencerenin gerçek girdi hattından geçer (Input.parse_input_event): oyun konumu
+## get_global_mouse_position() / get_local_mouse_position() ile okusa da doğru yeri görür
+## (Viewport.push_input imleç konumunu güncellemiyordu). pos viewport koordinatıdır; stretch dönüşümüyle pencereye çevrilir.
+static func send_mouse(vp: Viewport, e: InputEventMouse, pos: Vector2) -> void:
+	var win_pos := pos
+	if vp is Window:
+		var w: Window = vp
+		win_pos = w.get_final_transform() * pos
+	e.position = win_pos
+	e.global_position = win_pos
+	if e is InputEventMouseMotion:
+		Input.warp_mouse(pos)
+	Input.parse_input_event(e)
 
 ## Tıklanacak viewport konumu: düğüm yolu ya da görünüm oranı (x, y: 0..1).
 static func click_position(root: Viewport, spec: Dictionary) -> Dictionary:
