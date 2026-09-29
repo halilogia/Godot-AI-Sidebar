@@ -316,6 +316,8 @@ static func resolve_node_path(root: Node, path_str: String) -> Node:
 		
 	return root.get_node_or_null(clean)
 
+const MAX_TREE_CHILDREN := 40
+
 ## Ağaç yapısını hiyerarşik ve derinlik limitli olarak serileştirir
 static func serialize_tree(node: Node, max_depth: int = 3, current_depth: int = 0) -> Dictionary:
 	if not node:
@@ -333,9 +335,19 @@ static func serialize_tree(node: Node, max_depth: int = 3, current_depth: int = 
 		
 	if current_depth < max_depth:
 		var children: Array = []
-		for child in node.get_children():
-			children.append(serialize_tree(child, max_depth, current_depth + 1))
+		var all_children := node.get_children()
+		# Proseduryel sahnelerde yüzlerce kardeş çıktıyı şişiriyordu: ilk MAX_TREE_CHILDREN gösterilir, kalanı tür özetidir.
+		for i in mini(all_children.size(), MAX_TREE_CHILDREN):
+			children.append(serialize_tree(all_children[i], max_depth, current_depth + 1))
 		info["children"] = children
+		if all_children.size() > MAX_TREE_CHILDREN:
+			var by_type := {}
+			for i in range(MAX_TREE_CHILDREN, all_children.size()):
+				var t: String = all_children[i].get_class()
+				var seen: int = by_type.get(t, 0)
+				by_type[t] = seen + 1
+			info["omitted_children"] = all_children.size() - MAX_TREE_CHILDREN
+			info["omitted_by_type"] = by_type
 		
 	return info
 

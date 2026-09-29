@@ -69,8 +69,27 @@ static func rotated_since(before: PackedStringArray, now: PackedStringArray) -> 
 static func check_main_scene_available() -> Dictionary:
 	var main_scene = str(ProjectSettings.get_setting("application/run/main_scene", "")).strip_edges()
 	if main_scene.is_empty():
+		# project.godot dosyayla (dış ajan) sonradan yazıldıysa editör ayarı görmez: diskten okunup benimsenir.
+		main_scene = _main_scene_from_disk()
+		if not main_scene.is_empty():
+			ProjectSettings.set_setting("application/run/main_scene", main_scene)
+	if main_scene.is_empty():
 		return {"available": false, "main_scene": ""}
 	return {"available": true, "main_scene": main_scene}
+
+static func _main_scene_from_disk() -> String:
+	var f := FileAccess.open("res://project.godot", FileAccess.READ)
+	if f == null:
+		return ""
+	var rx := RegEx.new()
+	rx.compile("run/main_scene=\"([^\"]+)\"")
+	var m := rx.search(f.get_as_text())
+	if m == null:
+		return ""
+	var path := m.get_string(1)
+	if path.begins_with("uid://"):
+		return path
+	return path if FileAccess.file_exists(path) else ""
 
 ## Oyunu başlatır (F5 veya F6)
 func play(current_scene_only: bool = false) -> Dictionary:
@@ -234,6 +253,7 @@ static func build_runtime_payload(save_path: String, img: Image, capture_target:
 	var b64 = Marshalls.raw_to_base64(img.save_png_to_buffer())
 	return AISidebarToolResult.ok({
 		"path": save_path,
+		"absolute_path": ProjectSettings.globalize_path(save_path),
 		"base64": b64,
 		"has_vision_data": true,
 		"width": img.get_width(),

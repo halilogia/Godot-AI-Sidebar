@@ -6,6 +6,8 @@ extends RefCounted
 const AISidebarRuntimeUiAudit = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_ui_audit.gd")
 const AISidebarRuntimePhysicsDoctor = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_physics_doctor.gd")
 const AISidebarRuntimeState = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_state.gd")
+const AISidebarRuntimeBridge = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd")
+const AISidebarEditorTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/editor_tools.gd")
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 
 static func run() -> Dictionary:
@@ -63,6 +65,19 @@ static func run() -> Dictionary:
 	var r5 := AISidebarRuntimeState.set_value(holder, {"node_path": "Host", "property": "nope", "value": 1})
 	checks.append(["S1 set_runtime_property: number from text, vector component, type mismatch, blocked and unknown property", r1.get("success") == true and is_equal_approx(host.rotation, 1.5) and r2.get("success") == true and is_equal_approx(host.position.x, 99.0) and is_equal_approx(host.position.y, 20.0) and r3.get("error") == "TYPE_MISMATCH" and r4.get("error") == "PROPERTY_BLOCKED" and r5.get("error") == "PROPERTY_NOT_FOUND"])
 	holder.free()
+	# G1 çalışma ağacı çok kardeşte kırpılır ve özetlenir; G2 mutlak yol proje dışında açık hata verir
+	var wide := Node.new()
+	for i in 90:
+		var kid := Node3D.new()
+		kid.name = "K%d" % i
+		wide.add_child(kid)
+	var wtree := AISidebarRuntimeBridge.serialize_tree(wide, 2)
+	var kept: Array = wtree["children"]
+	checks.append(["G1 wide runtime tree is capped and summarized", kept.size() == AISidebarRuntimeBridge.MAX_TREE_CHILDREN and int(wtree["omitted_children"]) == 90 - AISidebarRuntimeBridge.MAX_TREE_CHILDREN and int(wtree["omitted_by_type"]["Node3D"]) == 50])
+	wide.free()
+	var outside := AISidebarEditorTools.resolve_screenshot_path("Z:/definitely/outside/shot.png", "user://x.png")
+	var inside := AISidebarEditorTools.resolve_screenshot_path(ProjectSettings.globalize_path("res://").path_join("shot_test.png"), "user://x.png")
+	checks.append(["G2 absolute screenshot path: outside the project is refused clearly, inside maps to res://", outside["safe"] == false and str(outside["reason"]).contains("absolute path inside the project") and str(inside.get("path", "")).begins_with("res://")])
 	var passed := 0
 	var errors: Array = []
 	for c: Array in checks:

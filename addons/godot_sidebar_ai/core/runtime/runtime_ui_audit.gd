@@ -48,7 +48,10 @@ static func audit(tree: SceneTree) -> Dictionary:
 	if issues.size() > MAX_ISSUES:
 		issues.resize(MAX_ISSUES)
 	var summary := "%d text node(s) checked, %d issue(s)" % [nodes.size(), issues.size()]
-	return {"checked": nodes.size(), "issues": issues, "summary": summary}
+	var out := {"checked": nodes.size(), "issues": issues, "summary": summary}
+	if nodes.is_empty():
+		out["note"] = "No visible Label / Button / RichTextLabel / LineEdit found, so nothing could be measured. Text drawn with draw_string() in _draw() is invisible to this audit: build HUD text with Label nodes (Theme + outline) so contrast, overflow and overlap can be checked."
+	return out
 
 ## Görünür, metni olan Label / Button / RichTextLabel / LineEdit düğümleri (ilk MAX_NODES tane).
 static func _collect(node: Node, out: Array[Control]) -> void:

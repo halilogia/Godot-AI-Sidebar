@@ -64,3 +64,7 @@ Use: `$UI.theme = GameTheme.make(PALETTE)` once, on the UI root.
 - Top bar: health/lives left, score centre or right, timers right. Bottom: hints or the action bar.
 - Bars (health, mana, XP) use `ProgressBar` or a `ColorRect` pair with the theme colours; show the number too.
 - Make the HUD semi-transparent (`modulate.a = 0.9`) and never cover the play field's centre.
+
+## HUD text: real Label nodes, not `draw_string`
+
+Build every HUD number and caption from `Label` (or `RichTextLabel`) nodes under a `CanvasLayer` with the project Theme and an outline (`outline_size` 3). Text painted with `draw_string()` in `_draw()` cannot be measured: `audit_runtime_ui` reports 0 nodes and cannot flag low contrast, overflow or overlap, and it does not scale with the Theme. Use `_draw()` only for shapes (bars, compass ticks, crosshair).

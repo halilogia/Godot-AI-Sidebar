@@ -52,6 +52,8 @@ env.adjustment_saturation = 0.9
 
 ## 5. HUD (semi-transparent, corner-anchored)
 
+- Build the numbers and captions as `Label` nodes on a `CanvasLayer` (outlined), and draw only bars, compass ticks and the crosshair with `_draw()`; then `audit_runtime_ui` can check them.
+
 - Top centre: a compass strip (ticks every 5 degrees, letters N NE E SE S SW W NW, a red marker in the middle).
 - Bottom left: health number + thin bar, stamina thin bar. Bottom right: big ammo number, small `/ reserve`, weapon name; the number turns red at low ammo.
 - Crosshair: four short lines with a gap that widens on hit and while moving. Damage: red screen tint that fades in 0.6 s.

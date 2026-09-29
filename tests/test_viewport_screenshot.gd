@@ -107,7 +107,8 @@ static func run() -> Dictionary:
 		if editor_tools.resolve_screenshot_path(bp, "user://x.png").get("safe", true):
 			t7_bad.append("resolve " + bp)
 	var abs_res = editor_tools.resolve_screenshot_path("C:/Windows/x.png", "user://x.png")
-	if not abs_res.get("safe", false) or not str(abs_res.get("path", "")).begins_with("res://"):
+	# Proje dışı mutlak yol artık sessizce res://C:/... diye bozulmaz: açık hata verir (proje içi mutlak yol res://'e çevrilir).
+	if abs_res.get("safe", true) != false or not str(abs_res.get("reason", "")).contains("absolute path inside the project"):
 		t7_bad.append("resolve absolute -> " + str(abs_res))
 	if str(editor_tools.resolve_screenshot_path("", "user://d.png").get("path", "")) != "user://d.png":
 		t7_bad.append("resolve default")

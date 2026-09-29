@@ -456,6 +456,14 @@ static func resolve_screenshot_path(raw_path: Variant, default_path: String) -> 
 	var raw = str(raw_path).strip_edges() if raw_path != null else ""
 	if raw.is_empty():
 		raw = default_path
+	# Dış ajanlar (MCP) mutlak yol verir: proje klasörü içindeyse res:// yoluna çevrilir, dışındaysa açık hata.
+	if raw.is_absolute_path() and not raw.begins_with("res://") and not raw.begins_with("user://"):
+		var project_dir := ProjectSettings.globalize_path("res://").replace("\\", "/")
+		var norm := raw.replace("\\", "/")
+		if norm.begins_with(project_dir):
+			raw = "res://" + norm.trim_prefix(project_dir)
+		else:
+			return {"safe": false, "path": raw, "reason": "save_path must be res://..., user://... or an absolute path inside the project folder (%s). The result carries absolute_path for reading the file." % project_dir}
 	return AISidebarPathPolicy.is_safe_to_write(raw)
 
 static func _take_editor_screenshot(args: Dictionary) -> Dictionary:
