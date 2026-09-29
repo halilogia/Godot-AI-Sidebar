@@ -9,7 +9,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Project,
     [Parameter(Mandatory = $true)][string]$Genre,
-    [string]$Title = ""
+    [string]$Title = "",
+    [int]$Score = -1
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,6 +23,15 @@ $result = Get-Content (Join-Path $bench "result.json") -Raw -Encoding UTF8 | Con
 if ($result.status -ne "completed" -or -not $result.metrics.success) {
     throw "Demo başarılı değil (status=$($result.status)); kütüphaneye eklenmez."
 }
+# Kütüphanedeki sürüm daha yüksek puanlıysa değiştirilmez (çıkış kodu 3): yeni koşu eskisinden kötü olabilir.
+$scoreFile = Join-Path $Dest "BENCH\score.txt"
+if ($Score -ge 0 -and (Test-Path $scoreFile)) {
+    $old = [int](Get-Content $scoreFile -Raw).Trim()
+    if ($old -gt $Score) {
+        Write-Host "[demo_library] ${Genre}: kütüphanedeki sürüm ($old) yeninden ($Score) yüksek, değiştirilmedi."
+        exit 3
+    }
+}
 if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
 New-Item -ItemType Directory -Force $Dest | Out-Null
 
@@ -32,6 +42,7 @@ Get-ChildItem -Force $Project | Where-Object { $skip -notcontains $_.Name } | Fo
 $proof = Join-Path $Dest "BENCH"
 New-Item -ItemType Directory -Force $proof | Out-Null
 Copy-Item (Join-Path $bench "prompt.txt"), (Join-Path $bench "result.json") $proof
+if ($Score -ge 0) { [IO.File]::WriteAllText((Join-Path $proof "score.txt"), "$Score", (New-Object System.Text.UTF8Encoding($false))) }
 # Godot bu klasörü içe aktarmasın.
 New-Item -ItemType File -Force (Join-Path $proof ".gdignore") | Out-Null
 

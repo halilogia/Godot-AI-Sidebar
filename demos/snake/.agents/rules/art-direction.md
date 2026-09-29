@@ -1,26 +1,16 @@
-# Art Direction — Snake
+# Art Direction — Neon Night
 
-Mood: **neon dusk** (deep blue-black garden, glowing snake).
+Mood: neon night arcade, dark cool backdrop, glowing lime snake.
 
-## Palette (5 colours, use tints/shades only)
-- `BG_DEEP`    #0A0E14  window background
-- `SURFACE`    #141B26  board surface / panels
-- `PRIMARY`    #4ADE80  snake (head bright → tail dark green)
-- `ACCENT`     #FBBF24  food + score highlights
-- `DANGER`     #F04438  walls, game over, crash flash
+Palette (only these + tints/shades):
+- bg deep:      #0B1020
+- bg panel:     #141C33
+- grid line:    #1E2A47
+- primary:      #7CFF6B  (snake head / accents)
+- accent:       #FFD166  (food)
+- danger:       #FF5D6C  (crash / game over)
+- text:         #E8EEFF (no pure white)
 
-## Layout
-- Window 1280x720, stretch `canvas_items`, aspect `expand`.
-- Board 24x16 cells @ 32px = 768x512, centered horizontally, top at y=140.
-- HUD bar occupies y 0..128 — never overlaps the board.
-- Play field fills the shorter side comfortably.
-
-## UI
-- Rounded panels (radius 14), 1px `SURFACE`-light border, no default grey theme.
-- Title 40, HUD values 26, body/hint 18. Text always has a dark outline/shadow.
-- Custom Theme built in `Hud.gd`; all colours come from `Palette.gd`.
-
-## Effects
-- Eat: expanding amber ring + floating `+10`, screen shake ≤ 6px for 0.15s.
-- Death: red flash ≤ 150ms + shake.
-- No permanent particle loops.
+Field: 24x18 cells of 32px, board centered, HUD bar above (not overlapping).
+UI: rounded panels (radius 10), title 34px, HUD 22px, body 18px, all with dark outline.
+Effects: subtle - eat flash 120ms, tiny board shake 6px on death, no endless particles.

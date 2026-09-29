@@ -9,7 +9,6 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [Endless runner](endless-runner/) | endless runner oyun demosu yap | 7 dk | 60 | 69 | 2026-09-29 |
 
 ## Galeri
-| [Snake](snake/) | snake oyunu demosu yap | 5.7 dk | 58 | 65 | 2026-09-29 |
 
 ## Galeri
 | [Platformer](platformer/) | platformer oyun demosu yap | 5 dk | 57 | 56 | 2026-09-29 |
@@ -25,6 +24,11 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 
 ## Galeri
 | [Kart oyunu](card-game/) | kart oyunu demosu yap | 5.9 dk | 66 | 68 | 2026-09-29 |
+
+## Galeri
+
+## Galeri
+| [Snake](snake/) | snake oyunu demosu yap | 4.5 dk | 51 | 57 | 2026-09-29 |
 
 ## Galeri
 

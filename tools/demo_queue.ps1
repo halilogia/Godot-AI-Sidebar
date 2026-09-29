@@ -70,15 +70,20 @@ foreach ($g in $Genres) {
     } while ($instant -and -not (Test-Path $stopFile))
     if (Test-Path $stopFile) { break }
     $status = "no_result"
+    # Puan önce hesaplanır: kütüphane yalnız daha yüksek (ya da eşit) puanlı sürümle değişir.
+    $score = -1
+    if ($proj) {
+        $scoreOut = (& (Join-Path $PSScriptRoot "demo_score.ps1") -Project $proj.FullName -Genre $g 6>&1 | Out-String)
+        if ($scoreOut -match "= (\d+) \(") { $score = [int]$Matches[1] }
+    }
     if (Test-Path $res) {
         $r = Get-Content $res -Raw -Encoding UTF8 | ConvertFrom-Json
         $status = "{0} {1}s steps={2} failed={3}" -f $r.status, $r.elapsed_s, $r.metrics.used_steps, $r.metrics.failed_tools
         if ($r.status -eq "completed" -and $r.metrics.success) {
-            & (Join-Path $PSScriptRoot "demo_library_add.ps1") -Project $proj.FullName -Genre $g -Title $title | Out-Null
-            $status += " LIBRARY"
+            & (Join-Path $PSScriptRoot "demo_library_add.ps1") -Project $proj.FullName -Genre $g -Title $title -Score $score | Out-Null
+            $status += if ($LASTEXITCODE -eq 3) { " LIBRARY_KEPT_OLD" } else { " LIBRARY" }
         }
     }
-    if ($proj) { & (Join-Path $PSScriptRoot "demo_score.ps1") -Project $proj.FullName -Genre $g | Out-Null }
     Write-QLog ("{0} DONE {1} {2} {3}" -f (Get-Date -Format "HH:mm:ss"), $g, $status, $proj.FullName)
 }
 } while ($Loop -and -not (Test-Path $stopFile))
