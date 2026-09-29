@@ -40,3 +40,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 02:42 | turn-based-rpg | **60** | bitti, başarısız | 7.3 dk | 62 | 3 | space-bunny-free | 89 / 158 | 12.6 s |
 | 2026-09-29 02:50 | endless-runner | **65** | bitti, başarısız | 6.2 dk | 57 | 3 | space-bunny-free | 92 / 170 | 14.3 s |
 | 2026-09-29 02:57 | snake | **95** | başarılı | 4.5 dk | 51 | 2 | space-bunny-free | 66 / 106 | 20.5 s |
+| 2026-09-29 03:01 | tower-defense | **90** | başarılı | 9.1 dk | 85 | 1 | space-bunny-free | 81 / 141 | 23.3 s |

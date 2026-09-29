@@ -31,6 +31,9 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [Snake](snake/) | snake oyunu demosu yap | 4.5 dk | 51 | 57 | 2026-09-29 |
 
 ## Galeri
+| [Tower defense](tower-defense/) | tower defense oyun demosu yap | 9.1 dk | 85 | 92 | 2026-09-29 |
+
+## Galeri
 
 <!-- galeri -->
 **card-game**
@@ -60,5 +63,9 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 **topdown-shooter**
 
 ![topdown-shooter](topdown-shooter/screenshot.png)
+
+**tower-defense**
+
+![tower-defense](tower-defense/screenshot.png)
 
 <!-- /galeri -->
