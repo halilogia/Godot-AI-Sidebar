@@ -16,6 +16,7 @@ Prototypes look "1980s" for the same few reasons: the play field is small in a b
    - `references/composition.md`: screen use, scale, depth layers, 2D lights, vignette
    - `references/ui-theme.md`: one Theme for the whole UI, readable text
    - `references/lighting-3d.md`: WorldEnvironment, sun, shadows, materials
+   - `references/characters.md`: drawing people and creatures from primitives (read when the game has characters)
    - `references/juice.md`: hit flash, screen shake, particles, floating numbers
    - `references/genres.md`: what each game genre must show clearly (read only your genre's section)
 
