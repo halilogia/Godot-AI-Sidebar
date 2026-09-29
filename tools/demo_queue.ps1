@@ -30,10 +30,12 @@ $Prompts = [ordered]@{
     "turn-based-rpg" = @("sıra tabanlı RPG savaş demosu yap", "Sıra tabanlı RPG")
     "fps-3d"         = @("3D birinci şahıs yürüme ve toplama demosu yap", "3D birinci şahıs")
     "topdown-racing" = @("top-down yarış oyunu demosu yap", "Top-down yarış")
+    "fps-6step"      = @("3D bir FPS oyunu başlıyoruz. Önce temel bir oyuncu kontrolcüsü yap: WASD ile yürüme, boşlukla zıplama, fareyle etrafa bakma. Çarpışmaları test edebileceğim basit bir test sahnesi de olsun (zemin ve üzerine yerleştirilmiş kutular).`n=====`nOyuna İkinci Dünya Savaşı teması ver. Sağlık, koşma dayanıklılığı (stamina) ve mermi göstergesi olan bir HUD ekle. Yürürken kafa sallantısı (head bobbing) ve hafif kamera salınımı olsun. Basit bir ateş etme mekaniği ekle.`n=====`nArayüzü Sniper Elite gibi şeffaf ve sade yap, üstte bir pusula olsun. Çözünürlüğü 1080p yap. Elde tutulan bir silah modeli göster ve ateş etme hissini iyileştir.`n=====`nHaritayı 72x72 birime büyüt. Oyuncuyu takip eden temel bir düşman yapay zekası ekle. Sağ tıkla nişan alma (ADS) yap. MP40 ve P08 tabanca gibi ek silahlar ekle ve silahlar arasında geçiş yapılabilsin.`n=====`nDüşmanlar duvar arkasından oyuncuyu görmemeli: görüş çizgisi (raycast) kontrolü ekle. Haritayı 144x144 birime çıkar. Düşman yürüme animasyonlarını iyileştir. Havadayken Shift'e basınca koşma barının azalması hatasını düzelt.`n=====`nEğilme (crouch) mekaniği ekle. Şarjör değiştirme (reload) animasyonu ve efekti ekle. Oyuncu ölüp yeniden başladığında mermilerin sıfırlanmasını (doldurulmasını) düzelt.", "FPS 6 adım (video testi)")
 }
 # -File ile "a","b" tek bir "a,b" dizgesi olarak gelir.
 $Genres = @($Genres | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-if ($Genres.Count -eq 0) { $Genres = @($Prompts.Keys) }
+# 6 istemli video testi (fps-6step) varsayilan listede yok; yalniz adiyla kosar.
+if ($Genres.Count -eq 0) { $Genres = @($Prompts.Keys | Where-Object { $_ -ne "fps-6step" }) }
 $root = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "ai_sidebar_bench"
 New-Item -ItemType Directory -Force $root | Out-Null
 $qlog = Join-Path $root "queue.log"

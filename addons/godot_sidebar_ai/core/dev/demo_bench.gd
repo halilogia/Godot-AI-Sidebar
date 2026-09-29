@@ -52,6 +52,7 @@ var _done: bool = false
 var _started_msec: int = 0
 var _timeout_sec: float = 1500.0
 var _completion: Dictionary = {}
+var _stages: Array[Dictionary] = []
 
 static func requested_out_dir() -> String:
 	for a: String in OS.get_cmdline_user_args():
@@ -70,7 +71,12 @@ func _wait(sec: float) -> void:
 	await get_tree().create_timer(sec).timeout
 
 func _run() -> void:
-	var prompt := FileAccess.get_file_as_string(out_dir.path_join("prompt.txt")).strip_edges()
+	var prompt_text := FileAccess.get_file_as_string(out_dir.path_join("prompt.txt")).strip_edges()
+	var prompts: Array[String] = []
+	for part: String in prompt_text.split("\n=====\n"):
+		if not part.strip_edges().is_empty():
+			prompts.append(part.strip_edges())
+	var prompt: String = prompts[0] if not prompts.is_empty() else ""
 	await _wait(SETTLE_SEC)
 	var runner: AISidebarAgentRunner = dock.get("agent_runner") if dock else null
 	var tasks: Node = dock.get("tasks") if dock else null
@@ -83,11 +89,21 @@ func _run() -> void:
 	_watch(runner)
 	_started_msec = Time.get_ticks_msec()
 	tasks.call("start_task_prompt", prompt)
+	var stage := 0
 	while not _done:
 		await _wait(POLL_SEC)
 		for e: String in _engine_errors.take():
 			_live("engine_error", {"text": e})
 		if not _completion.is_empty() and not runner.is_running():
+			# Çok istemli test (-----: aynı sohbette sırayla): her istemin sonucu ayrı kaydedilir, sıradaki başlar.
+			_stages.append({"stage": stage + 1, "elapsed_s": (Time.get_ticks_msec() - _started_msec) / 1000, "metrics": _completion.duplicate(true)})
+			stage += 1
+			if stage < prompts.size():
+				_live("stage", {"text": "istem %d/%d" % [stage + 1, prompts.size()]})
+				_completion = {}
+				runner.task_completed.connect(func(m: Dictionary) -> void: _completion = m, CONNECT_ONE_SHOT)
+				tasks.call("start_task_prompt", prompts[stage])
+				continue
 			_finish("completed", str(_completion.get("completion", "")))
 			return
 		match runner.current_state:
@@ -171,7 +187,10 @@ func _finish(status: String, detail: String) -> void:
 		_write("export.json", AISidebarChatExporter.export_transcript_to_json(tasks_data, msgs, meta))
 	var elapsed := 0 if _started_msec == 0 else (Time.get_ticks_msec() - _started_msec) / 1000
 	var metrics: Dictionary = _completion.duplicate(true)
-	_write("result.json", JSON.stringify({"status": status, "detail": detail, "elapsed_s": elapsed, "metrics": metrics}, "  "))
+	var result := {"status": status, "detail": detail, "elapsed_s": elapsed, "metrics": metrics}
+	if _stages.size() > 1:
+		result["stages"] = _stages
+	_write("result.json", JSON.stringify(result, "  "))
 	print("[ai-sidebar-bench] %s (%s) -> %s" % [status, detail, out_dir])
 	get_tree().quit(0)
 
