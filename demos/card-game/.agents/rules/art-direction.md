@@ -1,23 +1,23 @@
-# Art Direction — card-game demo
+# Art Direction — "Guess Higher" card demo
 
-Mood: sıcak, loş "tahta masa" akşamı; derin mavi-mor zemin, altın vurgular.
+Mood: warm dusk casino table, deep felt green + brass accents, calm and readable.
 
-Palette (Palette.gd tek kaynak):
-- BG_DEEP  = #12101f (arka plan gradyanının koyu ucu)
-- BG_LIGHT = #241f3d (gradyanın açık ucu)
-- SURFACE  = #2e2748 (panel / kart zemini)
-- PRIMARY  = #e8c26a (altın: başlıklar, kazanan kart, çerçeve)
-- ACCENT   = #5fd0c5 (turkuaz: aktif seçim, buton hover)
-- DANGER   = #e0576b (kırmızı: kaybeden kart, uyarı)
+## Palette (only these + tints/shades)
+- Background (far, felt dark): #14261F
+- Surface (panel / table): #1E3A30
+- Primary (cards, text): #F2E8D5
+- Accent (brass gold, highlights, score): #E0A83B
+- Danger (lose, wrong guess): #C4553B
 
-Field / composition:
-- Tasarım 1280x720, stretch mode canvas_items, aspect expand.
-- Oyun alanı ekranın kısa kenarının ~%70'ini kaplar; HUD üstte 96px, alan üstten 96+24px başlar.
-- Kartlar 120x168, köşe yarıçapı 12, 2px PRIMARY kenarlık, altında yumuşak gölge.
+## Layout
+- Design resolution 1280x720, stretch canvas_items / expand.
+- Play field fills the window: table gradient background, card centered.
+- Top HUD bar (score / streak / round) never overlaps the card.
+- Bottom row: two big guess buttons + restart.
 
-UI:
-- Köşe yarıçapı 10 panel, 8 buton. Yazı boyutları: başlık 32, HUD 22, kart değeri 28. Koyu zeminde açık metin + 2px koyu outline.
-- Tipografi: kalın (bold) sans, tek aile.
+## UI style
+- Corner radius 10-14, 2px gold border on panels, brass button with dark text.
+- Title 34, HUD 22, body 18. Text on light surfaces uses dark ink #1B2A24.
 
-Effect intensity:
-- Flash 120ms, kart yükselmesi 8px, sarsıntı yok. Sürekli partikül yok.
+## Effects
+- Subtle: card slide-in tween 0.25s, win flash (gold, 120ms), lose shake (6px, 150ms), no loops.

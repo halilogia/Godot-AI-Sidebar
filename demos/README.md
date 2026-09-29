@@ -6,7 +6,7 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 
 | Tür | İstem | Süre | Adım | Araç | Tarih |
 |---|---|---|---|---|---|
-| [Kart oyunu](card-game/) | kart oyunu demosu yap | 4.4 dk | 52 | 54 | 2026-09-29 |
+| [Kart oyunu](card-game/) | kart oyunu demosu yap | 3.4 dk | 40 | 45 | 2026-09-29 |
 | [Endless runner](endless-runner/) | endless runner oyun demosu yap | 7 dk | 60 | 69 | 2026-09-29 |
 | [3D birinci şahıs](fps-3d/) | 3D birinci şahıs yürüme ve toplama demosu yap | 3.8 dk | 44 | 52 | 2026-09-29 |
 | [Grand strateji](grand-strategy/) | hoi4 tarzı grand strateji demosu yap, basit ve hızlı | 4.7 dk | 48 | 51 | 2026-09-29 |
