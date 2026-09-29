@@ -292,8 +292,9 @@ text = \"Overlap B\"
 	var nodes := ""
 	for i: Variant in data.get("issues", []):
 		if i is Dictionary:
-			codes[str((i as Dictionary).get("code", ""))] = true
-			nodes += str((i as Dictionary).get("node", "")) + ";"
+			var issue: Dictionary = i
+			codes[str(issue.get("code", ""))] = true
+			nodes += str(issue.get("node", "")) + ";"
 	var ok := _ok(res) and codes.has("LOW_CONTRAST") and codes.has("OVERLAP") and nodes.contains("Faint") and not nodes.contains("Clear")
 	_check.call("i11_ui_audit_finds_contrast_and_overlap", ok, "codes=%s nodes=%s" % [str(codes.keys()), nodes.left(160)])
 	await _tool("stop_game", {})
