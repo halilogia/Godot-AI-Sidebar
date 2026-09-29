@@ -21,7 +21,7 @@ const EXPOSED_TOOLS: Array[String] = [
 	"get_scene_tree", "get_node_properties", "get_selected_nodes", "select_node", "open_scene",
 	"read_script", "file_info", "find_files", "search_code", "validate_script", "validate_project", "get_godot_class_info",
 	"play_game", "stop_game", "restart_game", "send_input",
-	"get_runtime_errors", "inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime", "get_runtime_performance", "trace_runtime_signals", "audit_runtime_ui", "get_output",
+	"get_runtime_errors", "inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime", "get_runtime_performance", "trace_runtime_signals", "audit_runtime_ui", "diagnose_physics", "get_output",
 	"take_editor_screenshot", "take_viewport_screenshot", "take_runtime_screenshot",
 	"inspect_ui_layout",
 ]

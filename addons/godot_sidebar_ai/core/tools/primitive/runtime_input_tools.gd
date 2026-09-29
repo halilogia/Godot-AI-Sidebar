@@ -16,6 +16,7 @@ const WAIT_TOOL := "wait_for_runtime"
 const PERF_TOOL := "get_runtime_performance"
 const TRACE_TOOL := "trace_runtime_signals"
 const UI_AUDIT_TOOL := "audit_runtime_ui"
+const PHYSICS_TOOL := "diagnose_physics"
 const MAX_HOLD_MSEC := 2000
 const MAX_STEPS := 30
 const MAX_STEP_WAIT_MSEC := 5000
@@ -62,6 +63,19 @@ static func get_schemas() -> Array:
 					"duration_ms": {"type": "integer", "description": "How long to listen, in milliseconds (default 3000, max 10000)."},
 				},
 				"required": ["node_path"],
+			},
+		},
+	}, {
+		"type": "function",
+		"function": {
+			"name": PHYSICS_TOOL,
+			"description": "Diagnoses collisions and triggers in the RUNNING game by measurement: for an Area / PhysicsBody / CharacterBody (or every one below a node) it lists collision layers and mask, disabled or missing shapes, Areas whose monitoring is off, and Areas with body_entered / area_entered connected whose mask matches no other collision object in the scene (the classic 'the signal never fires because the player is on another layer'). Use it when a pickup, goal, hit box or wall does nothing, before guessing at layer numbers.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"node_path": {"type": "string", "description": "Node in the running game (e.g. 'Main/Goal'); a parent checks every collision object below it. Default: the whole current scene."},
+				},
+				"required": [],
 			},
 		},
 	}, {
@@ -274,6 +288,15 @@ static func name_list(v: Variant) -> Array:
 			out.append(part)
 		return out
 	return []
+
+static func execute_physics_async(args: Dictionary) -> Dictionary:
+	var not_ready := readiness_error()
+	if not not_ready.is_empty():
+		return not_ready
+	var resp: Dictionary = await AISidebarDebuggerPlugin.instance.query_with_ready_check("diagnose_physics", [{"node_path": str(args.get("node_path", ""))}], 1.0, 5.0)
+	if resp.get("success", false) != true:
+		return AISidebarToolResult.err(str(resp.get("error", "PHYSICS_DIAGNOSIS_FAILED")), str(resp.get("message", "The game did not return a physics diagnosis.")))
+	return AISidebarToolResult.ok(resp, str(resp.get("summary", "")))
 
 static func execute_ui_audit_async() -> Dictionary:
 	var not_ready := readiness_error()

@@ -141,7 +141,8 @@ The agent can also **drive and measure** the running game, not just look at it:
   (a growing node count means a leak); **`trace_runtime_signals`** records which
   signals fired and when. **`audit_runtime_ui`** measures on-screen text:
   off-screen or overflowing text, overlapping labels and low contrast against
-  the pixels behind it.
+  the pixels behind it. **`diagnose_physics`** finds why a trigger or hit box does
+  nothing: layer / mask mismatches, disabled shapes, monitoring off.
 - **`get_output`** reads Godot's Output (terminal) log: what the editor printed
   (autoload, import, plugin errors) and the game's `print()` lines. Secrets are
   masked.

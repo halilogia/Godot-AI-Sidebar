@@ -33,6 +33,7 @@ func run(host: Node, check: Callable) -> void:
 	await _frozen_time_scale()
 	await _mouse_fidelity()
 	await _ui_audit()
+	await _physics_doctor()
 	await _error_break()
 	await _hidden_viewport()
 	_cleanup()
@@ -297,6 +298,52 @@ text = \"Overlap B\"
 			nodes += str(issue.get("node", "")) + ";"
 	var ok := _ok(res) and codes.has("LOW_CONTRAST") and codes.has("OVERLAP") and nodes.contains("Faint") and not nodes.contains("Clear")
 	_check.call("i11_ui_audit_finds_contrast_and_overlap", ok, "codes=%s nodes=%s" % [str(codes.keys()), nodes.left(160)])
+	await _tool("stop_game", {})
+	await _wait(0.5)
+
+## I12: diagnose_physics gerçek oyunda "Area layer 1'i dinliyor, oyuncu layer 2'de" hatasını bulur.
+func _physics_doctor() -> void:
+	var scene := DIR + "/physics.tscn"
+	var script := DIR + "/physics.gd"
+	var code := "extends Node2D\n\nfunc _ready() -> void:\n\t$Goal.body_entered.connect(_on_goal)\n\nfunc _on_goal(_b: Node2D) -> void:\n\tpass\n"
+	var text := "[gd_scene load_steps=4 format=3]
+
+[ext_resource type=\"Script\" path=\"%s\" id=\"1_p\"]
+
+[sub_resource type=\"RectangleShape2D\" id=\"1\"]
+size = Vector2(40, 40)
+
+[node name=\"Physics\" type=\"Node2D\"]
+script = ExtResource(\"1_p\")
+
+[node name=\"Goal\" type=\"Area2D\" parent=\".\"]
+collision_layer = 4
+collision_mask = 1
+
+[node name=\"Shape\" type=\"CollisionShape2D\" parent=\"Goal\"]
+shape = SubResource(\"1\")
+
+[node name=\"Player\" type=\"CharacterBody2D\" parent=\".\"]
+collision_layer = 2
+collision_mask = 1
+
+[node name=\"Shape\" type=\"CollisionShape2D\" parent=\"Player\"]
+shape = SubResource(\"1\")
+" % script
+	await _tool("write_files", {"files": [{"file_path": script, "content": code}, {"file_path": scene, "content": text}]})
+	EditorInterface.get_resource_filesystem().scan()
+	await _wait(1.0)
+	await _tool("manage_project_settings", {"action": "set", "key": "application/run/main_scene", "value": scene})
+	await _tool("play_game", {})
+	await _wait(3.0)
+	var res := await _tool("diagnose_physics", {})
+	var data: Dictionary = res.get("data", {}) if res.get("data") is Dictionary else {}
+	var codes := {}
+	for i: Variant in data.get("issues", []):
+		if i is Dictionary:
+			var issue: Dictionary = i
+			codes[str(issue.get("code", ""))] = true
+	_check.call("i12_physics_doctor_finds_layer_mismatch", _ok(res) and codes.has("NO_MATCHING_LAYER") and not codes.has("NO_SHAPE"), "codes=%s summary=%s" % [str(codes.keys()), str(data.get("summary", ""))])
 	await _tool("stop_game", {})
 	await _wait(0.5)
 

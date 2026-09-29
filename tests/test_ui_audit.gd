@@ -4,6 +4,7 @@ extends RefCounted
 ## audit_runtime_ui: WCAG kontrast hesabı, araç şeması ve yönlendirme (oyun tarafı düğüm taraması editör smoke I11'de).
 
 const AISidebarRuntimeUiAudit = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_ui_audit.gd")
+const AISidebarRuntimePhysicsDoctor = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_physics_doctor.gd")
 const AISidebarRuntimeInputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/runtime_input_tools.gd")
 
 static func run() -> Dictionary:
@@ -21,6 +22,33 @@ static func run() -> Dictionary:
 	var wrapped := AISidebarRuntimeInputTools.name_list({"item": ["move_right", "jump"]})
 	var listed := AISidebarRuntimeInputTools.name_list("move_right, jump")
 	checks.append(["U4 send_input actions accepts {item:[..]} and comma text", wrapped == ["move_right", "jump"] and listed == ["move_right", "jump"] and AISidebarRuntimeInputTools.name_list(5).is_empty()])
+	# P1 fizik doktoru: Area layer 1'i dinliyor, oyuncu layer 2'de -> NO_MATCHING_LAYER; şekilsiz gövde -> NO_SHAPE
+	var root := Node2D.new()
+	var goal := Area2D.new()
+	goal.name = "Goal"
+	goal.collision_mask = 1
+	goal.collision_layer = 4
+	var goal_shape := CollisionShape2D.new()
+	goal_shape.shape = RectangleShape2D.new()
+	goal.add_child(goal_shape)
+	goal.body_entered.connect(func(_b: Node2D) -> void: pass)
+	var player := CharacterBody2D.new()
+	player.name = "Player"
+	player.collision_layer = 2
+	root.add_child(goal)
+	root.add_child(player)
+	var rep := AISidebarRuntimePhysicsDoctor.diagnose(root, root)
+	var codes: Array[String] = []
+	for i: Dictionary in rep["issues"]:
+		codes.append(str(i["code"]))
+	checks.append(["P1 physics doctor finds layer mismatch and missing shape", "NO_MATCHING_LAYER" in codes and "NO_SHAPE" in codes and AISidebarRuntimePhysicsDoctor.layers_of(5) == [1, 3]])
+	player.collision_layer = 1
+	var rep2 := AISidebarRuntimePhysicsDoctor.diagnose(root, goal)
+	var codes2: Array[String] = []
+	for i: Dictionary in rep2["issues"]:
+		codes2.append(str(i["code"]))
+	checks.append(["P2 matching layers are not accused", not ("NO_MATCHING_LAYER" in codes2)])
+	root.free()
 	var passed := 0
 	var errors: Array = []
 	for c: Array in checks:

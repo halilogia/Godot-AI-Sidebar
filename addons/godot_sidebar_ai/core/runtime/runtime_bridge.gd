@@ -10,6 +10,7 @@ const AISidebarRuntimeInput = preload("res://addons/godot_sidebar_ai/core/runtim
 const AISidebarRuntimeProbe = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_probe.gd")
 const AISidebarRuntimeMetrics = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_metrics.gd")
 const AISidebarRuntimeSignals = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_signals.gd")
+const AISidebarRuntimePhysicsDoctor = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_physics_doctor.gd")
 const AISidebarRuntimeUiAudit = preload("res://addons/godot_sidebar_ai/core/runtime/runtime_ui_audit.gd")
 
 const CAPTURE_NAME: String = "godot_ai"
@@ -191,6 +192,19 @@ func _on_debugger_message(message: String, data: Array) -> bool:
 		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
 		var lim: int = clampi(int(str(spec.get("limit", 40)).to_float()), 1, 200)
 		EngineDebugger.send_message("godot_ai:response", [req_id, {"success": true, "lines": _sink.recent_output(str(spec.get("level", "all")), lim, str(spec.get("contains", "")))}])
+		return true
+
+	elif cmd == "diagnose_physics":
+		var req_id := str(data[0]) if data.size() > 0 else ""
+		var spec: Dictionary = data[1] if data.size() > 1 and data[1] is Dictionary else {}
+		var path := str(spec.get("node_path", "")).strip_edges()
+		var target: Node = AISidebarRuntimeInput._resolve(get_tree().root, path) if not path.is_empty() else get_tree().current_scene
+		if target == null:
+			EngineDebugger.send_message("godot_ai:response", [req_id, {"success": false, "error": "NODE_NOT_FOUND", "message": "Node not found in the running game: " + path}])
+			return true
+		var report: Dictionary = AISidebarRuntimePhysicsDoctor.diagnose(get_tree().root, target)
+		report["success"] = true
+		EngineDebugger.send_message("godot_ai:response", [req_id, report])
 		return true
 
 	elif cmd == "ui_audit":
