@@ -45,3 +45,6 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 03:21 | topdown-shooter | **95** | başarılı | 4.9 dk | 56 | 1 | space-bunny-free | 66 / 104 | 17.3 s |
 | 2026-09-29 03:27 | topdown-racing | **80** | başarılı | 11.5 dk | 94 | 5 | space-bunny-free | 71 / 198 | 36.6 s |
 | 2026-09-29 03:38 | fps-3d | **95** | başarılı | 3.8 dk | 44 | 1 | space-bunny-free | 66 / 141 | 14.1 s |
+| 2026-09-29 03:43 | grand-strategy | **60** | bitti, başarısız | 9.7 dk | 98 | 4 | space-bunny-free | 98 / 267 | 18.1 s |
+| 2026-09-29 03:53 | card-game | **55** | bitti, başarısız | 11.4 dk | 91 | 5 | space-bunny-free | 72 / 135 | 12.1 s |
+| 2026-09-29 04:04 | match3 | **80** | başarılı | 12 dk | 107 | 5 | space-bunny-free | 100 / 323 | 40.2 s |
