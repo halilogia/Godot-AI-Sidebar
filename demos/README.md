@@ -14,7 +14,6 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [Platformer](platformer/) | platformer oyun demosu yap | 5 dk | 57 | 56 | 2026-09-29 |
 
 ## Galeri
-| [Top-down shooter](topdown-shooter/) | top-down shooter demosu yap | 6.7 dk | 89 | 88 | 2026-09-29 |
 
 ## Galeri
 | [Top-down yarış](topdown-racing/) | top-down yarış oyunu demosu yap | 9.1 dk | 81 | 90 | 2026-09-29 |
@@ -32,6 +31,9 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 
 ## Galeri
 | [Tower defense](tower-defense/) | tower defense oyun demosu yap | 9.1 dk | 85 | 92 | 2026-09-29 |
+
+## Galeri
+| [Top-down shooter](topdown-shooter/) | top-down shooter demosu yap | 4.9 dk | 56 | 69 | 2026-09-29 |
 
 ## Galeri
 
