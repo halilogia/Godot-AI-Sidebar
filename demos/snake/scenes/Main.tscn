@@ -1,131 +1,78 @@
-[gd_scene format=3 uid="uid://t3xigu324ggt"]
+[gd_scene format=3 uid="uid://dy6dbeo858pc6"]
 
-[ext_resource type="Script" uid="uid://b1klc1mdmeo6x" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://b51kjwj6y4v80" path="res://scripts/snake.gd" id="1_snake"]
+[ext_resource type="Script" uid="uid://bwrogg08mjdsl" path="res://scripts/hud.gd" id="2_hud"]
 
-[sub_resource type="StyleBoxFlat" id="Panel"]
-bg_color = Color(0.078, 0.11, 0.2, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.118, 0.165, 0.278, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+[sub_resource type="LabelSettings" id="2_label"]
+font_size = 34
+font_color = Color(0.91, 0.933, 0.968, 1)
+outline_size = 8
+outline_color = Color(0.043, 0.055, 0.078, 1)
 
-[node name="Main" type="Node2D" unique_id=231838985]
-script = ExtResource("1_main")
+[sub_resource type="LabelSettings" id="1_label"]
+font_size = 24
+font_color = Color(0.91, 0.933, 0.968, 1)
+outline_size = 6
+outline_color = Color(0.043, 0.055, 0.078, 1)
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=333711109]
+[node name="Snake" type="Node2D" unique_id=919733401]
+script = ExtResource("1_snake")
 
-[node name="Bar" type="PanelContainer" parent="HUD" unique_id=2115241315]
-offset_right = 1280.0
-offset_bottom = 84.0
-theme_override_styles/panel = SubResource("Panel")
-
-[node name="Row" type="HBoxContainer" parent="HUD/Bar" unique_id=1765614536]
-layout_mode = 2
-theme_override_constants/separation = 28
-alignment = 1
-
-[node name="Title" type="Label" parent="HUD/Bar/Row" unique_id=1764045219]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.486, 1, 0.42, 1)
-theme_override_colors/font_outline_color = Color(0.043, 0.063, 0.125, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 34
-text = "SNAKE"
-
-[node name="ScoreBox" type="VBoxContainer" parent="HUD/Bar/Row" unique_id=434637750]
-layout_mode = 2
-
-[node name="ScoreCaption" type="Label" parent="HUD/Bar/Row/ScoreBox" unique_id=1424309967]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.91, 0.933, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = "SKOR"
-
-[node name="ScoreValue" type="Label" parent="HUD/Bar/Row/ScoreBox" unique_id=630161944]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.82, 0.4, 1)
-theme_override_font_sizes/font_size = 22
-text = "0"
-
-[node name="BestBox" type="VBoxContainer" parent="HUD/Bar/Row" unique_id=702264584]
-layout_mode = 2
-
-[node name="BestCaption" type="Label" parent="HUD/Bar/Row/BestBox" unique_id=1656835459]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.91, 0.933, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = "EN İYİ"
-
-[node name="BestValue" type="Label" parent="HUD/Bar/Row/BestBox" unique_id=1131565756]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.82, 0.4, 1)
-theme_override_font_sizes/font_size = 22
-text = "0"
-
-[node name="Hint" type="Label" parent="HUD" unique_id=1123934808]
-offset_left = 296.0
-offset_top = 698.0
-offset_right = 984.0
-offset_bottom = 718.0
-theme_override_colors/font_color = Color(0.91, 0.933, 1, 1)
-theme_override_colors/font_outline_color = Color(0.043, 0.063, 0.125, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
-text = "WASD / Yön tuşları ile oyna  •  R yeniden başlat"
-horizontal_alignment = 1
-
-[node name="Overlay" type="Control" parent="HUD" unique_id=663198935]
-visible = false
+[node name="HUD" type="Control" parent="." unique_id=64965765]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 1280.0
-offset_bottom = 720.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
+script = ExtResource("2_hud")
 
-[node name="Dim" type="ColorRect" parent="HUD/Overlay" unique_id=538778813]
+[node name="TitleLabel" type="Label" parent="HUD" unique_id=360597382]
 layout_mode = 0
-offset_right = 1280.0
-offset_bottom = 720.0
-mouse_filter = 2
-color = Color(0.043, 0.063, 0.125, 0.78)
+offset_left = 44.0
+offset_top = 24.0
+offset_right = 244.0
+offset_bottom = 66.0
+text = "SNAKE"
+label_settings = SubResource("2_label")
 
-[node name="Box" type="PanelContainer" parent="HUD/Overlay" unique_id=1455824645]
+[node name="ScoreLabel" type="Label" parent="HUD" unique_id=22813773]
+unique_name_in_owner = true
 layout_mode = 0
-offset_left = 400.0
-offset_top = 200.0
-offset_right = 880.0
-offset_bottom = 400.0
-theme_override_styles/panel = SubResource("Panel")
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 26.0
+offset_right = -164.0
+offset_bottom = 62.0
+text = "SCORE  0"
+label_settings = SubResource("1_label")
+horizontal_alignment = 2
 
-[node name="Margin" type="MarginContainer" parent="HUD/Overlay/Box" unique_id=552909371]
-layout_mode = 2
-theme_override_constants/margin_left = 30
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 30
-theme_override_constants/margin_bottom = 24
-
-[node name="Text" type="VBoxContainer" parent="HUD/Overlay/Box/Margin" unique_id=1519985015]
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="Title" type="Label" parent="HUD/Overlay/Box/Margin/Text" unique_id=1051420163]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.365, 0.424, 1)
-theme_override_colors/font_outline_color = Color(0.043, 0.063, 0.125, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 34
-text = "OYUN BİTTİ"
+[node name="BestLabel" type="Label" parent="HUD" unique_id=378348783]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -156.0
+offset_top = 26.0
+offset_right = -44.0
+offset_bottom = 62.0
+text = "BEST  0"
+label_settings = SubResource("1_label")
 horizontal_alignment = 1
 
-[node name="Body" type="Label" parent="HUD/Overlay/Box/Margin/Text" unique_id=1835773009]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.91, 0.933, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = "Skor: 0"
+[node name="MessageLabel" type="Label" parent="HUD" unique_id=349893477]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "CRASHED"
+label_settings = SubResource("2_label")
 horizontal_alignment = 1
+vertical_alignment = 1

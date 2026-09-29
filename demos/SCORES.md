@@ -49,3 +49,5 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 03:53 | card-game | **55** | bitti, başarısız | 11.4 dk | 91 | 5 | space-bunny-free | 72 / 135 | 12.1 s |
 | 2026-09-29 04:04 | match3 | **80** | başarılı | 12 dk | 107 | 5 | space-bunny-free | 100 / 323 | 40.2 s |
 | 2026-09-29 04:17 | turn-based-rpg | **90** | başarılı | 7 dk | 79 | 2 | space-bunny-free | 76 / 143 | 13.4 s |
+| 2026-09-29 04:24 | endless-runner | **75** | başarılı | 13.8 dk | 132 | 7 | space-bunny-free | 81 / 132 | 53 s |
+| 2026-09-29 04:38 | snake | **95** | başarılı | 4.7 dk | 48 | 1 | space-bunny-free | 59 / 103 | 11.2 s |

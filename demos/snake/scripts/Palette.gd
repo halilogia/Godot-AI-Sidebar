@@ -1,14 +1,11 @@
 class_name Palette
 extends RefCounted
 
-const BG_DEEP := Color("#0B1020")
-const BG_PANEL := Color("#141C33")
-const GRID_LINE := Color("#1E2A47")
-const PRIMARY := Color("#7CFF6B")
-const ACCENT := Color("#FFD166")
-const DANGER := Color("#FF5D6C")
-const TEXT := Color("#E8EEFF")
-
-const CELL := 32
-const COLS := 24
-const ROWS := 18
+const BACKGROUND := Color("#0B0E14")
+const SURFACE := Color("#141A26")
+const GRID := Color("#1E2A3D")
+const PRIMARY := Color("#35E0A1")
+const HEAD := Color("#7CFFD4")
+const ACCENT := Color("#FFC24B")
+const DANGER := Color("#FF4D6D")
+const TEXT := Color("#E8EEF7")
