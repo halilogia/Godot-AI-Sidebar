@@ -18,6 +18,9 @@ static func run() -> Dictionary:
 		if str((s.get("function", {}) as Dictionary).get("name", "")) == AISidebarRuntimeInputTools.UI_AUDIT_TOOL:
 			found = true
 	checks.append(["U3 audit_runtime_ui schema is registered", found])
+	var wrapped := AISidebarRuntimeInputTools.name_list({"item": ["move_right", "jump"]})
+	var listed := AISidebarRuntimeInputTools.name_list("move_right, jump")
+	checks.append(["U4 send_input actions accepts {item:[..]} and comma text", wrapped == ["move_right", "jump"] and listed == ["move_right", "jump"] and AISidebarRuntimeInputTools.name_list(5).is_empty()])
 	var passed := 0
 	var errors: Array = []
 	for c: Array in checks:

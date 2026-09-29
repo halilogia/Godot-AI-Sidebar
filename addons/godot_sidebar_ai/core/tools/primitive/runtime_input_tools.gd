@@ -136,7 +136,7 @@ static func build_spec(args: Dictionary) -> Dictionary:
 				return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind=action needs action.")}
 			spec["action"] = str(args["action"])
 		"actions":
-			var list: Array = args["actions"] if args.get("actions") is Array else []
+			var list := name_list(args.get("actions"))
 			if list.is_empty():
 				return {"error": AISidebarToolResult.err("INVALID_ARGUMENT", "kind=actions needs actions (a list of input action names).")}
 			spec["actions"] = list
@@ -254,6 +254,26 @@ static func execute_trace_async(args: Dictionary) -> Dictionary:
 		return AISidebarToolResult.err(str(resp.get("error", "TRACE_FAILED")), str(resp.get("message", "The game did not return a signal trace.")))
 	var n: int = resp.get("count", 0)
 	return AISidebarToolResult.ok(resp, "%d signal event(s) on %s in %d ms" % [n, node_path, duration])
+
+## Bazı modeller listeyi {"item": [...]} ile sarar ya da "a, b" metni gönderir; ikisi de action listesi sayılır.
+static func name_list(v: Variant) -> Array:
+	if v is Array:
+		var arr: Array = v
+		return arr
+	if v is Dictionary:
+		var dict: Dictionary = v
+		for inner: Variant in dict.values():
+			if inner is Array:
+				var arr2: Array = inner
+				return arr2
+		return []
+	if v is String:
+		var text: String = v
+		var out: Array = []
+		for part: String in text.replace(",", " ").split(" ", false):
+			out.append(part)
+		return out
+	return []
 
 static func execute_ui_audit_async() -> Dictionary:
 	var not_ready := readiness_error()
