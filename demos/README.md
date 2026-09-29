@@ -16,7 +16,6 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 ## Galeri
 
 ## Galeri
-| [Top-down yarış](topdown-racing/) | top-down yarış oyunu demosu yap | 9.1 dk | 81 | 90 | 2026-09-29 |
 
 ## Galeri
 | [3D birinci şahıs](fps-3d/) | 3D birinci şahıs yürüme ve toplama demosu yap | 2.4 dk | 24 | 37 | 2026-09-29 |
@@ -34,6 +33,9 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 
 ## Galeri
 | [Top-down shooter](topdown-shooter/) | top-down shooter demosu yap | 4.9 dk | 56 | 69 | 2026-09-29 |
+
+## Galeri
+| [Top-down yarış](topdown-racing/) | top-down yarış oyunu demosu yap | 11.5 dk | 94 | 115 | 2026-09-29 |
 
 ## Galeri
 

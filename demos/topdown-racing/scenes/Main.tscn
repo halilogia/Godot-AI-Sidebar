@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://djby5k4grr36j"]
+
+[ext_resource type="Script" uid="uid://dtgxcun82c2to" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://balrdtj0kbcg0" path="res://scripts/Race.gd" id="2_race"]
+[ext_resource type="Script" uid="uid://b5h7j3tjha500" path="res://scripts/RaceHUD.gd" id="3_hud"]
+
+[node name="Main" type="Node2D" unique_id=1053387705]
+script = ExtResource("1_main")
+
+[node name="Race" type="Node2D" parent="." unique_id=1571820917]
+script = ExtResource("2_race")
+
+[node name="HUD" type="Control" parent="." unique_id=1982360894]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_hud")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=136704362]
