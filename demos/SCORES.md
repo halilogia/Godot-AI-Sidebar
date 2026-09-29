@@ -74,3 +74,6 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 08:35 | snake | **100** | başarılı | 0.9 dk | 17 | 1 | ag/gemini-3.8-flash-low | 33 / 47 | 2.4 s |
 | 2026-09-29 09:01 | card-game | **95** | başarılı | 3.4 dk | 40 | 1 | space-bunny-free | 72 / 143 | 7.1 s |
 | 2026-09-29 09:04 | platformer | **45** | bitti, başarısız | 13.1 dk | 123 | 12 | space-bunny-free | 86 / 134 | 56.1 s |
+| 2026-09-29 14:29 | platformer | **65** | bitti, başarısız | 4.8 dk | 54 | 4 | space-bunny-free | 76 / 123 | 21.6 s |
+| 2026-09-29 14:34 | card-game | **60** | bitti, başarısız | 6.2 dk | 67 | 4 | space-bunny-free | 74 / 149 | 20.7 s |
+| 2026-09-29 14:41 | grand-strategy | **90** | başarılı | 7.5 dk | 80 | 2 | space-bunny-free | 96 / 275 | 16.6 s |
