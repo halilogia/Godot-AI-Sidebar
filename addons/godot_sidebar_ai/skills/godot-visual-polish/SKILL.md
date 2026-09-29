@@ -38,3 +38,4 @@ Prototypes look "1980s" for the same few reasons: the play field is small in a b
 - No random colours; no pure white text on pure black; no more than ~2 fonts sizes per screen level.
 - Effects stay subtle: shake under 8 px, flash under 150 ms, glow low. Never leave a loop of particles running forever on a static scene.
 - Keep everything procedural (shapes, gradients, shaders, particles). Do not reference image files you have not created.
+- **Real 3D models:** in a 3D game, primitive boxes and spheres cap the look. If a `blender` MCP server (Blender Copilot, `github.com/halilogia/Blender-Copilot`) is connected next to this one, model props there (crate, barrel, tree, rock, weapon, soldier; its `blender-game-assets` skill has tested recipes), export `.glb`, copy it under `res://assets/models/`, call `sync_project`, and instantiate it with a collision body (`blender-to-godot` skill). Always keep a primitive fallback if `load()` returns null.

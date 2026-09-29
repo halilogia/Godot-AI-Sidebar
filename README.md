@@ -261,6 +261,8 @@ claude plugin marketplace add halilogia/Godot-AI-Sidebar && claude plugin instal
 
 You get 7 Godot 4 skills (runtime verification, visual polish with a look recipe for each of 11 game genres, scene authoring, feature development, debugging, refactoring, headless CI) and the `/godot-connect` command. In a project that has the sidebar plugin enabled, run `/godot-connect` once: it reads the bridge port and token from the project's config and registers the MCP server for you. Restart Claude Code, keep the Godot editor open, and Claude can play, measure and screenshot your running game.
 
+**Real 3D models:** pair it with [Blender Copilot](https://github.com/halilogia/Blender-Copilot)'s MCP bridge (`claude plugin marketplace add halilogia/Blender-Copilot && claude plugin install blender-copilot@blender-copilot`). Claude then models low-poly props in Blender through allow-listed tools (no Python), exports `.glb`, and drops them into your Godot game; the `godot-visual-polish` skill points to that pipeline.
+
 ## Use it from Claude Code (MCP)
 
 External agents such as **Claude Code** can drive the open Godot editor through the

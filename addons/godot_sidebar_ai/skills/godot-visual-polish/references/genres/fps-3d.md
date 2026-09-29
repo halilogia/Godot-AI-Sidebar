@@ -13,6 +13,10 @@ Build the level in code from a few builder functions and a seeded `RandomNumberG
 - **Boundary walls** 6 m high around the map so nobody falls off.
 - Every mesh instance that must block the player or bullets needs a collision shape on **layer 1**; the player is layer 2, enemies layer 4, and enemy line-of-sight rays use mask `1 | 2`.
 
+### Props from Blender (when a `blender` MCP server is connected)
+
+Replace the box crates, cylinder trees and box soldiers with modeled `.glb` files (crate ~200 triangles, barrel ~560, tree ~360, sandbag row ~360, rifle ~180, soldier ~190). In a real comparison this changed the screenshot from "boxes on a plane" to a recognizable battlefield. Rules: export with the tool's default `recenter` (else the model shows up metres away from its collision body), wrap each model in a `StaticBody3D` with a `BoxShape3D` from the merged `MeshInstance3D` AABB (trees: a thin trunk box only), keep the primitive as a fallback when `load()` returns null, and check `inspect_runtime_node` for a large local offset on the model node.
+
 ## 2. Light and atmosphere (this is what lifts the look most)
 
 ```gdscript
