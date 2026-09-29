@@ -53,8 +53,54 @@ static func _note_write(path: String, verify_error: String) -> void:
 	else:
 		files_with_errors[path] = verify_error
 
+## Derleme hatasının etrafındaki satırlar (numaralı): reddedilen kod diskte olmadığı için model kendi yazdığını
+## göremez; hatalı satırı burada görür.
+static func error_context(source: String, val_res: Dictionary, radius: int = 2) -> String:
+	var err_v: Variant = val_res.get("error", null)
+	if source.is_empty() or not (err_v is Dictionary):
+		return ""
+	var err: Dictionary = err_v
+	var list_v: Variant = err.get("errors", [])
+	if not (list_v is Array):
+		return ""
+	var list: Array = list_v
+	if list.is_empty() or not (list[0] is Dictionary):
+		return ""
+	var first: Dictionary = list[0]
+	var line_no: int = first.get("line", 0)
+	var lines := source.split("\n")
+	if line_no < 1 or line_no > lines.size():
+		return ""
+	var out := PackedStringArray()
+	for i in range(maxi(1, line_no - radius), mini(lines.size(), line_no + radius) + 1):
+		out.append("%s%d| %s" % [">" if i == line_no else " ", i, lines[i - 1]])
+	return "\n".join(out)
+
+## target_code dosyada yoksa: ilk satırın dosyadaki yeri ve gerçek içeriği (ya da hiç yoksa bunu söyle); girinti farkı.
+static func target_not_found_error(path: String, old_content: String, target_code: String) -> Dictionary:
+	var lines := old_content.split("\n")
+	var want := ""
+	for l: String in target_code.split("\n"):
+		if not l.strip_edges().is_empty():
+			want = l.strip_edges()
+			break
+	var hint := ""
+	if not want.is_empty():
+		for i in lines.size():
+			if lines[i].strip_edges() == want:
+				var shown := PackedStringArray()
+				for j in range(i, mini(lines.size(), i + 4)):
+					shown.append("%d| %s" % [j + 1, lines[j]])
+				hint = "The first line of your target_code is at line %d but the block does not match exactly. The file has there:\n%s" % [i + 1, "\n".join(shown)]
+				break
+	if hint.is_empty():
+		hint = "Not even the first line of your target_code (%s) is in the file (%d lines); it may have changed since you read it: call read_script again." % [want.left(60), lines.size()]
+	if target_code.contains("    ") and old_content.contains("\t") and not old_content.contains("\n    "):
+		hint += " The file indents with tabs; your target_code uses spaces."
+	return AISidebarToolResult.err("TARGET_NOT_FOUND", "Hedef kod bloğu dosyada bulunamadı: " + path + ". " + hint, true)
+
 ## Engelleyici hatayla reddedilen yazım: makine-okunur alanlar + ajan için kurtarma yolu.
-static func _reject_write(path: String, reason: String, val_res: Dictionary) -> Dictionary:
+static func _reject_write(path: String, reason: String, val_res: Dictionary, source: String = "") -> Dictionary:
 	var existed := FileAccess.file_exists(path)
 	if not existed:
 		rejected_writes[path] = reason
@@ -63,6 +109,9 @@ static func _reject_write(path: String, reason: String, val_res: Dictionary) -> 
 	var msg := "WRITE_REJECTED: %s was NOT written; %s. Disk: %s. Fix the complete source and send it again with create_or_update_script / write_files." % [path, reason, disk]
 	if not existed:
 		msg += " Do not call replace_file_content: there is no file to patch."
+	var ctx := error_context(source, val_res)
+	if not ctx.is_empty():
+		msg += "\nYour new content around the error (> marks the line):\n" + ctx
 	var errors: Array = []
 	var err_v: Variant = val_res.get("error", null)
 	if err_v is Dictionary:
@@ -464,7 +513,7 @@ static func _create_or_update_script(args: Dictionary) -> Dictionary:
 	var verify_error := ""
 	if not val_res.get("success", false):
 		if AISidebarVerificationPipeline.blocks_write(val_res):
-			return _reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res)
+			return _reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res, str(content))
 		verify_error = AISidebarVerificationPipeline.error_message(val_res)
 
 	var old_content = ""
@@ -524,7 +573,7 @@ static func _replace_file_content(args: Dictionary) -> Dictionary:
 	# 1. Eşleşme kontrolü (0 eşleşme, 1 eşleşme, >1 eşleşme)
 	var first_idx = old_content.find(target_code)
 	if first_idx == -1:
-		return AISidebarToolResult.err("TARGET_NOT_FOUND", "Hedef kod bloğu dosyada bulunamadı: " + path)
+		return target_not_found_error(str(path), old_content, str(target_code))
 		
 	var second_idx = old_content.find(target_code, first_idx + target_code.length())
 	if second_idx != -1:
@@ -550,7 +599,7 @@ static func _replace_file_content(args: Dictionary) -> Dictionary:
 	var verify_error := ""
 	if not val_res.get("success", false):
 		if AISidebarVerificationPipeline.blocks_write(val_res):
-			return _reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res)
+			return _reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res, str(new_content))
 		verify_error = AISidebarVerificationPipeline.error_message(val_res)
 
 	# 4. ChangeSet oluştur ve uygula

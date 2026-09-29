@@ -68,6 +68,33 @@ static func run() -> Dictionary:
 	var ff_none := _data(AISidebarScriptTools.execute("find_files", {"pattern": "zz_nothing_here_zz*", "path": "res://tests"}))
 	checks.append(["W6b find_files wildcard / plain / none", (ff.get("files", []) as Array).has(GOOD) and (ff_plain.get("files", []) as Array) == [GOOD] and int(ff_none.get("count", -1)) == 0 and str(ff_none.get("message", "")).contains("file_info") and AISidebarScriptTools.path_matches("res://scenes/main/level_1.tscn", "scenes/*.tscn")])
 
+	# W6c hata bağlamı ve hedef-bulunamadı ipucu
+	var src := "extends Node
+func a():
+	pass
+func broken(:
+	pass
+func z():
+	pass
+"
+	var vr := AISidebarVerificationPipeline.validate_source(src, "res://tests/temp_ctx.gd")
+	var ctx := AISidebarScriptTools.error_context(src, vr)
+	var old_file := "extends Node
+
+func _ready() -> void:
+	var x := 1
+	print(x)
+"
+	var tnf: Dictionary = AISidebarScriptTools.target_not_found_error("res://a.gd", old_file, "func _ready() -> void:
+    var x := 2
+")
+	var tnf_none: Dictionary = AISidebarScriptTools.target_not_found_error("res://a.gd", old_file, "func nothing_like_it():
+	pass
+")
+	var tnf_msg: String = str((tnf.get("error", {}) as Dictionary).get("message", ""))
+	var none_msg: String = str((tnf_none.get("error", {}) as Dictionary).get("message", ""))
+	checks.append(["W6c error context + target hints", ctx.contains(">4| func broken(:") and ctx.contains(" 3| 	pass") and tnf_msg.contains("line 3") and tnf_msg.contains("3| func _ready()") and tnf_msg.contains("tabs") and none_msg.contains("read_script")])
+
 	# W7 açık sorunlar görevi bitirmez; düzeltilince kayıt temizlenir
 	var gate := AISidebarCompletionPolicy.evaluate({"write_problems": "Files on disk that do not compile: x"})
 	AISidebarScriptTools.execute("create_or_update_script", {"file_path": DIRTY, "content": GOOD_SRC.replace("good_marker_w", "fixed")})

@@ -431,8 +431,8 @@ static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> 
 			var val_res = AISidebarVerificationPipeline.validate_source(content, path)
 			# Yalnız sözdizimi hatası engeller; derlenmeyen kod yazılır ve araç sonucunda raporlanır.
 			if AISidebarVerificationPipeline.blocks_write(val_res):
-				return AISidebarScriptTools._reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res)
-				
+				return AISidebarScriptTools._reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res, str(content))
+
 		"replace_file_content":
 			var raw_path = args.get("file_path", "")
 			var target_code = args.get("target_code", "")
@@ -452,7 +452,7 @@ static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> 
 			file.close()
 			var first_idx = old_content.find(target_code)
 			if first_idx == -1:
-				return AISidebarToolResult.err("TARGET_NOT_FOUND", "Hedef kod bloğu dosyada bulunamadı: " + path)
+				return AISidebarScriptTools.target_not_found_error(str(path), str(old_content), str(target_code))
 			var second_idx = old_content.find(target_code, first_idx + target_code.length())
 			if second_idx != -1:
 				var occurrences = 0
@@ -468,7 +468,7 @@ static func _pre_verify_write_candidate(tool_name: String, args: Dictionary) -> 
 			var val_res = AISidebarVerificationPipeline.validate_source(new_content, path)
 			# Yalnız sözdizimi hatası engeller; derlenmeyen kod yazılır ve araç sonucunda raporlanır.
 			if AISidebarVerificationPipeline.blocks_write(val_res):
-				return AISidebarScriptTools._reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res)
+				return AISidebarScriptTools._reject_write(str(path), AISidebarVerificationPipeline.error_message(val_res), val_res, str(new_content))
 
 		"write_files":
 			var files_arr = args.get("files", [])
