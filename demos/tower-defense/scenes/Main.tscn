@@ -1,10 +1,19 @@
-[gd_scene load_steps=3 format=3 uid="uid://dlmwsnjan680w"]
+[gd_scene format=3 uid="uid://bqoi1s2bkuh00"]
 
-[ext_resource type="Script" uid="uid://ketpcya8j67t" path="res://scripts/Game.gd" id="1_game"]
-[ext_resource type="Script" path="res://scripts/Hud.gd" id="2_hud"]
+[ext_resource type="Script" uid="uid://egqxbewrqi38" path="res://scripts/Game.gd" id="1"]
+[ext_resource type="Script" uid="uid://c0t7jvvmp0gll" path="res://scripts/Effects.gd" id="2"]
 
-[node name="Main" type="Node2D"]
-script = ExtResource("1_game")
+[node name="Game" type="Node2D" unique_id=427176403]
+script = ExtResource("1")
 
-[node name="Hud" type="CanvasLayer" parent="."]
-script = ExtResource("2_hud")
+[node name="World" type="Node2D" parent="." unique_id=1561913191]
+
+[node name="Fx" type="Node2D" parent="." unique_id=539859236]
+script = ExtResource("2")
+
+[node name="HUD" type="Control" parent="." unique_id=1235557231]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2

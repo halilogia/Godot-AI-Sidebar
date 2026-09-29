@@ -1,0 +1,80 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/HUD.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
+bg_color = Color(0.184, 0.22, 0.329, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_win"]
+bg_color = Color(0.094, 0.11, 0.169, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.306, 0.882, 0.627, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_script")
+
+[node name="HUDPanel" type="PanelContainer" parent="."]
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 180.0
+offset_bottom = 56.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+
+[node name="CoinLabel" type="Label" parent="HUDPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.988, 0.816, 0.263, 1)
+theme_override_font_sizes/font_size = 18
+text = "COINS: 0 / 0"
+
+[node name="VictoryPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -140.0
+offset_top = -60.0
+offset_right = 140.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(140, 60)
+theme_override_styles/panel = SubResource("StyleBoxFlat_win")
+
+[node name="VBox" type="VBoxContainer" parent="VictoryPanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="VictoryPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.306, 0.882, 0.627, 1)
+theme_override_font_sizes/font_size = 28
+text = "LEVEL COMPLETE!"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="VictoryPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.988, 0.816, 0.263, 1)
+theme_override_font_sizes/font_size = 16
+text = "All coins collected!"
+horizontal_alignment = 1

@@ -1,0 +1,108 @@
+[gd_scene load_steps=5 format=3 uid="uid://c6q8y7m15oxk1"]
+
+[ext_resource type="Script" path="res://scripts/CardUI.gd" id="1_cui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
+bg_color = Color(0.117647, 0.145098, 0.219608, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.231373, 0.509804, 0.964706, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 4
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cost_bg"]
+bg_color = Color(0.231373, 0.509804, 0.964706, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="CardUI" type="Control"]
+custom_minimum_size = Vector2(130, 190)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 130.0
+offset_bottom = 190.0
+pivot_offset = Vector2(65, 95)
+mouse_filter = 0
+script = ExtResource("1_cui")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card_bg")
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="TitleLabel" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.972549, 0.980392, 0.988235, 1)
+theme_override_font_sizes/font_size = 14
+text = "Kart Adı"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TypeBadge" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "[TÜR]"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="Panel/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="DescLabel" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.580392, 0.639216, 0.721569, 1)
+theme_override_font_sizes/font_size = 11
+text = "Açıklama metni buraya gelecek."
+autowrap_mode = 2
+
+[node name="PowerLabel" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Güç: 5"
+horizontal_alignment = 1
+
+[node name="CostBadge" type="Label" parent="Panel"]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 26.0
+offset_bottom = 26.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_cost_bg")
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1

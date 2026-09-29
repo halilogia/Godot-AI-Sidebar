@@ -1,17 +1,15 @@
-# Art direction — tower-defense
+# Art Direction — Neon Night
 
-Mood: sıcak alacakaranlık / dusk (koyu mavi-mor ufuk, sıcak turuncu vurgular). 2D, kodla çizim, resim dosyası yok.
+- Background: #0E1020 deep night, vignette + subtle grid pattern
+- Surface (tiles/panels): #1C2038, road: #2E3454 with dashed #4A5480
+- Primary (towers/friendly): #46E3C4 teal
+- Accent (gold, currency/UI highlight): #FFC857
+- Danger (enemies, leaks): #FF5C7A
+- Mood: neon night, glow low, high contrast text
 
-Palette (Palette.gd):
-- BG_DEEP   #0e1220  arka plan / gökyüzü gradyanı
-- SURFACE   #1b2334  taş zemin, paneller
-- PATH      #3a3428  yol (toprak), PATH_EDGE #241f18
-- PRIMARY   #4ea8de  oyuncu dostu / mermi
-- ACCENT    #f2a33c  altın, UI vurgusu
-- DANGER    #e2564a  düşman / can göstergesi
-- TEXT      #e8eef7 / TEXT_DIM #93a3bd
-- FROST     #7fe3e0  yavaşlatma
-
-Layout: 1280x720. HUD üstte 0..72, alan 128,110 boy 1024x512 (16x8 kare, 64px), alt bar 640..720. Alan asla panelin altında kalmaz.
-UI: köşe yarıçapı 10, yazı 18-24, başlık 32. Panel gölgeleri, her nesne altında yumuşak gölge elips.
-Efekt: hasar flaşı <120ms, ölüm patlaması, kule ateşi için kısa parlama. Shake yok.
+Rules:
+- Design resolution 1280x720, stretch canvas_items / expand
+- Field fills >=70% of window; HUD bar on top only, no overlap
+- UI: rounded panels (radius 10), HUD font 20, title 32
+- Effects: hit flash <120ms, shake <6px, no endless particles
+- All visuals procedural (shapes, gradients, shaders). No image files.

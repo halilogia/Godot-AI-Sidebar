@@ -1,0 +1,131 @@
+[gd_scene format=3 uid="uid://b8u1k0p6e4q0y"]
+
+[ext_resource type="Script" uid="uid://dl23osjwr152s" path="res://scripts/SnakeGame.gd" id="1_root"]
+[ext_resource type="Script" uid="uid://c076b4lmfwnpl" path="res://scripts/BoardView.gd" id="2_board"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.0588235, 0.0784314, 0.109804, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal"]
+bg_color = Color(0.0941176, 0.133333, 0.196078, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.905882, 0.298039, 0.235294, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="SnakeGame" type="Control" unique_id=1926898843]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_root")
+
+[node name="Background" type="Panel" parent="." unique_id=735502194]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+
+[node name="TopBar" type="HBoxContainer" parent="." unique_id=1350016958]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 16.0
+offset_bottom = 56.0
+grow_horizontal = 2
+alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="TopBar" unique_id=2129636973]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92549, 0.941176, 0.945098, 1)
+theme_override_font_sizes/font_size = 22
+text = "SKOR: 0000"
+horizontal_alignment = 1
+
+[node name="VSeparator" type="VSeparator" parent="TopBar" unique_id=1698809061]
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+
+[node name="HighScoreLabel" type="Label" parent="TopBar" unique_id=1288968653]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.345098, 0.839216, 0.552941, 1)
+theme_override_font_sizes/font_size = 22
+text = "EN YÜKSEK: 0000"
+horizontal_alignment = 1
+
+[node name="BoardArea" type="CenterContainer" parent="." unique_id=1169394997]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 70.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Board" type="Control" parent="BoardArea" unique_id=2104505135]
+custom_minimum_size = Vector2(560, 560)
+layout_mode = 2
+script = ExtResource("2_board")
+
+[node name="GameOverPanel" type="PanelContainer" parent="." unique_id=1055443855]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -110.0
+offset_right = 160.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_modal")
+
+[node name="VBox" type="VBoxContainer" parent="GameOverPanel" unique_id=1243269160]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="GameOverTitle" type="Label" parent="GameOverPanel/VBox" unique_id=1383674400]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.298039, 0.235294, 1)
+theme_override_font_sizes/font_size = 28
+text = "OYUN BİTTİ"
+horizontal_alignment = 1
+
+[node name="FinalScoreLabel" type="Label" parent="GameOverPanel/VBox" unique_id=1861958907]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92549, 0.941176, 0.945098, 1)
+theme_override_font_sizes/font_size = 20
+text = "SKOR: 0"
+horizontal_alignment = 1
+
+[node name="HintLabel" type="Label" parent="GameOverPanel/VBox" unique_id=1452521834]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "[SPACE] veya Yeniden Başla"
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="GameOverPanel/VBox" unique_id=203760013]
+custom_minimum_size = Vector2(160, 36)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Yeniden Başla"
+
+[connection signal="pressed" from="GameOverPanel/VBox/RestartButton" to="." method="_on_restart_button_pressed"]

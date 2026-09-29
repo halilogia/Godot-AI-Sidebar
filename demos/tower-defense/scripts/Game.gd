@@ -1,356 +1,251 @@
 class_name Game
 extends Node2D
 
-signal stats_changed(gold: int, lives: int, wave: int)
-signal selection_changed(sel: Dictionary)
-signal game_over(won: bool)
+const HUD_H := 64.0
+const MARGIN := 14.0
+const START_GOLD := 180
+const LIVES := 20
 
-const BUILD_KINDS: Array = [
-	TowerData.Kind.ARCHER, TowerData.Kind.CANNON, TowerData.Kind.FROST,
-]
-
-var gold := GameConfig.START_GOLD
-var lives := GameConfig.START_LIVES
+var level: Level
+var gold := START_GOLD
+var lives := LIVES
 var wave := 0
-var enemies: Array = []
-var towers: Array = []
-var bullets: Array = []
-var points: Array = []
-var occupied: Dictionary = {}
-var selected_cell := Vector2i(-1, -1)
-var build_kind: TowerData.Kind = TowerData.Kind.ARCHER
-var selected_tower: Tower = null
-var hover_cell := Vector2i(-1, -1)
-var running := true
-var wave_active := false
+var selected := 0
+var towers: Array[Tower] = []
+var enemies: Array[Enemy] = []
 var spawn_timer := 0.0
-var to_spawn: Array = []
-var spawn_interval := 0.9
-var effects: Effects
+var wave_active := false
+var spawn_left := 0
+var spawn_gap := 0.0
+var hp_scale := 1.0
+var origin := Vector2.ZERO
+var shake := 0.0
+var hover := Vector2i(-1, -1)
+
+@onready var world: Node2D = $World
+@onready var hud: Control = $HUD
+@onready var fx: Node2D = $Fx
+
+var lbl_gold: Label
+var lbl_lives: Label
+var lbl_wave: Label
+var hint: Label
 
 func _ready() -> void:
-	effects = Effects.new()
-	add_child(effects)
-	_build_path()
-	var hud := get_node_or_null("Hud") as Hud
-	if hud != null:
-		hud.bind(self)
-	queue_redraw()
+	level = Level.build()
+	origin = Vector2((1280.0 - level.field_size().x) * 0.5, HUD_H + MARGIN)
+	world.position = origin
+	_build_ui()
+	_start_next_wave()
 
-func _build_path() -> void:
-	points.clear()
-	for c in GameConfig.PATH_CELLS:
-		points.append(GameConfig.ORIGIN + Vector2(c.x * GameConfig.TILE + GameConfig.TILE * 0.5,
-			c.y * GameConfig.TILE + GameConfig.TILE * 0.5))
+func _build_ui() -> void:
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	panel.offset_bottom = HUD_H
+	panel.add_theme_stylebox_override("panel", _bar_style())
+	hud.add_child(panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 22)
+	panel.add_child(row)
 
-func cell_to_pos(c: Vector2i) -> Vector2:
-	return GameConfig.ORIGIN + Vector2(c.x * GameConfig.TILE + GameConfig.TILE * 0.5,
-		c.y * GameConfig.TILE + GameConfig.TILE * 0.5)
+	lbl_gold = _mk_label("ALTIN")
+	lbl_lives = _mk_label("CAN")
+	lbl_wave = _mk_label("DALGA")
+	row.add_child(lbl_gold)
+	row.add_child(lbl_lives)
+	row.add_child(lbl_wave)
 
-func pos_to_cell(p: Vector2) -> Vector2i:
-	var local := p - GameConfig.ORIGIN
-	return Vector2i(int(floor(local.x / GameConfig.TILE)), int(floor(local.y / GameConfig.TILE)))
+	for i in 3:
+		var s: Dictionary = Tower.STATS[i]
+		var b := Button.new()
+		b.text = "%s  %d" % [s["name"], s["cost"]]
+		b.add_theme_stylebox_override("normal", _btn_style(Palette.SURFACE, s["color"]))
+		b.add_theme_stylebox_override("hover", _btn_style(Palette.SURFACE.lightened(0.15), s["color"]))
+		b.add_theme_stylebox_override("pressed", _btn_style(s["color"].darkened(0.55), s["color"]))
+		b.pressed.connect(_pick.bind(i))
+		row.add_child(b)
 
-func is_path_cell(c: Vector2i) -> bool:
-	for p in GameConfig.PATH_CELLS:
-		if p == c:
-			return true
-	return false
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
 
-func in_bounds(c: Vector2i) -> bool:
-	return c.x >= 0 and c.y >= 0 and c.x < GameConfig.COLS and c.y < GameConfig.ROWS
+	var nb := Button.new()
+	nb.text = "DALGA AT"
+	nb.add_theme_stylebox_override("normal", _btn_style(Palette.ACCENT.darkened(0.45), Palette.ACCENT))
+	nb.add_theme_stylebox_override("hover", _btn_style(Palette.ACCENT.darkened(0.3), Palette.ACCENT))
+	nb.add_theme_stylebox_override("pressed", _btn_style(Palette.ACCENT.darkened(0.6), Palette.ACCENT))
+	nb.pressed.connect(_start_next_wave)
+	row.add_child(nb)
 
-# --- input ---
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		hover_cell = pos_to_cell(get_global_mouse_position())
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_on_click(pos_to_cell(get_global_mouse_position()))
-	elif event.is_action_pressed("start_wave"):
-		start_wave()
+	hint = _mk_label("")
+	row.add_child(hint)
+	_update_hud()
 
-func _on_click(c: Vector2i) -> void:
-	if not running or not in_bounds(c):
-		return
-	if occupied.has(c):
-		selected_tower = occupied[c]
-		selected_cell = Vector2i(-1, -1)
-		selection_changed.emit(_selection_info())
-		queue_redraw()
-		return
-	selected_tower = null
-	selected_cell = c
-	selection_changed.emit(_selection_info())
-	queue_redraw()
+func _mk_label(t: String) -> Label:
+	var l := Label.new()
+	l.text = t
+	l.add_theme_font_size_override("font_size", 20)
+	l.add_theme_color_override("font_color", Palette.TEXT)
+	l.add_theme_color_override("font_outline_color", Palette.BG)
+	l.add_theme_constant_override("outline_size", 4)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return l
 
-func _selection_info() -> Dictionary:
-	if selected_tower != null and is_instance_valid(selected_tower):
-		var s: Dictionary = selected_tower.stats()
-		return {
-			"mode": "tower",
-			"name": TowerData.DEFS[selected_tower.kind]["name"],
-			"level": selected_tower.level,
-			"damage": s["damage"],
-			"range": s["range"],
-			"rate": s["cooldown"],
-			"sell": int(TowerData.DEFS[selected_tower.kind]["cost"] * 0.6 * selected_tower.level),
-		}
-	if selected_cell.x >= 0:
-		var d: Dictionary = TowerData.DEFS[build_kind]
-		return {
-			"mode": "build",
-			"name": d["name"],
-			"cost": d["cost"],
-			"range": d["range"],
-			"damage": d["damage"],
-		}
-	return {"mode": "none"}
+func _bar_style() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Palette.BG
+	sb.border_color = Palette.PRIMARY.darkened(0.55)
+	sb.border_width_bottom = 2
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	return sb
 
-func set_build_kind(k: TowerData.Kind) -> void:
-	build_kind = k
-	selected_tower = null
-	selected_cell = Vector2i(-1, -1)
-	selection_changed.emit(_selection_info())
-	queue_redraw()
+func _btn_style(bg: Color, border: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	return sb
 
-# --- economy / building ---
-func can_afford(cost: int) -> bool:
-	return gold >= cost
-
-func try_build() -> bool:
-	if selected_tower != null and is_instance_valid(selected_tower):
-		return _upgrade(selected_tower)
-	if selected_cell.x < 0:
-		return false
-	if is_path_cell(selected_cell):
-		effects.spawn_float_text(cell_to_pos(selected_cell), "Yola kule kurulamaz", Palette.DANGER)
-		return false
-	var d: Dictionary = TowerData.DEFS[build_kind]
-	var cost: int = d["cost"]
-	if gold < cost:
-		effects.spawn_float_text(cell_to_pos(selected_cell), "Altın yetersiz", Palette.DANGER)
-		return false
-	gold -= cost
-	var t := Tower.new()
-	t.kind = build_kind
-	t.cell = selected_cell
-	t.position = cell_to_pos(selected_cell)
-	t.refresh()
-	add_child(t)
-	occupied[selected_cell] = t
-	towers.append(t)
-	effects.spawn_burst(cell_to_pos(selected_cell), Palette.ACCENT, 10)
-	selected_tower = t
-	selected_cell = Vector2i(-1, -1)
-	stats_changed.emit(gold, lives, wave)
-	selection_changed.emit(_selection_info())
-	queue_redraw()
-	return true
-
-func _upgrade(t: Tower) -> bool:
-	if not t.can_upgrade():
-		return false
-	var cost := t.upgrade_cost()
-	if gold < cost:
-		effects.spawn_float_text(t.position, "Altın yetersiz", Palette.DANGER)
-		return false
-	gold -= cost
-	t.level += 1
-	t.refresh()
-	t.cooldown_left = 0.0
-	effects.spawn_burst(t.position, Palette.ACCENT, 12)
-	effects.spawn_float_text(t.position, "SvL %d" % t.level, Palette.ACCENT)
-	stats_changed.emit(gold, lives, wave)
-	selection_changed.emit(_selection_info())
-	return true
-
-func sell_selected() -> void:
-	if selected_tower == null or not is_instance_valid(selected_tower):
-		return
-	var refund: int = int(TowerData.DEFS[selected_tower.kind]["cost"] * 0.6 * selected_tower.level)
-	gold += refund
-	effects.spawn_float_text(selected_tower.position, "+%d" % refund, Palette.ACCENT)
-	occupied.erase(selected_tower.cell)
-	towers.erase(selected_tower)
-	selected_tower.queue_free()
-	selected_tower = null
-	stats_changed.emit(gold, lives, wave)
-	selection_changed.emit(_selection_info())
-	queue_redraw()
-
-func select_first_tower_of_kind(k: TowerData.Kind) -> void:
-	for t in towers:
-		if is_instance_valid(t) and t.kind == k:
-			selected_tower = t
-			selected_cell = Vector2i(-1, -1)
-			selection_changed.emit(_selection_info())
-			queue_redraw()
-			return
-
-# --- waves ---
-func start_wave() -> void:
-	if wave_active or not running:
+func _start_next_wave() -> void:
+	if wave_active:
 		return
 	wave += 1
 	wave_active = true
-	to_spawn.clear()
-	var count: int = 6 + wave * 2
-	var hp: float = 40.0 + wave * 12.0
-	var spd: float = 52.0 + wave * 2.0
-	spawn_interval = maxf(0.32, 0.95 - wave * 0.05)
-	for i in count:
-		to_spawn.append({"hp": hp, "speed": spd, "boss": false})
-	var bosses: int = maxi(0, wave / 3)
-	for i in bosses:
-		to_spawn.append({"hp": hp * 4.0, "speed": spd * 0.65, "boss": true})
-	spawn_timer = 0.0
-	stats_changed.emit(gold, lives, wave)
+	spawn_left = 6 + wave * 3
+	spawn_gap = maxf(0.35, 0.9 - wave * 0.04)
+	spawn_timer = 0.5
+	hp_scale = 1.0 + (wave - 1) * 0.25
+	fx.call("banner", "DALGA %d" % wave)
+	_update_hud()
 
-func _spawn_enemy(info: Dictionary) -> void:
-	var e := Enemy.new()
-	e.setup(points, info["hp"], info["speed"], 8 + int(info["hp"] / 12.0), 1)
-	e.is_boss = info["boss"]
-	e.position = points[0]
-	add_child(e)
-	enemies.append(e)
-
-# --- main loop ---
 func _process(delta: float) -> void:
-	if not running:
-		return
-	if wave_active and to_spawn.size() > 0:
+	shake = maxf(0.0, shake - delta * 12.0)
+	world.position = origin + Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
+	if wave_active and spawn_left > 0:
 		spawn_timer -= delta
 		if spawn_timer <= 0.0:
-			_spawn_enemy(to_spawn.pop_front())
-			spawn_timer = spawn_interval
-	elif wave_active and enemies.is_empty():
+			_spawn()
+			spawn_timer = spawn_gap
+	if wave_active and spawn_left <= 0 and enemies.is_empty():
 		wave_active = false
-
-	for t: Tower in towers:
-		if not is_instance_valid(t):
-			continue
-		if t.cooldown_left > 0.0:
-			continue
-		var target: Enemy = t.has_target(enemies)
-		if target != null:
-			t.cooldown_left = float(t.stats()["cooldown"])
-			t.recoil = 1.0
-			t.muzzle_flash = 1.0
-			_fire(t, target)
+		gold += 20 + wave * 5
+		_update_hud()
+	var alive: Array[Tower] = []
+	for t in towers:
+		if is_instance_valid(t):
+			t.fire(enemies)
+			alive.append(t)
+	towers = alive
 	queue_redraw()
 
-func _fire(t: Tower, target: Node2D) -> void:
-	var s: Dictionary = t.stats()
-	var b := Bullet.new()
-	b.target = target
-	b.damage = s["damage"]
-	b.slow = s["slow"]
-	b.from_cell = t.cell
-	b.position = t.position + Vector2(0, -10)
-	b.speed = 260.0 if t.kind == TowerData.Kind.CANNON else 430.0
-	add_child(b)
-	bullets.append(b)
+func _spawn() -> void:
+	spawn_left -= 1
+	var tanky := wave % 4 == 0
+	var e := Enemy.new()
+	e.setup(level, hp_scale * (1.7 if tanky else 1.0), 52.0 if tanky else 78.0, Palette.ACCENT if tanky else Palette.DANGER, 16.0 if tanky else 11.0)
+	e.died.connect(_on_died)
+	e.leaked.connect(_on_leaked)
+	world.add_child(e)
+	enemies.append(e)
 
-func _physics_process(delta: float) -> void:
-	if not running:
-		return
-	var keep_b: Array = []
-	for b in bullets:
-		if not is_instance_valid(b):
-			continue
-		if b.arrived:
-			if b.target != null and is_instance_valid(b.target):
-				var t: Enemy = b.target
-				if b.slow:
-					t.apply_slow(1.8)
-				if t.take_damage(b.damage):
-					_on_enemy_died(t)
-			b.queue_free()
-			continue
-		keep_b.append(b)
-	bullets = keep_b
-	var keep_e: Array = []
-	for e in enemies:
-		if not is_instance_valid(e):
-			continue
-		if not e.tick_move(points, delta):
-			keep_e.append(e)
-		else:
-			lives -= e.damage
-			effects.spawn_burst(e.position, Palette.DANGER, 12)
-			stats_changed.emit(gold, lives, wave)
-			if lives <= 0:
-				lives = 0
-				_running_end(false)
-			e.queue_free()
-	enemies = keep_e
-	bullets = keep_b
-
-func _on_enemy_died(e: Enemy) -> void:
+func _on_died(e: Enemy) -> void:
 	gold += e.reward
-	effects.spawn_burst(e.position, Palette.DANGER.lightened(0.2), 10)
-	effects.spawn_float_text(e.position, "+%d" % e.reward, Palette.ACCENT)
-	stats_changed.emit(gold, lives, wave)
+	fx.call("pop", e.global_position, "+%d" % e.reward, Palette.ACCENT)
+	enemies.erase(e)
+	shake = 3.0
+	_update_hud()
 
-func _running_end(won: bool) -> void:
-	if not running:
+func _on_leaked(e: Enemy) -> void:
+	lives -= 1
+	enemies.erase(e)
+	shake = 5.0
+	if lives <= 0:
+		lives = 0
+		fx.call("banner", "KAYBETTIN")
+	_update_hud()
+
+func _pick(i: int) -> void:
+	selected = i
+	_update_hud()
+
+func _update_hud() -> void:
+	lbl_gold.text = "ALTIN  %d" % gold
+	lbl_lives.text = "CAN  %d" % lives
+	lbl_wave.text = "DALGA  %d" % maxi(1, wave)
+	var s: Dictionary = Tower.STATS[selected]
+	hint.text = "%s — %s" % [s["name"], s["desc"]]
+
+func _cell_at() -> Vector2i:
+	var l := get_global_mouse_position() - world.position
+	return Vector2i(floori(l.x / Level.CELL), floori(l.y / Level.CELL))
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var c := _cell_at()
+		if c != hover:
+			hover = c
+			queue_redraw()
 		return
-	running = false
-	game_over.emit(won)
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var c := _cell_at()
+		if level.is_buildable(c):
+			var s: Dictionary = Tower.STATS[selected]
+			if gold >= s["cost"]:
+				gold -= s["cost"]
+				var t := Tower.new()
+				t.setup(level, c, selected)
+				t.fx = fx
+				world.add_child(t)
+				towers.append(t)
+				_update_hud()
 
-# --- drawing ---
 func _draw() -> void:
-	# sky gradient bands
-	for i in 14:
-		var t := float(i) / 13.0
-		draw_rect(Rect2(0, i * 52.0, 1280, 52.0), Palette.BG_DEEP.lerp(Palette.BG_MID, t))
-	draw_circle(Vector2(1090, 120), 150.0, Color(0.95, 0.55, 0.3, 0.10))
-	draw_circle(Vector2(1090, 120), 90.0, Color(0.95, 0.6, 0.35, 0.12))
+	var vs := get_viewport_rect().size
+	draw_rect(Rect2(Vector2.ZERO, vs), Palette.BG)
+	var g := 64.0
+	var gx := 0.0
+	while gx < vs.x:
+		draw_line(Vector2(gx, 0), Vector2(gx, vs.y), Palette.GRID, 1.0)
+		gx += g
+	var gy := 0.0
+	while gy < vs.y:
+		draw_line(Vector2(0, gy), Vector2(vs.x, gy), Palette.GRID, 1.0)
+		gy += g
 
-	var field := Rect2(GameConfig.ORIGIN - Vector2(10, 10),
-		Vector2(GameConfig.COLS * GameConfig.TILE + 20, GameConfig.ROWS * GameConfig.TILE + 20))
-	draw_rect(field.grow(4), Color(0, 0, 0, 0.35))
-	draw_rect(field, Palette.SURFACE)
+	var fs := level.field_size()
+	draw_rect(Rect2(origin, fs), Palette.SURFACE)
+	draw_rect(Rect2(origin, fs), Palette.PRIMARY.darkened(0.6), false, 2.0)
 
-	for y in GameConfig.ROWS:
-		for x in GameConfig.COLS:
-			var c := Vector2i(x, y)
-			var p := cell_to_pos(c)
-			var base: Color = Palette.SURFACE if (x + y) % 2 == 0 else Palette.SURFACE.lightened(0.04)
-			if is_path_cell(c):
-				base = Palette.PATH
-			draw_rect(Rect2(p - Vector2(30, 30), Vector2(60, 60)), base)
+	for c in level.path_cells:
+		var p: Vector2 = origin + level.world_pos(c)
+		draw_rect(Rect2(p - Vector2(Level.CELL, Level.CELL) * 0.5, Vector2(Level.CELL, Level.CELL)), Palette.ROAD)
+		draw_rect(Rect2(p - Vector2(Level.CELL, Level.CELL) * 0.5, Vector2(Level.CELL, Level.CELL)), Palette.ROAD_EDGE, false, 2.0)
+	for c in level.path_cells:
+		var p2: Vector2 = origin + level.world_pos(c)
+		var nxt: Vector2 = p2 + (origin + level.world_pos(level.path_cells[mini(level.path_cells.find(c) + 1, level.path_cells.size() - 1)]) - p2).normalized() * 10.0
+		draw_line(p2, nxt, Palette.ROAD_LINE, 3.0)
 
-	# path edge + inner line
-	var path_poly := PackedVector2Array()
-	for p in points:
-		path_poly.append(p)
-	if path_poly.size() > 1:
-		draw_polyline(path_poly, Palette.PATH_EDGE, 52.0, true)
-		draw_polyline(path_poly, Palette.PATH.lightened(0.06), 40.0, true)
-		draw_circle(points[0], 22.0, Palette.DANGER.darkened(0.2))
-		draw_circle(points[points.size() - 1], 22.0, Palette.PRIMARY.darkened(0.3))
-		draw_arc(points[points.size() - 1], 26.0, 0.0, TAU, 24, Color(Palette.PRIMARY.r, Palette.PRIMARY.g, Palette.PRIMARY.b, 0.4), 2.0)
+	for cy in Level.ROWS:
+		for cx in Level.COLS:
+			var c := Vector2i(cx, cy)
+			if level.is_buildable(c):
+				draw_circle(origin + level.world_pos(c), 2.0, Palette.GRID.lightened(0.35))
 
-	# hover + selection highlight
-	if in_bounds(hover_cell):
-		draw_rect(Rect2(cell_to_pos(hover_cell) - Vector2(30, 30), Vector2(60, 60)),
-			Color(1, 1, 1, 0.05))
-	if in_bounds(selected_cell):
-		var d: Dictionary = TowerData.DEFS[build_kind]
-		draw_circle(cell_to_pos(selected_cell), float(d["range"]),
-			Color(Palette.ACCENT.r, Palette.ACCENT.g, Palette.ACCENT.b, 0.08))
-		draw_rect(Rect2(cell_to_pos(selected_cell) - Vector2(30, 30), Vector2(60, 60)),
-			Color(Palette.ACCENT.r, Palette.ACCENT.g, Palette.ACCENT.b, 0.9), false, 2.0)
-	if selected_tower != null and is_instance_valid(selected_tower):
-		draw_arc(selected_tower.global_position, selected_tower.range_px, 0.0, TAU, 48,
-			Color(Palette.ACCENT.r, Palette.ACCENT.g, Palette.ACCENT.b, 0.55), 2.0)
-		draw_rect(Rect2(selected_tower.position - Vector2(30, 30), Vector2(60, 60)),
-			Color(Palette.ACCENT.r, Palette.ACCENT.g, Palette.ACCENT.b, 0.9), false, 2.0)
+	draw_circle(origin + level.world_pos(level.spawn_cell), 16.0, Palette.DANGER.darkened(0.45))
+	draw_circle(origin + level.world_pos(level.spawn_cell), 11.0, Palette.DANGER)
+	draw_circle(origin + level.world_pos(level.base_cell), 19.0, Palette.PRIMARY.darkened(0.55))
+	draw_circle(origin + level.world_pos(level.base_cell), 12.0, Palette.PRIMARY)
 
-	# build ghost
-	if in_bounds(selected_cell) and selected_tower == null and not occupied.has(selected_cell):
-		var gp := cell_to_pos(selected_cell)
-		var col: Color = Palette.ACCENT if can_afford(int(TowerData.DEFS[build_kind]["cost"])) else Palette.DANGER
-		draw_circle(gp, 19.0, Color(col.r, col.g, col.b, 0.28))
-		draw_arc(gp, 19.0, 0.0, TAU, 24, col, 2.0)
+	if level.is_buildable(hover):
+		var s: Dictionary = Tower.STATS[selected]
+		var col: Color = s["color"]
+		var ok: bool = gold >= int(s["cost"])
+		var r := Rect2(origin + Vector2(hover.x, hover.y) * Level.CELL, Vector2(Level.CELL, Level.CELL))
+		draw_rect(r, Color(col.r, col.g, col.b, 0.18 if ok else 0.08))
+		draw_rect(r, col if ok else Palette.DANGER, false, 2.0)

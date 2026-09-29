@@ -1,20 +1,14 @@
 class_name Palette
 extends RefCounted
 
-const BG_DEEP := Color("#0e1220")
-const BG_MID := Color("#1a2033")
-const SURFACE := Color("#1b2334")
-const SURFACE_LIGHT := Color("#27324a")
-const PATH := Color("#3a3428")
-const PATH_EDGE := Color("#241f18")
-const PRIMARY := Color("#4ea8de")
-const ACCENT := Color("#f2a33c")
-const DANGER := Color("#e2564a")
-const TEXT := Color("#e8eef7")
-const TEXT_DIM := Color("#93a3bd")
-const FROST := Color("#7fe3e0")
-const BORDER := Color(0.23, 0.28, 0.38)
-const SHADOW := Color(0, 0, 0, 0.35)
-
-static func shadow_alpha(c: Color) -> Color:
-	return Color(c.r, c.g, c.b, 0.0)
+const BG := Color("0e1020")
+const SURFACE := Color("1c2038")
+const ROAD := Color("2e3454")
+const ROAD_LINE := Color("4a5480")
+const PRIMARY := Color("46e3c4")
+const ACCENT := Color("ffc857")
+const DANGER := Color("ff5c7a")
+const ROAD_EDGE := Color("232945")
+const TEXT := Color("e8ecff")
+const TEXT_DIM := Color("8f97bd")
+const GRID := Color(0x18, 0x1b, 0x33)
