@@ -132,6 +132,9 @@ func respond(req: Dictionary) -> PackedByteArray:
 		return _json(400, AISidebarMcpProtocol.error_reply(null, -32700, "Parse error"))
 	if protocol == null:
 		return _json(500, {"error": "MCP protocol handler is unavailable"})
+	var header_error := AISidebarMcpProtocol.validate_headers(parsed, headers)
+	if not header_error.is_empty():
+		return _json(400, header_error)
 	var routed := protocol.route(parsed)
 	if routed.has("notification"):
 		return AISidebarMcpHttp.build_response(202)

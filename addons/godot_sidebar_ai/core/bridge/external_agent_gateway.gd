@@ -31,6 +31,10 @@ const MUTATION_TOOLS: Array[String] = [
 	"add_node", "set_node_property", "instantiate_scene", "attach_script_to_node", "save_scene",
 ]
 
+## Durum değiştiren (salt okunur olmayan) ama geri alınamaz zarar vermeyen araçlar: istemciler annotations ile onay
+## sorusunu buna göre ayarlar. Listede olmayan her araç salt okunurdur.
+const STATEFUL_TOOLS: Array[String] = ["play_game", "stop_game", "restart_game", "send_input", "set_runtime_property", "select_node", "open_scene", "sync_project"]
+
 const SYNC_PROJECT_TOOL := {
 	"name": "sync_project",
 	"description": "Call after you create or change project files with your own file tools (GDScript, .tscn, .tres, .gdshader, data files) and before validate_script, play_game or any scene tool. Rescans the Godot editor's file system and waits until the scan ends. List every changed file in changed_files, especially every .tscn: if one is the scene open in the editor, it is reloaded from disk so a later save_scene does not overwrite your file with the editor's stale copy. The result reports the submitted paths and open scenes reloaded; it does not claim per-file import success.",
@@ -39,7 +43,7 @@ const SYNC_PROJECT_TOOL := {
 	}},
 }
 
-const INSTRUCTIONS := "Godot editor tools from the Godot AI Sidebar plugin. If the project has an AGENTS.md at its root, read it first: it holds the project's rules. Construction is file-first: create scripts, scenes (.tscn), resources (.tres), shaders and data files with your own file tools, prefer whole .tscn files or procedural GDScript over many single-node calls, then call sync_project (list all changed files, especially every .tscn, in changed_files). Editor interaction is tool-first: use the scene tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) only for small, precise, undoable edits of the scene open in the editor; they need an expected_scene_path (scene_file from get_scene_tree). Read tool schemas before calling tools and use their exact argument names. validate_script checks one script quickly; validate_project compiles every project script in the real project context and checks scene / resource dependencies, returning file, line and message for each error. Neither executes code or proves runtime behavior. Before relying on a Godot class, method, property, signal or constant you are not sure about, check it with get_godot_class_info: it returns the running engine's real API. Verify dependencies and execution with the project's documented headless commands, then use play_game, get_runtime_errors (wait a few seconds after play_game), take_runtime_screenshot, inspect_runtime_tree and inspect_runtime_node (includes script variables) for editor runtime evidence; use send_input to press keys, trigger input actions or click nodes in the running game; stop_game when done."
+const INSTRUCTIONS := "Godot editor tools from the Godot AI Sidebar plugin. If the project has an AGENTS.md at its root, read it first: it holds the project's rules. Construction is file-first: create scripts, scenes (.tscn), resources (.tres), shaders and data files with your own file tools, prefer whole .tscn files or procedural GDScript over many single-node calls, then call sync_project (list all changed files, especially every .tscn, in changed_files). Editor interaction is tool-first: use the scene tools (add_node, set_node_property, instantiate_scene, attach_script_to_node, save_scene) only for small, precise, undoable edits of the scene open in the editor; they need an expected_scene_path (scene_file from get_scene_tree). Read tool schemas before calling tools and use their exact argument names. validate_script checks one script quickly; validate_project compiles every project script in the real project context and checks scene / resource dependencies, returning file, line and message for each error. Neither executes code or proves runtime behavior. Before relying on a Godot class, method, property, signal or constant you are not sure about, check it with get_godot_class_info: it returns the running engine's real API. Verify dependencies and execution with the project's documented headless commands, then use play_game, get_runtime_errors (wait a few seconds after play_game), take_runtime_screenshot, inspect_runtime_tree and inspect_runtime_node (includes script variables) for editor runtime evidence; use send_input to press keys, trigger input actions or click nodes in the running game; stop_game when done. Measure instead of guessing: wait_for_runtime waits for a condition inside the running game; get_runtime_performance and trace_runtime_signals sample FPS, leaks and signal events; get_output reads the editor and game Output log; audit_runtime_ui finds off-screen, overflowing, overlapping and low-contrast text; diagnose_physics explains a trigger or hit box that does nothing (collision layer / mask mismatches, disabled shapes); set_runtime_property injects a value into the running game to test win / game-over states quickly (it proves the reaction, not that a player can reach the state). Tools carry annotations: readOnlyHint tools only observe; play_game, send_input, set_runtime_property and scene tools change state."
 
 ## Tests may inject a scene root provider; production uses the active editor scene.
 var scene_root_provider: Callable = Callable()
@@ -60,7 +64,22 @@ func tool_definitions() -> Array:
 			var parameters: Dictionary = fn.get("parameters", {})
 			out.append(_mutation_definition(name, str(fn.get("description", "")), parameters))
 	out.append(SYNC_PROJECT_TOOL.duplicate(true))
+	# Sıra deterministik (istemci önbelleği ve istem önbelleği için) ve her araç annotations taşır.
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a["name"]) < str(b["name"]))
+	for def_v: Variant in out:
+		var def: Dictionary = def_v
+		def["annotations"] = annotations_for(str(def["name"]))
 	return out
+
+func annotations_for(tool_name: String) -> Dictionary:
+	var mutating := MUTATION_TOOLS.has(tool_name) or STATEFUL_TOOLS.has(tool_name)
+	return {
+		"title": tool_name.replace("_", " ").capitalize(),
+		"readOnlyHint": not mutating,
+		"destructiveHint": false,
+		"idempotentHint": not mutating,
+		"openWorldHint": false,
+	}
 
 func is_tool_exposed(tool_name: String) -> bool:
 	return EXPOSED_TOOLS.has(tool_name) or MUTATION_TOOLS.has(tool_name) or tool_name == SYNC_PROJECT_TOOL["name"]

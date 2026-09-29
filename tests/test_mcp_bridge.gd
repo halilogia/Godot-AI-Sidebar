@@ -89,7 +89,7 @@ static func run() -> Dictionary:
 	# Dış ajana dosya-öncelikli çalışma kuralı initialize ile verilir.
 	var instr_ok: bool = ir.get("instructions") == gateway.instructions() and gateway.instructions().contains("file-first") \
 			and gateway.SYNC_PROJECT_TOOL["inputSchema"]["properties"].has("changed_files")
-	if instr_ok and ir["protocolVersion"] == "2099-01-01" and ir["serverInfo"]["name"] == "godot-ai-sidebar" and ir["capabilities"].has("tools") \
+	if instr_ok and ir["protocolVersion"] == AISidebarMcpProtocol.DEFAULT_PROTOCOL_VERSION and ir["serverInfo"]["name"] == "godot-ai-sidebar" and ir["capabilities"].has("tools") \
 			and init_default["reply"]["result"]["protocolVersion"] == AISidebarMcpProtocol.DEFAULT_PROTOCOL_VERSION \
 			and notif.get("notification", false) and unknown["reply"]["error"]["code"] == -32601 \
 			and invalid["reply"]["error"]["code"] == -32600 and batch["reply"]["error"]["code"] == -32600:
@@ -97,6 +97,43 @@ static func run() -> Dictionary:
 	else:
 		failed += 1
 		errors.append("T2 (protocol routing) failed: init=%s unknown=%s" % [str(init), str(unknown)])
+
+	# 2b. 2026-07-28: durumsuz protokol (server/discover, istek başına sürüm), resultType, önbellek ipuçları,
+	# annotations, structuredContent, başlık doğrulaması
+	var disc := protocol.route(JSON.parse_string(_rpc("server/discover", {})))
+	var dres: Dictionary = disc["reply"]["result"]
+	var bad_meta := protocol.route(JSON.parse_string(_rpc("tools/list", {"_meta": {"io.modelcontextprotocol/protocolVersion": "2099-01-01"}})))
+	var good_meta := protocol.route(JSON.parse_string(_rpc("tools/list", {"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28"}})))
+	var tl: Dictionary = good_meta["reply"]["result"]
+	var tools_list: Array = tl["tools"]
+	var tool_names: Array = []
+	var all_annotated := true
+	var stateful_ok := false
+	var readonly_ok := false
+	for t_v: Variant in tools_list:
+		var t: Dictionary = t_v
+		tool_names.append(str(t["name"]))
+		if not t.has("annotations"):
+			all_annotated = false
+		elif t["name"] == "send_input":
+			stateful_ok = t["annotations"]["readOnlyHint"] == false
+		elif t["name"] == "get_runtime_errors":
+			readonly_ok = t["annotations"]["readOnlyHint"] == true
+	var sorted_names := tool_names.duplicate()
+	sorted_names.sort()
+	var cr := AISidebarMcpProtocol.to_call_result({"success": true, "data": {"n": 1}})
+	var esc_result := AISidebarMcpProtocol.to_call_result({"success": true, "data": {"lines": ["[31mred[0m textbell"]}})
+	var esc_text: String = esc_result["structuredContent"]["data"]["lines"][0]
+	var esc_json_ok := JSON.parse_string(str(esc_result["content"][0]["text"])) != null and not str(esc_result["content"][0]["text"]).contains(char(27))
+	var hdr_ok := AISidebarMcpProtocol.validate_headers({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_scene_tree"}}, {"mcp-method": "tools/call", "mcp-name": "get_scene_tree", "mcp-protocol-version": "2026-07-28"}).is_empty()
+	var hdr_bad_method := AISidebarMcpProtocol.validate_headers({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, {"mcp-method": "tools/call"})
+	var hdr_bad_name := AISidebarMcpProtocol.validate_headers({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "a"}}, {"mcp-name": "b"})
+	var hdr_bad_version := AISidebarMcpProtocol.validate_headers({"jsonrpc": "2.0", "id": 3, "method": "tools/list"}, {"mcp-protocol-version": "1999-01-01"})
+	if dres["supportedVersions"][0] == "2026-07-28" and dres["resultType"] == "complete" and dres["serverInfo"]["name"] == "godot-ai-sidebar" 			and bad_meta["reply"]["error"]["code"] == -32022 and bad_meta["reply"]["error"]["data"]["supported"].size() >= 3 			and tl["ttlMs"] > 0 and tl["cacheScope"] == "private" and tl["resultType"] == "complete" 			and tool_names == sorted_names and all_annotated and stateful_ok and readonly_ok and "audit_runtime_ui" in tool_names and "diagnose_physics" in tool_names and "set_runtime_property" in tool_names 			and cr["structuredContent"]["data"]["n"] == 1 and cr["isError"] == false and esc_text == "red textbell" and esc_json_ok 			and hdr_ok and hdr_bad_method["error"]["code"] == -32020 and hdr_bad_name["error"]["code"] == -32020 and hdr_bad_version["error"]["code"] == -32022:
+		passed += 1
+	else:
+		failed += 1
+		errors.append("T2b (2026-07-28 protocol) failed: disc=%s bad_meta=%s ttl=%s annotated=%s stateful=%s readonly=%s" % [str(dres).left(120), str(bad_meta).left(120), str(tl.get("ttlMs")), str(all_annotated), str(stateful_ok), str(readonly_ok)])
 
 	# 3. İzin listesi: tools/list tam olarak açılan araçlar + sync_project; değiştiriciler kapalı
 	var tools: Array = protocol.route(JSON.parse_string(_rpc("tools/list")))["reply"]["result"]["tools"]
