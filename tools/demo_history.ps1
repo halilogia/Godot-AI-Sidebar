@@ -32,6 +32,18 @@ if (Test-Path $scoreFile) {
     }
 }
 
+# Kutuphanede (demos/) duran surum: BENCH/result.json'u kosunun result.json'uyla ayni olan kosu.
+$libHashes = @{}
+foreach ($f in Get-ChildItem (Join-Path $Repo "demos") -Directory -ErrorAction SilentlyContinue) {
+    $rj = Join-Path $f.FullName "BENCH\result.json"
+    if (Test-Path $rj) { $libHashes[(Get-FileHash $rj -Algorithm MD5).Hash] = $f.Name }
+}
+$inLibrary = @{}
+foreach ($r in $runs) {
+    $rj = Join-Path $r.FullName "_bench\result.json"
+    if ((Test-Path $rj) -and $libHashes.ContainsKey((Get-FileHash $rj -Algorithm MD5).Hash)) { $inLibrary[$r.Name] = $true }
+}
+
 $n = 0
 foreach ($r in $runs) {
     $png = Join-Path $shots ($r.Name + ".png")
@@ -59,7 +71,7 @@ foreach ($r in $runs) {
     $byGenre[$g] += $r
 }
 $html = New-Object System.Text.StringBuilder
-[void]$html.AppendLine('<!doctype html><meta charset="utf-8"><title>Demo gecmisi</title><style>body{font-family:sans-serif;background:#12141c;color:#e8e8ee;margin:24px}h2{margin-top:36px;border-bottom:1px solid #333;padding-bottom:6px}.g{display:flex;flex-wrap:wrap;gap:14px}.c{width:300px}.w{position:relative}.c img{width:300px;display:block;border:1px solid #333;border-radius:6px;background:#000;cursor:zoom-in}.z{position:absolute;right:6px;top:6px;border:0;border-radius:50%;width:32px;height:32px;font-size:18px;line-height:32px;cursor:pointer;background:rgba(18,20,28,.8);color:#fff}.z:hover{background:#3b82f6}.c .t{font-size:12px;color:#aab;margin-top:4px}.no{width:300px;height:169px;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;box-sizing:border-box;border:1px dashed #444;color:#778;border-radius:6px;font-size:12px}#lb{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:9;cursor:zoom-out}#lb.on{display:flex}#lb img{max-width:94vw;max-height:84vh;border-radius:8px;background:#000}#lb p{margin:12px 0 0;color:#dde;font-size:14px}#lb small{color:#889}</style><h1>Demo gecmisi (yeniden eskiye)</h1><p style="color:#889">Buyutmek icin resme ya da sag ustteki pusula simgesine tikla. Ok tuslari: onceki / sonraki. Esc ya da tik: kapat.</p><div id="lb"><img id="lbi"><p id="lbt"></p><small>&larr; &rarr; gez &nbsp; Esc kapat</small></div>')
+[void]$html.AppendLine('<!doctype html><meta charset="utf-8"><title>Demo gecmisi</title><style>body{font-family:sans-serif;background:#12141c;color:#e8e8ee;margin:24px}h2{margin-top:36px;border-bottom:1px solid #333;padding-bottom:6px}.g{display:flex;flex-wrap:wrap;gap:14px}.c{width:300px}.w{position:relative}.c img{width:300px;display:block;border:1px solid #333;border-radius:6px;background:#000;cursor:zoom-in}.z{position:absolute;right:6px;top:6px;border:0;border-radius:50%;width:32px;height:32px;font-size:18px;line-height:32px;cursor:pointer;background:rgba(18,20,28,.8);color:#fff}.z:hover{background:#3b82f6}.star{position:absolute;left:6px;top:6px;background:#f5b301;color:#1a1400;font-weight:bold;font-size:12px;padding:3px 8px;border-radius:12px}.c.lib img{border:2px solid #f5b301}.c .t{font-size:12px;color:#aab;margin-top:4px}.no{width:300px;height:169px;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;box-sizing:border-box;border:1px dashed #444;color:#778;border-radius:6px;font-size:12px}#lb{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:9;cursor:zoom-out}#lb.on{display:flex}#lb img{max-width:94vw;max-height:84vh;border-radius:8px;background:#000}#lb p{margin:12px 0 0;color:#dde;font-size:14px}#lb small{color:#889}</style><h1>Demo gecmisi (yeniden eskiye)</h1><p style="color:#889">Buyutmek icin resme ya da sag ustteki buyutec simgesine tikla. Ok tuslari: onceki / sonraki. Esc ya da tik: kapat.</p><div id="lb"><img id="lbi"><p id="lbt"></p><small>&larr; &rarr; gez &nbsp; Esc kapat</small></div>')
 foreach ($g in ($byGenre.Keys | Sort-Object)) {
     [void]$html.AppendLine("<h2>$g ($($byGenre[$g].Count) kosu)</h2><div class='g'>")
     foreach ($r in ($byGenre[$g] | Sort-Object Name -Descending)) {
@@ -68,9 +80,12 @@ foreach ($g in ($byGenre.Keys | Sort-Object)) {
         $info = if ($scores.ContainsKey($key)) { $scores[$key] } else { "puan kaydi yok" }
         $when = "$($stamp.Substring(6,2)).$($stamp.Substring(4,2)) $($stamp.Substring(9,2)):$($stamp.Substring(11,2))"
         $png = Join-Path $shots ($r.Name + ".png")
-        $cap = "$g - $when - $info"
-        $img = if (Test-Path $png) { "<div class='w'><img class='s' src='shots/$($r.Name).png' data-cap='$cap'><button class='z' title='Buyut'>&#129517;</button></div>" } else { "<div class='no'>ekran goruntusu yok (bu kosuda oynanabilir sahne olusmamis)</div>" }
-        [void]$html.AppendLine("<div class='c'>$img<div class='t'>$when - $info</div></div>")
+        $isLib = $inLibrary.ContainsKey($r.Name)
+        $star = if ($isLib) { "<span class='star'>&#9733; demos'ta</span>" } else { "" }
+        $cls = if ($isLib) { "c lib" } else { "c" }
+        $cap = $(if ($isLib) { "&#9733; " } else { "" }) + "$g - $when - $info"
+        $img = if (Test-Path $png) { "<div class='w'><img class='s' src='shots/$($r.Name).png' data-cap='$cap'><button class='z' title='Buyut'>&#128269;</button>$star</div>" } else { "<div class='no'>ekran goruntusu yok (bu kosuda oynanabilir sahne olusmamis)</div>" }
+        [void]$html.AppendLine("<div class='$cls'>$img<div class='t'>$when - $info</div></div>")
     }
     [void]$html.AppendLine("</div>")
 }
