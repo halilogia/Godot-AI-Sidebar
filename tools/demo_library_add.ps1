@@ -11,7 +11,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Genre,
     [string]$Title = "",
     [int]$Score = -1,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$Latest   # son surum kuraldir: puan ve sabitleme bakilmaz; degisen eski surum archives/demos-replaced/ altina tasinir
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,18 +29,23 @@ if ($result.status -ne "completed" -or -not $result.metrics.success) {
 # -Force: puan görünümü ölçmediği için elle "bu görsel olarak daha iyi" denen sürümü zorla koyar.
 $scoreFile = Join-Path $Dest "BENCH\score.txt"
 $pinFile = Join-Path $Dest "BENCH\pinned.txt"
-if (-not $Force -and (Test-Path $pinFile)) {
+if (-not $Force -and -not $Latest -and (Test-Path $pinFile)) {
     Write-Host "[demo_library] ${Genre}: elle seçilmiş sürüm sabit (BENCH/pinned.txt); değiştirilmedi."
     exit 3
 }
-if (-not $Force -and $Score -ge 0 -and (Test-Path $scoreFile)) {
+if (-not $Force -and -not $Latest -and $Score -ge 0 -and (Test-Path $scoreFile)) {
     $old = [int](Get-Content $scoreFile -Raw).Trim()
     if ($old -gt $Score) {
         Write-Host "[demo_library] ${Genre}: kütüphanedeki sürüm ($old) yeninden ($Score) yüksek, değiştirilmedi."
         exit 3
     }
 }
-if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
+if (Test-Path $Dest) {
+    # Hicbir basarili demo cope gitmez: yerine yenisi gelen eski surum archives/demos-replaced/ altina tasinir.
+    $keep = Join-Path $Repo ("archives\demos-replaced\{0}-{1}" -f $Genre, (Get-Date -Format "yyyyMMdd-HHmmss"))
+    New-Item -ItemType Directory -Force (Split-Path -Parent $keep) | Out-Null
+    Move-Item $Dest $keep
+}
 New-Item -ItemType Directory -Force $Dest | Out-Null
 
 $skip = @("addons", ".godot", "_bench", ".git")

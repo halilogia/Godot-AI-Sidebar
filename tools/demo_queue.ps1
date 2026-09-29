@@ -69,6 +69,18 @@ foreach ($g in $Genres) {
         }
     } while ($instant -and -not (Test-Path $stopFile))
     if (Test-Path $stopFile) { break }
+    # Oynanabilir bir sey (sahne dosyasi) yoksa koşu silinir; varsa archives/bench-runs/ altina kopyalanir (hicbir
+    # oynanabilir demo cope gitmez), en son surum demos/'a girer (demo_library_add.ps1 -Latest).
+    if ($proj) {
+        $scenes = @(Get-ChildItem $proj.FullName -Recurse -Filter *.tscn -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '\\(addons|_bench|\.godot)\\' })
+        if ($scenes.Count -eq 0) {
+            Remove-Item -Recurse -Force $proj.FullName
+            Write-QLog ("{0} DISCARDED {1}: no scene file, nothing playable ({2})" -f (Get-Date -Format "HH:mm:ss"), $g, $proj.Name)
+            continue
+        }
+        $arch = Join-Path (Split-Path -Parent $PSScriptRoot) ("archives\bench-runs\" + $proj.Name)
+        if (-not (Test-Path $arch)) { robocopy $proj.FullName $arch /E /XD .godot /NFL /NDL /NJH /NJS /NP | Out-Null }
+    }
     $status = "no_result"
     # Puan önce hesaplanır: kütüphane yalnız daha yüksek (ya da eşit) puanlı sürümle değişir.
     $score = -1
@@ -89,7 +101,7 @@ foreach ($g in $Genres) {
         $r = Get-Content $res -Raw -Encoding UTF8 | ConvertFrom-Json
         $status = "{0} {1}s steps={2} failed={3}" -f $r.status, $r.elapsed_s, $r.metrics.used_steps, $r.metrics.failed_tools
         if ($r.status -eq "completed" -and $r.metrics.success) {
-            & (Join-Path $PSScriptRoot "demo_library_add.ps1") -Project $proj.FullName -Genre $g -Title $title -Score $score | Out-Null
+            & (Join-Path $PSScriptRoot "demo_library_add.ps1") -Project $proj.FullName -Genre $g -Title $title -Score $score -Latest | Out-Null
             $status += if ($LASTEXITCODE -eq 3) { " LIBRARY_KEPT_OLD" } else { " LIBRARY" }
         }
     }
