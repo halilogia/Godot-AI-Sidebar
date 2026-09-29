@@ -63,3 +63,12 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 06:36 | tower-defense | **60** | bitti, başarısız | 16.4 dk | 62 | 2 | space-bunny-free | 72 / 153 | 13 s |
 | 2026-09-29 06:53 | snake | **70** | bitti, başarısız | 3.4 dk | 33 | 2 | space-bunny-free | 55 / 95 | 4.8 s |
 | 2026-09-29 06:57 | grand-strategy | **60** | bitti, başarısız | 7.8 dk | 89 | 4 | space-bunny-free | 77 / 136 | 20.4 s |
+| 2026-09-29 07:05 | card-game | **85** | başarılı | 9.6 dk | 95 | 3 | space-bunny-free | 86 / 190 | 16.3 s |
+| 2026-09-29 07:15 | platformer | **85** | başarılı | 10.3 dk | 92 | 1 | space-bunny-free | 71 / 124 | 33.6 s |
+| 2026-09-29 07:26 | tower-defense | **90** | başarılı | 7.5 dk | 77 | 1 | space-bunny-free | 75 / 131 | 11.4 s |
+| 2026-09-29 07:40 | platformer | **85** | başarılı | 5.9 dk | 71 | 3 | space-bunny-free | 62 / 109 | 18.5 s |
+| 2026-09-29 07:46 | card-game | **65** | başarılı | 30.9 dk | 261 | 17 | space-bunny-free | 80 / 141 | 57.6 s |
+| 2026-09-29 08:17 | snake | **65** | bitti, başarısız | 3.7 dk | 39 | 3 | space-bunny-free | 62 / 108 | 12.7 s |
+| 2026-09-29 08:31 | card-game | **100** | başarılı | 1.4 dk | 17 | 1 | ag/gemini-3.8-flash-low | 39 / 64 | 2.3 s |
+| 2026-09-29 08:32 | platformer | **100** | başarılı | 2.2 dk | 30 | 1 | ag/gemini-3.8-flash-low | 40 / 57 | 3.7 s |
+| 2026-09-29 08:35 | snake | **100** | başarılı | 0.9 dk | 17 | 1 | ag/gemini-3.8-flash-low | 33 / 47 | 2.4 s |
