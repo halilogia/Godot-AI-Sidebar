@@ -269,6 +269,24 @@ web research; the plugin gives it Godot's eyes and hands: scene tree and node
 inspection, script validation, re-scanning files it wrote (`sync_project`), running and
 stopping the game, runtime errors and live scene tree, editor/runtime screenshots.
 
+**What the bridge exposes (39 tools):** project and scene reading, `validate_project`,
+`sync_project`, `play_game` / `stop_game`, `send_input` (keys, actions, clicks, drags),
+`wait_for_runtime`, runtime tree and node inspection, screenshots, `get_output`
+(editor and game log), `get_runtime_performance`, `trace_runtime_signals`, and three
+measuring tools: **`audit_runtime_ui`** (off-screen, overflowing, overlapping and
+low-contrast text), **`diagnose_physics`** (collision layer / mask mismatches, disabled
+shapes, dead triggers) and **`set_runtime_property`** (inject a value into the running
+game to test win / game-over states). Every tool carries MCP `annotations`
+(`readOnlyHint` etc.), so clients can skip approval prompts for tools that only observe.
+
+**Protocol:** the bridge speaks the MCP **2026-07-28** specification (stateless requests,
+`server/discover`, `Mcp-Method` / `Mcp-Name` / `MCP-Protocol-Version` header checks,
+`resultType`, cacheable `tools/list`, `structuredContent`) and still answers the older
+`initialize` handshake (2025-03-26 to 2025-11-25), so current and older clients both work.
+
+**Faster: Claude Code plugin.** Instead of pasting the command, install the
+[plugin](#claude-code-plugin-one-line) and run `/godot-connect` in your project.
+
 1. Open **Settings → External Agent (MCP)** and press **Turn on** (or type `/mcp on`). The
    bridge starts on `127.0.0.1`; **Copy Claude Code connect command** copies the command.
 2. In a terminal, in your **game project's** folder, paste it. It looks like:
