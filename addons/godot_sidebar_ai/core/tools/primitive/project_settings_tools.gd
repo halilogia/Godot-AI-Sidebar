@@ -90,7 +90,7 @@ static func _set_setting(key: String, value: Variant) -> Dictionary:
 		var ok := true
 		match typeof(old):
 			TYPE_INT:
-				ok = text.is_valid_int()
+				ok = text.is_valid_int() or (text.is_valid_float() and is_equal_approx(text.to_float(), roundf(text.to_float())))  # 1280.0 tam sayı ayarına verilebilir
 			TYPE_FLOAT:
 				ok = text.is_valid_float()
 			TYPE_BOOL:

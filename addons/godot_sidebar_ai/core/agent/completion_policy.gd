@@ -17,6 +17,10 @@ class_name AISidebarCompletionPolicy
 const PROBE_TOOLS := ["send_input", "inspect_runtime_node", "inspect_runtime_tree", "take_viewport_screenshot", "take_runtime_screenshot", "inspect_ui_layout"]
 const PROBE_MISS_CODES := ["NODE_NOT_FOUND", "NOT_CLICKABLE", "OFF_SCREEN", "BEHIND_CAMERA", "NO_CAMERA", "VIEWPORT_NOT_VISIBLE"]
 
+## Uzun koşuda (ör. yerleşim düzeltme döngüsü) ajana bir kez "bitir" uyarısı: bu adımda gönderilir.
+const STEP_NUDGE_AT := 120
+const STEP_NUDGE_TEXT := "SİSTEM BİLGİSİ: 120 adımdır çalışıyorsun. Yeni özellik ekleme ve aynı sorunu tekrar deneme: çalışan hâli koru, kalan sorunu 'doğrulanamadı / düzeltilemedi' diye raporla ve kısa bir özetle bitir."
+
 static func is_probe_miss(tool_name: String, res: Dictionary) -> bool:
 	if not tool_name in PROBE_TOOLS:
 		return false

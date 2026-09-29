@@ -124,7 +124,6 @@ func _init(p_provider: AISidebarAIProvider = null, p_context: AISidebarAgentCont
 	provider = p_provider
 	context = p_context
 	runtime_debugger = AISidebarRuntimeDebugger.new()
-	
 	if provider:
 		provider.response_received.connect(_on_provider_response)
 		provider.chunk_received.connect(_on_provider_chunk)
@@ -444,7 +443,8 @@ func _run_next_step() -> void:
 		last_completion = {"verdict": "failed", "reason": "Step limit reached (" + str(current_step) + " / " + str(max_steps) + ").", "stop_code": last_stop_code}
 		_finish_task(false)
 		return
-		
+	if context and current_step == AISidebarCompletionPolicy.STEP_NUDGE_AT:
+		context.add_user_message(AISidebarCompletionPolicy.STEP_NUDGE_TEXT)
 	step_progress.emit(current_step, max_steps)
 	telemetry.llm_turns_count += 1
 	var status_msg = "Agent Step " + str(current_step) + ((" / " + str(max_steps)) if max_steps > 0 else "")
