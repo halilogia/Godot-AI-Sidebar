@@ -17,7 +17,9 @@ param(
     [string]$GodotPath = "",
     [string]$Model = "",
     [string]$Provider = "",
-    [string]$Reasoning = ""
+    [string]$Reasoning = "",
+    [string]$BlenderUrl = "",
+    [string]$BlenderToken = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -93,6 +95,16 @@ if ($Reasoning) {
     $rc | Add-Member -NotePropertyName reasoning_effort -NotePropertyValue $Reasoning -Force
     [IO.File]::WriteAllText($cfgPath, ($rc | ConvertTo-Json -Depth 20), $utf8)
     Write-Host "[demo_bench] Akıl yürütme çabası: $Reasoning"
+}
+# -BlenderUrl / -BlenderToken: kopyadaki config'te Blender köprüsü açılır (Ayarlar → Blender); ajan 3B modelleri Blender'da yapar.
+if ($BlenderUrl) {
+    $cfgPath = Join-Path $Project "addons\godot_sidebar_ai\config.json"
+    $bc = [IO.File]::ReadAllText($cfgPath) | ConvertFrom-Json
+    $bc | Add-Member -NotePropertyName blender_bridge_enabled -NotePropertyValue $true -Force
+    $bc | Add-Member -NotePropertyName blender_bridge_url -NotePropertyValue $BlenderUrl -Force
+    $bc | Add-Member -NotePropertyName blender_bridge_token -NotePropertyValue $BlenderToken -Force
+    [IO.File]::WriteAllText($cfgPath, ($bc | ConvertTo-Json -Depth 20), $utf8)
+    Write-Host "[demo_bench] Blender köprüsü: $BlenderUrl"
 }
 # -Model: yalnız kopyadaki config.json'da seçili model değişir (kullanıcının ayarı olduğu gibi kalır).
 if ($Model) {

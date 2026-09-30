@@ -506,5 +506,22 @@
   "mode_plan_desc": "Plan modu: ajan önce inceler, planı gösterir ve onayını bekler. Eylem modu için tıkla.",
   "settings_notifications": "Bildirimler",
   "settings_notifications_hint": "Başka bir penceredeyken ajan soru sorunca, onay beklerken ya da işi bitince görev çubuğundaki Godot simgesi yanıp söner. Editöre bakarken uyarmaz.",
-  "settings_notification_sound": "Bildirim sesi (kısa \"ding\")"
+  "settings_notification_sound": "Bildirim sesi (kısa \"ding\")",
+  "tab_blender": "Blender",
+  "blender_settings_title": "Blender köprüsü",
+  "blender_settings_hint": "Açıkken yapay zekâ 3B model, prop, karakter ve animasyonları koddan değil Blender'da (Blender Copilot ile) yapar ve .glb olarak res://assets/blender/ klasörüne getirir. Yalnız bu bilgisayardaki Blender'a bağlanır.",
+  "blender_settings_enable": "Yapay zekâ Blender'ı kullansın",
+  "blender_settings_url": "Adres",
+  "blender_settings_token": "Token",
+  "blender_settings_test": "Bağlantıyı dene",
+  "blender_settings_save": "Kaydet",
+  "blender_settings_saved": "Kaydedildi.",
+  "blender_settings_testing": "Blender'a bağlanılıyor...",
+  "blender_settings_test_ok": "Bağlandı: Blender {count} araç sunuyor.",
+  "blender_settings_test_failed": "Bağlanılamadı: {error}",
+  "blender_settings_badge_on": "Açık",
+  "blender_settings_badge_off": "Kapalı",
+  "blender_settings_how_title": "Nasıl bağlanır",
+  "blender_settings_how": "1. Blender 5.2'de Blender Copilot eklentisini aç.\n2. 3B Görünüm, N paneli, Blender - Copilot, MCP bridge bölümünde Start MCP bridge'e bas.\n3. Panelde görünen adresi ve token'ı buraya yapıştır, Bağlantıyı dene.",
+  "blender_settings_where": "Blender kapalıysa ya da köprü başlatılmadıysa yapay zekâ bunu size söyler; kod ile şekil kurmaya geri dönmez."
 }

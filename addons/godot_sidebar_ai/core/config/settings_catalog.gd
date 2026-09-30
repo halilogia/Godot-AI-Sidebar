@@ -35,6 +35,9 @@ const UI_KEYS := {
 	"mcp_bridge_enabled": "Settings > External Agent (MCP); /mcp on | off",
 	"mcp_bridge_port": "Settings > External Agent (MCP)",
 	"mcp_bridge_token": "Settings > External Agent (MCP) (generated; shown masked, copied in the connect command)",
+	"blender_bridge_enabled": "Settings > Blender",
+	"blender_bridge_url": "Settings > Blender",
+	"blender_bridge_token": "Settings > Blender (copied from the Blender add-on panel; shown masked)",
 }
 
 ## Kullanıcının düzenlemediği, sistemin tuttuğu anahtarlar.

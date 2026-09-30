@@ -23,6 +23,7 @@ const AISidebarRulesTools = preload("res://addons/godot_sidebar_ai/core/tools/pr
 const AISidebarGoalTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/goal_tools.gd")
 const AISidebarApiTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/api_tools.gd")
 const AISidebarProjectSettingsTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/project_settings_tools.gd")
+const AISidebarBlenderTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/blender_tools.gd")
 
 ## Tüm mevcut araç şemalarını döner (Full Schema Catalog)
 static func get_all_schemas() -> Array:
@@ -103,6 +104,8 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarProjectSettingsTools.get_schemas())
 	# Skill'ler: açık skill yoksa activate_skill hiç sunulmaz.
 	schemas.append_array(AISidebarSkillTools.get_schemas())
+	# Blender köprüsü: Ayarlar → Blender kapalıysa blender_tools / blender_call hiç sunulmaz.
+	schemas.append_array(AISidebarBlenderTools.get_schemas())
 
 	return schemas
 
@@ -265,6 +268,13 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names["audit_runtime_ui"] = true
 			break
 
+	# Blender: 3B model / prop / karakter konuşulunca (köprü kapalıysa şema zaten yok).
+	for kw: String in ["blender", "glb", "gltf", "3d model", "3d asset", "3d varl", "3b model", "3d prop", "low-poly", "low poly", "lowpoly", "3d karakter", "3d character"]:
+		if kw in text:
+			active_tool_names[AISidebarBlenderTools.LIST_TOOL] = true
+			active_tool_names[AISidebarBlenderTools.CALL_TOOL] = true
+			break
+
 	# Hedef modu (/goal): tur istemi aracın adını içerir.
 	if AISidebarGoalTools.TOOL_NAME in text:
 		active_tool_names[AISidebarGoalTools.TOOL_NAME] = true
@@ -374,7 +384,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarRuntimeInputTools.SET_PROP_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarRuntimeInputTools.SET_PROP_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarBlenderTools.is_blender_tool(tool_name) or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -405,6 +415,8 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		return await AISidebarRuntimeInputTools.execute_trace_async(args)
 	if tool_name == AISidebarOutputTools.TOOL_NAME:
 		return await AISidebarOutputTools.execute_async(args)
+	if AISidebarBlenderTools.is_blender_tool(tool_name):
+		return await AISidebarBlenderTools.execute_async(tool_name, args)
 	return await AISidebarEditorTools.execute_async(tool_name, args)
 
 static func _search_tools(args: Dictionary) -> Dictionary:

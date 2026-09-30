@@ -26,7 +26,7 @@ const LOG_TAIL_LINES := 200
 const SAFE_SETTINGS: Array[String] = [
 	"config_version", "provider_type", "selected_model", "language", "stream", "vision_capable",
 	"temperature", "goal_max_rounds", "auto_approve_mode", "require_delete_approval",
-	"require_overwrite_approval", "ui_animations", "mcp_bridge_enabled", "mcp_bridge_port",
+	"require_overwrite_approval", "ui_animations", "mcp_bridge_enabled", "mcp_bridge_port", "blender_bridge_enabled",
 ]
 
 ## Eklenti, motor, sistem ve seçili sağlayıcı bilgisi. `extra` arayüzden gelen ek alanlar (ör. ölçek).
@@ -59,6 +59,7 @@ static func safe_settings(cfg: Dictionary) -> Dictionary:
 			out[key] = cfg[key]
 	out["api_key"] = "set" if not str(cfg.get("api_key", "")).is_empty() else "empty"
 	out["mcp_bridge_token"] = "set" if not str(cfg.get("mcp_bridge_token", "")).is_empty() else "empty"
+	out["blender_bridge_token"] = "set" if not str(cfg.get("blender_bridge_token", "")).is_empty() else "empty"
 	out["base_url_host"] = url_host(str(cfg.get("base_url", "")))
 	out["system_prompt"] = "default" if str(cfg.get("system_prompt", "")) == str(AISidebarConfig.DEFAULT_CONFIG["system_prompt"]) else "custom"
 	var models: Variant = cfg.get("cached_models", [])

@@ -506,5 +506,22 @@
   "mode_plan_desc": "Plan mode: the agent inspects first, shows a plan and waits for your approval. Click for Build mode.",
   "settings_notifications": "Notifications",
   "settings_notifications_hint": "While you are in another window, the Godot icon in the taskbar flashes when the agent asks something, waits for approval or finishes. No alert while you are looking at the editor.",
-  "settings_notification_sound": "Notification sound (short \"ding\")"
+  "settings_notification_sound": "Notification sound (short \"ding\")",
+  "tab_blender": "Blender",
+  "blender_settings_title": "Blender bridge",
+  "blender_settings_hint": "When on, the AI makes 3D models, props, characters and animation in Blender (with Blender Copilot) instead of building shapes from code, and brings them in as .glb files under res://assets/blender/. It only connects to Blender on this computer.",
+  "blender_settings_enable": "Let the AI use Blender",
+  "blender_settings_url": "Address",
+  "blender_settings_token": "Token",
+  "blender_settings_test": "Test connection",
+  "blender_settings_save": "Save",
+  "blender_settings_saved": "Saved.",
+  "blender_settings_testing": "Connecting to Blender...",
+  "blender_settings_test_ok": "Connected: Blender offers {count} tools.",
+  "blender_settings_test_failed": "Could not connect: {error}",
+  "blender_settings_badge_on": "On",
+  "blender_settings_badge_off": "Off",
+  "blender_settings_how_title": "How to connect",
+  "blender_settings_how": "1. Open Blender 5.2 with the Blender Copilot add-on.\n2. In the 3D Viewport N panel, Blender - Copilot, MCP bridge, press Start MCP bridge.\n3. Paste the address and token shown there into this page and press Test connection.",
+  "blender_settings_where": "If Blender is closed or the bridge is not started, the AI tells you; it does not fall back to building shapes from code."
 }

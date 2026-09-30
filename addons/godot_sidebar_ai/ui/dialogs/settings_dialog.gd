@@ -7,6 +7,7 @@ extends AcceptDialog
 ##   3 Kurallar (bağlam yükü, yerleşik kurallar = sistem istemi, global / proje kuralları) → AISidebarRulesView
 ##   4 Skill'ler → AISidebarSkillsView
 ##   5 Dış Ajan (MCP) → AISidebarMcpSettingsView
+##   6 Blender (köprü adresi / token, bağlantı denemesi) → AISidebarBlenderSettingsView
 ## "Kaydet ve Kapat" config.json'a yazar ve settings_saved yayar. Skill aç / kapa, kural ekleme ve MCP
 ## köprüsü kendi eylemleriyle hemen uygulanır.
 
@@ -20,6 +21,7 @@ const AISidebarSettingsGeneralPages = preload("res://addons/godot_sidebar_ai/ui/
 const AISidebarRulesView = preload("res://addons/godot_sidebar_ai/ui/components/rules_view.gd")
 const AISidebarSkillsView = preload("res://addons/godot_sidebar_ai/ui/components/skills_view.gd")
 const AISidebarMcpSettingsView = preload("res://addons/godot_sidebar_ai/ui/components/mcp_settings_view.gd")
+const AISidebarBlenderSettingsView = preload("res://addons/godot_sidebar_ai/ui/components/blender_settings_view.gd")
 
 signal settings_saved()
 ## Genel sayfasındaki "Hata bildir" (pencere kapanır, panel rapor penceresini açar).
@@ -28,12 +30,14 @@ signal bug_report_requested()
 const CATEGORY_RULES := 3
 const CATEGORY_SKILLS := 4
 const CATEGORY_MCP := 5
+const CATEGORY_BLENDER := 6
 const BASE_SIZE := Vector2(920, 660)
 
 var general: AISidebarSettingsGeneralPages
 var rules_view: AISidebarRulesView
 var skills_view: AISidebarSkillsView
 var mcp_view: AISidebarMcpSettingsView
+var blender_view: AISidebarBlenderSettingsView
 
 var _root: HBoxContainer
 var _scroll: ScrollContainer
@@ -100,6 +104,7 @@ func _build() -> void:
 	rules_view = AISidebarRulesView.new()
 	skills_view = AISidebarSkillsView.new()
 	mcp_view = AISidebarMcpSettingsView.new()
+	blender_view = AISidebarBlenderSettingsView.new()
 	var entries: Array = [
 		["tab_provider", general.build_provider_page()],
 		["tab_parameters", general.build_model_page()],
@@ -107,6 +112,7 @@ func _build() -> void:
 		["tab_rules", rules_view],
 		["tab_skills", skills_view],
 		["tab_external_agent", mcp_view],
+		["tab_blender", blender_view],
 	]
 	for e: Array in entries:
 		var key: String = e[0]
@@ -136,6 +142,8 @@ func _select_category(idx: int) -> void:
 		skills_view.refresh()
 	elif idx == CATEGORY_MCP:
 		mcp_view.refresh()
+	elif idx == CATEGORY_BLENDER:
+		blender_view.refresh()
 	if _scroll != null:
 		_scroll.scroll_vertical = 0
 

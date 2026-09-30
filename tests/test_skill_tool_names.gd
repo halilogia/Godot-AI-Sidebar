@@ -8,6 +8,11 @@ extends RefCounted
 const AISidebarToolManager = preload("res://addons/godot_sidebar_ai/core/tools/tool_manager.gd")
 const SKILLS_DIR := "res://addons/godot_sidebar_ai/skills"
 ## Araç adına benzeyen ama araç olmayan tanımlayıcılar (argüman adları, alanlar, Godot API'si).
+## Blender Copilot'un araçları (Blender tarafında tanımlıdır; `blender_call` ile çağrılır) ve sonuç alanları.
+const BLENDER_SIDE := [
+	"blender_tools", "blender_call", "create_prop", "create_primitive", "create_mesh", "mesh_edit", "set_material",
+	"join_objects", "rig_character", "animate_character", "export_gltf", "base_color", "object_names", "godot_path",
+]
 const NOT_TOOLS := [
 	"changed_files", "expected_scene_path", "file_path", "scene_path", "scene_file", "is_inconclusive",
 	"class_name", "get_node", "ext_resource", "sub_resource", "node_path",
@@ -28,7 +33,7 @@ static func run() -> Dictionary:
 		var text := FileAccess.get_file_as_string(path)
 		for m: RegExMatch in re.search_all(text):
 			var ident := m.get_string(1)
-			if not known.has(ident) and not NOT_TOOLS.has(ident):
+			if not known.has(ident) and not NOT_TOOLS.has(ident) and not BLENDER_SIDE.has(ident):
 				var entry := dir_name + ": " + ident
 				if not unknown.has(entry):
 					unknown.append(entry)
