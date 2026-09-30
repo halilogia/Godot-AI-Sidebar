@@ -77,3 +77,4 @@ Her satır bir `tools/demo_bench.ps1` çalıştırması (başarısızlar dahil).
 | 2026-09-29 14:29 | platformer | **65** | bitti, başarısız | 4.8 dk | 54 | 4 | space-bunny-free | 76 / 123 | 21.6 s |
 | 2026-09-29 14:34 | card-game | **60** | bitti, başarısız | 6.2 dk | 67 | 4 | space-bunny-free | 74 / 149 | 20.7 s |
 | 2026-09-29 14:41 | grand-strategy | **90** | başarılı | 7.5 dk | 80 | 2 | space-bunny-free | 96 / 275 | 16.6 s |
+| 2026-09-29 20:30 | fps-6step | **75** | başarılı | 49.3 dk | 51 | 3 | space-bunny-free | 100 / 224 | 15.6 s |

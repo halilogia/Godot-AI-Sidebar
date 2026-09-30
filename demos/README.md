@@ -9,6 +9,8 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 | [Kart oyunu](card-game/) | kart oyunu demosu yap | 3.4 dk | 40 | 45 | 2026-09-29 |
 | [Endless runner](endless-runner/) | endless runner oyun demosu yap | 7 dk | 60 | 69 | 2026-09-29 |
 | [3D birinci şahıs](fps-3d/) | 3D birinci şahıs yürüme ve toplama demosu yap | 3.8 dk | 44 | 52 | 2026-09-29 |
+| [FPS 6 adım (video testi)](fps-6step/) | 3D bir FPS oyunu başlıyoruz. Önce temel bir oyuncu kontrolcüsü yap: WASD ile yürüme, boşlukla zıplama, fareyle etrafa bakma. Çarpışmaları test edebileceğim basit bir test sahnesi de olsun (zemin ve üzerine yerleştirilmiş kutular).
+| [FPS + Blender modelleri (Claude Code + MCP)](fps-3d-claude-mcp/) | Claude Code, Godot AI Sidebar ve Blender Copilot MCP araçlarıyla: oyunu çalıştırıp ölçerek düzeltti, props'ları Blender'da modelleyip .glb koydu | - | - | - | 2026-09-30 |
 | [Grand strateji](grand-strategy/) | hoi4 tarzı grand strateji demosu yap, basit ve hızlı | 4.7 dk | 48 | 51 | 2026-09-29 |
 | [Match-3](match3/) | match-3 bulmaca oyunu demosu yap | 12 dk | 107 | 110 | 2026-09-29 |
 | [Platformer](platformer/) | platformer oyun demosu yap | 5 dk | 57 | 56 | 2026-09-29 |
@@ -32,6 +34,14 @@ Açmak için: klasörü Godot 4.7'de aç ve eklentiyi `scripts/sync-example.ps1`
 **fps-3d**
 
 ![fps-3d](fps-3d/screenshot.png)
+
+**fps-6step**
+
+![fps-6step](fps-6step/screenshot.png)
+
+**fps-3d-claude-mcp**
+
+![fps-3d-claude-mcp](fps-3d-claude-mcp/screenshot.png)
 
 **grand-strategy**
 

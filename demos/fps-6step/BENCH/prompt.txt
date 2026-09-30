@@ -1,0 +1,11 @@
+3D bir FPS oyunu başlıyoruz. Önce temel bir oyuncu kontrolcüsü yap: WASD ile yürüme, boşlukla zıplama, fareyle etrafa bakma. Çarpışmaları test edebileceğim basit bir test sahnesi de olsun (zemin ve üzerine yerleştirilmiş kutular).
+=====
+Oyuna İkinci Dünya Savaşı teması ver. Sağlık, koşma dayanıklılığı (stamina) ve mermi göstergesi olan bir HUD ekle. Yürürken kafa sallantısı (head bobbing) ve hafif kamera salınımı olsun. Basit bir ateş etme mekaniği ekle.
+=====
+Arayüzü Sniper Elite gibi şeffaf ve sade yap, üstte bir pusula olsun. Çözünürlüğü 1080p yap. Elde tutulan bir silah modeli göster ve ateş etme hissini iyileştir.
+=====
+Haritayı 72x72 birime büyüt. Oyuncuyu takip eden temel bir düşman yapay zekası ekle. Sağ tıkla nişan alma (ADS) yap. MP40 ve P08 tabanca gibi ek silahlar ekle ve silahlar arasında geçiş yapılabilsin.
+=====
+Düşmanlar duvar arkasından oyuncuyu görmemeli: görüş çizgisi (raycast) kontrolü ekle. Haritayı 144x144 birime çıkar. Düşman yürüme animasyonlarını iyileştir. Havadayken Shift'e basınca koşma barının azalması hatasını düzelt.
+=====
+Eğilme (crouch) mekaniği ekle. Şarjör değiştirme (reload) animasyonu ve efekti ekle. Oyuncu ölüp yeniden başladığında mermilerin sıfırlanmasını (doldurulmasını) düzelt.

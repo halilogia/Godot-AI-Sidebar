@@ -1,0 +1,1 @@
+Godot AI Sidebar MCP araçlarıyla (play_game, take_runtime_screenshot, inspect_runtime_node, send_input) Claude Code tarafından üç turda düzeltilen FPS; props Blender Copilot MCP ile modellenip .glb olarak eklendi (sandık, varil, ağaç, kum torbası, tüfek, asker, kaya, bidon).

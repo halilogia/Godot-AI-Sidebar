@@ -1,0 +1,71 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/Target.gd" id="1_target"]
+
+[sub_resource type="BoxShape3D" id="post_shape"]
+size = Vector3(0.14, 1.2, 0.14)
+
+[sub_resource type="BoxMesh" id="post_mesh"]
+size = Vector3(0.14, 1.2, 0.14)
+
+[sub_resource type="BoxShape3D" id="torso_shape"]
+size = Vector3(0.6, 0.8, 0.35)
+
+[sub_resource type="BoxMesh" id="torso_mesh"]
+size = Vector3(0.6, 0.8, 0.35)
+
+[sub_resource type="SphereShape3D" id="head_shape"]
+radius = 0.16
+
+[sub_resource type="SphereMesh" id="head_mesh"]
+radius = 0.16
+height = 0.32
+radial_segments = 12
+rings = 6
+
+[sub_resource type="StandardMaterial3D" id="mat_wood"]
+albedo_color = Color(0.301961, 0.25098, 0.184314, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="mat_target"]
+albedo_color = Color(0.94902, 0.701961, 0.298039, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="mat_danger"]
+albedo_color = Color(0.878431, 0.333333, 0.247059, 1)
+roughness = 0.8
+
+[node name="TargetDummy" type="StaticBody3D"]
+script = ExtResource("1_target")
+
+[node name="Post" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("post_mesh")
+surface_material_override/0 = SubResource("mat_wood")
+
+[node name="PostCol" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("post_shape")
+
+[node name="Torso" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
+mesh = SubResource("torso_mesh")
+surface_material_override/0 = SubResource("mat_target")
+
+[node name="TorsoCol" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
+shape = SubResource("torso_shape")
+
+[node name="Head" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+mesh = SubResource("head_mesh")
+surface_material_override/0 = SubResource("mat_danger")
+
+[node name="HeadCol" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+shape = SubResource("head_shape")
+
+[node name="Flip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0.19)
+mesh = SubResource("torso_mesh")
+surface_material_override/0 = SubResource("mat_danger")
