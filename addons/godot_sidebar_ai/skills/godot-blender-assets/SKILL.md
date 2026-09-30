@@ -11,9 +11,9 @@ If `blender_tools` and `blender_call` are not in your tool list, the Blender bri
 
 1. `blender_tools` once: it lists Blender's tools in one line each. Read the schema of a tool (`blender_tools` with `name`) before its first use.
 2. **Start with `create_prop`**: one call builds a proportioned, coloured crate, barrel, tree, rock, house, tower, fence, lamp, tent, well, car, chest, table, chair, campfire, or a rig-ready `humanoid` / `robot`. Prefer it over building shapes from parts. Use `create_primitive`, `create_mesh`, `mesh_edit` only for shapes it cannot make.
-3. Colour with `set_material` (`base_color`, `roughness`, `metallic`) per part before `join_objects`. Presets (wood, brick ...) look good in Blender renders but do not survive glTF export; for game assets use flat colours.
+3. Colour with `set_material` (`base_color`, `roughness`, `metallic`) per part before `join_objects`. Presets (wood, brick ...) are shader nodes that glTF cannot carry: after `join_objects` call `bake_material` on the object (it paints the look into an image the `.glb` keeps), or use flat colours.
 4. Characters: `rig_character`, then `animate_character` (walk, run, idle ...). Export with `animations: true`.
-5. `export_gltf` with a plain `filename` such as `crate.glb` and `object_names`. The result of `blender_call` contains `godot_path` (under `res://assets/blender/`): the file is already copied and imported.
+5. Call `check_model` on the model and fix its FAIL findings, then `export_gltf` with a plain `filename` such as `crate.glb` and `object_names`. The result of `blender_call` contains `godot_path` (under `res://assets/blender/`): the file is already copied and imported.
 6. Use the model: write it into a `.tscn` as `[ext_resource type="PackedScene" path="res://assets/blender/crate.glb" id="1"]` and instance it (`[node name="Crate" parent="." instance=ExtResource("1")]`), then `sync_project`-style verification as usual (`validate_project`, `play_game`, screenshot). 1 unit is 1 meter, Y is up. Add collision yourself (a `StaticBody3D` with a shape sized to the model).
 
 ## Rules

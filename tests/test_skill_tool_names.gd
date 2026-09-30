@@ -12,6 +12,7 @@ const SKILLS_DIR := "res://addons/godot_sidebar_ai/skills"
 const BLENDER_SIDE := [
 	"blender_tools", "blender_call", "create_prop", "create_primitive", "create_mesh", "mesh_edit", "set_material",
 	"join_objects", "rig_character", "animate_character", "export_gltf", "base_color", "object_names", "godot_path",
+	"check_model", "bake_material", "unwrap_uv",
 ]
 const NOT_TOOLS := [
 	"changed_files", "expected_scene_path", "file_path", "scene_path", "scene_file", "is_inconclusive",

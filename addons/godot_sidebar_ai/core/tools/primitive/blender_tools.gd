@@ -48,7 +48,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": CALL_TOOL,
-				"description": "Runs one Blender tool. Use Blender for 3D models, props, characters and animation instead of building shapes from code: create_prop makes a crate, tree, house, car, person or robot in one call; set_material (preset wood, stone, brick, metal ...), rig_character and animate_character; then export_gltf writes a .glb, which this call copies into res://assets/blender/ and returns as `godot_path`. Use that path in a .tscn as a PackedScene ext_resource (1 unit = 1 meter, Y up). Exports carry flat colours; procedural materials do not survive glTF. Renders and exports can take minutes. Blender's own errors come back as-is: read them and fix the arguments.",
+				"description": "Runs one Blender tool. Use Blender for 3D models, props, characters and animation instead of building shapes from code: create_prop makes a crate, tree, house, car, person or robot in one call; set_material (preset wood, stone, brick, metal ...), rig_character and animate_character; then export_gltf writes a .glb, which this call copies into res://assets/blender/ and returns as `godot_path`. Use that path in a .tscn as a PackedScene ext_resource (1 unit = 1 meter, Y up). Shader-node materials do not survive glTF: bake_material paints them into a texture first (or use flat colours). Renders and exports can take minutes. Blender's own errors come back as-is: read them and fix the arguments.",
 				"parameters": {
 					"type": "object",
 					"properties": {
