@@ -259,7 +259,7 @@ Install the skills and the connector into Claude Code (any project, any machine)
 claude plugin marketplace add halilogia/Godot-AI-Sidebar && claude plugin install godot-ai-sidebar@godot-ai-sidebar
 ```
 
-You get 7 Godot 4 skills (runtime verification, visual polish with a look recipe for each of 11 game genres, scene authoring, feature development, debugging, refactoring, headless CI) and the `/godot-connect` command. In a project that has the sidebar plugin enabled, run `/godot-connect` once: it reads the bridge port and token from the project's config and registers the MCP server for you. Restart Claude Code, keep the Godot editor open, and Claude can play, measure and screenshot your running game.
+You get 11 Godot 4 skills (runtime verification, visual polish with a look recipe for each of 11 game genres, scene authoring, feature development, debugging, refactoring, headless CI, animation, shaders, tile levels, Blender assets) and the `/godot-connect` command. In a project that has the sidebar plugin enabled, run `/godot-connect` once: it reads the bridge port and token from the project's config and registers the MCP server for you. Restart Claude Code, keep the Godot editor open, and Claude can play, measure and screenshot your running game.
 
 **Real 3D models, from the sidebar itself:** Settings > Blender takes the address and token of Blender Copilot's MCP bridge; then the sidebar's own agent makes props, characters and animation in Blender (`blender_tools`, `blender_call`, skill `godot-blender-assets`) and the `.glb` files land in `res://assets/blender/`. It is off by default.
 
