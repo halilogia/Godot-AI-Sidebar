@@ -17,6 +17,8 @@ const BLENDER_SIDE := [
 const NOT_TOOLS := [
 	"changed_files", "expected_scene_path", "file_path", "scene_path", "scene_file", "is_inconclusive",
 	"class_name", "get_node", "ext_resource", "sub_resource", "node_path",
+	"rotation_degrees", "add_track", "track_set_path", "track_insert_key", "play_backwards", "speed_scale", "loop_mode",
+	"source_color", "material_override", "subdivide_width", "subdivide_depth", "next_pass", "hint_range", "render_mode",
 ]
 
 static func run() -> Dictionary:

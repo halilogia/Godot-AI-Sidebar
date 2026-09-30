@@ -12,8 +12,8 @@
     "unsafe_call_argument": 1
   },
   "core/agent/agent_runner.gd": {
-    "untyped_declaration": 99,
-    "unsafe_method_access": 32,
+    "untyped_declaration": 94,
+    "unsafe_method_access": 29,
     "unsafe_call_argument": 83,
     "unsafe_cast": 1
   },
@@ -99,7 +99,7 @@
     "unsafe_call_argument": 9
   },
   "core/runtime/debugger_plugin.gd": {
-    "untyped_declaration": 17,
+    "untyped_declaration": 15,
     "unsafe_call_argument": 5,
     "unsafe_cast": 2
   },
@@ -161,9 +161,9 @@
     "unsafe_cast": 1
   },
   "core/tools/primitive/script_tools.gd": {
-    "untyped_declaration": 94,
-    "unsafe_method_access": 20,
-    "unsafe_call_argument": 86,
+    "untyped_declaration": 83,
+    "unsafe_method_access": 14,
+    "unsafe_call_argument": 83,
     "unsafe_cast": 6
   },
   "core/tools/primitive/ui_telemetry_tools.gd": {
@@ -173,9 +173,9 @@
     "unsafe_cast": 4
   },
   "core/tools/tool_manager.gd": {
-    "untyped_declaration": 79,
-    "unsafe_method_access": 18,
-    "unsafe_call_argument": 39
+    "untyped_declaration": 69,
+    "unsafe_method_access": 12,
+    "unsafe_call_argument": 36
   },
   "core/types/change_set.gd": {
     "untyped_declaration": 39,
