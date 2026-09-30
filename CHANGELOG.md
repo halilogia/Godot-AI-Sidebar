@@ -46,6 +46,7 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 * **Soru politikası:** Ajan yalnız eksik bilgi sonucu ciddi değiştiriyorsa, varsayım güvenli değilse ve yanlış seçim pahalıysa soruyor; sabit bir soru sınırı yok. Yalnız arada hiç iş yapmadan üst üste üçüncü kez soru sorarsa engelleniyor ("varsayımını söyle ve devam et"). Tam Otomatik modda da gerekirse soru sorabiliyor.
 
 ### Düzeltmeler (yayınlanmadı)
+* **`set_runtime_property` vektörü metin olarak kabul ediyor:** `"(776, 176)"`, `"Vector2(776, 176)"`, `[776, 176]`, `{x, y}` ve renk için `"1, 0.5, 0.25"` çalışır; `position.x` bileşenine `"776"` metni de verilebilir. Önce yalnız gerçek sayı kabul ediliyordu, tile-cave demosunda model aracın kendi açıklamasına uyup yedi denemeyi boşa harcadı (`tests/test_ui_audit.gd` S1b).
 * **Derleme hatası gerçek satırı söylüyor:** `write_files` ve `create_or_update_script` bir betiği derleyemeyince modele yalnız "Derleme kodu: 43" dönüyordu; model 43'ü satır numarası sanıp uzun uzun satır sayıyordu. Artık gerçek satır ve mesaj dönüyor (ör. `line 4: Cannot assign a value of type String…`).
 * **Plan aracı yalnız istenince:** Model normal isteklerde plan aracını görmüyor; plan yalnız `/plan` ya da planlama açıkken.
 * Düşünce kartındaki kısaltma notu anlaşılır ve iki dilli ("düşünce çok uzun, burada kısaltıldı; hata değil").

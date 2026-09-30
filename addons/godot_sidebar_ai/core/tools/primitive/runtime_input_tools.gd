@@ -70,7 +70,7 @@ static func get_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": SET_PROP_TOOL,
-			"description": "Sets a property or script variable on a node in the RUNNING game (this play session only, project files stay unchanged) and returns the old and new value. Use it to test key states directly instead of playing for minutes: set score to 99 and check the win screen, set health to 0 and check game over, teleport the player next to a goal. Then verify the reaction with wait_for_runtime / inspect_runtime_node / a screenshot. The result proves how the game reacts to that state, NOT that a player can reach it: still play the normal path at least once. Numbers and booleans may be given as text; single components like position.x work.",
+			"description": "Sets a property or script variable on a node in the RUNNING game (this play session only, project files stay unchanged) and returns the old and new value. Use it to test key states directly instead of playing for minutes: set score to 99 and check the win screen, set health to 0 and check game over, teleport the player next to a goal. Then verify the reaction with wait_for_runtime / inspect_runtime_node / a screenshot. The result proves how the game reacts to that state, NOT that a player can reach it: still play the normal path at least once. Numbers and booleans may be given as text; vectors and colors as \"(776, 176)\", \"Vector2(776, 176)\", [776, 176] or {x, y}; single components like position.x work (value \"776\" is fine).",
 			"parameters": {
 				"type": "object",
 				"properties": {

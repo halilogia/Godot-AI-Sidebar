@@ -25,8 +25,9 @@ static func set_value(root: Node, spec: Dictionary) -> Dictionary:
 	if not head in node:
 		return _fail("PROPERTY_NOT_FOUND", "%s has no property or script variable '%s' (inspect_runtime_node lists them)." % [path, head])
 	var old: Variant = node.get(head)
-	var updated: Variant = AISidebarRuntimeProbe.coerce_expected(old, spec["value"])
-	if parts.size() == 2 and (old is Vector2 or old is Vector3 or old is Color):
+	var is_component := parts.size() == 2 and (old is Vector2 or old is Vector3 or old is Color)
+	var updated: Variant = AISidebarRuntimeProbe.coerce_expected(0.0 if is_component else old, spec["value"])
+	if is_component:
 		var comp: String = parts[1]
 		if not comp in COMPONENTS or not AISidebarRuntimeProbe._is_number(updated):
 			return _fail("INVALID_ARGUMENT", "Cannot set component '%s' of %s to that value." % [comp, head])

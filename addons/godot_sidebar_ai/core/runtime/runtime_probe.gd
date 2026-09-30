@@ -137,7 +137,61 @@ static func coerce_expected(actual: Variant, expected: Variant) -> Variant:
 			return s.strip_edges().to_float()
 		if actual is bool and s.strip_edges().to_lower() in ["true", "false"]:
 			return s.strip_edges().to_lower() == "true"
+	if actual is Vector2 or actual is Vector3 or actual is Vector2i or actual is Vector3i or actual is Color:
+		var numbers := vector_numbers(expected)
+		if not numbers.is_empty():
+			return _vector_like(actual, numbers)
 	return expected
+
+## Modeller vektörü "(776, 176)", "Vector2(776, 176)", "776, 176", [776, 176] ya da {"x": 776, "y": 176} diye
+## yollar: sayıları çıkarır (çıkarılamazsa boş dizi).
+static func vector_numbers(value: Variant) -> Array:
+	var out: Array = []
+	if value is Array:
+		for item: Variant in value:
+			if _is_number(item):
+				out.append(_num(item))
+			elif item is String:
+				var piece: String = item
+				if not piece.strip_edges().is_valid_float():
+					return []
+				out.append(piece.strip_edges().to_float())
+			else:
+				return []
+		return out
+	if value is Dictionary:
+		var d: Dictionary = value
+		for key: String in ["x", "y", "z"] if d.has("x") else ["r", "g", "b", "a"]:
+			if d.has(key):
+				var n := vector_numbers([d[key]])
+				if n.is_empty():
+					return []
+				out.append(n[0])
+		return out
+	if value is String:
+		var raw: String = value
+		var text: String = raw.strip_edges()
+		var open := text.find("(")
+		if open >= 0:
+			text = text.substr(open + 1)
+		text = text.replace(")", "").replace("[", "").replace("]", "").replace(";", ",")
+		var pieces: PackedStringArray = text.replace(",", " ").split(" ", false)
+		return vector_numbers(Array(pieces)) if pieces.size() >= 2 else []
+	return []
+
+static func _vector_like(actual: Variant, n: Array) -> Variant:
+	var f: Array = n
+	if actual is Vector2 and f.size() == 2:
+		return Vector2(_num(f[0]), _num(f[1]))
+	if actual is Vector3 and f.size() == 3:
+		return Vector3(_num(f[0]), _num(f[1]), _num(f[2]))
+	if actual is Vector2i and f.size() == 2:
+		return Vector2i(roundi(_num(f[0])), roundi(_num(f[1])))
+	if actual is Vector3i and f.size() == 3:
+		return Vector3i(roundi(_num(f[0])), roundi(_num(f[1])), roundi(_num(f[2])))
+	if actual is Color and (f.size() == 3 or f.size() == 4):
+		return Color(_num(f[0]), _num(f[1]), _num(f[2]), _num(f[3]) if f.size() == 4 else 1.0)
+	return null
 
 static func _equal(a: Variant, b: Variant) -> bool:
 	if _is_number(a) and _is_number(b):
