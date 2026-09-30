@@ -41,6 +41,8 @@
 * 🌐 **Gerçek 9Router, OpenAI & Antigravity CLI Uyumluluğu:** 9Router (`127.0.0.1:20128`), OpenRouter, yerel Ollama, LM Studio ve resmi Google Antigravity CLI ile doğrudan oturum desteği.
 * 🎯 **Hedef Modu (`/goal`):** Hedefi verirsiniz; ajan hedef kanıtla tamamlanana kadar tur tur çalışır ve sonucu bildirir.
 * 📦 **Skill'ler ve Kurallar:** Hazır Godot tarifleri (`SKILL.md`, `/skill`) ve `AGENTS.md`'den gelen kalıcı talimatlar (`/learn` ile eklenir).
+* 🧊 **Blender köprüsü (isteğe bağlı):** Ayarlar → Blender'dan Blender Copilot'a bağlanınca sidebar'ın ajanı 3B modelleri Blender'da yapıp `.glb` olarak projeye getirir (varsayılan kapalı).
+* 🎬 **11 yerleşik skill:** animasyon, shader, karo seviyeleri, Blender varlıkları, görsel cila, sahne, hata ayıklama ve daha fazlası.
 * 🔌 **Dış Ajan Köprüsü (MCP):** Claude Code, Cursor, Codex gibi ajanlar editörü kullanabilir: sahneye bakma, oyunu çalıştırma, hataları okuma, ekran görüntüsü, girdi gönderme.
 * ✅ **`validate_project`:** Bütün script'leri gerçek proje bağlamında derler; her hatayı dosya, satır ve mesajla verir.
 * 🎮 **`send_input`:** Çalışan oyunda tuşa basar, input action tetikler, düğmelere tıklar.

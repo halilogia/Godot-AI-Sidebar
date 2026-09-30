@@ -166,7 +166,7 @@ Skill, yeniden kullanılabilir bir talimat paketidir ([Agent Skills](https://age
 |---|---|---|
 | Proje | oyun projesinde `.agents/skills/`, `.claude/skills/` | Kapalı (depodan geldiği için siz açarsınız) |
 | Kullanıcı | `~/.agents/skills/` | Açık |
-| Yerleşik | eklentiyle gelir (Godot geliştirme, sahne, hata ayıklama, runtime doğrulama, refactor, headless CI) | Açık |
+| Yerleşik | eklentiyle gelir (Godot geliştirme, sahne, hata ayıklama, runtime doğrulama, refactor, headless CI, görsel cila, animasyon, shader, karo seviyeleri, Blender varlıkları) | Açık |
 
 - **Yönetim:** Ayarlar → **Skill'ler** ya da başlıktaki **Skills** düğmesi: aç / kapa, SKILL.md'yi aç, yeni skill iskeleti oluştur, başka bir klasörden içe aktar, sil (yerleşikler silinmez).
 - **Elle kullanmak:** `/skill ad istek` ya da mesajda `@skill:ad`.
@@ -181,6 +181,16 @@ Claude Code, Cursor, Codex gibi ajanlar bu editörü MCP üzerinden kullanabilir
 
 Port aynı sayfadan değiştirilebilir. Kapatmak için **Kapat** ya da `/mcp off`.
 
+### Blender'dan 3B modeller (isteğe bağlı, varsayılan kapalı)
+
+[Blender Copilot](https://github.com/halilogia/Blender-Copilot) (Blender 5.2) varsa, sidebar'ın kendi ajanı 3B modelleri, propları, karakterleri ve animasyonları şekilleri koddan kurmak yerine Blender'da yapıp `res://assets/blender/` altına `.glb` olarak getirebilir.
+
+1. Blender'da: 3B Görünüm → N paneli → Blender - Copilot → **MCP bridge** → **Start MCP bridge**.
+2. Godot'da: **Ayarlar → Blender**: Blender'da görünen adresi ve token'ı yapıştırın, **Yapay zekâ Blender'ı kullansın** kutusunu işaretleyin, **Bağlantıyı dene**'ye basın.
+3. Bir model isteyin ("ağaçlı düşük poligonlu bir ev"). Ajan Blender'ın araçlarını listeler, çalıştırır ve sahnede kullanacağı `godot_path`'i alır.
+
+Anahtar kapalıyken ajan hiçbir Blender aracını görmez. Basit şekiller (kutu, silindir) koddan da aynı iyilikte olur; ev, ağaç, araba, insan ve robot için Blender değer. Blender kapalıysa ajan sessizce başka yola sapmaz, size söyler. Shader düğümü malzemeleri glTF'de kaybolur: ajan önce dokuya pişirir (`bake_material`) ya da düz renk kullanır.
+
 ## 13. Ayarlar
 
 | Sayfa | İçerik |
@@ -191,6 +201,7 @@ Port aynı sayfadan değiştirilebilir. Kapatmak için **Kapat** ya da `/mcp off
 | Kurallar | Token kullanımı, yerleşik kurallar (sistem istemi), global ve proje kuralları, kural ekleme |
 | Skill'ler | Skill listesi ve yönetimi |
 | Dış Ajan (MCP) | Köprüyü aç / kapa, port, bağlantı komutu |
+| Blender | Yapay zekâ Blender Copilot'u kullansın: adres, token, bağlantıyı dene |
 
 **Bağlam göstergesi:** giriş kutusunun üstündeki ince çubuk, bağlamın ne kadar dolduğunu (`kullanılan / pencere`) ve oturumun token toplamlarını gösterir. Sayılar sağlayıcının kendi bildirdiği değerlerdir, tahmin değildir; sağlayıcı bildirmezse gösterge görünmez. Bağlam %80'i geçince eski adımlar özetlenir.
 

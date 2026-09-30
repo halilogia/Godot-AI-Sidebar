@@ -9,6 +9,12 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+---
+
+## [3.1.0] - 2026-10-01 (Blender köprüsü, yeni skill'ler, çalışma zamanı düzeltmeleri)
+
+Bu sürüm [3.0.1]'deki düzeltmeleri de içerir (3.0.1 ayrıca etiketlenmedi). Özet: Ayarlar → Blender (isteğe bağlı), `godot-animation` / `godot-shaders` / `godot-tilemap-levels` / `godot-blender-assets` skill'leri, `set_runtime_property` düzeltmesi, gerçek editörde duman testi 22/22, `verify.ps1` yeşil (841 doğrulama).
+
 ### Demo benchmark bulguları (2026-09-28/29): ajan güvenilirliği ve gözlem araçları
 * **Yazma kurtarma:** Yalnız sözdizimi hatası yazımı engeller; derlenmeyen kod (tanımsız sınıf, bağımlılık sırası) diske yazılır ve `WRITTEN_WITH_ERRORS` olarak raporlanır. `write_files` dosya dosya uygulanır (tek bozuk dosya bütün toplu yazımı silmez). Her yazma sonucu `operation_status`, `disk_state`, `verification_status`, `retry_strategy` taşır; reddedilen dosyayı yamamaya kalkan ajana nedeni söylenir; derlenmeyen dosya kalmışken görev bitmez.
 * **`audit_runtime_ui`:** Çalışan oyunun metin düğümlerini ölçer: ekran dışı, kutudan geniş, üst üste binen ve arka planda düşük WCAG kontrastlı (<3:1) metin. Ajanın gözle yakalayamadığı arayüz hataları (demolarda görülen kontrastsız etiket, örtüşen kart) düğüm adıyla listelenir. Bitirme kuralına bağlı: ajan bitirmeden önce bir kez çağırır.

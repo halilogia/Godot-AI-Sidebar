@@ -166,7 +166,7 @@ A skill is a reusable instruction package (the [Agent Skills](https://agentskill
 |---|---|---|
 | Project | `.agents/skills/`, `.claude/skills/` in the game project | Off (it comes from the repository, so you turn it on) |
 | User | `~/.agents/skills/` | On |
-| Built-in | ships with the plugin (Godot feature development, scenes, debugging, runtime verification, refactoring, headless CI) | On |
+| Built-in | ships with the plugin (Godot feature development, scenes, debugging, runtime verification, refactoring, headless CI, visual polish, animation, shaders, tile levels, Blender assets) | On |
 
 - **Manage:** Settings → **Skills** or the **Skills** button in the header: enable / disable, open SKILL.md, create a new skill skeleton, import from another folder, delete (built-ins cannot be deleted).
 - **Use by hand:** `/skill name request` or `@skill:name` in a message.
@@ -181,6 +181,16 @@ Agents such as Claude Code, Cursor or Codex can use this editor over MCP: read t
 
 The port can be changed on the same page. To close the bridge: **Turn off** or `/mcp off`.
 
+### 3D models from Blender (optional, off by default)
+
+If you have [Blender Copilot](https://github.com/halilogia/Blender-Copilot) (Blender 5.2), the sidebar's own agent can make 3D models, props, characters and animation in Blender instead of building shapes from code, and bring them in as `.glb` files under `res://assets/blender/`.
+
+1. In Blender: 3D Viewport → N panel → Blender - Copilot → **MCP bridge** → **Start MCP bridge**.
+2. In Godot: **Settings → Blender**: paste the address and the token shown in Blender, tick **Let the AI use Blender**, press **Test connection**.
+3. Ask for a model ("a low-poly house with trees"). The agent lists Blender's tools, runs them and gets back a `godot_path` to use in the scene.
+
+With the switch off the agent does not see any Blender tool. Simple shapes (boxes, cylinders) are just as good from code; Blender is worth it for houses, trees, cars, people and robots. If Blender is closed, the agent tells you instead of falling back silently. Shader-node materials do not survive glTF: the agent bakes them into a texture first (`bake_material`) or uses flat colours.
+
 ## 13. Settings
 
 | Page | Contents |
@@ -191,6 +201,7 @@ The port can be changed on the same page. To close the bridge: **Turn off** or `
 | Rules | Token usage, built-in rules (system prompt), global and project rules, add a rule |
 | Skills | Skill list and management |
 | External Agent (MCP) | Turn the bridge on / off, port, connection command |
+| Blender | Let the AI use Blender Copilot: address, token, test connection |
 
 **Context meter:** the thin bar above the input box shows how full the context is (`used / window`) and the session's token totals. The numbers are what the provider reports, not estimates; if the provider reports nothing the meter stays hidden. Past 80%, older steps are summarized.
 

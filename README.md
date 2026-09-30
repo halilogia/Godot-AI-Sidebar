@@ -7,7 +7,7 @@ scene tree and selection, asks before guessing, edits scripts surgically, record
 every change in Godot's own undo history, and can inspect the game *while it is
 running*.
 
-[![Version](https://img.shields.io/badge/version-3.0.1-478cbf)](#)
+[![Version](https://img.shields.io/badge/version-3.1.0-478cbf)](#)
 [![Godot](https://img.shields.io/badge/Godot-4.7%2B-478cbf)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-headless%20typecheck%20%2B%20unit-brightgreen)](#testing)
@@ -515,13 +515,14 @@ the in-memory provider tests prove internal logic only.
 
 ## Roadmap
 
-Currently shipped (v3.0.0): core architecture, undo/redo mutations, surgical
+Currently shipped (v3.1.0): core architecture, undo/redo mutations, surgical
 editing, streaming SSE, `@mention`, chat persistence, clarification, UI
 telemetry, runtime inspection and input, the MCP bridge for external agents,
-skills and rules, goal mode, `validate_project`, bug reports and the context
-meter.
+skills and rules (11 built-in skills: animation, shaders, tile levels, Blender
+assets and more), goal mode, `validate_project`, bug reports, the context
+meter, and the optional Blender bridge (Settings > Blender) for 3D models.
 
-Next: final verification of v3 in the real editor and a benchmark run, then
+Next: the last real-editor checks of v3 (`WRITER_BUSY`, connection loss), then
 sub-agents.
 
 See [**ROADMAP.md**](ROADMAP.md) for the full phase-by-phase breakdown, and
