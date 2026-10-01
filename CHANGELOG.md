@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+* **Sistem istemi sadeleştirildi (2026-10-01):** rol cümlesi ("kıdemli ... mimarısın") ve modelin zaten bildiği genel "Modülerlik & SRP" maddesi çıkarıldı; yalnız sistemimize özgü kurallar kaldı (önce varsay, dosya-öncelikli, skill'ler, kanıtla doğrulama, bitirme disiplini). İstem 4,6 bin karakterden 4,3 bine indi. Gemini ile gerileme koşusu temiz (8 adım, hatasız, oyun çalışıyor). `AGENTS.md`'deki tek devasa köprü maddesi kısa alt maddelere bölündü (içerik aynı).
+
 ---
 
 ## [3.1.0] - 2026-10-01 (Blender köprüsü, yeni skill'ler, çalışma zamanı düzeltmeleri)
