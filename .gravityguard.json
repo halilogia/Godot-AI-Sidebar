@@ -1,0 +1,6 @@
+{
+  "governance": {
+    "enforceDocObligations": true,
+    "docGovernedDirs": ["addons"]
+  }
+}

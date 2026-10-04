@@ -4,6 +4,10 @@ Bu dosya yalnız Claude Code içindir (eklentiyi geliştiren ajan). Godot AI Sid
 
 Genel proje kuralları için `AGENTS.md`'yi de oku.
 
+## Belge kapısı (commit)
+
+`addons/` altındaki bir kod dosyası değişiyorsa `CHANGELOG.md` aynı commit'te staged olmalı; yoksa `.git/hooks/pre-commit` commit'i reddeder (GravityGuard'ın `tools/verify_doc_governance.py` betiği; yan klasördeki `GravityGuard` ya da `$GRAVITYGUARD_HOME` kullanılır, kapsam `.gravityguard.json`'dadır). Reddedilince `[Unreleased]`'e gerçek girdiyi yaz, `--no-verify` kullanma. Kapı yalnız CHANGELOG dosyasının değiştiğine bakar, içeriğin doğruluğuna bakmaz; o senin işin.
+
 ## Arayüz grafik kalitesi standardı
 
 Eklentinin arayüzünde (`addons/godot_sidebar_ai/ui/`) yaptığın her değişiklikte uy.
