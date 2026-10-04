@@ -1,6 +1,12 @@
 {
   "governance": {
     "enforceDocObligations": true,
-    "docGovernedDirs": ["addons"]
+    "docGovernedDirs": ["addons"],
+    "docObligationPatterns": [
+      "addons/godot_sidebar_ai/skills/**/*.md",
+      "addons/godot_sidebar_ai/commands/**/*.md",
+      "addons/godot_sidebar_ai/.claude-plugin/*.json",
+      ".claude-plugin/*.json"
+    ]
   }
 }
