@@ -43,3 +43,4 @@ archives/
 examples/
 # Arayüz görüntü arşivi (tools/ui_snapshot.ps1)
 ui_snapshots/
+.freebuff/

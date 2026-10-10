@@ -570,8 +570,8 @@ godot --path . -s res://tools/readme_shots.gd -- docs/media tr
 
 The full development workflow (verification steps, warning ratchet, test isolation, live test, CI) is in [**docs/DEVELOPMENT.md**](docs/DEVELOPMENT.md).
 
-If you are an AI agent working on this repository, read
-[**AGENTS.md**](AGENTS.md) first — it contains the architecture rules and the
+If you are an AI agent working on this repository, activate
+[**.agent/skills/godot-sidebar-workflow/SKILL.md**](.agent/skills/godot-sidebar-workflow/SKILL.md) first — it contains the architecture rules and the
 project's evidence standards.
 
 ---
