@@ -165,3 +165,79 @@ func _restore_override() -> void:
 	else:
 		DirAccess.remove_absolute(_override_path)
 	_override_path = ""
+
+
+# ------------------------------------------------------------- sürüm kancası (Ayarlar → Devlog) ----
+
+const HOOK_MARKER := "sidebar-devlog-hook"
+const RELEASE_SCRIPT := "res://addons/godot_sidebar_ai/core/capture/game_clip.ps1"
+
+## Projenin git kancaları klasörü ("" = proje bir git deposu değil). Worktree'de `.git` bir dosyadır ("gitdir: ...").
+static func git_hooks_dir(proj_dir: String) -> String:
+	var dot_git := proj_dir.trim_suffix("/").path_join(".git")
+	if DirAccess.dir_exists_absolute(dot_git):
+		return dot_git.path_join("hooks")
+	if FileAccess.file_exists(dot_git):
+		var line := FileAccess.get_file_as_string(dot_git).strip_edges()
+		if line.begins_with("gitdir:"):
+			var gitdir := line.trim_prefix("gitdir:").strip_edges()
+			if gitdir.contains("/worktrees/"):
+				gitdir = gitdir.get_base_dir().get_base_dir()   # ortak git dizini
+			return gitdir.path_join("hooks")
+	return ""
+
+## `reference-transaction` kancası: refs/tags/v* yazılınca devlog klibi ayrı pencerede başlar (git'te etiket sonrası kancası yok).
+static func release_hook_text(proj: String, script: String, godot: String, log: String) -> String:
+	var lines := PackedStringArray([
+		"#!/bin/sh",
+		"# %s: refs/tags/v* yazilinca devlog klibini baslatir (Godot AI Sidebar > Ayarlar > Devlog)" % HOOK_MARKER,
+		"[ \"$1\" = \"committed\" ] || exit 0",
+		"[ \"${DEVLOG_AUTO:-1}\" = \"0\" ] && exit 0",
+		"[ -f \"%s/tools/devlog/clips.json\" ] || exit 0" % proj,
+		"while read old new ref; do",
+		"  case \"$ref\" in",
+		"    refs/tags/v*)",
+		"      case \"$new\" in 0000000000000000000000000000000000000000) continue ;; esac",
+		"      tag=\"${ref#refs/tags/}\"",
+		"      echo \"$(date '+%%F %%T') START $tag\" >> \"%s\"" % log,
+		"      ( nohup powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%s\" -Project \"%s\" -Release \"$tag\" -GodotPath \"%s\" >> \"%s\" 2>&1 & ) >/dev/null 2>&1" % [script, proj, godot, log],
+		"      ;;",
+		"  esac",
+		"done",
+		"exit 0",
+		""])
+	return "\n".join(lines)
+
+static func hook_installed(proj_dir: String) -> bool:
+	var dir := git_hooks_dir(proj_dir)
+	if dir == "":
+		return false
+	var path := dir.path_join("reference-transaction")
+	return FileAccess.file_exists(path) and FileAccess.get_file_as_string(path).contains(HOOK_MARKER)
+
+## "" = kuruldu; "no_git" = proje git deposu değil; "foreign_hook" = aynı adlı başka bir kanca var (üzerine yazılmaz).
+static func install_release_hook(proj_dir: String, godot_path: String) -> String:
+	var dir := git_hooks_dir(proj_dir)
+	if dir == "":
+		return "no_git"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir.path_join("reference-transaction")
+	if FileAccess.file_exists(path) and not FileAccess.get_file_as_string(path).contains(HOOK_MARKER):
+		return "foreign_hook"
+	var proj := proj_dir.trim_suffix("/")
+	var script := ProjectSettings.globalize_path(RELEASE_SCRIPT)
+	var log := dir.get_base_dir().path_join("devlog_hook.log")
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return "write_failed"
+	f.store_string(release_hook_text(proj, script, godot_path, log))
+	f.close()
+	return ""
+
+static func remove_release_hook(proj_dir: String) -> void:
+	if hook_installed(proj_dir):
+		DirAccess.remove_absolute(git_hooks_dir(proj_dir).path_join("reference-transaction"))
+
+## Projede klip manifesti (tools/devlog/clips.json) var mı: yoksa kanca çalışmaz.
+static func has_manifest(proj_dir: String) -> bool:
+	return FileAccess.file_exists(proj_dir.trim_suffix("/").path_join("tools/devlog/clips.json"))

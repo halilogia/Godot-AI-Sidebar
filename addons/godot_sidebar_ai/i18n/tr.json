@@ -534,5 +534,20 @@
   "capture_done_shot": "Ekran görüntüsü kaydedildi: {path}",
   "capture_done_clip": "Klip kaydedildi: {path}",
   "capture_done_clip_avi": "Klip kaydedildi ama ffmpeg bulunamadı, AVI olarak kaldı: {path} (MP4 için ffmpeg kur).",
-  "capture_failed": "Çekim başarısız ({detail}). Oyunun gerçek bir pencereye (headless değil) ve ana sahneye ihtiyacı var."
+  "capture_failed": "Çekim başarısız ({detail}). Oyunun gerçek bir pencereye (headless değil) ve ana sahneye ihtiyacı var.",
+  "tab_devlog": "Devlog",
+  "devlog_settings_title": "Otomatik devlog klibi",
+  "devlog_settings_hint": "Bir sürüm etiketi attığında (git tag v0.5) oyunun devlog klibi kendi penceresinde otomatik çekilir. Varsayılan kapalı.",
+  "devlog_settings_enable": "Her sürüm etiketinde devlog klibini otomatik çek",
+  "devlog_settings_badge_on": "Açık",
+  "devlog_settings_badge_off": "Kapalı",
+  "devlog_settings_installed": "Açıldı: sürüm etiketi attığında bir git kancası yeni özelliklerin kliplerini çeker.",
+  "devlog_settings_installed_no_manifest": "Açıldı ama bu projede henüz tools/devlog/clips.json yok; manifest ekleyene kadar bir şey çekilmez.",
+  "devlog_settings_removed": "Kapatıldı: git kancası kaldırıldı.",
+  "devlog_settings_err_no_git": "Bu proje bir git deposu değil, tepki verilecek etiket yok.",
+  "devlog_settings_err_foreign": "Depoda başka bir reference-transaction kancası var; ona dokunulmadı.",
+  "devlog_settings_err_write": "Kanca dosyası yazılamadı.",
+  "devlog_settings_how_title": "Nasıl çalışır",
+  "devlog_settings_how": "Görünür her özellik tools/devlog/clips.json'a bir klip girdisi (kamera adımları) alır. Sürüm etiketi \"unreleased\" olan bütün girdileri çeker, tek 1080x1920 MP4'te birleştirir ve girdileri sürüm adıyla işaretler.",
+  "devlog_settings_where": "Çıktı: <proje>/../../Devlog/<proje adı>/. Günlük: .git/devlog_hook.log. Tek bir komutta kancayı durdurmak için DEVLOG_AUTO=0."
 }

@@ -42,6 +42,28 @@ static func run() -> Dictionary:
 	for icon in ["camera", "video"]:
 		check.call(FileAccess.file_exists("res://addons/godot_sidebar_ai/assets/icons/%s.svg" % icon), "icon %s exists" % icon)
 
+	# Ayarlar → Devlog kancası: metin, kurulum, kaldırma, yabancı kancaya dokunmama
+	var hook := GameCapture.release_hook_text("C:/p", "C:/a/game_clip.ps1", "C:/g/godot.exe", "C:/p/.git/devlog_hook.log")
+	check.call(hook.begins_with("#!/bin/sh") and hook.contains(GameCapture.HOOK_MARKER) and hook.contains("refs/tags/v*"), "hook reacts to release tags and carries its marker")
+	check.call(hook.contains("-Release \"$tag\"") and hook.contains("-GodotPath \"C:/g/godot.exe\"") and hook.contains("C:/a/game_clip.ps1"), "hook starts the clip script with the tag and the editor's godot")
+	check.call(hook.contains("DEVLOG_AUTO") and hook.contains("tools/devlog/clips.json"), "hook honours DEVLOG_AUTO and needs the manifest")
+	var tmp := OS.get_temp_dir().path_join("sidebar_hook_test_%d" % Time.get_ticks_usec())
+	DirAccess.make_dir_recursive_absolute(tmp.path_join(".git/hooks"))
+	check.call(not GameCapture.hook_installed(tmp), "no hook before install")
+	check.call(GameCapture.install_release_hook(tmp, "C:/g/godot.exe") == "", "install succeeds in a git repo")
+	check.call(GameCapture.hook_installed(tmp), "hook is detected after install")
+	GameCapture.remove_release_hook(tmp)
+	check.call(not GameCapture.hook_installed(tmp), "remove deletes the hook")
+	var foreign := FileAccess.open(tmp.path_join(".git/hooks/reference-transaction"), FileAccess.WRITE)
+	foreign.store_string("#!/bin/sh\necho other\n")
+	foreign.close()
+	check.call(GameCapture.install_release_hook(tmp, "C:/g/godot.exe") == "foreign_hook", "a foreign hook is never overwritten")
+	GameCapture.remove_release_hook(tmp)
+	check.call(FileAccess.file_exists(tmp.path_join(".git/hooks/reference-transaction")), "remove leaves a foreign hook alone")
+	DirAccess.remove_absolute(tmp.path_join(".git/hooks/reference-transaction"))
+	check.call(GameCapture.install_release_hook(tmp.path_join("nogit"), "x") == "no_git", "a folder without .git reports no_git")
+	check.call(AISidebarI18n.translate("tr", "devlog_settings_title") != "devlog_settings_title" and AISidebarI18n.translate("en", "tab_devlog") != "tab_devlog", "devlog settings texts exist")
+
 	var svc := GameCapture.new()
 	check.call(not svc.is_busy(), "a fresh service is idle")
 	check.call(not svc.start("bogus"), "an unknown kind does not start")

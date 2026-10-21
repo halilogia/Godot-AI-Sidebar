@@ -534,5 +534,20 @@
   "capture_done_shot": "Screenshot saved: {path}",
   "capture_done_clip": "Clip saved: {path}",
   "capture_done_clip_avi": "Clip recorded but ffmpeg was not found, so it stays an AVI: {path} (install ffmpeg for MP4).",
-  "capture_failed": "Capture failed ({detail}). The game needs a real window (no headless) and a main scene."
+  "capture_failed": "Capture failed ({detail}). The game needs a real window (no headless) and a main scene.",
+  "tab_devlog": "Devlog",
+  "devlog_settings_title": "Auto devlog clip",
+  "devlog_settings_hint": "When you create a release tag (git tag v0.5), the game's devlog clip is recorded automatically in its own window. Off by default.",
+  "devlog_settings_enable": "Record the devlog clip automatically on every release tag",
+  "devlog_settings_badge_on": "On",
+  "devlog_settings_badge_off": "Off",
+  "devlog_settings_installed": "Turned on: a git hook records the clips of the new features when you tag a release.",
+  "devlog_settings_installed_no_manifest": "Turned on, but this project has no tools/devlog/clips.json yet, so nothing will be recorded until you add one.",
+  "devlog_settings_removed": "Turned off: the git hook was removed.",
+  "devlog_settings_err_no_git": "This project is not a git repository, so there is no tag to react to.",
+  "devlog_settings_err_foreign": "The repository already has a different reference-transaction hook; it was left untouched.",
+  "devlog_settings_err_write": "The hook file could not be written.",
+  "devlog_settings_how_title": "How it works",
+  "devlog_settings_how": "Every visible feature gets a clip entry in tools/devlog/clips.json (camera steps). A release tag records all entries marked \"unreleased\", joins them into one 1080x1920 MP4 and marks them with the release name.",
+  "devlog_settings_where": "Output: <project>/../../Devlog/<project name>/. The log is .git/devlog_hook.log. Set DEVLOG_AUTO=0 to pause the hook for one command."
 }
