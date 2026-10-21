@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+* **Devlog otomatik kancası (2026-10-21):** `tools/install_release_hook.ps1 -Project <proje>` projenin git deposuna `reference-transaction` kancası kurar: `git tag v0.4` gibi bir sürüm etiketi yazılınca `game_clip.ps1 -Release <etiket>` ayrı pencerede otomatik başlar (her commit'te değil). `DEVLOG_AUTO=0` kapatır, `DEVLOG_DRY_RUN=1` komutu yalnız `.git\devlog_hook.log`'a yazar; başka bir kanca varsa üzerine yazmaz, `-Remove` kaldırır.
+
 * **Devlog sürüm modu (2026-10-21):** `tools/game_clip.ps1 -Release <etiket>` projenin `tools\devlog\clips.json` manifestindeki `"added": "unreleased"` klipleri (her yeni özellik için bir girdi) tek tek çeker, `devlog_<etiket>.mp4` olarak birleştirir, `devlog_<etiket>.md`'ye "bu sürümde yeni" listesini yazar ve manifestte o klipleri sürüme işaretler; `-Only a,b` ile yalnız adı geçenler çekilir (deneme, manifest değişmez). Devlog böylece hep o sürümün yeni özelliklerini gösterir.
 
 * **Evrensel oyun videosu aracı (2026-10-21):** `tools/game_clip.ps1` herhangi bir Godot projesinin oyun videosunu (devlog / Instagram / Shorts) çeker: Godot film modu (`--write-movie`) ile AVI yazar, ffmpeg ile H.264 MP4'e çevirir (`game_shot.ps1`'in video karşılığı). Koreografi projede `tools/devlog_clip.gd` varsa onunla (`-Clip <ad>`), yoksa `tools/game_clip.gd` yedek betiğiyle (ana sahne `-Seconds` saniye) yapılır; çözünürlük varsayılan 1080x1920 dikey. Film modu çıktı boyutunu pencereden değil projenin temel çözünürlüğünden aldığı için araç geçici bir `override.cfg` yazar ve iş bitince geri alır. Çıktı repo dışına, `Desktop\GitHub\Devlog\<proje>\` altına gider. GrandStrategy3D'de 540x960 deneme klibi doğrulandı.
