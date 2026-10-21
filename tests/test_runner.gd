@@ -7,6 +7,7 @@ const TestChangeSet = preload("res://tests/test_change_set.gd")
 const TestSSEParser = preload("res://tests/test_sse_parser.gd")
 const TestToolManager = preload("res://tests/test_tool_manager.gd")
 const TestAgentContext = preload("res://tests/test_agent_context.gd")
+const TestGameCapture = preload("res://tests/test_game_capture.gd")
 const TestAgentRunnerState = preload("res://tests/test_agent_runner_state.gd")
 const TestPermissionEnforcement = preload("res://tests/test_permission_enforcement.gd")
 const TestVerificationPipeline = preload("res://tests/test_verification_pipeline.gd")
@@ -192,6 +193,7 @@ func _init() -> void:
 		TestSSEParser,
 		TestToolManager,
 		TestAgentContext,
+		TestGameCapture,
 		TestAgentRunnerState,
 		TestPermissionEnforcement,
 		TestVerificationPipeline,

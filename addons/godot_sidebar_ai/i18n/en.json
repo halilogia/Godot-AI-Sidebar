@@ -523,5 +523,16 @@
   "blender_settings_badge_off": "Off",
   "blender_settings_how_title": "How to connect",
   "blender_settings_how": "1. Open Blender 5.2 with the Blender Copilot add-on.\n2. In the 3D Viewport N panel, Blender - Copilot, MCP bridge, press Start MCP bridge.\n3. Paste the address and token shown there into this page and press Test connection.",
-  "blender_settings_where": "If Blender is closed or the bridge is not started, the AI tells you; it does not fall back to building shapes from code."
+  "blender_settings_where": "If Blender is closed or the bridge is not started, the AI tells you; it does not fall back to building shapes from code.",
+  "capture_shot_short": "Shot",
+  "capture_clip_short": "Clip",
+  "capture_shot_tooltip": "Game screenshot (runs the game in its own window and saves a PNG)",
+  "capture_clip_tooltip": "Game clip (10 s vertical 1080x1920 MP4 for devlogs; uses tools/devlog_clip.gd if the project has one)",
+  "capture_busy": "A capture is already running; wait for it to finish.",
+  "capture_started_shot": "Taking a screenshot: the game opens in its own window for a moment. Output folder: {dir}",
+  "capture_started_clip": "Recording a clip: the game opens in its own window and closes by itself. Output folder: {dir}",
+  "capture_done_shot": "Screenshot saved: {path}",
+  "capture_done_clip": "Clip saved: {path}",
+  "capture_done_clip_avi": "Clip recorded but ffmpeg was not found, so it stays an AVI: {path} (install ffmpeg for MP4).",
+  "capture_failed": "Capture failed ({detail}). The game needs a real window (no headless) and a main scene."
 }

@@ -40,6 +40,8 @@ func create_dock(parent: Node) -> Dictionary:
 	# Editör dışında dock _ready'si erken döner; başlık düğmeleri (Skills, Yardım) burada kurulur.
 	if dock.skills_btn == null:
 		dock._setup_skills_button()
+	if dock.shot_btn == null:
+		dock._setup_capture_buttons()
 	dock.update_ui_language()
 	return {"dock": dock, "host": host, "runner": host.runner}
 

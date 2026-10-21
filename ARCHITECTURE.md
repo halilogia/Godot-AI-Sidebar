@@ -321,6 +321,9 @@ Claude Code / Cursor / Codex  ──MCP Streamable HTTP (POST /mcp, Bearer token
 
 **Akış:** `AgentContext.get_messages_for_api` her turda editör zemin mesajına kuralları (global → proje) ve açık skill kataloğunu ekler. Model uygun skill'i `activate_skill` ile yükler; kullanıcı `/skill ad istek` ya da mesaj içinde `@skill:ad` ile kendisi başlatabilir, `@rules` ile kuralları o istekte öne çıkarır, `/learn [--global] [kural]` ile yeni kural kaydettirir (onaylı `add_rule`). `activate_skill` sonuçları `ContextCompactor`'da özetlenmez (kalıcı yönerge). Yerleşik skill'ler: `godot-feature-development`, `godot-scene-authoring`, `godot-debug-and-repair`, `godot-runtime-verification`, `godot-refactor`, `godot-headless-ci`, `godot-blender-assets`, `godot-animation`, `godot-shaders`, `godot-tilemap-levels`.
 
+### 8. 🎬 Oyun Çekimi (`core/capture/`)
+Dock başlığındaki **Ekran** ve **Klip** düğmelerinin servisi, devlog içindir. [`game_capture.gd`](addons/godot_sidebar_ai/core/capture/game_capture.gd) (`AISidebarGameCapture`) oyunu editörden bağımsız, pencereli ayrı bir Godot sürecinde açar: ekran görüntüsü için [`capture_shot.gd`](addons/godot_sidebar_ai/core/capture/capture_shot.gd) (ana sahne + bekleme + viewport PNG), klip için Godot film modu (`--write-movie`, dikey 1080x1920, 30 fps) ve ffmpeg ile MP4; yedek betik [`capture_clip.gd`](addons/godot_sidebar_ai/core/capture/capture_clip.gd) ana sahneyi kare sayısı kadar çalıştırır, projede `tools/devlog_clip.gd` varsa kamera koreografisi odur. Film modu çıktı boyutunu pencereden değil projenin temel çözünürlüğünden aldığı için servis geçici bir `override.cfg` yazar ve işi bitince geri alır. Çıktı repo dışına, `<proje>/../../Devlog/<proje adı>/` altına gider (`tools/game_shot.ps1` / `game_clip.ps1` ile aynı yer). Tek iş aynı anda; bitince `finished` sinyali dock'ta sohbete sonuç yazısı ve dosya yöneticisi açar.
+
 ---
 
 ## 🧪 Test Mimarisi

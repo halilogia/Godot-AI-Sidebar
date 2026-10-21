@@ -523,5 +523,16 @@
   "blender_settings_badge_off": "Kapalı",
   "blender_settings_how_title": "Nasıl bağlanır",
   "blender_settings_how": "1. Blender 5.2'de Blender Copilot eklentisini aç.\n2. 3B Görünüm, N paneli, Blender - Copilot, MCP bridge bölümünde Start MCP bridge'e bas.\n3. Panelde görünen adresi ve token'ı buraya yapıştır, Bağlantıyı dene.",
-  "blender_settings_where": "Blender kapalıysa ya da köprü başlatılmadıysa yapay zekâ bunu size söyler; kod ile şekil kurmaya geri dönmez."
+  "blender_settings_where": "Blender kapalıysa ya da köprü başlatılmadıysa yapay zekâ bunu size söyler; kod ile şekil kurmaya geri dönmez.",
+  "capture_shot_short": "Ekran",
+  "capture_clip_short": "Klip",
+  "capture_shot_tooltip": "Oyun ekran görüntüsü (oyunu kendi penceresinde açar, PNG kaydeder)",
+  "capture_clip_tooltip": "Oyun klibi (devlog için 10 sn dikey 1080x1920 MP4; projede tools/devlog_clip.gd varsa onu kullanır)",
+  "capture_busy": "Bir çekim zaten sürüyor; bitmesini bekle.",
+  "capture_started_shot": "Ekran görüntüsü alınıyor: oyun kısa süre kendi penceresinde açılır. Çıktı klasörü: {dir}",
+  "capture_started_clip": "Klip kaydediliyor: oyun kendi penceresinde açılır ve kendiliğinden kapanır. Çıktı klasörü: {dir}",
+  "capture_done_shot": "Ekran görüntüsü kaydedildi: {path}",
+  "capture_done_clip": "Klip kaydedildi: {path}",
+  "capture_done_clip_avi": "Klip kaydedildi ama ffmpeg bulunamadı, AVI olarak kaldı: {path} (MP4 için ffmpeg kur).",
+  "capture_failed": "Çekim başarısız ({detail}). Oyunun gerçek bir pencereye (headless değil) ve ana sahneye ihtiyacı var."
 }

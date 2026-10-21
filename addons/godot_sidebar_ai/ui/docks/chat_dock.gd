@@ -113,6 +113,10 @@ var skills_btn: Button = null
 var help_btn: Button = null
 var help_dialog: AISidebarHelpDialog = null
 var skills_panel: AISidebarSkillsPanel = null
+## Başlıktaki oyun ekran görüntüsü / klip düğmeleri (devlog için) ve arkadaki servis.
+var shot_btn: Button = null
+var clip_btn: Button = null
+var capture: AISidebarGameCapture = null
 var auto_scroll_enabled: bool = true
 var welcome_card: AISidebarWelcomeCard = null
 
@@ -236,6 +240,7 @@ func _ready() -> void:
 	if history_btn:
 		history_btn.pressed.connect(_on_toggle_history_pressed)
 		_setup_skills_button()
+		_setup_capture_buttons()
 	if clear_btn:
 		clear_btn.pressed.connect(_on_clear_pressed)
 	if send_btn:
@@ -416,6 +421,44 @@ func _setup_skills_button() -> void:
 	help_btn.pressed.connect(func() -> void: help_dialog.open_help())
 	help_dialog.bug_report_requested.connect(func() -> void: _export_actions.open_bug_report(self))
 
+## Başlıkta Yardım düğmesinin soluna oyun ekran görüntüsü ve dikey klip (devlog) düğmeleri.
+func _setup_capture_buttons() -> void:
+	capture = AISidebarGameCapture.new()
+	capture.name = "GameCapture"
+	capture.finished.connect(_on_capture_finished)
+	add_child(capture)
+	for kind: String in [AISidebarGameCapture.KIND_SHOT, AISidebarGameCapture.KIND_CLIP]:
+		var b := Button.new()
+		b.flat = history_btn.flat
+		b.focus_mode = Control.FOCUS_NONE  # focus: başlık araç çubuğu; tıklamak yazma odağını mesaj kutusundan almasın
+		history_btn.get_parent().add_child(b)
+		history_btn.get_parent().move_child(b, help_btn.get_index())
+		b.pressed.connect(_on_capture_pressed.bind(kind))
+		if kind == AISidebarGameCapture.KIND_SHOT:
+			shot_btn = b
+		else:
+			clip_btn = b
+
+func _on_capture_pressed(kind: String) -> void:
+	if capture.is_busy():
+		_post_assistant_message(AISidebarI18n.get_text("capture_busy"))
+		return
+	if capture.start(kind):
+		var started := "capture_started_shot" if kind == AISidebarGameCapture.KIND_SHOT else "capture_started_clip"
+		_post_assistant_message(AISidebarI18n.get_text(started, {"dir": AISidebarGameCapture.output_dir(AISidebarGameCapture.project_dir())}))
+	else:
+		_post_assistant_message(AISidebarI18n.get_text("capture_failed", {"detail": "start"}))
+
+func _on_capture_finished(kind: String, path: String, ok: bool, detail: String) -> void:
+	if not ok:
+		_post_assistant_message(AISidebarI18n.get_text("capture_failed", {"detail": detail}))
+		return
+	var key := "capture_done_shot"
+	if kind == AISidebarGameCapture.KIND_CLIP:
+		key = "capture_done_clip_avi" if detail == "no_ffmpeg" else "capture_done_clip"
+	_post_assistant_message(AISidebarI18n.get_text(key, {"path": path}))
+	OS.shell_show_in_file_manager(path)
+
 ## Editör teması (açık / koyu) değişince: tema yeniden üretilir, varyasyonlu bütün düğümler kendiliğinden
 ## yeni renkleri alır; boyalı ikonlar yeniden çizilir.
 func refresh_theme() -> void:
@@ -430,6 +473,14 @@ func update_ui_language() -> void:
 		AISidebarIconHelper.apply_icon(skills_btn, "sparkles")
 		skills_btn.text = "" if skills_btn.icon else AISidebarI18n.get_text("skills_btn_short")
 		skills_btn.tooltip_text = AISidebarI18n.get_text("skills_title")
+	if shot_btn:
+		AISidebarIconHelper.apply_icon(shot_btn, "camera")
+		shot_btn.text = "" if shot_btn.icon else AISidebarI18n.get_text("capture_shot_short")
+		shot_btn.tooltip_text = AISidebarI18n.get_text("capture_shot_tooltip")
+	if clip_btn:
+		AISidebarIconHelper.apply_icon(clip_btn, "video")
+		clip_btn.text = "" if clip_btn.icon else AISidebarI18n.get_text("capture_clip_short")
+		clip_btn.tooltip_text = AISidebarI18n.get_text("capture_clip_tooltip")
 	if help_btn:
 		AISidebarIconHelper.apply_tinted_icon(help_btn, "message-circle-question-mark", AISidebarTheme.COLOR_TEXT_SECONDARY, AISidebarTheme.ICON_SIZE_LG)
 		help_btn.text = "" if help_btn.icon else AISidebarI18n.get_text("help_btn_short")
