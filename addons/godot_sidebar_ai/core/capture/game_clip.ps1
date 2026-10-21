@@ -28,7 +28,7 @@ param(
     [string]$Release = "",
     [string[]]$Only = @(),
     [string]$ClipScript = "",
-    [int]$Crf = 18,
+    [int]$Crf = 14,
     [switch]$KeepAvi,
     [string]$GodotPath = ""
 )
@@ -96,7 +96,7 @@ function Record-Clip([string]$clipName, [string]$mp4Path) {
     if (Test-Path $overrideCfg) {
         $overrideBackup = Get-Content $overrideCfg -Raw
     }
-    $overrideText = "[display]`nwindow/size/viewport_width=$vw`nwindow/size/viewport_height=$vh`nwindow/size/window_width_override=$vw`nwindow/size/window_height_override=$vh`n"
+    $overrideText = "[display]`nwindow/size/viewport_width=$vw`nwindow/size/viewport_height=$vh`nwindow/size/window_width_override=$vw`nwindow/size/window_height_override=$vh`n[editor]`nmovie_writer/mjpeg_quality=1.0`n"
     if ($overrideBackup) { $overrideText = $overrideBackup + "`n" + $overrideText }
     [System.IO.File]::WriteAllText($overrideCfg, $overrideText, (New-Object System.Text.UTF8Encoding($false)))
 
@@ -122,7 +122,7 @@ function Record-Clip([string]$clipName, [string]$mp4Path) {
         Write-Host "[game_clip] HATA: Godot AVI üretmedi (pencere gerekir; headless çalışmaz)." -ForegroundColor Red
         exit 1
     }
-    ffmpeg -y -loglevel error -i $aviPath -c:v libx264 -pix_fmt yuv420p -crf $Crf -preset medium -movflags +faststart -an $mp4Path
+    ffmpeg -y -loglevel error -i $aviPath -c:v libx264 -pix_fmt yuv420p -crf $Crf -preset slow -movflags +faststart -an $mp4Path
     if (-not (Test-Path $mp4Path)) {
         Write-Host "[game_clip] HATA: ffmpeg MP4 üretmedi." -ForegroundColor Red
         exit 1

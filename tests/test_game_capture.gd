@@ -32,8 +32,10 @@ static func run() -> Dictionary:
 
 	var cfg := GameCapture.override_cfg_text(GameCapture.CLIP_SIZE)
 	check.call(cfg.contains("viewport_width=1080") and cfg.contains("viewport_height=1920"), "override.cfg sets the movie size")
+	check.call(cfg.contains("movie_writer/mjpeg_quality=1.0"), "override.cfg raises the movie writer jpeg quality to the maximum")
 	var ff := GameCapture.ffmpeg_args("a.avi", "a.mp4")
 	check.call(ff[ff.size() - 1] == "a.mp4" and ff.has("libx264") and ff.has("a.avi"), "ffmpeg converts avi to h264 mp4")
+	check.call(ff.has("14") and ff.has("slow"), "ffmpeg encodes at a high quality (crf 14, slow preset)")
 
 	for lang in ["tr", "en"]:
 		for key in ["capture_shot_short", "capture_clip_short", "capture_shot_tooltip", "capture_clip_tooltip", "capture_busy",

@@ -66,11 +66,11 @@ static func godot_args(kind: String, proj_dir: String, out_path: String, project
 
 ## Film modu çıktı boyutunu pencereden değil projenin temel çözünürlüğünden alır; geçici override.cfg bunu istenen boyuta çeker.
 static func override_cfg_text(size: Vector2i) -> String:
-	return "[display]\nwindow/size/viewport_width=%d\nwindow/size/viewport_height=%d\nwindow/size/window_width_override=%d\nwindow/size/window_height_override=%d\n" % [size.x, size.y, size.x, size.y]
+	return "[display]\nwindow/size/viewport_width=%d\nwindow/size/viewport_height=%d\nwindow/size/window_width_override=%d\nwindow/size/window_height_override=%d\n[editor]\nmovie_writer/mjpeg_quality=1.0\n" % [size.x, size.y, size.x, size.y]
 
 static func ffmpeg_args(avi: String, mp4: String) -> PackedStringArray:
-	return PackedStringArray(["-y", "-loglevel", "error", "-i", avi, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18",
-			"-preset", "medium", "-movflags", "+faststart", "-an", mp4])
+	return PackedStringArray(["-y", "-loglevel", "error", "-i", avi, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "14",
+			"-preset", "slow", "-movflags", "+faststart", "-an", mp4])
 
 
 # ------------------------------------------------------------------------------------- çalışma ----
