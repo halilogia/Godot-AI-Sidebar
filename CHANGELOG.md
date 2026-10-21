@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+* **Devlog sürüm modu (2026-10-21):** `tools/game_clip.ps1 -Release <etiket>` projenin `tools\devlog\clips.json` manifestindeki `"added": "unreleased"` klipleri (her yeni özellik için bir girdi) tek tek çeker, `devlog_<etiket>.mp4` olarak birleştirir, `devlog_<etiket>.md`'ye "bu sürümde yeni" listesini yazar ve manifestte o klipleri sürüme işaretler; `-Only a,b` ile yalnız adı geçenler çekilir (deneme, manifest değişmez). Devlog böylece hep o sürümün yeni özelliklerini gösterir.
+
 * **Evrensel oyun videosu aracı (2026-10-21):** `tools/game_clip.ps1` herhangi bir Godot projesinin oyun videosunu (devlog / Instagram / Shorts) çeker: Godot film modu (`--write-movie`) ile AVI yazar, ffmpeg ile H.264 MP4'e çevirir (`game_shot.ps1`'in video karşılığı). Koreografi projede `tools/devlog_clip.gd` varsa onunla (`-Clip <ad>`), yoksa `tools/game_clip.gd` yedek betiğiyle (ana sahne `-Seconds` saniye) yapılır; çözünürlük varsayılan 1080x1920 dikey. Film modu çıktı boyutunu pencereden değil projenin temel çözünürlüğünden aldığı için araç geçici bir `override.cfg` yazar ve iş bitince geri alır. Çıktı repo dışına, `Desktop\GitHub\Devlog\<proje>\` altına gider. GrandStrategy3D'de 540x960 deneme klibi doğrulandı.
 
 * **Sistem istemi sadeleştirildi (2026-10-01):** rol cümlesi ("kıdemli ... mimarısın") ve modelin zaten bildiği genel "Modülerlik & SRP" maddesi çıkarıldı; yalnız sistemimize özgü kurallar kaldı (önce varsay, dosya-öncelikli, skill'ler, kanıtla doğrulama, bitirme disiplini). İstem 4,6 bin karakterden 4,3 bine indi. Gemini ile gerileme koşusu temiz (8 adım, hatasız, oyun çalışıyor). `AGENTS.md`'deki tek devasa köprü maddesi kısa alt maddelere bölündü (içerik aynı).
