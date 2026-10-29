@@ -17,6 +17,10 @@ func _init() -> void:
 	_collect_files("res://tests", gd_files, tscn_files)
 	# tools/ (typecheck, uyarı raporu, README görselleri) da derlenir; scripts/ (demo) kapsam dışıdır.
 	_collect_files("res://tools", gd_files, tscn_files)
+	# Başka bir projede çalıştırırken ek klasörler: `-- res://scripts res://data` (kullanıcı argümanları; yalnız res:// yolları).
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("res://"):
+			_collect_files(arg, gd_files, tscn_files)
 
 	print("Bulunan dosyalar: %d GDScript (.gd), %d Sahne (.tscn)\n" % [gd_files.size(), tscn_files.size()])
 	
