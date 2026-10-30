@@ -181,3 +181,16 @@ Ana ajan, bir alt görevi kendi bağlamı, adım bütçesi ve kısıtlı araç s
 - [ ] **Arayüz:** Alt ajan çalışması ana akışta iç içe, katlanabilir bir activity grubu olarak görünür; transcript ve export'ta ayrı bölüm olarak yer alır (Chat Export invariantı, AGENTS.md §7).
 - [ ] **Paralel araştırma (sonraki adım):** Birden çok salt okuma alt ajanı aynı anda.
 
+---
+
+## 📍 Faz 11: Çift Başlı Mimari - Antigravity Eklentisi (Faz 1-2 Tamamlandı ✅, 2026-10-30)
+
+Unity Technologies'in Antigravity için resmi eklenti yayınlamasının ardından Godot AI Sidebar iki başlı çalışır: **baş 1** editördeki `ChatDock`, **baş 2** Antigravity'deki ajan; ikisi aynı 6570 portundaki MCP köprüsünü ve aynı skill'leri kullanır.
+
+- [x] **Antigravity eklentisi:** `~/.gemini/config/plugins/godot-ai-sidebar/` (`plugin.json` "Godot Engine" v1.0.0, `mcp_config.json` → `http://127.0.0.1:6570/mcp`, `rules/AGENTS.md`, `README.md`).
+- [x] **Skill aktarımı:** sidebar'ın 11 yerleşik skill'i eklentiye kopyalanır (`tools/sync_antigravity_plugin.ps1`).
+- [x] **Yeni skill'ler (eklentiye özgü):** `godot-navigation-ai`, `godot-2d-physics`, `godot-3d-physics`, `godot-ui` (yönlendirici), `godot-ui-theme`, `godot-2d-pixel-perfect`, `godot-audio-buses`; her biri `SKILL.md` + `references/recipes.md`. Eklentide toplam 18 skill.
+- [ ] **Faz 3 - sıfır yapılandırma:** köprü açılınca port + token'ı `~/.gemini/godot-bridge.json`'a yazmak; `mcp_config.json` şimdilik `GODOT_SIDEBAR_TOKEN` ortam değişkenini okur.
+- [ ] **Kalan 32'lik matris:** `godot-sprite-frames`, `godot-texture-atlas`, `godot-nine-patch`, `godot-world-environment`, `godot-compositor-effects`, `godot-fonts-typography`, `godot-web-export`, `godot-localization`, `godot-multiplayer` ve diğerleri (rapordaki sıra).
+- [ ] **Yeni skill'leri sidebar'ın kendi `skills/` klasörüne almak:** önce `test_skills` / `test_skill_tool_names` kapılarından geçirilmeli.
+
