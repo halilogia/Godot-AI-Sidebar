@@ -325,8 +325,6 @@ static func _audit_layout_recursive(node: Node, cur_depth: int, max_depth: int, 
 	if parent is Container and not (parent is SubViewportContainer):
 		if ctrl.top_level:
 			issues.append({"rule_id": "CONTAINER_CHILD_TOP_LEVEL", "severity": "error", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü top_level olarak ayarlanmıştır ve Container düzeninden kopmuştur." % ctrl.name, "fix_action": "top_level özelliğini kapatın."})
-		if ctrl.get_index() == 0 and not (parent is MarginContainer) and ctrl.position != Vector2.ZERO:
-			issues.append({"rule_id": "CONTAINER_MANUAL_POSITION", "severity": "error", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü Container'ın ilk elemanıdır ancak konumu (0,0) değildir. Container çocukları otomatik konumlandırılır; elle koordinat vermek düzeni bozar." % ctrl.name, "fix_action": "Container içindeki elemanlara elle position vermeyin; hizalama için size_flags veya MarginContainer kullanın."})
 		if ctrl.anchors_preset != Control.PRESET_TOP_LEFT and ctrl.anchors_preset != 0:
 			issues.append({"rule_id": "CONTAINER_MANUAL_ANCHORS", "severity": "warning", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü Container içinde anchor preset (%d) kullanmaktadır." % [ctrl.name, ctrl.anchors_preset], "fix_action": "Reset anchors_preset to PRESET_TOP_LEFT."})
 		if parent is BoxContainer and not (ctrl is Label or ctrl is Button or ctrl is TextureRect or ctrl is ColorRect or ctrl is Separator):
@@ -360,7 +358,7 @@ static func _audit_ui_touch(args: Dictionary) -> Dictionary:
 		var r1: Rect2 = c1.get_global_rect()
 		for j: int in range(i + 1, interactive.size()):
 			var c2: Control = interactive[j]
-			if not c2.is_inside_tree() or c1.get_parent() != c2.get_parent(): continue
+			if not c2.is_inside_tree(): continue
 			var dist: float = _rect_distance(r1, c2.get_global_rect())
 			if dist >= 0.0 and dist < min_spacing:
 				issues.append({"rule_id": "TOUCH_BUTTONS_TOO_CLOSE", "severity": "warning", "node_path": _get_safe_node_path(c1), "message": "Dokunmatik butonlar ('%s' ve '%s') birbirine çok yakındır (%.1f px < %.1f px)." % [c1.name, c2.name, dist, min_spacing]})
@@ -370,8 +368,8 @@ static func _audit_ui_touch(args: Dictionary) -> Dictionary:
 			for b: Control in interactive:
 				if not b.is_inside_tree() or cont.is_ancestor_of(b) or b.is_ancestor_of(cont): continue
 				var br: Rect2 = b.get_global_rect()
-				if cr.intersects(br) and (cont.get_index() > b.get_index() or cont.z_index > b.z_index):
-					issues.append({"rule_id": "OVERLAY_INPUT_BLOCKER", "severity": "warning", "node_path": _get_safe_node_path(cont), "message": "Kapsayıcı/Panel '%s' (STOP filtresi) buton '%s' üzerine biniyor ve tıklamaları bloke edebilir." % [cont.name, b.name]})
+				if cr.intersects(br):
+					issues.append({"rule_id": "POTENTIAL_OVERLAY_BLOCKER", "severity": "warning", "node_path": _get_safe_node_path(cont), "message": "Kapsayıcı/Panel '%s' (STOP filtresi) buton '%s' üzerine biniyor (potansiyel input engeli)." % [cont.name, b.name]})
 					break
 	var score: int = clampi(100 - (issues.size() * 15), 0, 100)
 	return AISidebarToolResult.ok({"root_path": _get_safe_node_path(target_node), "interactive_controls_count": interactive.size(), "touch_score": score, "passed": (issues.size() == 0), "issue_count": issues.size(), "issues": issues}, "Dokunmatik denetim tamamlandı: Skor %d/100 (%d sorun)." % [score, issues.size()])
@@ -389,17 +387,10 @@ static func _collect_touch_candidates(node: Node, inc_inv: bool, interactive: Ar
 	for ch: Node in ctrl.get_children(): _collect_touch_candidates(ch, inc_inv, interactive, containers)
 
 static func _rect_distance(r1: Rect2, r2: Rect2) -> float:
-	var l: bool = r2.end.x < r1.position.x; var r: bool = r1.end.x < r2.position.x
-	var b: bool = r2.end.y < r1.position.y; var t: bool = r1.end.y < r2.position.y
-	if t and l: return r1.position.distance_to(Vector2(r2.end.x, r2.position.y))
-	if l and b: return Vector2(r1.position.x, r1.end.y).distance_to(r2.end)
-	if b and r: return r1.end.distance_to(Vector2(r2.position.x, r2.end.y))
-	if r and t: return Vector2(r1.end.x, r1.position.y).distance_to(r2.position)
-	if l: return r1.position.x - r2.end.x
-	if r: return r2.position.x - r1.end.x
-	if b: return r2.position.y - r1.end.y
-	if t: return r1.position.y - r2.end.y
-	return 0.0
+	if r1.intersects(r2): return 0.0
+	var dx: float = maxf(0.0, maxf(r1.position.x - r2.end.x, r2.position.x - r1.end.x))
+	var dy: float = maxf(0.0, maxf(r1.position.y - r2.end.y, r2.position.y - r1.end.y))
+	return Vector2(dx, dy).length()
 
 # --- 4. SCAFFOLD UI THEME ---
 
@@ -463,6 +454,8 @@ static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 		"desktop": vp_size = Vector2i(1920, 1080)
 		"square": vp_size = Vector2i(1080, 1080)
 		"custom": vp_size = Vector2i(maxi(int(args.get("width", 720)), 64), maxi(int(args.get("height", 1280)), 64))
+	if int(vp_size.x) * int(vp_size.y) > (4096 * 4096):
+		return AISidebarToolResult.err("PREVIEW_TOO_LARGE", "İstenen önizleme çözünürlüğü (%dx%d) azami piksel sınırını (4096x4096) aşmaktadır." % [vp_size.x, vp_size.y])
 	var spath: String = str(args.get("save_path", "")).strip_edges()
 	if spath.is_empty(): spath = "user://ui_snapshots/preview_%s_%dx%d.png" % [prof, vp_size.x, vp_size.y]
 	var pchk: Dictionary = AISidebarPathPolicy.is_safe_to_write(spath)

@@ -158,7 +158,7 @@ static func _init_default_risks() -> void:
 		"search_tools", "ask_user", "propose_plan", "validate_script", "validate_project", "get_godot_class_info", "take_editor_screenshot",
 		"take_runtime_screenshot", "take_viewport_screenshot", "analyze_project",
 		"list_dir", "get_open_scripts", "open_script", "inspect_ui_layout",
-		"audit_ui_layout", "audit_ui_touch", "capture_ui_preview",
+		"audit_ui_layout", "audit_ui_touch",
 		"inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime", "get_runtime_performance", "trace_runtime_signals", "audit_runtime_ui", "diagnose_physics", "set_runtime_property", "get_output", "activate_skill", "report_goal", "blender_tools"
 	]
 	for t in read_only_tools:
@@ -173,7 +173,7 @@ static func _init_default_risks() -> void:
 		"play_game", "stop_game", "restart_game", "send_input",
 		"create_character_scene", "create_enemy_scene", "create_ui_hud",
 		"create_interactable", "setup_camera_follow", "manage_project_settings",
-		"scaffold_ui_theme"
+		"scaffold_ui_theme", "capture_ui_preview"
 	]
 	for t in write_tools:
 		_tool_risk_registry[t] = RiskLevel.WRITE

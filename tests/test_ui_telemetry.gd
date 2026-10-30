@@ -313,23 +313,23 @@ static func run() -> Dictionary:
 	audit_box.name = "AuditVBox"
 	var bad_child = Button.new()
 	bad_child.name = "BadPositionedBtn"
-	bad_child.position = Vector2(25, 40)
+	bad_child.top_level = true
 	audit_box.add_child(bad_child)
 	
 	var audit_res = AISidebarUITelemetryTools.execute("audit_ui_layout", {"target_node": audit_box})
 	if audit_res.get("success", false):
 		var res_data = audit_res.get("data", {})
 		var issues = res_data.get("issues", [])
-		var has_pos_err = false
+		var has_top_level_err = false
 		for iss in issues:
-			if iss.get("rule_id", "") == "CONTAINER_MANUAL_POSITION":
-				has_pos_err = true
+			if iss.get("rule_id", "") == "CONTAINER_CHILD_TOP_LEVEL":
+				has_top_level_err = true
 				break
-		if has_pos_err and not res_data.get("passed", true):
+		if has_top_level_err and not res_data.get("passed", true):
 			passed += 1
 		else:
 			failed += 1
-			errors.append("Test 14 (audit_ui_layout manual position detection) failed: " + str(res_data))
+			errors.append("Test 14 (audit_ui_layout top_level detection) failed: " + str(res_data))
 	else:
 		failed += 1
 		errors.append("Test 14 execution failed: " + str(audit_res))
