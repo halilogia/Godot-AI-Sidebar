@@ -104,7 +104,7 @@ static func get_schemas() -> Array:
 						"width": {"type": "integer", "description": "Custom width in pixels (default: 720)."},
 						"height": {"type": "integer", "description": "Custom height in pixels (default: 1280)."},
 						"simulate_safe_area": {"type": "boolean", "description": "Simulate mobile notch and home indicator guides (default: true)."},
-						"save_path": {"type": "string", "description": "Path to save preview PNG."}
+						"save_path": {"type": "string", "description": "Path to save preview PNG (default: 'user://ui_snapshots/preview_{profile}_{width}x{height}.png')."}
 					}
 				}
 			}
@@ -323,8 +323,10 @@ static func _audit_layout_recursive(node: Node, cur_depth: int, max_depth: int, 
 	if ctrl is Container: stats["containers"] = int(stats.get("containers", 0)) + 1
 	var parent: Node = ctrl.get_parent()
 	if parent is Container and not (parent is SubViewportContainer):
-		if ctrl.position != Vector2.ZERO:
-			issues.append({"rule_id": "CONTAINER_MANUAL_POSITION", "severity": "error", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü bir Container içerisindedir ancak manuel position verilmiştir. Container'lar çocuk koordinatlarını otomatik hesaplar; elle koordinat vermek düzeni bozar." % ctrl.name, "fix_action": "Set position to Vector2.ZERO."})
+		if ctrl.top_level:
+			issues.append({"rule_id": "CONTAINER_CHILD_TOP_LEVEL", "severity": "error", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü top_level olarak ayarlanmıştır ve Container düzeninden kopmuştur." % ctrl.name, "fix_action": "top_level özelliğini kapatın."})
+		if ctrl.get_index() == 0 and not (parent is MarginContainer) and ctrl.position != Vector2.ZERO:
+			issues.append({"rule_id": "CONTAINER_MANUAL_POSITION", "severity": "error", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü Container'ın ilk elemanıdır ancak konumu (0,0) değildir. Container çocukları otomatik konumlandırılır; elle koordinat vermek düzeni bozar." % ctrl.name, "fix_action": "Container içindeki elemanlara elle position vermeyin; hizalama için size_flags veya MarginContainer kullanın."})
 		if ctrl.anchors_preset != Control.PRESET_TOP_LEFT and ctrl.anchors_preset != 0:
 			issues.append({"rule_id": "CONTAINER_MANUAL_ANCHORS", "severity": "warning", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü Container içinde anchor preset (%d) kullanmaktadır." % [ctrl.name, ctrl.anchors_preset], "fix_action": "Reset anchors_preset to PRESET_TOP_LEFT."})
 		if parent is BoxContainer and not (ctrl is Label or ctrl is Button or ctrl is TextureRect or ctrl is ColorRect or ctrl is Separator):
@@ -363,10 +365,13 @@ static func _audit_ui_touch(args: Dictionary) -> Dictionary:
 			if dist >= 0.0 and dist < min_spacing:
 				issues.append({"rule_id": "TOUCH_BUTTONS_TOO_CLOSE", "severity": "warning", "node_path": _get_safe_node_path(c1), "message": "Dokunmatik butonlar ('%s' ve '%s') birbirine çok yakındır (%.1f px < %.1f px)." % [c1.name, c2.name, dist, min_spacing]})
 	for cont: Control in containers:
-		if cont.mouse_filter == Control.MOUSE_FILTER_STOP and not (cont is ScrollContainer):
+		if cont.mouse_filter == Control.MOUSE_FILTER_STOP and not (cont is ScrollContainer) and cont.is_inside_tree():
+			var cr: Rect2 = cont.get_global_rect()
 			for b: Control in interactive:
-				if cont.is_ancestor_of(b):
-					issues.append({"rule_id": "MOUSE_FILTER_BLOCKING", "severity": "warning", "node_path": _get_safe_node_path(cont), "message": "Kapsayıcı '%s' MOUSE_FILTER_STOP modundadır ve alt butonların tıklanmasını engelleyebilir." % cont.name})
+				if not b.is_inside_tree() or cont.is_ancestor_of(b) or b.is_ancestor_of(cont): continue
+				var br: Rect2 = b.get_global_rect()
+				if cr.intersects(br) and (cont.get_index() > b.get_index() or cont.z_index > b.z_index):
+					issues.append({"rule_id": "OVERLAY_INPUT_BLOCKER", "severity": "warning", "node_path": _get_safe_node_path(cont), "message": "Kapsayıcı/Panel '%s' (STOP filtresi) buton '%s' üzerine biniyor ve tıklamaları bloke edebilir." % [cont.name, b.name]})
 					break
 	var score: int = clampi(100 - (issues.size() * 15), 0, 100)
 	return AISidebarToolResult.ok({"root_path": _get_safe_node_path(target_node), "interactive_controls_count": interactive.size(), "touch_score": score, "passed": (issues.size() == 0), "issue_count": issues.size(), "issues": issues}, "Dokunmatik denetim tamamlandı: Skor %d/100 (%d sorun)." % [score, issues.size()])
@@ -459,7 +464,7 @@ static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 		"square": vp_size = Vector2i(1080, 1080)
 		"custom": vp_size = Vector2i(maxi(int(args.get("width", 720)), 64), maxi(int(args.get("height", 1280)), 64))
 	var spath: String = str(args.get("save_path", "")).strip_edges()
-	if spath.is_empty(): spath = "res://ui_snapshots/preview_%s_%dx%d.png" % [prof, vp_size.x, vp_size.y]
+	if spath.is_empty(): spath = "user://ui_snapshots/preview_%s_%dx%d.png" % [prof, vp_size.x, vp_size.y]
 	var pchk: Dictionary = AISidebarPathPolicy.is_safe_to_write(spath)
 	if not pchk["safe"]: return AISidebarToolResult.err("PERMISSION_DENIED", str(pchk["reason"]))
 	var norm_p: String = str(pchk["path"])
@@ -490,12 +495,16 @@ static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 		c.size = Vector2(vp_size)
 	if bool(args.get("simulate_safe_area", true)) and prof in ["mobile_portrait", "mobile_landscape"]:
 		_add_safe_area_guides(vp, vp_size, prof)
-	RenderingServer.frame_post_draw
+	if RenderingServer.has_method("force_draw"):
+		RenderingServer.force_draw(false)
 	var tex: ViewportTexture = vp.get_texture()
 	var img: Image = tex.get_image() if tex else null
 	if not img or img.is_empty():
-		img = Image.create(vp_size.x, vp_size.y, false, Image.FORMAT_RGBA8)
-		img.fill(Color(0.08, 0.1, 0.14))
+		vp.remove_child(render_node)
+		render_node.free()
+		if attached_root: attached_root.remove_child(vp)
+		vp.free()
+		return AISidebarToolResult.err("RENDER_FAILED", "Viewport görüntüsü render edilemedi (Headless veya renderer desteği olmayan ortam). UI önizlemesi için aktif bir grafik renderer gereklidir.")
 	var dp: String = norm_p.get_base_dir()
 	if not DirAccess.dir_exists_absolute(dp): DirAccess.make_dir_recursive_absolute(dp)
 	var err: Error = img.save_png(norm_p)
