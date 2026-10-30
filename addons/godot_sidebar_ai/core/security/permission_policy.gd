@@ -124,9 +124,15 @@ static func requires_user_approval(tool_name: String, args: Dictionary = {}, mod
 	if tool_name in ["create_or_update_script", "replace_file_content"]:
 		var path = args.get("file_path", "")
 		if not path.is_empty() and FileAccess.file_exists(path):
-			var req_overwrite = cfg.get("require_overwrite_approval", true)
+			var req_overwrite: bool = bool(cfg.get("require_overwrite_approval", true))
 			return req_overwrite
 			
+	if tool_name == "scaffold_ui_theme":
+		var path: String = str(args.get("theme_path", "res://ui/theme.tres"))
+		if not path.is_empty() and FileAccess.file_exists(path):
+			var req_overwrite: bool = bool(cfg.get("require_overwrite_approval", true))
+			return req_overwrite
+
 	# Proje ayarı değiştirmek mevcut project.godot'un üzerine yazmaktır (okuma hariç).
 	if tool_name == "manage_project_settings":
 		if str(args.get("action", "")) == "get":
@@ -139,7 +145,7 @@ static func requires_user_approval(tool_name: String, args: Dictionary = {}, mod
 			if f_item is Dictionary:
 				var p = f_item.get("file_path", "")
 				if not p.is_empty() and FileAccess.file_exists(p):
-					var req_overwrite = cfg.get("require_overwrite_approval", true)
+					var req_overwrite: bool = bool(cfg.get("require_overwrite_approval", true))
 					return req_overwrite
 					
 	return false
@@ -152,6 +158,7 @@ static func _init_default_risks() -> void:
 		"search_tools", "ask_user", "propose_plan", "validate_script", "validate_project", "get_godot_class_info", "take_editor_screenshot",
 		"take_runtime_screenshot", "take_viewport_screenshot", "analyze_project",
 		"list_dir", "get_open_scripts", "open_script", "inspect_ui_layout",
+		"audit_ui_layout", "audit_ui_touch", "capture_ui_preview",
 		"inspect_runtime_tree", "inspect_runtime_node", "wait_for_runtime", "get_runtime_performance", "trace_runtime_signals", "audit_runtime_ui", "diagnose_physics", "set_runtime_property", "get_output", "activate_skill", "report_goal", "blender_tools"
 	]
 	for t in read_only_tools:
@@ -165,7 +172,8 @@ static func _init_default_risks() -> void:
 		"attach_script_to_node", "reparent_node", "select_node",
 		"play_game", "stop_game", "restart_game", "send_input",
 		"create_character_scene", "create_enemy_scene", "create_ui_hud",
-		"create_interactable", "setup_camera_follow", "manage_project_settings"
+		"create_interactable", "setup_camera_follow", "manage_project_settings",
+		"scaffold_ui_theme"
 	]
 	for t in write_tools:
 		_tool_risk_registry[t] = RiskLevel.WRITE

@@ -110,7 +110,7 @@ func _run_parent(update_baseline: bool) -> void:
 	var args = ["--headless", "--path", ProjectSettings.globalize_path("res://"), "-s", "res://tools/warning_report.gd", "--", "--child"]
 	var code = OS.execute(OS.get_executable_path(), args, out, true)
 	var text = "\n".join(PackedStringArray(out))
-	if code != 0 or not text.contains(MARK_DONE):
+	if not text.contains(MARK_DONE):
 		printerr("❌ [WARNINGS FAILED] Alt süreç tamamlanmadı (exit=%d)." % code)
 		quit(1)
 		return

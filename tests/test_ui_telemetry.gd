@@ -308,6 +308,108 @@ static func run() -> Dictionary:
 		tree.root.remove_child(vis_parent)
 	vis_parent.queue_free()
 
+	# --- Test 14: audit_ui_layout (Container vs Coordinate Tuzağı) ---
+	var audit_box = VBoxContainer.new()
+	audit_box.name = "AuditVBox"
+	var bad_child = Button.new()
+	bad_child.name = "BadPositionedBtn"
+	bad_child.position = Vector2(25, 40)
+	audit_box.add_child(bad_child)
+	
+	var audit_res = AISidebarUITelemetryTools.execute("audit_ui_layout", {"target_node": audit_box})
+	if audit_res.get("success", false):
+		var res_data = audit_res.get("data", {})
+		var issues = res_data.get("issues", [])
+		var has_pos_err = false
+		for iss in issues:
+			if iss.get("rule_id", "") == "CONTAINER_MANUAL_POSITION":
+				has_pos_err = true
+				break
+		if has_pos_err and not res_data.get("passed", true):
+			passed += 1
+		else:
+			failed += 1
+			errors.append("Test 14 (audit_ui_layout manual position detection) failed: " + str(res_data))
+	else:
+		failed += 1
+		errors.append("Test 14 execution failed: " + str(audit_res))
+	audit_box.queue_free()
+
+	# --- Test 15: audit_ui_touch (Dokunmatik Hedef Boyutu) ---
+	var touch_box = Control.new()
+	touch_box.name = "TouchBox"
+	var small_btn = Button.new()
+	small_btn.name = "TinyBtn"
+	small_btn.size = Vector2(20, 20)
+	small_btn.custom_minimum_size = Vector2(20, 20)
+	touch_box.add_child(small_btn)
+	
+	var touch_res = AISidebarUITelemetryTools.execute("audit_ui_touch", {"target_node": touch_box, "min_touch_size": 44.0})
+	if touch_res.get("success", false):
+		var t_data = touch_res.get("data", {})
+		var t_issues = t_data.get("issues", [])
+		var has_touch_err = false
+		for ti in t_issues:
+			if ti.get("rule_id", "") == "TOUCH_TARGET_TOO_SMALL":
+				has_touch_err = true
+				break
+		if has_touch_err:
+			passed += 1
+		else:
+			failed += 1
+			errors.append("Test 15 (audit_ui_touch tiny button detection) failed: " + str(t_data))
+	else:
+		failed += 1
+		errors.append("Test 15 execution failed: " + str(touch_res))
+	touch_box.queue_free()
+
+	# --- Test 16: scaffold_ui_theme (Godot 4 Theme Üretimi) ---
+	var theme_out_path = "user://test_scaffold_theme.tres"
+	var theme_res = AISidebarUITelemetryTools.execute("scaffold_ui_theme", {
+		"theme_path": theme_out_path,
+		"primary_color": "#ff6600",
+		"corner_radius": 10
+	})
+	if theme_res.get("success", false) and FileAccess.file_exists(theme_out_path):
+		var loaded_th = ResourceLoader.load(theme_out_path) as Theme
+		if loaded_th and loaded_th.has_stylebox("normal", "Button"):
+			var sb = loaded_th.get_stylebox("normal", "Button") as StyleBoxFlat
+			if sb and sb.corner_radius_top_left == 10:
+				passed += 1
+			else:
+				failed += 1
+				errors.append("Test 16 (Theme StyleBox properties) failed.")
+		else:
+			failed += 1
+			errors.append("Test 16 (Theme loading) failed.")
+		DirAccess.remove_absolute(theme_out_path)
+	else:
+		failed += 1
+		errors.append("Test 16 execution failed: " + str(theme_res))
+
+	# --- Test 17: capture_ui_preview (SubViewport Önizleme) ---
+	var prev_ctrl = Panel.new()
+	prev_ctrl.name = "PreviewPanel"
+	var prev_out_path = "user://test_preview_snapshot.png"
+	var prev_res = AISidebarUITelemetryTools.execute("capture_ui_preview", {
+		"target_node": prev_ctrl,
+		"profile": "mobile_portrait",
+		"save_path": prev_out_path
+	})
+	if prev_res.get("success", false) and FileAccess.file_exists(prev_out_path):
+		var f = FileAccess.open(prev_out_path, FileAccess.READ)
+		if f and f.get_length() > 0:
+			f.close()
+			passed += 1
+		else:
+			failed += 1
+			errors.append("Test 17 (Preview file empty) failed.")
+		DirAccess.remove_absolute(prev_out_path)
+	else:
+		failed += 1
+		errors.append("Test 17 execution failed: " + str(prev_res))
+	prev_ctrl.queue_free()
+
 	# Temizlik
 	root.queue_free()
 

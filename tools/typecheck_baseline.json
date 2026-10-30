@@ -127,9 +127,9 @@
     "unsafe_call_argument": 1
   },
   "core/security/permission_policy.gd": {
-    "untyped_declaration": 23,
+    "untyped_declaration": 21,
     "unsafe_method_access": 3,
-    "unsafe_call_argument": 3
+    "unsafe_call_argument": 6
   },
   "core/state/context_collector.gd": {
     "untyped_declaration": 3,
@@ -167,9 +167,7 @@
     "unsafe_cast": 6
   },
   "core/tools/primitive/ui_telemetry_tools.gd": {
-    "untyped_declaration": 52,
-    "unsafe_method_access": 18,
-    "unsafe_call_argument": 42,
+    "unsafe_call_argument": 30,
     "unsafe_cast": 4
   },
   "core/tools/tool_manager.gd": {

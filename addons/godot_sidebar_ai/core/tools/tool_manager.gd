@@ -178,7 +178,8 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	if has_vision_intent:
 		var vision_tools = [
 			"take_viewport_screenshot", "take_editor_screenshot", "take_runtime_screenshot",
-			"get_active_scene_tree", "get_selected_nodes", "replace_file_content", "inspect_ui_layout"
+			"get_active_scene_tree", "get_selected_nodes", "replace_file_content", "inspect_ui_layout",
+			"audit_ui_layout", "audit_ui_touch", "capture_ui_preview"
 		]
 		for vt in vision_tools:
 			active_tool_names[vt] = true
@@ -206,7 +207,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			"create_scene", "save_scene", "add_node", "delete_node", "rename_node",
 			"duplicate_node", "set_node_property", "connect_signal", "reparent_node",
 			"select_node", "get_active_scene_tree", "get_selected_nodes", "write_files",
-			"list_dir", "take_viewport_screenshot", "inspect_ui_layout", "create_character_scene", "create_enemy_scene",
+			"list_dir", "take_viewport_screenshot", "inspect_ui_layout", "audit_ui_layout", "audit_ui_touch", "scaffold_ui_theme", "capture_ui_preview", "create_character_scene", "create_enemy_scene",
 			"create_ui_hud", "create_interactable", "setup_camera_follow", AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for sc in scene_tools:
@@ -219,6 +220,10 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 	for kw in ui_keywords:
 		if kw in text:
 			active_tool_names["inspect_ui_layout"] = true
+			active_tool_names["audit_ui_layout"] = true
+			active_tool_names["audit_ui_touch"] = true
+			active_tool_names["scaffold_ui_theme"] = true
+			active_tool_names["capture_ui_preview"] = true
 			active_tool_names["take_viewport_screenshot"] = true
 			break
 			
