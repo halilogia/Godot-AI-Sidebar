@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+* **UI Güvenilirlik Katmanı: öncelikli denetim, telemetri standardı, tema belirteçleri, bileşen şablonları (2026-10-31):** `audit_ui_layout` / `audit_ui_touch` bulguları P0 (etkileşim bozuk: `mouse_filter=IGNORE` düğme, saydam ya da sıfır boyutlu tıklanabilir kontrol, düğmenin üstünde çizilen STOP paneli) / P1 (yerleşim kırık) / P2 (bakım) önceliğiyle döner, `passed` P0/P1 varsa false olur ve `scene_path` ile `.tscn`'den Container otorite ihlali okunur. `inspect_ui_layout` ve `capture_ui_preview` aynı `ui-telemetry/1` bbox şemasını (düz / ağaç biçim, yerleşim otoritesi, görünüm taşmaları) verir. `scaffold_ui_theme` belirteçten Theme + `.tokens.json` + WCAG kontrast raporu üretir (`ui_theme_scaffold.gd`). Yeni `scaffold_ui_component` aracı (WRITE sınıfı) Healthbar / DialogueBox / InventoryGrid / PauseMenu sahnesini kendi denetiminden geçirip yazar (`ui_component_tools.gd`, `ui_component_builder.gd`). `tests/test_ui_reliability.gd` (R0-R6, T1-T4, K1-K4, C0-C6).
+
 * **game_shot.ps1 `-Views` artık iletiliyor (2026-10-31):** Parametre tanımlıydı ama projenin `tools/capture.gd` betiğine geçirilmiyordu; her çağrı bütün görünümleri çekiyordu. Artık `-Views` değeri (görünüm adları ve `k=v` seçenekleri) betiğe aynen eklenir.
 
 * **AI Destekli UI ve Arayüz Araçları — Red-Team Nihai İyileştirmeleri (2026-10-30):** ChatGPT Web Kırmızı Takım nihai denetiminde tespit edilen tüm kök nedenler çözüldü (`core/tools/primitive/ui_telemetry_tools.gd`, `permission_policy.gd`):

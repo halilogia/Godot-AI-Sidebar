@@ -15,6 +15,7 @@ const AISidebarScriptTools = preload("res://addons/godot_sidebar_ai/core/tools/p
 const AISidebarEditorTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/editor_tools.gd")
 const AISidebarGameIntentTools = preload("res://addons/godot_sidebar_ai/core/tools/intent/game_intent_tools.gd")
 const AISidebarUITelemetryTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_telemetry_tools.gd")
+const AISidebarUIComponentTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_component_tools.gd")
 const AISidebarPlanningPolicy = preload("res://addons/godot_sidebar_ai/core/agent/planning_policy.gd")
 const AISidebarSkillTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/skill_tools.gd")
 const AISidebarOutputTools = preload("res://addons/godot_sidebar_ai/core/tools/primitive/output_tools.gd")
@@ -96,6 +97,7 @@ static func get_all_schemas() -> Array:
 	schemas.append_array(AISidebarEditorTools.get_schemas())
 	schemas.append_array(AISidebarGameIntentTools.get_schemas())
 	schemas.append_array(AISidebarUITelemetryTools.get_schemas())
+	schemas.append_array(AISidebarUIComponentTools.get_schemas())
 	schemas.append_array(AISidebarRuntimeInputTools.get_schemas())
 	schemas.append_array(AISidebarOutputTools.get_schemas())
 	schemas.append_array(AISidebarRulesTools.get_schemas())
@@ -207,7 +209,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			"create_scene", "save_scene", "add_node", "delete_node", "rename_node",
 			"duplicate_node", "set_node_property", "connect_signal", "reparent_node",
 			"select_node", "get_active_scene_tree", "get_selected_nodes", "write_files",
-			"list_dir", "take_viewport_screenshot", "inspect_ui_layout", "audit_ui_layout", "audit_ui_touch", "scaffold_ui_theme", "capture_ui_preview", "create_character_scene", "create_enemy_scene",
+			"list_dir", "take_viewport_screenshot", "inspect_ui_layout", "audit_ui_layout", "audit_ui_touch", "scaffold_ui_theme", "scaffold_ui_component", "capture_ui_preview", "create_character_scene", "create_enemy_scene",
 			"create_ui_hud", "create_interactable", "setup_camera_follow", AISidebarProjectSettingsTools.TOOL_NAME
 		]
 		for sc in scene_tools:
@@ -223,6 +225,7 @@ static func get_relevant_schemas(context_text: String, explicitly_unlocked: Arra
 			active_tool_names["audit_ui_layout"] = true
 			active_tool_names["audit_ui_touch"] = true
 			active_tool_names["scaffold_ui_theme"] = true
+			active_tool_names["scaffold_ui_component"] = true
 			active_tool_names["capture_ui_preview"] = true
 			active_tool_names["take_viewport_screenshot"] = true
 			break
@@ -369,6 +372,8 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	for s in AISidebarUITelemetryTools.get_schemas():
 		if s["function"]["name"] == tool_name:
 			return AISidebarUITelemetryTools.execute(tool_name, args)
+	if tool_name == AISidebarUIComponentTools.TOOL_NAME:
+		return AISidebarUIComponentTools.execute(tool_name, args)
 			
 	if tool_name == AISidebarSkillTools.TOOL_NAME:
 		return AISidebarSkillTools.execute(tool_name, args)
@@ -389,7 +394,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarRuntimeInputTools.SET_PROP_TOOL, AISidebarOutputTools.TOOL_NAME] or AISidebarBlenderTools.is_blender_tool(tool_name) or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarRuntimeInputTools.SET_PROP_TOOL, AISidebarOutputTools.TOOL_NAME] or tool_name == "capture_ui_preview" or AISidebarBlenderTools.is_blender_tool(tool_name) or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -420,6 +425,8 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		return await AISidebarRuntimeInputTools.execute_trace_async(args)
 	if tool_name == AISidebarOutputTools.TOOL_NAME:
 		return await AISidebarOutputTools.execute_async(args)
+	if tool_name == "capture_ui_preview":
+		return await AISidebarUITelemetryTools.execute_async(tool_name, args)
 	if AISidebarBlenderTools.is_blender_tool(tool_name):
 		return await AISidebarBlenderTools.execute_async(tool_name, args)
 	return await AISidebarEditorTools.execute_async(tool_name, args)

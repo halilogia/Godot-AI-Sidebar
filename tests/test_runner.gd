@@ -116,6 +116,7 @@ const TestRuntimeScriptVars = preload("res://tests/test_runtime_script_vars.gd")
 const TestRuntimeInput = preload("res://tests/test_runtime_input.gd")
 const TestSettingsCoverage = preload("res://tests/test_settings_coverage.gd")
 const TestUiQuality = preload("res://tests/test_ui_quality.gd")
+const TestUiReliability = preload("res://tests/test_ui_reliability.gd")
 const TestGoal = preload("res://tests/test_goal.gd")
 const TestHelp = preload("res://tests/test_help.gd")
 const TestBugReport = preload("res://tests/test_bug_report.gd")
@@ -251,6 +252,7 @@ func _init() -> void:
 		TestSlashCommands,
 		TestAGYCLIProvider,
 		TestUITelemetry,
+		TestUiReliability,
 		TestRuntimeInspection,
 		TestImplementationPlanning,
 		TestStreamEnvelopeGuard,

@@ -127,8 +127,8 @@ static func requires_user_approval(tool_name: String, args: Dictionary = {}, mod
 			var req_overwrite: bool = bool(cfg.get("require_overwrite_approval", true))
 			return req_overwrite
 			
-	if tool_name == "scaffold_ui_theme":
-		var path: String = str(args.get("theme_path", "res://ui/theme.tres"))
+	if tool_name == "scaffold_ui_theme" or tool_name == "scaffold_ui_component":
+		var path: String = str(args.get("theme_path", "res://ui/theme.tres")) if tool_name == "scaffold_ui_theme" else str(args.get("scene_path", "res://ui/components/%s.tscn" % str(args.get("component", ""))))
 		if not path.is_empty() and FileAccess.file_exists(path):
 			var req_overwrite: bool = bool(cfg.get("require_overwrite_approval", true))
 			return req_overwrite
@@ -173,7 +173,7 @@ static func _init_default_risks() -> void:
 		"play_game", "stop_game", "restart_game", "send_input",
 		"create_character_scene", "create_enemy_scene", "create_ui_hud",
 		"create_interactable", "setup_camera_follow", "manage_project_settings",
-		"scaffold_ui_theme", "capture_ui_preview"
+		"scaffold_ui_theme", "scaffold_ui_component", "capture_ui_preview"
 	]
 	for t in write_tools:
 		_tool_risk_registry[t] = RiskLevel.WRITE

@@ -7,6 +7,24 @@ class_name AISidebarUITelemetryTools
 ## dokunmatik hedef ergonomisi, Theme üretimi ve SubViewport önizleme sağlar.
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
+const AISidebarUIThemeScaffold = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_theme_scaffold.gd")
+
+## Telemetri sözleşmesi sürümü: inspect_ui_layout ve capture_ui_preview aynı bbox / hiyerarşi şemasını döner.
+const SCHEMA_VERSION: String = "ui-telemetry/1"
+const NESTING_LIMIT: int = 8
+const MAX_FLAT_NODES: int = 300
+const ALPHA_EPSILON: float = 0.01
+
+## Kural -> öncelik. P0: kullanıcı etkileşimi bozuk, P1: yerleşim kırık, P2: bakım / ergonomi.
+const PRIORITY: Dictionary = {
+	"INTERACTIVE_INPUT_IGNORED": "P0", "INTERACTIVE_ZERO_ALPHA": "P0", "INTERACTIVE_ZERO_SIZE": "P0", "POTENTIAL_OVERLAY_BLOCKER": "P0",
+	"CONTAINER_AUTHORITY_VIOLATION": "P1", "CONTAINER_CHILD_TOP_LEVEL": "P1", "CONTAINER_MANUAL_ANCHORS": "P1",
+	"UI_CONTAINER_OVERFLOW": "P1", "OUTSIDE_PARENT_RECT": "P1", "TOUCH_TARGET_TOO_SMALL": "P1", "UI_TEXT_CLIPPED": "P1", "ZERO_SIZE_WITH_CHILDREN": "P1",
+	"MISSING_SIZE_OR_EXPAND": "P2", "TOUCH_BUTTONS_TOO_CLOSE": "P2", "UI_NON_CONTAINER_CHILD_MISMATCH": "P2", "DEEP_NESTING": "P2", "ZERO_ALPHA_CONTENT": "P2"
+}
+## Container çocuğunun konumunu/boyutunu elle belirleyen sahne özellikleri (Container bunları ezer).
+const AUTHORITY_PROPS: Array[String] = ["position", "anchors_preset", "anchor_left", "anchor_top", "anchor_right", "anchor_bottom", "offset_left", "offset_top", "offset_right", "offset_bottom"]
+
 static var _registered_sidebar_dock: Control = null
 
 static func register_sidebar_dock(dock: Control) -> void:
@@ -21,11 +39,12 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "inspect_ui_layout",
-				"description": "Returns layout telemetry for a UI node or scene tree (geometry, bounding boxes, min sizes, visibility, theme, A11y, semantic roles) with layout warnings. Read-only.",
+				"description": "Returns standardized layout telemetry (schema 'ui-telemetry/1') for a UI node or scene tree: per-node id, depth, index, layout_authority (container|anchors|manual), bbox {x,y,w,h,right,bottom,cx,cy} (viewport-global when in tree), min sizes, visibility, theme, A11y, semantic roles, plus prioritized (P0/P1/P2) layout warnings. Read-only.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"root_path": {"type": "string", "description": "Root node path ('@sidebar', '@edited_scene', '/root/...', or empty)."},
+						"format": {"type": "string", "enum": ["tree", "flat"], "description": "'tree' nested children (default) or 'flat' node list with parent_path (easier to diff/query)."},
 						"max_depth": {"type": "integer", "description": "Max depth to scan (default: 4, max: 8)."},
 						"include_invisible": {"type": "boolean", "description": "Include invisible nodes (default: false)."},
 						"include_theme_details": {"type": "boolean", "description": "Include StyleBox details, font size and colors (default: false)."}
@@ -37,12 +56,13 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "audit_ui_layout",
-				"description": "Audits Control & Container hierarchy for layout antipatterns: Container vs Coordinate conflict (manual position/anchors inside Container), zero-size controls, missing expand flags, and deep nesting. Read-only.",
+				"description": "Deterministic layout audit with P0/P1/P2 priorities. P0 (interaction broken): button ignoring mouse (mouse_filter IGNORE), fully transparent or zero-size clickable control. P1 (layout broken): Container authority violation (manual position/offset/anchors on a Container child; with scene_path this is read from the .tscn itself), top_level in Container, content clipped outside parent, Container overflow, zero-size parent with children. P2: missing expand flags, deep nesting, transparent content. passed=false if any P0/P1. Read-only.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"root_path": {"type": "string", "description": "Root node path to audit ('@edited_scene', '@sidebar', or empty)."},
-						"max_depth": {"type": "integer", "description": "Max depth (default: 8)."},
+						"scene_path": {"type": "string", "description": "Audit a saved .tscn directly (static Container-authority check + hierarchy rules); overrides root_path."},
+						"max_depth": {"type": "integer", "description": "Max depth (default: 12)."},
 						"include_invisible": {"type": "boolean", "description": "Audit invisible controls (default: false)."}
 					}
 				}
@@ -52,7 +72,7 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "audit_ui_touch",
-				"description": "Audits mobile touch ergonomics: buttons smaller than 44x44px, clickable controls closer than 8px, and overlay containers blocking input with MOUSE_FILTER_STOP. Read-only.",
+				"description": "Audits mobile touch ergonomics with P0/P1/P2 priorities: buttons smaller than 44x44px (P1), clickable controls closer than 8px (P2), and a MOUSE_FILTER_STOP panel drawn ABOVE a button that overlaps it (P0, draw-order aware). Read-only.",
 				"parameters": {
 					"type": "object",
 					"properties": {
@@ -68,11 +88,16 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "scaffold_ui_theme",
-				"description": "Generates a cohesive Godot 4 Theme (.tres) resource with StyleBoxFlat tokens for Button (states), Panel, LineEdit, ProgressBar, Label and typography for mobile/desktop UI.",
+				"description": "Generates a design-token driven Godot 4 Theme (.tres) + a '<theme>.tokens.json' sidecar. Tokens: colors (primary/secondary/background/surface/surface_hover/text/text_muted/accent/danger/success, auto on_primary), radius sm/md/lg, spacing xs..xl (from spacing_unit), font scale small/body/title/heading. Styles Button (all states), Panel(Container), LineEdit, ProgressBar, Label, RichTextLabel, CheckBox/OptionButton, box/grid/margin constants, separators; defines type variations PrimaryButton, DangerButton, GhostButton, Card, HeaderLarge, HeaderMedium, Caption, AccentLabel, DangerLabel, HealthBar, DangerBar, AccentBar (use theme_type_variation instead of per-node overrides). Returns a WCAG contrast report for the palette.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"theme_path": {"type": "string", "description": "Target path (default: 'res://ui/theme.tres')."},
+						"preset": {"type": "string", "enum": ["dark", "light"], "description": "Base palette (default: 'dark'). Explicit colors override it."},
+						"tokens": {"type": "object", "description": "Token overrides: {color:{primary:'#hex',...}, radius:{sm,md,lg}, spacing:{xs,sm,md,lg,xl}, font_size:{small,body,title,heading}, border_width}."},
+						"spacing_unit": {"type": "integer", "description": "Base spacing unit in px; xs..xl = 1,2,3,4,6 x unit (default: 4)."},
+						"write_tokens": {"type": "boolean", "description": "Write the tokens JSON sidecar (default: true)."},
+						"success_color": {"type": "string", "description": "Success/health color in hex (default: preset)."},
 						"primary_color": {"type": "string", "description": "Primary accent color in hex (default: '#4f46e5')."},
 						"secondary_color": {"type": "string", "description": "Secondary accent color in hex (default: '#06b6d4')."},
 						"background_color": {"type": "string", "description": "Background canvas color in hex (default: '#0f172a')."},
@@ -94,11 +119,13 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "capture_ui_preview",
-				"description": "Renders an offscreen SubViewport preview of a UI scene across mobile portrait, mobile landscape, tablet, desktop resolutions and saves preview PNG for visual analysis. Read-only.",
+				"description": "Renders an offscreen SubViewport preview of a UI scene across mobile portrait, mobile landscape, tablet, desktop resolutions and saves a PNG for visual analysis. Returns the same bbox telemetry ('ui-telemetry/1', viewport coordinates, flat list), the controls overflowing the viewport and a prioritized audit summary, so the image can be checked against numbers. draw_bounds outlines every control: green = Container-managed, blue = anchors, orange = manual, magenta = interactive.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"scene_path": {"type": "string", "description": "Path to UI scene (e.g. 'res://scenes/ui/hud.tscn'). Empty uses active scene root."},
+						"include_telemetry": {"type": "boolean", "description": "Return bbox telemetry + audit (default: true)."},
+						"draw_bounds": {"type": "boolean", "description": "Draw bounding-box outlines on the PNG (default: false)."},
 						"root_path": {"type": "string", "description": "Node path if previewing an existing node."},
 						"profile": {"type": "string", "enum": ["mobile_portrait", "mobile_landscape", "tablet", "desktop", "square", "custom"], "description": "Profile resolution (default: 'mobile_portrait')."},
 						"width": {"type": "integer", "description": "Custom width in pixels (default: 720)."},
@@ -135,18 +162,73 @@ static func _inspect_ui_layout(args: Dictionary) -> Dictionary:
 	var warnings: Array[Dictionary] = []
 	var stats: Dictionary = {"total_inspected": 0}
 	var telemetry: Dictionary = _inspect_node_recursive(target_node, 0, max_depth, include_invisible, include_theme_details, warnings, stats)
-	return AISidebarToolResult.ok({
+	var by_priority: Dictionary = _prioritize(warnings)
+	var result: Dictionary = {
+		"schema_version": SCHEMA_VERSION,
+		"coordinate_space": {"rect": "parent-local", "global_rect": "viewport-global", "bbox": "viewport-global when in tree, else parent-local"},
 		"root_path": _get_safe_node_path(target_node),
 		"target_identifier": root_path if not root_path.is_empty() else "@edited_scene",
 		"total_nodes_inspected": int(stats["total_inspected"]),
-		"telemetry": telemetry,
 		"warnings": warnings,
-		"warning_count": warnings.size()
-	}, "UI layout telemetrisi çıkarıldı (%d düğüm, %d uyarı)." % [int(stats["total_inspected"]), warnings.size()])
+		"warning_count": warnings.size(),
+		"by_priority": by_priority
+	}
+	if str(args.get("format", "tree")) == "flat":
+		var flat: Array = []
+		_flatten_telemetry(telemetry, flat, "")
+		result["format"] = "flat"
+		result["nodes"] = flat
+	else:
+		result["format"] = "tree"
+		result["telemetry"] = telemetry
+	return AISidebarToolResult.ok(result, "UI layout telemetrisi çıkarıldı (%d düğüm, %d uyarı)." % [int(stats["total_inspected"]), warnings.size()])
+
+## Ağaç telemetrisini parent_path'li düz listeye çevirir (diff / sorgu için).
+static func _flatten_telemetry(node: Dictionary, out: Array, parent_path: String) -> void:
+	var item: Dictionary = node.duplicate()
+	item.erase("children")
+	item["parent_path"] = parent_path
+	out.append(item)
+	for ch: Dictionary in node.get("children", []):
+		_flatten_telemetry(ch, out, str(node.get("path", "")))
+
+## Standart sınır kutusu: x, y, w, h, right, bottom, cx, cy.
+static func _bbox(r: Rect2) -> Dictionary:
+	return {"x": r.position.x, "y": r.position.y, "w": r.size.x, "h": r.size.y, "right": r.end.x, "bottom": r.end.y, "cx": r.position.x + r.size.x * 0.5, "cy": r.position.y + r.size.y * 0.5}
+
+## Yerleşim otoritesi: kim bu düğümün konumunu belirliyor?
+static func _layout_authority(ctrl: Control) -> String:
+	if ctrl.get_parent() is Container and not ctrl.top_level: return "container"
+	if ctrl.anchor_left != 0.0 or ctrl.anchor_top != 0.0 or ctrl.anchor_right != 0.0 or ctrl.anchor_bottom != 0.0: return "anchors"
+	return "manual"
+
+static func _is_interactive(ctrl: Control) -> bool:
+	return ctrl is BaseButton or ctrl.has_signal("pressed") or ctrl.get_class().contains("Button") or ctrl.has_meta("touch_interactive")
+
+## Kural öncelik etiketini ekler, P0 → P2 sıralar ve sayımı döner.
+static func _prioritize(issues: Array[Dictionary]) -> Dictionary:
+	var by: Dictionary = {"P0": 0, "P1": 0, "P2": 0}
+	for iss: Dictionary in issues:
+		var p: String = str(iss.get("priority", PRIORITY.get(str(iss.get("rule_id", "")), "P2")))
+		iss["priority"] = p
+		by[p] = int(by.get(p, 0)) + 1
+	issues.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a["priority"]) < str(b["priority"]))
+	return by
+
+static func _issue(rule_id: String, severity: String, node: Node, message: String, fix: String, extra: Dictionary = {}) -> Dictionary:
+	var iss: Dictionary = {"rule_id": rule_id, "severity": severity, "node_path": _get_safe_node_path(node), "node_class": node.get_class(), "message": message, "fix_action": fix}
+	iss.merge(extra)
+	return iss
 
 static func _get_safe_node_path(node: Node) -> String:
 	if not node: return ""
-	return str(node.get_path()) if node.is_inside_tree() else str(node.name)
+	if node.is_inside_tree(): return str(node.get_path())
+	var parts: PackedStringArray = []
+	var cur: Node = node
+	while cur:
+		parts.insert(0, str(cur.name))
+		cur = cur.get_parent()
+	return "/".join(parts)
 
 static func _is_node_effectively_visible(node: Node) -> bool:
 	if not node: return false
@@ -206,11 +288,18 @@ static func _inspect_node_recursive(node: Node, cur_depth: int, max_depth: int, 
 	var is_ctrl: bool = (node is Control)
 	var ctrl: Control = node as Control
 	var data: Dictionary = {"name": node.name, "path": _get_safe_node_path(node), "class": node.get_class(), "is_control": is_ctrl}
+	data["id"] = str(node.get_meta("ui_id")) if node.has_meta("ui_id") else str(data["path"])
 	var parent: Node = node.get_parent()
 	if parent: data["parent_class"] = parent.get_class(); data["parent_name"] = parent.name
 	if is_ctrl:
 		var rect: Rect2 = ctrl.get_rect()
 		data["rect"] = {"x": rect.position.x, "y": rect.position.y, "w": rect.size.x, "h": rect.size.y}
+		data["bbox"] = _bbox(ctrl.get_global_rect() if ctrl.is_inside_tree() else rect)
+		data["depth"] = cur_depth
+		data["index"] = node.get_index()
+		data["layout_authority"] = _layout_authority(ctrl)
+		data["interactive"] = _is_interactive(ctrl)
+		if not is_equal_approx(ctrl.modulate.a, 1.0): data["modulate_alpha"] = ctrl.modulate.a
 		data["visible"] = ctrl.visible
 		data["visible_in_tree"] = _is_node_effectively_visible(ctrl)
 		if ctrl.is_inside_tree():
@@ -296,21 +385,83 @@ static func _evaluate_layout_warnings(ctrl: Control, warnings: Array[Dictionary]
 # --- 2. AUDIT UI LAYOUT ---
 
 static func _audit_ui_layout(args: Dictionary) -> Dictionary:
-	var target_node: Node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
-	if not target_node: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
+	var scene_path: String = str(args.get("scene_path", "")).strip_edges()
 	var issues: Array[Dictionary] = []
+	var target_node: Node = null
+	var owned_instance: Node = null
+	if not scene_path.is_empty():
+		var packed: PackedScene = load(scene_path) as PackedScene if ResourceLoader.exists(scene_path) else null
+		if not packed: return AISidebarToolResult.err("SCENE_NOT_FOUND", "UI sahnesi bulunamadı veya yüklenemedi: " + scene_path)
+		_audit_scene_authority(packed.get_state(), issues)
+		owned_instance = packed.instantiate()
+		target_node = owned_instance
+	else:
+		target_node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
+	if not target_node: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
 	var stats: Dictionary = {"total_controls": 0, "containers": 0}
-	_audit_layout_recursive(target_node, 0, clampi(int(args.get("max_depth", 8)), 1, 16), bool(args.get("include_invisible", false)), issues, stats)
+	_audit_layout_recursive(target_node, 0, clampi(int(args.get("max_depth", 12)), 1, 16), bool(args.get("include_invisible", false)), issues, stats)
+	var root_label: String = scene_path if owned_instance else _get_safe_node_path(target_node)
+	if owned_instance: owned_instance.free()
+	var by_priority: Dictionary = _prioritize(issues)
 	var err_cnt: int = 0
 	var wrn_cnt: int = 0
 	for iss: Dictionary in issues:
 		if str(iss.get("severity", "")) == "error": err_cnt += 1
 		else: wrn_cnt += 1
 	return AISidebarToolResult.ok({
-		"root_path": _get_safe_node_path(target_node), "total_controls_audited": int(stats["total_controls"]),
-		"container_count": int(stats["containers"]), "passed": (err_cnt == 0),
-		"error_count": err_cnt, "warning_count": wrn_cnt, "issues": issues
-	}, "UI layout denetimi tamamlandı (%d kontrol, %d hata, %d uyarı)." % [int(stats["total_controls"]), err_cnt, wrn_cnt])
+		"schema_version": SCHEMA_VERSION, "root_path": root_label, "total_controls_audited": int(stats["total_controls"]),
+		"container_count": int(stats["containers"]), "passed": (int(by_priority["P0"]) + int(by_priority["P1"]) == 0),
+		"error_count": err_cnt, "warning_count": wrn_cnt, "by_priority": by_priority, "issues": issues
+	}, "UI layout denetimi tamamlandı (%d kontrol; P0=%d P1=%d P2=%d)." % [int(stats["total_controls"]), int(by_priority["P0"]), int(by_priority["P1"]), int(by_priority["P2"])])
+
+## .tscn'in kendisinden Container otorite ihlali: Container çocuğuna elle yazılmış position / offset / anchor.
+## Çalışma zamanı konumuna bakılmaz (CenterContainer vb. yanlış pozitif vermez); yalnız kayıtlı özellikler.
+static func _audit_scene_authority(state: SceneState, issues: Array[Dictionary]) -> void:
+	var types: Dictionary = {}
+	for i: int in state.get_node_count():
+		types[str(state.get_node_path(i))] = _state_node_type(state, i, 0)
+	for i: int in range(1, state.get_node_count()):
+		var npath: String = str(state.get_node_path(i))
+		var slash: int = npath.rfind("/")
+		var parent_type: String = str(types.get(npath.substr(0, slash) if slash != -1 else ".", ""))
+		var own_type: String = str(types.get(npath, ""))
+		if parent_type.is_empty() or own_type.is_empty(): continue
+		if not ClassDB.class_exists(parent_type) or not ClassDB.class_exists(own_type): continue
+		if not ClassDB.is_parent_class(parent_type, "Container") or ClassDB.is_parent_class(parent_type, "SubViewportContainer"): continue
+		if not ClassDB.is_parent_class(own_type, "Control"): continue
+		var found: Array[String] = []
+		var top_level: bool = false
+		for j: int in state.get_node_property_count(i):
+			var pname: String = str(state.get_node_property_name(i, j))
+			if pname in AUTHORITY_PROPS: found.append(pname)
+			elif pname == "layout_mode" and int(state.get_node_property_value(i, j)) != 2: found.append("layout_mode=%d" % int(state.get_node_property_value(i, j)))
+			elif pname == "top_level" and bool(state.get_node_property_value(i, j)): top_level = true
+		if found.is_empty() or top_level: continue
+		issues.append({
+			"rule_id": "CONTAINER_AUTHORITY_VIOLATION", "severity": "error", "node_path": npath.trim_prefix("./"), "node_class": own_type, "parent_class": parent_type,
+			"evidence": {"saved_properties": found},
+			"message": "'%s' bir %s çocuğu ama %s elle yazılmış; Container konum/boyutu kendisi belirler ve bunları ezer." % [npath.trim_prefix("./"), parent_type, ", ".join(found)],
+			"fix_action": "Bu özellikleri sahneden sil; boyutu custom_minimum_size ve size_flags ile ver."
+		})
+
+static func _state_node_type(state: SceneState, idx: int, depth: int) -> String:
+	var t: String = str(state.get_node_type(idx))
+	if not t.is_empty() or depth > 4: return t
+	var inst: PackedScene = state.get_node_instance(idx)
+	return _state_node_type(inst.get_state(), 0, depth + 1) if inst else ""
+
+static func _alpha_chain(ci: CanvasItem) -> float:
+	var a: float = 1.0
+	var cur: Node = ci
+	while cur:
+		if cur is CanvasItem: a *= (cur as CanvasItem).modulate.a
+		cur = cur.get_parent()
+	return a
+
+static func _has_interactive_descendant(node: Node) -> bool:
+	for ch: Node in node.get_children():
+		if (ch is Control and _is_interactive(ch as Control)) or _has_interactive_descendant(ch): return true
+	return false
 
 static func _audit_layout_recursive(node: Node, cur_depth: int, max_depth: int, inc_inv: bool, issues: Array[Dictionary], stats: Dictionary) -> void:
 	if not (node is Control):
@@ -324,17 +475,41 @@ static func _audit_layout_recursive(node: Node, cur_depth: int, max_depth: int, 
 	var parent: Node = ctrl.get_parent()
 	if parent is Container and not (parent is SubViewportContainer):
 		if ctrl.top_level:
-			issues.append({"rule_id": "CONTAINER_CHILD_TOP_LEVEL", "severity": "error", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü top_level olarak ayarlanmıştır ve Container düzeninden kopmuştur." % ctrl.name, "fix_action": "top_level özelliğini kapatın."})
+			issues.append(_issue("CONTAINER_CHILD_TOP_LEVEL", "error", ctrl, "'%s' düğümü top_level olarak ayarlanmıştır ve Container düzeninden kopmuştur." % ctrl.name, "top_level özelliğini kapatın.", {"parent_class": parent.get_class()}))
 		if ctrl.anchors_preset != Control.PRESET_TOP_LEFT and ctrl.anchors_preset != 0:
-			issues.append({"rule_id": "CONTAINER_MANUAL_ANCHORS", "severity": "warning", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' düğümü Container içinde anchor preset (%d) kullanmaktadır." % [ctrl.name, ctrl.anchors_preset], "fix_action": "Reset anchors_preset to PRESET_TOP_LEFT."})
+			issues.append(_issue("CONTAINER_MANUAL_ANCHORS", "warning", ctrl, "'%s' düğümü Container içinde anchor preset (%d) kullanmaktadır." % [ctrl.name, ctrl.anchors_preset], "Reset anchors_preset to PRESET_TOP_LEFT.", {"parent_class": parent.get_class()}))
 		if parent is BoxContainer and not (ctrl is Label or ctrl is Button or ctrl is TextureRect or ctrl is ColorRect or ctrl is Separator):
 			if ctrl.size_flags_horizontal == 0 and ctrl.size_flags_vertical == 0 and ctrl.custom_minimum_size == Vector2.ZERO:
-				issues.append({"rule_id": "MISSING_SIZE_OR_EXPAND", "severity": "warning", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "parent_class": parent.get_class(), "message": "'%s' kontrolü BoxContainer içinde hem min boyuta (0,0) sahip değil hem de genişleme bayrağı yok." % ctrl.name, "fix_action": "Set custom_minimum_size or enable SIZE_EXPAND_FILL."})
-	if ctrl.visible and ctrl.size == Vector2.ZERO and ctrl.get_child_count() > 0 and not (ctrl is Container):
-		issues.append({"rule_id": "ZERO_SIZE_WITH_CHILDREN", "severity": "warning", "node_path": _get_safe_node_path(ctrl), "node_class": ctrl.get_class(), "message": "'%s' kontrolünün boyutu (0,0) iken %d alt elemanı bulunmaktadır." % [ctrl.name, ctrl.get_child_count()], "fix_action": "Set custom_minimum_size or layout anchors."})
+				issues.append(_issue("MISSING_SIZE_OR_EXPAND", "warning", ctrl, "'%s' kontrolü BoxContainer içinde hem min boyuta (0,0) sahip değil hem de genişleme bayrağı yok." % ctrl.name, "Set custom_minimum_size or enable SIZE_EXPAND_FILL.", {"parent_class": parent.get_class()}))
+	if ctrl.is_inside_tree() and ctrl.visible and ctrl.size == Vector2.ZERO and ctrl.get_child_count() > 0 and not (ctrl is Container):
+		issues.append(_issue("ZERO_SIZE_WITH_CHILDREN", "warning", ctrl, "'%s' kontrolünün boyutu (0,0) iken %d alt elemanı bulunmaktadır." % [ctrl.name, ctrl.get_child_count()], "Set custom_minimum_size or layout anchors."))
+	_evaluate_layout_warnings(ctrl, issues)
+	if _is_interactive(ctrl): _audit_interactive(ctrl, issues)
+	elif ctrl.visible and ctrl.modulate.a <= ALPHA_EPSILON and (_alpha_chain(parent as CanvasItem) if parent is CanvasItem else 1.0) > ALPHA_EPSILON and not _has_interactive_descendant(ctrl):
+		issues.append(_issue("ZERO_ALPHA_CONTENT", "warning", ctrl, "'%s' görünür ama tamamen saydam (modulate.a=0); kullanıcıya görünmez." % ctrl.name, "Intentional fade-in ise yok say; değilse modulate.a veya visible düzelt."))
+	if cur_depth == NESTING_LIMIT + 1:
+		issues.append(_issue("DEEP_NESTING", "warning", ctrl, "'%s' düğümü %d. düzeyde; iç içe geçme %d düzeyi aşıyor." % [ctrl.name, cur_depth, NESTING_LIMIT], "Ara Container'ları birleştir veya bölümü ayrı sahneye çıkar."))
+	if ctrl.is_inside_tree() and parent is Control and not ctrl.top_level:
+		var pc: Control = parent as Control
+		if pc.clip_contents and not (pc is ScrollContainer) and pc.size.x > 0.0 and pc.size.y > 0.0 and ctrl.size.x > 0.0 and ctrl.size.y > 0.0:
+			var pr: Rect2 = pc.get_global_rect().grow(1.0)
+			var cr: Rect2 = ctrl.get_global_rect()
+			if not pr.encloses(cr):
+				issues.append(_issue("OUTSIDE_PARENT_RECT", "warning", ctrl, "'%s' içeriği, kırpan ebeveyni '%s' dışına taşıyor; görünmeyen kısım kesiliyor." % [ctrl.name, pc.name], "Ebeveyni büyüt, içeriği küçült veya ScrollContainer kullan.", {"evidence": {"child_bbox": _bbox(cr), "parent_bbox": _bbox(pc.get_global_rect())}}))
 	if cur_depth < max_depth:
 		for ch: Node in ctrl.get_children():
 			_audit_layout_recursive(ch, cur_depth + 1, max_depth, inc_inv, issues, stats)
+
+## Etkileşimli düğümün gerçekten tıklanabilir olup olmadığı (P0 kuralları).
+static func _audit_interactive(ctrl: Control, issues: Array[Dictionary]) -> void:
+	if ctrl is BaseButton and (ctrl as BaseButton).disabled: return
+	if ctrl.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		issues.append(_issue("INTERACTIVE_INPUT_IGNORED", "error", ctrl, "'%s' etkileşimli ama mouse_filter=IGNORE; fare/dokunma olayı almaz." % ctrl.name, "mouse_filter değerini STOP yap."))
+	if _alpha_chain(ctrl) <= ALPHA_EPSILON:
+		issues.append(_issue("INTERACTIVE_ZERO_ALPHA", "error", ctrl, "'%s' tıklanabilir ama zincirdeki modulate.a ≈ 0; kullanıcı görmeden tıklar (hayalet düğme)." % ctrl.name, "modulate.a değerini düzelt veya visible=false yap."))
+	var pc: Control = ctrl.get_parent() as Control
+	if ctrl.is_inside_tree() and pc != null and pc.size.x > 0.0 and pc.size.y > 0.0 and (ctrl.size.x <= 0.0 or ctrl.size.y <= 0.0):
+		issues.append(_issue("INTERACTIVE_ZERO_SIZE", "error", ctrl, "'%s' etkileşimli ama boyutu %dx%d; tıklanacak alanı yok (yerleşim tamamlandıktan sonra ölçülür)." % [ctrl.name, int(ctrl.size.x), int(ctrl.size.y)], "custom_minimum_size ver veya size_flags ile genişlet."))
 
 # --- 3. AUDIT UI TOUCH ---
 
@@ -367,12 +542,32 @@ static func _audit_ui_touch(args: Dictionary) -> Dictionary:
 			var cr: Rect2 = cont.get_global_rect()
 			for b: Control in interactive:
 				if not b.is_inside_tree() or cont.is_ancestor_of(b) or b.is_ancestor_of(cont): continue
+				if not _draws_above(cont, b): continue
 				var br: Rect2 = b.get_global_rect()
 				if cr.intersects(br):
-					issues.append({"rule_id": "POTENTIAL_OVERLAY_BLOCKER", "severity": "warning", "node_path": _get_safe_node_path(cont), "message": "Kapsayıcı/Panel '%s' (STOP filtresi) buton '%s' üzerine biniyor (potansiyel input engeli)." % [cont.name, b.name]})
+					issues.append({"rule_id": "POTENTIAL_OVERLAY_BLOCKER", "severity": "error", "node_path": _get_safe_node_path(cont), "message": "Kapsayıcı/Panel '%s' (STOP filtresi) buton '%s' üzerinde çizilir ve ona biner; buton tıklanamaz." % [cont.name, b.name], "fix_action": "Paneli butonun altına al (sıra) veya mouse_filter=IGNORE yap."})
 					break
+	var by_priority: Dictionary = _prioritize(issues)
 	var score: int = clampi(100 - (issues.size() * 15), 0, 100)
-	return AISidebarToolResult.ok({"root_path": _get_safe_node_path(target_node), "interactive_controls_count": interactive.size(), "touch_score": score, "passed": (issues.size() == 0), "issue_count": issues.size(), "issues": issues}, "Dokunmatik denetim tamamlandı: Skor %d/100 (%d sorun)." % [score, issues.size()])
+	return AISidebarToolResult.ok({"schema_version": SCHEMA_VERSION, "root_path": _get_safe_node_path(target_node), "interactive_controls_count": interactive.size(), "touch_score": score, "passed": (int(by_priority["P0"]) + int(by_priority["P1"]) == 0), "issue_count": issues.size(), "by_priority": by_priority, "issues": issues}, "Dokunmatik denetim tamamlandı: Skor %d/100 (%d sorun)." % [score, issues.size()])
+
+## a, b'den SONRA çizilir mi (ağaç sırası + z_index)? Biri diğerinin atasıysa false.
+static func _draws_above(a: Control, b: Control) -> bool:
+	if a.z_index != b.z_index: return a.z_index > b.z_index
+	var chain_a: Array[Node] = _ancestor_chain(a)
+	var chain_b: Array[Node] = _ancestor_chain(b)
+	var i: int = 0
+	while i < chain_a.size() and i < chain_b.size() and chain_a[i] == chain_b[i]: i += 1
+	if i >= chain_a.size() or i >= chain_b.size(): return false
+	return chain_a[i].get_index() > chain_b[i].get_index()
+
+static func _ancestor_chain(node: Node) -> Array[Node]:
+	var chain: Array[Node] = []
+	var cur: Node = node
+	while cur:
+		chain.push_front(cur)
+		cur = cur.get_parent()
+	return chain
 
 static func _collect_touch_candidates(node: Node, inc_inv: bool, interactive: Array[Control], containers: Array[Control]) -> void:
 	if not (node is Control):
@@ -380,7 +575,7 @@ static func _collect_touch_candidates(node: Node, inc_inv: bool, interactive: Ar
 		return
 	var ctrl: Control = node as Control
 	if not inc_inv and not _is_node_effectively_visible(ctrl): return
-	if ctrl is BaseButton or ctrl.has_signal("pressed") or ctrl.get_class().contains("Button") or ctrl.has_meta("touch_interactive"):
+	if _is_interactive(ctrl):
 		interactive.append(ctrl)
 	elif ctrl is Container or ctrl is Panel or ctrl is PanelContainer or ctrl is TextureRect or ctrl is ColorRect:
 		containers.append(ctrl)
@@ -399,51 +594,51 @@ static func _scaffold_ui_theme(args: Dictionary) -> Dictionary:
 	var pchk: Dictionary = AISidebarPathPolicy.is_safe_to_write(raw_p)
 	if not pchk["safe"]: return AISidebarToolResult.err("PERMISSION_DENIED", str(pchk["reason"]))
 	var tp: String = str(pchk["path"])
-	var pri: Color = Color.from_string(str(args.get("primary_color", "#4f46e5")), Color(0.31, 0.27, 0.90))
-	var bg: Color = Color.from_string(str(args.get("background_color", "#0f172a")), Color(0.06, 0.09, 0.16))
-	var surf: Color = Color.from_string(str(args.get("surface_color", "#1e293b")), Color(0.12, 0.16, 0.23))
-	var surf_h: Color = Color.from_string(str(args.get("surface_hover_color", "#334155")), Color(0.20, 0.25, 0.33))
-	var txt: Color = Color.from_string(str(args.get("text_color", "#f8fafc")), Color(0.97, 0.98, 0.99))
-	var txt_m: Color = Color.from_string(str(args.get("text_muted_color", "#94a3b8")), Color(0.58, 0.64, 0.72))
-	var rad: int = clampi(int(args.get("corner_radius", 8)), 0, 32)
-	var fs_body: int = clampi(int(args.get("font_size_body", 16)), 8, 72)
-	var theme: Theme = Theme.new()
-	theme.default_font_size = fs_body
-	var make_flat: Callable = func(bg_c: Color, b_c: Color, bw: int, r: int, mh: int = 14, mv: int = 10) -> StyleBoxFlat:
-		var sb: StyleBoxFlat = StyleBoxFlat.new()
-		sb.bg_color = bg_c
-		if bw > 0: sb.set_border_width_all(bw); sb.border_color = b_c
-		if r > 0: sb.set_corner_radius_all(r)
-		sb.content_margin_left = float(mh); sb.content_margin_right = float(mh); sb.content_margin_top = float(mv); sb.content_margin_bottom = float(mv)
-		return sb
-	theme.set_stylebox("normal", "Button", make_flat.call(surf, pri * Color(1, 1, 1, 0.4), 1, rad))
-	theme.set_stylebox("hover", "Button", make_flat.call(surf_h, pri, 1, rad))
-	theme.set_stylebox("pressed", "Button", make_flat.call(pri, Color.WHITE, 2, rad))
-	theme.set_stylebox("focus", "Button", make_flat.call(surf, pri, 2, rad))
-	theme.set_stylebox("disabled", "Button", make_flat.call(bg * Color(1, 1, 1, 0.6), txt_m * Color(1, 1, 1, 0.2), 1, rad))
-	theme.set_color("font_color", "Button", txt)
-	theme.set_color("font_disabled_color", "Button", txt_m)
-	theme.set_font_size("font_size", "Button", fs_body)
-	var pnl: StyleBoxFlat = make_flat.call(surf, surf_h, 1, rad, 12, 12)
-	pnl.shadow_size = 4; pnl.shadow_color = Color(0, 0, 0, 0.35)
-	theme.set_stylebox("panel", "Panel", pnl)
-	theme.set_stylebox("panel", "PanelContainer", pnl)
-	theme.set_stylebox("normal", "LineEdit", make_flat.call(bg, surf_h, 1, rad, 10, 8))
-	theme.set_stylebox("focus", "LineEdit", make_flat.call(bg, pri, 2, rad, 10, 8))
-	theme.set_color("font_color", "LineEdit", txt)
-	theme.set_stylebox("background", "ProgressBar", make_flat.call(bg, Color.TRANSPARENT, 0, clampi(rad / 2, 2, 8), 0, 0))
-	theme.set_stylebox("fill", "ProgressBar", make_flat.call(pri, Color.TRANSPARENT, 0, clampi(rad / 2, 2, 8), 0, 0))
-	theme.set_color("font_color", "Label", txt)
-	theme.set_font_size("font_size", "Label", fs_body)
+	var tokens: Dictionary = AISidebarUIThemeScaffold.resolve_tokens(args)
+	var report: Dictionary = AISidebarUIThemeScaffold.contrast_report(tokens)
+	var theme: Theme = AISidebarUIThemeScaffold.build_theme(tokens)
 	var dp: String = tp.get_base_dir()
 	if not DirAccess.dir_exists_absolute(dp): DirAccess.make_dir_recursive_absolute(dp)
 	var err: Error = ResourceSaver.save(theme, tp)
 	if err != OK: return AISidebarToolResult.err("SAVE_FAILED", "Theme kaydedilemedi (hata: %d): %s" % [err, tp])
-	return AISidebarToolResult.ok({"theme_path": tp, "default_font_size": fs_body, "styled_classes": ["Button", "Panel", "PanelContainer", "LineEdit", "ProgressBar", "Label"]}, "Theme şablonu oluşturuldu: " + tp)
+	var tokens_path: String = ""
+	if bool(args.get("write_tokens", true)):
+		var cand: String = tp.get_basename() + ".tokens.json"
+		var tchk: Dictionary = AISidebarPathPolicy.is_safe_to_write(cand)
+		if tchk["safe"]:
+			var tf: FileAccess = FileAccess.open(str(tchk["path"]), FileAccess.WRITE)
+			if tf:
+				tf.store_string(JSON.stringify(AISidebarUIThemeScaffold.tokens_to_json(tokens), "  "))
+				tf.close()
+				tokens_path = str(tchk["path"])
+	return AISidebarToolResult.ok({
+		"theme_path": tp, "tokens_path": tokens_path, "preset": tokens["preset"], "default_font_size": int(tokens["font_size"]["body"]),
+		"styled_classes": AISidebarUIThemeScaffold.styled_classes(), "type_variations": AISidebarUIThemeScaffold.VARIATIONS,
+		"tokens": AISidebarUIThemeScaffold.tokens_to_json(tokens), "contrast": report, "contrast_passed": report["passed"]
+	}, "Theme şablonu oluşturuldu: %s (%d kontrast uyarısı)." % [tp, (report["warnings"] as Array).size()])
 
 # --- 5. CAPTURE UI PREVIEW ---
 
 static func _capture_ui_preview(args: Dictionary) -> Dictionary:
+	var prep: Dictionary = _preview_begin(args)
+	if prep.has("error"): return prep["error"]
+	return _preview_finish(prep["ctx"], args, false)
+
+## Container yerleşimi bir sonraki karede oturur; bu yol iki kare bekleyip çizer (ajan yolu bunu kullanır).
+static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
+	if tool_name != "capture_ui_preview": return execute(tool_name, args)
+	var prep: Dictionary = _preview_begin(args)
+	if prep.has("error"): return prep["error"]
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var settled: bool = false
+	if tree and prep["ctx"]["attached_root"]:
+		await tree.process_frame
+		await tree.process_frame
+		settled = true
+	return _preview_finish(prep["ctx"], args, settled)
+
+## Önizleme sahnesini kurar. Hata: {"error": sonuç}; başarı: {"ctx": {...}}.
+static func _preview_begin(args: Dictionary) -> Dictionary:
 	var sc_path: String = str(args.get("scene_path", "")).strip_edges()
 	var prof: String = str(args.get("profile", "mobile_portrait")).to_lower()
 	var vp_size: Vector2i = Vector2i(720, 1280)
@@ -455,22 +650,22 @@ static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 		"square": vp_size = Vector2i(1080, 1080)
 		"custom": vp_size = Vector2i(maxi(int(args.get("width", 720)), 64), maxi(int(args.get("height", 1280)), 64))
 	if int(vp_size.x) * int(vp_size.y) > (4096 * 4096):
-		return AISidebarToolResult.err("PREVIEW_TOO_LARGE", "İstenen önizleme çözünürlüğü (%dx%d) azami piksel sınırını (4096x4096) aşmaktadır." % [vp_size.x, vp_size.y])
+		return {"error": AISidebarToolResult.err("PREVIEW_TOO_LARGE", "İstenen önizleme çözünürlüğü (%dx%d) azami piksel sınırını (4096x4096) aşmaktadır." % [vp_size.x, vp_size.y])}
 	var spath: String = str(args.get("save_path", "")).strip_edges()
 	if spath.is_empty(): spath = "user://ui_snapshots/preview_%s_%dx%d.png" % [prof, vp_size.x, vp_size.y]
 	var pchk: Dictionary = AISidebarPathPolicy.is_safe_to_write(spath)
-	if not pchk["safe"]: return AISidebarToolResult.err("PERMISSION_DENIED", str(pchk["reason"]))
+	if not pchk["safe"]: return {"error": AISidebarToolResult.err("PERMISSION_DENIED", str(pchk["reason"]))}
 	var norm_p: String = str(pchk["path"])
 	var ui_inst: Node = null
 	var is_inst: bool = false
 	if not sc_path.is_empty():
-		if not ResourceLoader.exists(sc_path): return AISidebarToolResult.err("SCENE_NOT_FOUND", "UI sahnesi bulunamadı: " + sc_path)
+		if not ResourceLoader.exists(sc_path): return {"error": AISidebarToolResult.err("SCENE_NOT_FOUND", "UI sahnesi bulunamadı: " + sc_path)}
 		var sc_res: PackedScene = load(sc_path) as PackedScene
-		if not sc_res: return AISidebarToolResult.err("LOAD_FAILED", "UI sahnesi yüklenemedi: " + sc_path)
+		if not sc_res: return {"error": AISidebarToolResult.err("LOAD_FAILED", "UI sahnesi yüklenemedi: " + sc_path)}
 		ui_inst = sc_res.instantiate(); is_inst = true
 	else:
 		ui_inst = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
-		if not ui_inst: return AISidebarToolResult.err("NODE_NOT_FOUND", "Önizleme yapılacak UI kök düğümü bulunamadı.")
+		if not ui_inst: return {"error": AISidebarToolResult.err("NODE_NOT_FOUND", "Önizleme yapılacak UI kök düğümü bulunamadı.")}
 	var vp: SubViewport = SubViewport.new()
 	vp.size = vp_size
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -484,8 +679,22 @@ static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 	vp.add_child(render_node)
 	if render_node is Control:
 		var c: Control = render_node as Control
-		c.set_anchors_preset(Control.PRESET_FULL_RECT)
-		c.size = Vector2(vp_size)
+		c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return {"ctx": {"vp": vp, "render_node": render_node, "attached_root": attached_root, "vp_size": vp_size, "prof": prof, "norm_p": norm_p}}
+
+## Yerleşim oturduktan sonra (async yolda iki kare beklenir) telemetriyi toplar, çizer ve kaydeder.
+static func _preview_finish(ctx: Dictionary, args: Dictionary, layout_settled: bool) -> Dictionary:
+	var vp: SubViewport = ctx["vp"]
+	var render_node: Node = ctx["render_node"]
+	var attached_root: Node = ctx["attached_root"]
+	var vp_size: Vector2i = ctx["vp_size"]
+	var prof: String = ctx["prof"]
+	var norm_p: String = ctx["norm_p"]
+	var telemetry: Dictionary = {}
+	if bool(args.get("include_telemetry", true)):
+		telemetry = _preview_telemetry(render_node, vp_size)
+	if bool(args.get("draw_bounds", false)):
+		_add_bounds_overlay(vp, render_node)
 	if bool(args.get("simulate_safe_area", true)) and prof in ["mobile_portrait", "mobile_landscape"]:
 		_add_safe_area_guides(vp, vp_size, prof)
 	if RenderingServer.has_method("force_draw"):
@@ -508,7 +717,69 @@ static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 	vp.free()
 	if err != OK: return AISidebarToolResult.err("SAVE_FAILED", "Ekran görüntüsü kaydedilemedi: " + norm_p)
 	var b64: String = Marshalls.raw_to_base64(img.save_png_to_buffer())
-	return AISidebarToolResult.ok({"preview_path": norm_p, "profile": prof, "width": vp_size.x, "height": vp_size.y, "aspect_ratio": "%.2f" % (float(vp_size.x) / float(vp_size.y)), "image_base64": b64}, "UI önizleme görüntüsü alındı (%s, %dx%d): %s" % [prof, vp_size.x, vp_size.y, norm_p])
+	var out: Dictionary = {"preview_path": norm_p, "profile": prof, "width": vp_size.x, "height": vp_size.y, "aspect_ratio": "%.2f" % (float(vp_size.x) / float(vp_size.y)), "image_base64": b64}
+	out["layout_settled"] = layout_settled
+	if not telemetry.is_empty(): out["telemetry"] = telemetry
+	return AISidebarToolResult.ok(out, "UI önizleme görüntüsü alındı (%s, %dx%d): %s" % [prof, vp_size.x, vp_size.y, norm_p])
+
+## Önizlemenin sayısal karşılığı: görünüm alanına göre bbox listesi, taşanlar ve öncelikli denetim özeti.
+static func _preview_telemetry(root: Node, vp_size: Vector2i) -> Dictionary:
+	var nodes: Array[Dictionary] = []
+	var overflow: Array[Dictionary] = []
+	var vp_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(vp_size))
+	_collect_preview_nodes(root, root, vp_rect, nodes, overflow)
+	var issues: Array[Dictionary] = []
+	_audit_layout_recursive(root, 0, 12, false, issues, {})
+	var by_priority: Dictionary = _prioritize(issues)
+	return {
+		"schema_version": SCHEMA_VERSION, "coordinate_space": "viewport-global", "viewport": _bbox(vp_rect),
+		"node_count": nodes.size(), "nodes_truncated": nodes.size() >= MAX_FLAT_NODES, "nodes": nodes,
+		"overflow_viewport": overflow, "by_priority": by_priority, "passed": int(by_priority["P0"]) + int(by_priority["P1"]) == 0,
+		"issues": issues.slice(0, 50)
+	}
+
+static func _collect_preview_nodes(node: Node, root: Node, vp_rect: Rect2, nodes: Array[Dictionary], overflow: Array[Dictionary]) -> void:
+	if nodes.size() >= MAX_FLAT_NODES: return
+	if node is Control:
+		var ctrl: Control = node as Control
+		if _is_node_effectively_visible(ctrl):
+			var gr: Rect2 = ctrl.get_global_rect()
+			var rel: String = "." if node == root else str(root.get_path_to(node))
+			nodes.append({"path": rel, "class": ctrl.get_class(), "depth": _ancestor_chain(node).size() - _ancestor_chain(root).size(), "layout_authority": _layout_authority(ctrl), "interactive": _is_interactive(ctrl), "bbox": _bbox(gr)})
+			if not vp_rect.grow(1.0).encloses(gr) and gr.size.x > 0.0 and gr.size.y > 0.0:
+				overflow.append({"path": rel, "bbox": _bbox(gr), "overflow": {"left": maxf(0.0, vp_rect.position.x - gr.position.x), "top": maxf(0.0, vp_rect.position.y - gr.position.y), "right": maxf(0.0, gr.end.x - vp_rect.end.x), "bottom": maxf(0.0, gr.end.y - vp_rect.end.y)}})
+	for ch: Node in node.get_children():
+		_collect_preview_nodes(ch, root, vp_rect, nodes, overflow)
+
+## Her kontrolün sınırını renkli çerçeveyle çizer: yeşil=Container, mavi=anchor, turuncu=elle, eflatun=etkileşimli.
+static func _add_bounds_overlay(vp: SubViewport, root: Node) -> void:
+	var layer: CanvasLayer = CanvasLayer.new()
+	layer.layer = 100
+	vp.add_child(layer)
+	_add_bounds_for(root, layer)
+
+static func _add_bounds_for(node: Node, layer: CanvasLayer) -> void:
+	if node is Control and _is_node_effectively_visible(node):
+		var ctrl: Control = node as Control
+		var gr: Rect2 = ctrl.get_global_rect()
+		if gr.size.x > 0.0 and gr.size.y > 0.0:
+			var color: Color = Color(0.2, 0.85, 0.35)
+			match _layout_authority(ctrl):
+				"anchors": color = Color(0.25, 0.55, 1.0)
+				"manual": color = Color(1.0, 0.6, 0.1)
+			if _is_interactive(ctrl): color = Color(0.95, 0.2, 0.85)
+			var box: StyleBoxFlat = StyleBoxFlat.new()
+			box.draw_center = false
+			box.set_border_width_all(1)
+			box.border_color = color
+			var p: Panel = Panel.new()
+			p.add_theme_stylebox_override("panel", box)
+			p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			p.position = gr.position
+			p.size = gr.size
+			layer.add_child(p)
+	for ch: Node in node.get_children():
+		_add_bounds_for(ch, layer)
 
 static func _add_safe_area_guides(vp: SubViewport, size: Vector2i, prof: String) -> void:
 	var gl: CanvasLayer = CanvasLayer.new()
