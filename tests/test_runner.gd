@@ -55,6 +55,7 @@ const TestProviderProfiles = preload("res://tests/test_provider_profiles.gd")
 const TestRuntimeProbe = preload("res://tests/test_runtime_probe.gd")
 const TestOutputTools = preload("res://tests/test_output_tools.gd")
 const TestUiAudit = preload("res://tests/test_ui_audit.gd")
+const TestUiAuditRules = preload("res://tests/test_ui_audit_rules.gd")
 const TestNetworkRecovery = preload("res://tests/test_network_recovery.gd")
 const TestViewportScreenshot = preload("res://tests/test_viewport_screenshot.gd")
 const TestUIUXQueueAndInput = preload("res://tests/test_ui_ux_queue_and_input.gd")
@@ -133,11 +134,19 @@ const TestConfigSafety = preload("res://tests/test_config_safety.gd")
 ## başında git'e girmeyen .test_config_backup/ klasörüne taşınır, sonunda bayt bayt geri konur; testlerin
 ## yazdıkları silinir. Koşu yarıda çökerse klasör kalır; bir sonraki koşu başlarken önce o geri yüklenir.
 const USER_CONFIG_FILES: Array[String] = [
+	"user://godot_sidebar_ai/config.json",
+	"user://godot_sidebar_ai/config.json.bak",
+	"user://godot_sidebar_ai/config.json.corrupt",
+	"user://godot_sidebar_ai/config.json.tmp",
 	"res://addons/godot_sidebar_ai/config.json",
 	"res://addons/godot_sidebar_ai/config.json.bak",
 	"res://addons/godot_sidebar_ai/config.json.corrupt",
 	"res://addons/godot_sidebar_ai/config.json.tmp",
 ]
+
+## Yedek klasöründeki ad: user:// ve res:// aynı dosya adını taşıdığından kaynak da adın parçasıdır.
+static func _backup_name(path: String) -> String:
+	return path.replace("://", "_").replace("/", "_")
 const CONFIG_BACKUP_DIR = "res://.test_config_backup"
 ## Eski sürümün user:// yedeği (bir kez geri yüklenip kaldırılır).
 const LEGACY_BACKUP = "user://test_runner_user_config.backup"
@@ -152,13 +161,14 @@ static func isolate_user_config() -> void:
 		lf.close()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(LEGACY_BACKUP))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CONFIG_BACKUP_DIR))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(USER_CONFIG_FILES[0].get_base_dir()))
 	# Editör bu klasörü taramasın.
 	var gi := FileAccess.open(CONFIG_BACKUP_DIR.path_join(".gdignore"), FileAccess.WRITE)
 	gi.close()
 	for path: String in USER_CONFIG_FILES:
 		if FileAccess.file_exists(path):
 			var bytes := FileAccess.get_file_as_bytes(path)
-			var f := FileAccess.open(CONFIG_BACKUP_DIR.path_join(path.get_file()), FileAccess.WRITE)
+			var f := FileAccess.open(CONFIG_BACKUP_DIR.path_join(_backup_name(path)), FileAccess.WRITE)
 			f.store_buffer(bytes)
 			f.close()
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
@@ -168,7 +178,7 @@ static func restore_user_config() -> void:
 	if not DirAccess.dir_exists_absolute(backup_dir):
 		return
 	for path: String in USER_CONFIG_FILES:
-		var saved := CONFIG_BACKUP_DIR.path_join(path.get_file())
+		var saved := CONFIG_BACKUP_DIR.path_join(_backup_name(path))
 		if FileAccess.file_exists(saved):
 			var bytes := FileAccess.get_file_as_bytes(saved)
 			var f := FileAccess.open(path, FileAccess.WRITE)
@@ -182,6 +192,9 @@ static func restore_user_config() -> void:
 	DirAccess.remove_absolute(backup_dir)
 
 func _init() -> void:
+	call_deferred("_run_all")
+
+func _run_all() -> void:
 	print("==================================================")
 	print("   GODOT AI CORE v2.0 - MASTER UNIT TESTS        ")
 	print("==================================================")
@@ -242,6 +255,7 @@ func _init() -> void:
 		TestRuntimeProbe,
 		TestOutputTools,
 		TestUiAudit,
+		TestUiAuditRules,
 		TestNetworkRecovery,
 		TestViewportScreenshot,
 		TestUIUXQueueAndInput,

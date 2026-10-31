@@ -8,6 +8,8 @@ class_name AISidebarUITelemetryTools
 
 const AISidebarPathPolicy = preload("res://addons/godot_sidebar_ai/core/security/path_policy.gd")
 const AISidebarUIThemeScaffold = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_theme_scaffold.gd")
+const AISidebarUIAuditRules = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_audit_rules.gd")
+const AISidebarUIAuditScenario = preload("res://addons/godot_sidebar_ai/core/tools/primitive/ui_audit_scenario.gd")
 
 ## Telemetri sözleşmesi sürümü: inspect_ui_layout ve capture_ui_preview aynı bbox / hiyerarşi şemasını döner.
 const SCHEMA_VERSION: String = "ui-telemetry/1"
@@ -19,7 +21,7 @@ const ALPHA_EPSILON: float = 0.01
 const PRIORITY: Dictionary = {
 	"INTERACTIVE_INPUT_IGNORED": "P0", "INTERACTIVE_ZERO_ALPHA": "P0", "INTERACTIVE_ZERO_SIZE": "P0", "POTENTIAL_OVERLAY_BLOCKER": "P0",
 	"CONTAINER_AUTHORITY_VIOLATION": "P1", "CONTAINER_CHILD_TOP_LEVEL": "P1", "CONTAINER_MANUAL_ANCHORS": "P1",
-	"UI_CONTAINER_OVERFLOW": "P1", "OUTSIDE_PARENT_RECT": "P1", "TOUCH_TARGET_TOO_SMALL": "P1", "UI_TEXT_CLIPPED": "P1", "ZERO_SIZE_WITH_CHILDREN": "P1",
+	"UI_CONTAINER_OVERFLOW": "P1", "OUTSIDE_PARENT_RECT": "P1", "OUTSIDE_VIEWPORT": "P1", "TEXT_LOW_CONTRAST": "P1", "TEXT_OVERLAPS_INTERACTIVE": "P1", "INTERACTIVE_OVERLAP": "P1", "TOUCH_TARGET_TOO_SMALL": "P1", "UI_TEXT_CLIPPED": "P1", "ZERO_SIZE_WITH_CHILDREN": "P1",
 	"MISSING_SIZE_OR_EXPAND": "P2", "TOUCH_BUTTONS_TOO_CLOSE": "P2", "UI_NON_CONTAINER_CHILD_MISMATCH": "P2", "DEEP_NESTING": "P2", "ZERO_ALPHA_CONTENT": "P2"
 }
 ## Container çocuğunun konumunu/boyutunu elle belirleyen sahne özellikleri (Container bunları ezer).
@@ -56,14 +58,17 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "audit_ui_layout",
-				"description": "Deterministic layout audit with P0/P1/P2 priorities. P0 (interaction broken): button ignoring mouse (mouse_filter IGNORE), fully transparent or zero-size clickable control. P1 (layout broken): Container authority violation (manual position/offset/anchors on a Container child; with scene_path this is read from the .tscn itself), top_level in Container, content clipped outside parent, Container overflow, zero-size parent with children. P2: missing expand flags, deep nesting, transparent content. passed=false if any P0/P1. Read-only.",
+				"description": "Deterministic layout audit with P0/P1/P2 priorities. P0 (interaction broken): button ignoring mouse (mouse_filter IGNORE), fully transparent or zero-size clickable control. P1 (layout broken): Container authority violation (manual position/offset/anchors on a Container child; with scene_path this is read from the .tscn itself), top_level in Container, content clipped outside parent, control outside the viewport (OUTSIDE_VIEWPORT; scrolled/clipped content and world-space UI are exempt), text unreadable against its panel (TEXT_LOW_CONTRAST, WCAG ratio of the real font colour vs the nearest StyleBox/ColorRect/texture background: <3:1 is P1, below 4.5:1 for body text P2), visible text drawn over a button (TEXT_OVERLAPS_INTERACTIVE) or two enabled buttons overlapping (INTERACTIVE_OVERLAP), Container overflow, zero-size parent with children. P2: missing expand flags, deep nesting, transparent content, text hidden under a button. passed=false if any P0/P1. Read-only.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"root_path": {"type": "string", "description": "Root node path to audit ('@edited_scene', '@sidebar', or empty)."},
 						"scene_path": {"type": "string", "description": "Audit a saved .tscn directly (static Container-authority check + hierarchy rules); overrides root_path."},
 						"max_depth": {"type": "integer", "description": "Max depth (default: 12)."},
-						"include_invisible": {"type": "boolean", "description": "Audit invisible controls (default: false)."}
+						"include_invisible": {"type": "boolean", "description": "Audit invisible controls (default: false)."},
+						"min_text_contrast": {"type": "number", "description": "Required WCAG contrast for body text (default: 4.5; large text >= 24 px needs 3.0)."},
+						"states": {"type": "array", "items": {"type": "object"}, "description": "Hidden-panel scenario: audit each state in order. State = {name, show:[node refs], hide:[...], set:{node:{prop:value}}, call:[{node,method,args}], audit:[node refs]}. Each state is applied, layout settles, the audit runs, then the state is reverted. 'call' is disabled on the open editor scene."},
+						"scenario_path": {"type": "string", "description": "JSON scenario file ({scene, viewport:[w,h], platform, states:[...]}); its states run like the states argument."},
 					}
 				}
 			}
@@ -72,14 +77,17 @@ static func get_schemas() -> Array:
 			"type": "function",
 			"function": {
 				"name": "audit_ui_touch",
-				"description": "Audits mobile touch ergonomics with P0/P1/P2 priorities: buttons smaller than 44x44px (P1), clickable controls closer than 8px (P2), and a MOUSE_FILTER_STOP panel drawn ABOVE a button that overlaps it (P0, draw-order aware). Read-only.",
+				"description": "Audits pointer/touch ergonomics with P0/P1/P2 priorities for a platform profile (desktop: 28 px targets, 4 px spacing; mobile: 44 px, 8 px; default from project setting godot_ai_sidebar/ui_audit/platform, else mobile): buttons smaller than the target (P1), clickable controls closer than the spacing (P2), and a MOUSE_FILTER_STOP panel drawn ABOVE a button that overlaps it (P0, draw-order aware). Read-only.",
 				"parameters": {
 					"type": "object",
 					"properties": {
 						"root_path": {"type": "string", "description": "Root node path ('@edited_scene', '@sidebar', or empty)."},
-						"min_touch_size": {"type": "number", "description": "Min touch target size in pixels (default: 44.0)."},
-						"min_spacing": {"type": "number", "description": "Min spacing between clickable buttons in pixels (default: 8.0)."},
-						"include_invisible": {"type": "boolean", "description": "Audit invisible controls (default: false)."}
+						"platform": {"type": "string", "enum": ["desktop", "mobile"], "description": "Size profile: desktop (mouse, 28 px) or mobile (touch, 44 px). Default: project setting godot_ai_sidebar/ui_audit/platform, else mobile."},
+						"min_touch_size": {"type": "number", "description": "Min target size in pixels; overrides the platform profile."},
+						"min_spacing": {"type": "number", "description": "Min spacing between clickable buttons in pixels; overrides the platform profile."},
+						"include_invisible": {"type": "boolean", "description": "Audit invisible controls (default: false)."},
+						"states": {"type": "array", "items": {"type": "object"}, "description": "Hidden-panel scenario: audit each state in order. State = {name, show:[node refs], hide:[...], set:{node:{prop:value}}, call:[{node,method,args}], audit:[node refs]}. Each state is applied, layout settles, the audit runs, then the state is reverted. 'call' is disabled on the open editor scene."},
+						"scenario_path": {"type": "string", "description": "JSON scenario file ({scene, viewport:[w,h], platform, states:[...]}); its states run like the states argument."}
 					}
 				}
 			}
@@ -93,8 +101,10 @@ static func get_schemas() -> Array:
 					"type": "object",
 					"properties": {
 						"theme_path": {"type": "string", "description": "Target path (default: 'res://ui/theme.tres')."},
-						"preset": {"type": "string", "enum": ["dark", "light"], "description": "Base palette (default: 'dark'). Explicit colors override it."},
+						"preset": {"type": "string", "enum": ["dark", "light", "parchment"], "description": "Base palette (default: 'dark'). Explicit colors override it."},
 						"tokens": {"type": "object", "description": "Token overrides: {color:{primary:'#hex',...}, radius:{sm,md,lg}, spacing:{xs,sm,md,lg,xl}, font_size:{small,body,title,heading}, border_width}."},
+						"token_map": {"type": "object", "description": "Optional mapping from standard token names to custom JSON keys (e.g. {'surface':'paper','text':'ink'})."},
+						"tokens_path": {"type": "string", "description": "Custom path for the tokens JSON output (default: '<theme>.tokens.json')."},
 						"spacing_unit": {"type": "integer", "description": "Base spacing unit in px; xs..xl = 1,2,3,4,6 x unit (default: 4)."},
 						"write_tokens": {"type": "boolean", "description": "Write the tokens JSON sidecar (default: true)."},
 						"success_color": {"type": "string", "description": "Success/health color in hex (default: preset)."},
@@ -398,8 +408,9 @@ static func _audit_ui_layout(args: Dictionary) -> Dictionary:
 	else:
 		target_node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
 	if not target_node: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
-	var stats: Dictionary = {"total_controls": 0, "containers": 0}
+	var stats: Dictionary = {"total_controls": 0, "containers": 0, "texts": [] as Array[Control], "interactive": [] as Array[Control], "min_text_contrast": float(args.get("min_text_contrast", AISidebarUIAuditRules.CONTRAST_NORMAL))}
 	_audit_layout_recursive(target_node, 0, clampi(int(args.get("max_depth", 12)), 1, 16), bool(args.get("include_invisible", false)), issues, stats)
+	AISidebarUIAuditRules.check_overlaps(stats["texts"], stats["interactive"], issues)
 	var root_label: String = scene_path if owned_instance else _get_safe_node_path(target_node)
 	if owned_instance: owned_instance.free()
 	var by_priority: Dictionary = _prioritize(issues)
@@ -410,7 +421,7 @@ static func _audit_ui_layout(args: Dictionary) -> Dictionary:
 		else: wrn_cnt += 1
 	return AISidebarToolResult.ok({
 		"schema_version": SCHEMA_VERSION, "root_path": root_label, "total_controls_audited": int(stats["total_controls"]),
-		"container_count": int(stats["containers"]), "passed": (int(by_priority["P0"]) + int(by_priority["P1"]) == 0),
+		"container_count": int(stats["containers"]), "text_controls_checked": (stats["texts"] as Array).size(), "passed": (int(by_priority["P0"]) + int(by_priority["P1"]) == 0),
 		"error_count": err_cnt, "warning_count": wrn_cnt, "by_priority": by_priority, "issues": issues
 	}, "UI layout denetimi tamamlandı (%d kontrol; P0=%d P1=%d P2=%d)." % [int(stats["total_controls"]), int(by_priority["P0"]), int(by_priority["P1"]), int(by_priority["P2"])])
 
@@ -484,6 +495,7 @@ static func _audit_layout_recursive(node: Node, cur_depth: int, max_depth: int, 
 	if ctrl.is_inside_tree() and ctrl.visible and ctrl.size == Vector2.ZERO and ctrl.get_child_count() > 0 and not (ctrl is Container):
 		issues.append(_issue("ZERO_SIZE_WITH_CHILDREN", "warning", ctrl, "'%s' kontrolünün boyutu (0,0) iken %d alt elemanı bulunmaktadır." % [ctrl.name, ctrl.get_child_count()], "Set custom_minimum_size or layout anchors."))
 	_evaluate_layout_warnings(ctrl, issues)
+	_audit_screen_rules(ctrl, cur_depth == 0, issues, stats)
 	if _is_interactive(ctrl): _audit_interactive(ctrl, issues)
 	elif ctrl.visible and ctrl.modulate.a <= ALPHA_EPSILON and (_alpha_chain(parent as CanvasItem) if parent is CanvasItem else 1.0) > ALPHA_EPSILON and not _has_interactive_descendant(ctrl):
 		issues.append(_issue("ZERO_ALPHA_CONTENT", "warning", ctrl, "'%s' görünür ama tamamen saydam (modulate.a=0); kullanıcıya görünmez." % ctrl.name, "Intentional fade-in ise yok say; değilse modulate.a veya visible düzelt."))
@@ -499,6 +511,16 @@ static func _audit_layout_recursive(node: Node, cur_depth: int, max_depth: int, 
 	if cur_depth < max_depth:
 		for ch: Node in ctrl.get_children():
 			_audit_layout_recursive(ch, cur_depth + 1, max_depth, inc_inv, issues, stats)
+
+## Ekrana bakan kurallar (ui_audit_rules.gd): görünüm dışı, metin kontrastı; çakışma için metin / düğme listesi toplar.
+static func _audit_screen_rules(ctrl: Control, is_root: bool, issues: Array[Dictionary], stats: Dictionary) -> void:
+	if not ctrl.is_inside_tree() or not ctrl.is_visible_in_tree(): return
+	AISidebarUIAuditRules.check_outside_viewport(ctrl, is_root, issues)
+	AISidebarUIAuditRules.check_text_contrast(ctrl, float(stats.get("min_text_contrast", AISidebarUIAuditRules.CONTRAST_NORMAL)), issues)
+	if stats.has("texts") and AISidebarUIAuditRules.is_text_control(ctrl) and not _is_interactive(ctrl):
+		(stats["texts"] as Array).append(ctrl)
+	if stats.has("interactive") and _is_interactive(ctrl):
+		(stats["interactive"] as Array).append(ctrl)
 
 ## Etkileşimli düğümün gerçekten tıklanabilir olup olmadığı (P0 kuralları).
 static func _audit_interactive(ctrl: Control, issues: Array[Dictionary]) -> void:
@@ -516,8 +538,11 @@ static func _audit_interactive(ctrl: Control, issues: Array[Dictionary]) -> void
 static func _audit_ui_touch(args: Dictionary) -> Dictionary:
 	var target_node: Node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
 	if not target_node: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
-	var min_size: float = float(args.get("min_touch_size", 44.0))
-	var min_spacing: float = float(args.get("min_spacing", 8.0))
+	var platform: String = AISidebarUIAuditRules.resolve_platform(args)
+	if platform.is_empty(): return AISidebarToolResult.err("INVALID_ARGUMENT", "Bilinmeyen platform: '%s' (desktop | mobile)." % str(args.get("platform", "")))
+	var limits: Dictionary = AISidebarUIAuditRules.touch_limits(args, platform)
+	var min_size: float = float(limits["min_touch_size"])
+	var min_spacing: float = float(limits["min_spacing"])
 	var interactive: Array[Control] = []
 	var containers: Array[Control] = []
 	_collect_touch_candidates(target_node, bool(args.get("include_invisible", false)), interactive, containers)
@@ -549,7 +574,7 @@ static func _audit_ui_touch(args: Dictionary) -> Dictionary:
 					break
 	var by_priority: Dictionary = _prioritize(issues)
 	var score: int = clampi(100 - (issues.size() * 15), 0, 100)
-	return AISidebarToolResult.ok({"schema_version": SCHEMA_VERSION, "root_path": _get_safe_node_path(target_node), "interactive_controls_count": interactive.size(), "touch_score": score, "passed": (int(by_priority["P0"]) + int(by_priority["P1"]) == 0), "issue_count": issues.size(), "by_priority": by_priority, "issues": issues}, "Dokunmatik denetim tamamlandı: Skor %d/100 (%d sorun)." % [score, issues.size()])
+	return AISidebarToolResult.ok({"schema_version": SCHEMA_VERSION, "root_path": _get_safe_node_path(target_node), "platform": platform, "min_touch_size": min_size, "min_spacing": min_spacing, "interactive_controls_count": interactive.size(), "touch_score": score, "passed": (int(by_priority["P0"]) + int(by_priority["P1"]) == 0), "issue_count": issues.size(), "by_priority": by_priority, "issues": issues}, "Dokunmatik denetim tamamlandı: Skor %d/100 (%d sorun)." % [score, issues.size()])
 
 ## a, b'den SONRA çizilir mi (ağaç sırası + z_index)? Biri diğerinin atasıysa false.
 static func _draws_above(a: Control, b: Control) -> bool:
@@ -601,21 +626,68 @@ static func _scaffold_ui_theme(args: Dictionary) -> Dictionary:
 	if not DirAccess.dir_exists_absolute(dp): DirAccess.make_dir_recursive_absolute(dp)
 	var err: Error = ResourceSaver.save(theme, tp)
 	if err != OK: return AISidebarToolResult.err("SAVE_FAILED", "Theme kaydedilemedi (hata: %d): %s" % [err, tp])
+	var tmap: Dictionary = args.get("token_map", {}) as Dictionary if args.get("token_map") is Dictionary else {}
+	var tokens_json: Dictionary = AISidebarUIThemeScaffold.tokens_to_json(tokens, tmap)
 	var tokens_path: String = ""
 	if bool(args.get("write_tokens", true)):
-		var cand: String = tp.get_basename() + ".tokens.json"
+		var cand: String = str(args.get("tokens_path", "")).strip_edges()
+		if cand.is_empty(): cand = tp.get_basename() + ".tokens.json"
 		var tchk: Dictionary = AISidebarPathPolicy.is_safe_to_write(cand)
 		if tchk["safe"]:
 			var tf: FileAccess = FileAccess.open(str(tchk["path"]), FileAccess.WRITE)
 			if tf:
-				tf.store_string(JSON.stringify(AISidebarUIThemeScaffold.tokens_to_json(tokens), "  "))
+				tf.store_string(JSON.stringify(tokens_json, "  "))
 				tf.close()
 				tokens_path = str(tchk["path"])
 	return AISidebarToolResult.ok({
 		"theme_path": tp, "tokens_path": tokens_path, "preset": tokens["preset"], "default_font_size": int(tokens["font_size"]["body"]),
 		"styled_classes": AISidebarUIThemeScaffold.styled_classes(), "type_variations": AISidebarUIThemeScaffold.VARIATIONS,
-		"tokens": AISidebarUIThemeScaffold.tokens_to_json(tokens), "contrast": report, "contrast_passed": report["passed"]
+		"tokens": tokens_json, "contrast": report, "contrast_passed": report["passed"]
 	}, "Theme şablonu oluşturuldu: %s (%d kontrast uyarısı)." % [tp, (report["warnings"] as Array).size()])
+
+# --- 4b. SENARYO / GİZLİ PANELLER (audit_ui_layout / audit_ui_touch `states`, `scenario_path`) ---
+
+## Durum listesini (ya da senaryo dosyasını) sırayla uygular; her durumda ilgili sync denetimi çalıştırır, durumu geri alır.
+## Senaryo "scene" içeriyorsa o sahne ayrı bir SubViewport'ta örneklenir; yoksa root_path / düzenlenen sahne kullanılır
+## (editörde açık sahnede "call" kapalıdır: geri alınamaz).
+static func _audit_with_states(tool_name: String, args: Dictionary) -> Dictionary:
+	var cfg: Dictionary = args.duplicate()
+	var scenario_path: String = str(args.get("scenario_path", "")).strip_edges()
+	if not scenario_path.is_empty():
+		var loaded: Dictionary = AISidebarUIAuditScenario.load_scenario(scenario_path)
+		if not bool(loaded["ok"]): return AISidebarToolResult.err("SCENARIO_NOT_FOUND", str(loaded["error"]))
+		var sc: Dictionary = loaded["scenario"]
+		for k: String in ["states", "platform", "scene", "viewport", "root_path", "min_touch_size", "min_spacing", "min_text_contrast"]:
+			if sc.has(k) and not cfg.has(k): cfg[k] = sc[k]
+	var states: Array[Dictionary] = AISidebarUIAuditScenario.normalize_states(cfg.get("states", []))
+	if states.is_empty(): return AISidebarToolResult.err("INVALID_ARGUMENT", "states boş: en az bir durum ver ({name, show, hide, set, call, audit}).")
+	var holder: Node = null
+	var root: Node = null
+	var allow_calls: bool = not Engine.is_editor_hint()
+	var scene_ref: String = str(cfg.get("scene", "")).strip_edges()
+	if not scene_ref.is_empty():
+		var mounted: Dictionary = AISidebarUIAuditScenario.mount_scene(scene_ref, AISidebarUIAuditScenario.viewport_size(cfg.get("viewport")))
+		if mounted.has("error"): return AISidebarToolResult.err("SCENE_NOT_FOUND", str(mounted["error"]))
+		holder = mounted["holder"]
+		root = mounted["root"]
+		allow_calls = true
+	else:
+		root = _resolve_target_node(str(cfg.get("root_path", "")), cfg.get("target_node") as Node)
+	if root == null: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
+	var base: Dictionary = cfg.duplicate()
+	for k: String in ["states", "scenario_path", "scene", "viewport", "root_path", "target_node"]: base.erase(k)
+	var audit: Callable = func(node: Node) -> Dictionary:
+		var a: Dictionary = base.duplicate()
+		a["target_node"] = node
+		return execute(tool_name, a)
+	var result: Dictionary = await AISidebarUIAuditScenario.run(root, states, audit, allow_calls)
+	if holder != null: holder.queue_free()
+	var by_p: Dictionary = result["by_priority"]
+	return AISidebarToolResult.ok({
+		"schema_version": SCHEMA_VERSION, "tool": tool_name, "platform": AISidebarUIAuditRules.resolve_platform(cfg),
+		"state_count": states.size(), "passed": bool(result["passed"]), "by_priority": by_p, "states": result["states"],
+		"state_errors": result["state_errors"], "issues": result["issues"]
+	}, "Senaryo denetimi: %d durum, P0=%d P1=%d P2=%d, %d durum hatası." % [states.size(), int(by_p["P0"]), int(by_p["P1"]), int(by_p["P2"]), (result["state_errors"] as Array).size()])
 
 # --- 5. CAPTURE UI PREVIEW ---
 
@@ -626,6 +698,9 @@ static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 
 ## Container yerleşimi bir sonraki karede oturur; bu yol iki kare bekleyip çizer (ajan yolu bunu kullanır).
 static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
+	if tool_name == "audit_ui_layout" or tool_name == "audit_ui_touch":
+		if args.has("states") or args.has("scenario_path"): return await _audit_with_states(tool_name, args)
+		return execute(tool_name, args)
 	if tool_name != "capture_ui_preview": return execute(tool_name, args)
 	var prep: Dictionary = _preview_begin(args)
 	if prep.has("error"): return prep["error"]

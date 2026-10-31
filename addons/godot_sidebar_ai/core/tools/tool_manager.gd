@@ -394,7 +394,7 @@ static func execute_tool(tool_name: String, args: Dictionary, is_user_approved: 
 	return AISidebarToolResult.err("UNKNOWN_TOOL", "Bilinmeyen motor aracı: " + tool_name)
 
 static func is_async_tool(tool_name: String) -> bool:
-	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarRuntimeInputTools.SET_PROP_TOOL, AISidebarOutputTools.TOOL_NAME] or tool_name == "capture_ui_preview" or AISidebarBlenderTools.is_blender_tool(tool_name) or AISidebarEditorTools.is_async_tool(tool_name)
+	return tool_name in [AISidebarRuntimeInputTools.TOOL_NAME, AISidebarRuntimeInputTools.WAIT_TOOL, AISidebarRuntimeInputTools.PERF_TOOL, AISidebarRuntimeInputTools.TRACE_TOOL, AISidebarRuntimeInputTools.UI_AUDIT_TOOL, AISidebarRuntimeInputTools.PHYSICS_TOOL, AISidebarRuntimeInputTools.SET_PROP_TOOL, AISidebarOutputTools.TOOL_NAME] or tool_name == "capture_ui_preview" or tool_name == "audit_ui_layout" or tool_name == "audit_ui_touch" or AISidebarBlenderTools.is_blender_tool(tool_name) or AISidebarEditorTools.is_async_tool(tool_name)
 
 static func execute_tool_async(tool_name: String, args: Dictionary, is_user_approved: bool = false) -> Dictionary:
 	if not is_async_tool(tool_name):
@@ -425,7 +425,7 @@ static func execute_tool_async(tool_name: String, args: Dictionary, is_user_appr
 		return await AISidebarRuntimeInputTools.execute_trace_async(args)
 	if tool_name == AISidebarOutputTools.TOOL_NAME:
 		return await AISidebarOutputTools.execute_async(args)
-	if tool_name == "capture_ui_preview":
+	if tool_name == "capture_ui_preview" or tool_name == "audit_ui_layout" or tool_name == "audit_ui_touch":
 		return await AISidebarUITelemetryTools.execute_async(tool_name, args)
 	if AISidebarBlenderTools.is_blender_tool(tool_name):
 		return await AISidebarBlenderTools.execute_async(tool_name, args)

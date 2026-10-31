@@ -19,10 +19,21 @@ class_name AISidebarConfig
 ##     selected_model …); kod bunları okur, save_config düz anahtarları etkin profile geri yazar.
 ##   Sıfırlamak için config.json ve config.json.bak birlikte silinir.
 
-const CONFIG_PATH = "res://addons/godot_sidebar_ai/config.json"
-const BACKUP_PATH = "res://addons/godot_sidebar_ai/config.json.bak"
-const CORRUPT_PATH = "res://addons/godot_sidebar_ai/config.json.corrupt"
-const TEMP_PATH = "res://addons/godot_sidebar_ai/config.json.tmp"
+## Ayarlar eklenti klasörüne DEĞİL, projenin kullanıcı klasörüne (user://) yazılır: eklenti klasörü (junction / paylaşılan
+## kopya / depo) kişisel ayar ve API anahtarıyla kirlenmez. Konum: <editör kullanıcı verisi>/app_userdata/<proje>/godot_sidebar_ai/.
+const CONFIG_DIR = "user://godot_sidebar_ai"
+const CONFIG_PATH = "user://godot_sidebar_ai/config.json"
+const BACKUP_PATH = "user://godot_sidebar_ai/config.json.bak"
+const CORRUPT_PATH = "user://godot_sidebar_ai/config.json.corrupt"
+const TEMP_PATH = "user://godot_sidebar_ai/config.json.tmp"
+## Eski konum (eklenti klasörü): user:// altında dosya yokken okunur; ilk kayıtta user://'a taşınır ve silinir.
+const LEGACY_CONFIG_PATH = "res://addons/godot_sidebar_ai/config.json"
+const LEGACY_FILES: Array[String] = [
+	"res://addons/godot_sidebar_ai/config.json",
+	"res://addons/godot_sidebar_ai/config.json.bak",
+	"res://addons/godot_sidebar_ai/config.json.corrupt",
+	"res://addons/godot_sidebar_ai/config.json.tmp",
+]
 ## Ayar dosyası biçiminin sürümü; biçim değişince artırılır ve migrate() adımı eklenir.
 const CONFIG_VERSION := 3
 ## Kimliği belirleyen alanlar (hangi sağlayıcı): yalnız Ayarlar'daki profil formu değiştirir. Düz anahtarlardan
@@ -162,6 +173,9 @@ const DEFAULT_CONFIG = {
 
 static func load_config() -> Dictionary:
 	var data: Variant = _read_json(CONFIG_PATH)
+	if data == null and not FileAccess.file_exists(CONFIG_PATH) and not FileAccess.file_exists(BACKUP_PATH):
+		# Geriye dönük okuma: eski konumdaki ayar (eklenti klasörü); ilk save_config user://'a taşır.
+		data = _read_json(LEGACY_CONFIG_PATH)
 	if data == null:
 		var main_exists := FileAccess.file_exists(CONFIG_PATH)
 		var backup: Variant = _read_json(BACKUP_PATH)
@@ -293,7 +307,16 @@ static func save_config(config: Dictionary) -> bool:
 	var target := ProjectSettings.globalize_path(CONFIG_PATH)
 	if FileAccess.file_exists(CONFIG_PATH):
 		DirAccess.remove_absolute(target)
-	return DirAccess.rename_absolute(ProjectSettings.globalize_path(TEMP_PATH), target) == OK
+	var saved: bool = DirAccess.rename_absolute(ProjectSettings.globalize_path(TEMP_PATH), target) == OK
+	if saved:
+		_retire_legacy_files()
+	return saved
+
+## Taşıma tamamlanınca eklenti klasöründeki eski ayar dosyalarını kaldırır (yalnız yeni dosya yazıldıktan sonra).
+static func _retire_legacy_files() -> void:
+	for legacy: String in LEGACY_FILES:
+		if FileAccess.file_exists(legacy):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(legacy))
 
 ## JSON sözlüğü; dosya yoksa, okunamıyorsa ya da sözlük değilse null.
 static func _read_json(path: String) -> Variant:

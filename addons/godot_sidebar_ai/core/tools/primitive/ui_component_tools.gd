@@ -18,7 +18,7 @@ static func get_schemas() -> Array:
 		"type": "function",
 		"function": {
 			"name": TOOL_NAME,
-			"description": "Generates a verified, parametric UI component as a PackedScene (+ small GDScript API): healthbar, dialogue_box, inventory_grid or pause_menu. Container-only layout (no manual positions), 44px touch targets, theme variations (run scaffold_ui_theme first for a themed result). The scene is audited (audit_ui_layout + audit_ui_touch) before saving; nothing is written if a P0/P1 issue is found. Prefer this over hand-building these widgets.",
+			"description": "Generates a verified, parametric UI component as a PackedScene (+ small GDScript API): healthbar, dialogue_box, inventory_grid, pause_menu, framed_panel, resource_strip, list_row or event_popup. Container-only layout (no manual positions), 44px touch targets, theme variations (run scaffold_ui_theme first for a themed result). The scene is audited (audit_ui_layout + audit_ui_touch) before saving; nothing is written if a P0/P1 issue is found. Prefer this over hand-building these widgets.",
 			"parameters": {
 				"type": "object",
 				"properties": {
@@ -30,13 +30,14 @@ static func get_schemas() -> Array:
 					"caption": {"type": "string", "description": "healthbar: caption text (default: 'HP'; empty hides)."},
 					"show_value_text": {"type": "boolean", "description": "healthbar: show 'x / y' label (default: true)."},
 					"speaker": {"type": "string", "description": "dialogue_box: placeholder speaker name."},
-					"sample_text": {"type": "string", "description": "dialogue_box: placeholder dialogue text."},
-					"next_text": {"type": "string", "description": "dialogue_box: advance button text (default: 'Next')."},
-					"title": {"type": "string", "description": "inventory_grid / pause_menu: title text."},
+					"sample_text": {"type": "string", "description": "dialogue_box / list_row / event_popup: placeholder body or subtitle text."},
+					"next_text": {"type": "string", "description": "dialogue_box / list_row: advance or action button text."},
+					"title": {"type": "string", "description": "inventory_grid / pause_menu / framed_panel / list_row / event_popup: title text."},
 					"columns": {"type": "integer", "description": "inventory_grid: columns (default: 5, max 12)."},
 					"slot_count": {"type": "integer", "description": "inventory_grid: number of slots (default: 20, max 200)."},
 					"slot_size": {"type": "number", "description": "inventory_grid: slot edge in px (default: 72, min 44)."},
-					"buttons": {"type": "array", "items": {"type": "string"}, "description": "pause_menu: button labels (default: Resume, Settings, Quit; max 8). First is primary; 'resume' closes the menu."}
+					"resources": {"type": "array", "items": {"type": "string"}, "description": "resource_strip: resource keys (default: ['gold', 'manpower', 'stability']; max 8)."},
+					"buttons": {"type": "array", "items": {"type": "string"}, "description": "pause_menu / event_popup: button labels (default: Resume, Settings, Quit or Accept, Decline; max 8)."}
 				},
 				"required": ["component"]
 			}

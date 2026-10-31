@@ -17,6 +17,11 @@ const PRESETS: Dictionary = {
 		"primary": "#4338ca", "secondary": "#0e7490", "background": "#f8fafc", "surface": "#ffffff",
 		"surface_hover": "#e2e8f0", "text": "#0f172a", "text_muted": "#475569", "accent": "#b45309",
 		"danger": "#b91c1c", "success": "#15803d"
+	},
+	"parchment": {
+		"primary": "#8a241b", "secondary": "#3e5a6b", "background": "#efe5cc", "surface": "#e6d9bb",
+		"surface_hover": "#d9caa8", "text": "#2a2016", "text_muted": "#5c4b35", "accent": "#8c7349",
+		"danger": "#8a241b", "success": "#3b5922"
 	}
 }
 
@@ -85,12 +90,14 @@ static func resolve_tokens(args: Dictionary) -> Dictionary:
 		"border_width": clampi(int(overrides.get("border_width", 1)), 0, 8)
 	}
 
-static func tokens_to_json(tokens: Dictionary) -> Dictionary:
+static func tokens_to_json(tokens: Dictionary, token_map: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = tokens.duplicate(true)
 	var hex: Dictionary = {}
 	for key: String in (tokens["color"] as Dictionary):
-		hex[key] = "#" + (tokens["color"][key] as Color).to_html(false)
+		var mapped_key: String = str(token_map.get(key, key))
+		hex[mapped_key] = "#" + (tokens["color"][key] as Color).to_html(false)
 	out["color"] = hex
+	out["colors"] = hex.duplicate()
 	out["schema"] = "ui-tokens/1"
 	out["variations"] = VARIATIONS
 	return out
@@ -217,6 +224,10 @@ static func _flat(bg_c: Color, border_c: Color, bw: int, r: int, mh: int, mv: in
 	sb.content_margin_left = float(mh); sb.content_margin_right = float(mh)
 	sb.content_margin_top = float(mv); sb.content_margin_bottom = float(mv)
 	return sb
+
+## WCAG kontrast oranı (1..21); audit_ui_layout'un TEXT_LOW_CONTRAST kuralı da bunu kullanır.
+static func contrast_ratio(fg: Color, bg: Color) -> float:
+	return _contrast(fg, bg)
 
 static func _contrast(fg: Color, bg: Color) -> float:
 	return AISidebarRuntimeUiAudit.contrast(fg, AISidebarRuntimeUiAudit._luminance(bg))

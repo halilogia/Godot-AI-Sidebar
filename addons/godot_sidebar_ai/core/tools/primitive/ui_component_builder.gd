@@ -6,7 +6,7 @@ class_name AISidebarUIComponentBuilder
 ## yalnız Container düzeniyle (elle position / offset yok) düğüm ağacı + küçük bir betik API'si üretir.
 ## Ağaç bellekte kurulur; kaydetmeden önce audit_ui_layout / audit_ui_touch kurallarından geçirilir.
 
-const COMPONENTS: Array[String] = ["healthbar", "dialogue_box", "inventory_grid", "pause_menu"]
+const COMPONENTS: Array[String] = ["healthbar", "dialogue_box", "inventory_grid", "pause_menu", "framed_panel", "resource_strip", "list_row", "event_popup"]
 const TOUCH_MIN: float = 44.0
 
 const SCRIPTS: Dictionary = {
@@ -152,6 +152,85 @@ func _on_pressed(action: StringName) -> void:
 	if action == &"resume":
 		close()
 	action_selected.emit(action)
+""",
+	"framed_panel": """extends PanelContainer
+## scaffold_ui_component (framed_panel). set_title(başlık), content() ve close_requested sinyali.
+
+signal close_requested
+
+@onready var _title: Label = %TitleLabel
+@onready var _close: Button = %CloseButton
+@onready var _body: VBoxContainer = %Body
+
+func _ready() -> void:
+	_close.pressed.connect(func() -> void: close_requested.emit())
+
+func set_title(text: String) -> void:
+	_title.text = text
+
+func content() -> VBoxContainer:
+	return _body
+""",
+	"resource_strip": """extends PanelContainer
+## scaffold_ui_component (resource_strip). set_value(anahtar, metin) ile üst kaynak şeridini günceller.
+
+@onready var _row: HBoxContainer = %Row
+
+func set_value(key: String, value_text: String) -> void:
+	var item: Node = _row.get_node_or_null(key)
+	if item == null:
+		return
+	var val: Label = item.get_node_or_null("Value") as Label
+	if val:
+		val.text = value_text
+""",
+	"list_row": """extends PanelContainer
+## scaffold_ui_component (list_row). setup(başlık, alt_yazı, eylem_metni) ve action_pressed sinyali.
+
+signal action_pressed
+
+@onready var _title: Label = %TitleLabel
+@onready var _sub: Label = %SubLabel
+@onready var _btn: Button = %ActionButton
+
+func _ready() -> void:
+	_btn.pressed.connect(func() -> void: action_pressed.emit())
+
+func setup(title: String, subtitle: String = "", action_text: String = "") -> void:
+	_title.text = title
+	_sub.text = subtitle
+	_sub.visible = not subtitle.is_empty()
+	if not action_text.is_empty():
+		_btn.text = action_text
+""",
+	"event_popup": """extends Control
+## scaffold_ui_component (event_popup). show_event(başlık, gövde, seçenekler) ve choice_made(indeks) sinyali.
+
+signal choice_made(index: int)
+
+@onready var _title: Label = %TitleLabel
+@onready var _body: RichTextLabel = %BodyLabel
+@onready var _choices: VBoxContainer = %Choices
+
+func _ready() -> void:
+	for i: int in _choices.get_child_count():
+		var b: Button = _choices.get_child(i) as Button
+		if b:
+			b.pressed.connect(func() -> void: choice_made.emit(i))
+
+func show_event(title: String, body: String, options: Array = []) -> void:
+	_title.text = title
+	_body.text = body
+	for i: int in _choices.get_child_count():
+		var b: Button = _choices.get_child(i) as Button
+		if b == null:
+			continue
+		if i < options.size():
+			b.text = str(options[i])
+			b.visible = true
+		elif not options.is_empty():
+			b.visible = false
+	visible = true
 """
 }
 
@@ -159,7 +238,11 @@ const API: Dictionary = {
 	"healthbar": ["set_health(value, max_value = -1)", "signal changed(value, max_value)", "signal depleted"],
 	"dialogue_box": ["show_line(speaker, text)", "skip()", "signal line_finished", "signal advance_requested"],
 	"inventory_grid": ["set_item(index, icon, count = 1)", "clear_slot(index)", "slot_count()", "signal slot_pressed(index)"],
-	"pause_menu": ["open()", "close()", "signal action_selected(action)"]
+	"pause_menu": ["open()", "close()", "signal action_selected(action)"],
+	"framed_panel": ["set_title(text)", "content() -> VBoxContainer", "signal close_requested"],
+	"resource_strip": ["set_value(key, value_text)"],
+	"list_row": ["setup(title, subtitle = '', action_text = '')", "signal action_pressed"],
+	"event_popup": ["show_event(title, body, options = [])", "signal choice_made(index)"]
 }
 
 ## Dönen: {root: Node, script_source: String, api: Array, margin_nodes, box_nodes}
@@ -171,6 +254,10 @@ static func build(component: String, opts: Dictionary) -> Dictionary:
 		"dialogue_box": root = _dialogue_box(opts, parts)
 		"inventory_grid": root = _inventory_grid(opts, parts)
 		"pause_menu": root = _pause_menu(opts, parts)
+		"framed_panel": root = _framed_panel(opts, parts)
+		"resource_strip": root = _resource_strip(opts, parts)
+		"list_row": root = _list_row(opts, parts)
+		"event_popup": root = _event_popup(opts, parts)
 	return {"root": root, "script_source": str(SCRIPTS.get(component, "")), "api": API.get(component, []), "parts": parts}
 
 ## Tüm torunlara owner ver (PackedScene.pack için gerekli).
@@ -302,4 +389,80 @@ static func _pause_menu(opts: Dictionary, parts: Dictionary) -> Node:
 		var text: String = str(labels[i])
 		var b: Button = _button(buttons, "Button_%d" % i, text, Vector2(220, 48), "PrimaryButton" if i == 0 else "")
 		b.set_meta("action", text.to_lower().strip_edges().replace(" ", "_"))
+	return root
+
+static func _framed_panel(opts: Dictionary, parts: Dictionary) -> Node:
+	var root: PanelContainer = PanelContainer.new()
+	root.name = str(opts.get("name", "FramedPanel"))
+	root.theme_type_variation = "Card"
+	root.custom_minimum_size = Vector2(360, 220)
+	var col: BoxContainer = _box(_margin(root, parts), VBoxContainer.new(), "Column", parts)
+	var header: BoxContainer = _box(col, HBoxContainer.new(), "Header", parts)
+	var title: Label = _label(header, "TitleLabel", str(opts.get("title", "Panel")), "HeaderMedium", true)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(header, "CloseButton", "X", Vector2(TOUCH_MIN, TOUCH_MIN), "GhostButton", true)
+	_add(col, HSeparator.new(), "Divider")
+	var body: BoxContainer = _box(col, VBoxContainer.new(), "Body", parts, true)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	return root
+
+static func _resource_strip(opts: Dictionary, parts: Dictionary) -> Node:
+	var root: PanelContainer = PanelContainer.new()
+	root.name = str(opts.get("name", "ResourceStrip"))
+	var row: BoxContainer = _box(_margin(root, parts), HBoxContainer.new(), "Row", parts, true)
+	var items: Array = opts.get("resources", ["gold", "manpower", "stability"]) as Array if opts.get("resources") is Array else ["gold", "manpower", "stability"]
+	if items.is_empty():
+		items = ["gold"]
+	for i: int in mini(items.size(), 8):
+		var key: String = str(items[i]).strip_edges()
+		if key.is_empty():
+			continue
+		var cell: BoxContainer = _box(row, HBoxContainer.new(), key, parts)
+		_label(cell, "Caption", key.capitalize() + ":", "Caption")
+		_label(cell, "Value", "0", "AccentLabel")
+		if i < items.size() - 1:
+			_add(row, VSeparator.new(), "Sep_%d" % i)
+	return root
+
+static func _list_row(opts: Dictionary, parts: Dictionary) -> Node:
+	var root: PanelContainer = PanelContainer.new()
+	root.name = str(opts.get("name", "ListRow"))
+	var row: BoxContainer = _box(_margin(root, parts), HBoxContainer.new(), "Row", parts)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var info: BoxContainer = _box(row, VBoxContainer.new(), "Info", parts)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_label(info, "TitleLabel", str(opts.get("title", "Item")), "HeaderMedium", true)
+	_label(info, "SubLabel", str(opts.get("sample_text", "Details")), "Caption", true)
+	_button(row, "ActionButton", str(opts.get("next_text", "Select")), Vector2(96, TOUCH_MIN), "PrimaryButton", true)
+	return root
+
+static func _event_popup(opts: Dictionary, parts: Dictionary) -> Node:
+	var root: Control = Control.new()
+	root.name = str(opts.get("name", "EventPopup"))
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim: ColorRect = _add(root, ColorRect.new(), "Dim") as ColorRect
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	var center: CenterContainer = _add(root, CenterContainer.new(), "Center") as CenterContainer
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var card: PanelContainer = _add(center, PanelContainer.new(), "Card") as PanelContainer
+	card.theme_type_variation = "Card"
+	card.custom_minimum_size = Vector2(420, 260)
+	var col: BoxContainer = _box(_margin(card, parts), VBoxContainer.new(), "Column", parts)
+	_label(col, "TitleLabel", str(opts.get("title", "Event")), "HeaderLarge", true)
+	_add(col, HSeparator.new(), "Divider")
+	var body: RichTextLabel = _add(col, RichTextLabel.new(), "BodyLabel", true) as RichTextLabel
+	body.bbcode_enabled = true
+	body.fit_content = true
+	body.scroll_active = false
+	body.text = str(opts.get("sample_text", "An unexpected event has occurred."))
+	body.custom_minimum_size = Vector2(360, 80)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var choices: BoxContainer = _box(col, VBoxContainer.new(), "Choices", parts, true)
+	var labels: Array = opts.get("buttons", ["Accept", "Decline"]) as Array if opts.get("buttons") is Array else ["Accept", "Decline"]
+	if labels.is_empty():
+		labels = ["Accept"]
+	for i: int in mini(labels.size(), 6):
+		_button(choices, "Choice_%d" % i, str(labels[i]), Vector2(360, TOUCH_MIN), "PrimaryButton" if i == 0 else "")
 	return root
