@@ -75,7 +75,7 @@ $logFile = Join-Path $env:TEMP ("godot_shot_" + [System.Guid]::NewGuid().ToStrin
 
 if (Test-Path $projCapture) {
     Write-Host "[game_shot] Projeye ozel senaryolu capture bulundu: res://tools/capture.gd" -ForegroundColor Green
-    $cmd = "`"$GodotBin`" --path `"$projDir`" --resolution ${w}x${h} --script res://tools/capture.gd -- `"$resolvedOutDir`""
+    $cmd = "`"$GodotBin`" --path `"$projDir`" --resolution ${w}x${h} --script res://tools/capture.gd -- `"$resolvedOutDir`" $Views"
     cmd.exe /c "$cmd > `"$logFile`" 2>&1"
 } else {
     Write-Host "[game_shot] Standart viewport cekimi calistiriliyor (game_shot.gd)..." -ForegroundColor Yellow

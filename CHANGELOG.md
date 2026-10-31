@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+* **game_shot.ps1 `-Views` artık iletiliyor (2026-10-31):** Parametre tanımlıydı ama projenin `tools/capture.gd` betiğine geçirilmiyordu; her çağrı bütün görünümleri çekiyordu. Artık `-Views` değeri (görünüm adları ve `k=v` seçenekleri) betiğe aynen eklenir.
+
 * **AI Destekli UI ve Arayüz Araçları — Red-Team Nihai İyileştirmeleri (2026-10-30):** ChatGPT Web Kırmızı Takım nihai denetiminde tespit edilen tüm kök nedenler çözüldü (`core/tools/primitive/ui_telemetry_tools.gd`, `permission_policy.gd`):
   - `audit_ui_layout`: Yanlış pozitif üreten çalışma zamanı `position` kontrolü tamamen kaldırıldı (CenterContainer, Alignment gibi meşru yerleşimler artık asla hata sayılmaz); Container'dan kopan `top_level` düğümleri (`CONTAINER_CHILD_TOP_LEVEL`) ve anchor ihlalleri denetlenir.
   - `audit_ui_touch`: Ebeveyn sınırı kaldırıldı; farklı konteynerlerdeki butonlar arası mesafe Euclidean metriğiyle global uzayda hesaplanır; örtüşen paneller için `POTENTIAL_OVERLAY_BLOCKER` uyarısı eklendi.
