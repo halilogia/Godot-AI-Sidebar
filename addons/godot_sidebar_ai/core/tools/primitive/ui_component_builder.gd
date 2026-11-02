@@ -282,11 +282,15 @@ static func _add(parent: Node, child: Node, node_name: String, unique: bool = fa
 
 static func _margin(parent: Node, parts: Dictionary) -> MarginContainer:
 	var m: MarginContainer = _add(parent, MarginContainer.new(), "Margin") as MarginContainer
-	(parts["margins"] as Array).append(m)
+	if parts.get("margins") is Array:
+		var arr: Array = parts["margins"]
+		arr.append(m)
 	return m
 
 static func _box(parent: Node, box: BoxContainer, node_name: String, parts: Dictionary, unique: bool = false) -> BoxContainer:
-	(parts["boxes"] as Array).append(box)
+	if parts.get("boxes") is Array:
+		var arr: Array = parts["boxes"]
+		arr.append(box)
 	return _add(parent, box, node_name, unique) as BoxContainer
 
 static func _label(parent: Node, node_name: String, text: String, variation: String = "", unique: bool = false) -> Label:
@@ -314,7 +318,7 @@ static func _healthbar(opts: Dictionary, parts: Dictionary) -> Node:
 	if not caption.is_empty():
 		_label(hb, "Caption", caption, "Caption")
 	var bar: ProgressBar = _add(hb, ProgressBar.new(), "Bar", true) as ProgressBar
-	var max_value: float = maxf(float(opts.get("max_value", 100.0)), 1.0)
+	var max_value: float = maxf(str(opts.get("max_value", 100.0)).to_float(), 1.0)
 	bar.max_value = max_value
 	bar.value = max_value
 	bar.show_percentage = false
@@ -323,7 +327,7 @@ static func _healthbar(opts: Dictionary, parts: Dictionary) -> Node:
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var value_label: Label = _label(hb, "ValueLabel", "%d / %d" % [int(max_value), int(max_value)], "", true)
-	value_label.visible = bool(opts.get("show_value_text", true))
+	value_label.visible = opts.get("show_value_text", true) == true
 	return root
 
 static func _dialogue_box(opts: Dictionary, parts: Dictionary) -> Node:
@@ -357,9 +361,9 @@ static func _inventory_grid(opts: Dictionary, parts: Dictionary) -> Node:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var grid: GridContainer = _add(scroll, GridContainer.new(), "Grid", true) as GridContainer
-	grid.columns = clampi(int(opts.get("columns", 5)), 1, 12)
-	var slot_size: float = clampf(float(opts.get("slot_size", 72.0)), TOUCH_MIN, 256.0)
-	for i: int in clampi(int(opts.get("slot_count", 20)), 1, 200):
+	grid.columns = clampi(str(opts.get("columns", 5)).to_int(), 1, 12)
+	var slot_size: float = clampf(str(opts.get("slot_size", 72.0)).to_float(), TOUCH_MIN, 256.0)
+	for i: int in clampi(str(opts.get("slot_count", 20)).to_int(), 1, 200):
 		var slot: Button = _button(grid, "Slot_%d" % i, "", Vector2(slot_size, slot_size))
 		slot.expand_icon = true
 		slot.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -382,7 +386,7 @@ static func _pause_menu(opts: Dictionary, parts: Dictionary) -> Node:
 	var title: Label = _label(col, "TitleLabel", str(opts.get("title", "Paused")), "HeaderLarge")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var buttons: BoxContainer = _box(col, VBoxContainer.new(), "Buttons", parts, true)
-	var labels: Array = opts.get("buttons", ["Resume", "Settings", "Quit"]) as Array if opts.get("buttons") is Array else ["Resume", "Settings", "Quit"]
+	var labels: Array = opts.get("buttons", ["Resume", "Settings", "Quit"]) if opts.get("buttons") is Array else ["Resume", "Settings", "Quit"]
 	if labels.is_empty():
 		labels = ["Resume"]
 	for i: int in mini(labels.size(), 8):
@@ -410,7 +414,7 @@ static func _resource_strip(opts: Dictionary, parts: Dictionary) -> Node:
 	var root: PanelContainer = PanelContainer.new()
 	root.name = str(opts.get("name", "ResourceStrip"))
 	var row: BoxContainer = _box(_margin(root, parts), HBoxContainer.new(), "Row", parts, true)
-	var items: Array = opts.get("resources", ["gold", "manpower", "stability"]) as Array if opts.get("resources") is Array else ["gold", "manpower", "stability"]
+	var items: Array = opts.get("resources", ["gold", "manpower", "stability"]) if opts.get("resources") is Array else ["gold", "manpower", "stability"]
 	if items.is_empty():
 		items = ["gold"]
 	for i: int in mini(items.size(), 8):
@@ -460,7 +464,7 @@ static func _event_popup(opts: Dictionary, parts: Dictionary) -> Node:
 	body.custom_minimum_size = Vector2(360, 80)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var choices: BoxContainer = _box(col, VBoxContainer.new(), "Choices", parts, true)
-	var labels: Array = opts.get("buttons", ["Accept", "Decline"]) as Array if opts.get("buttons") is Array else ["Accept", "Decline"]
+	var labels: Array = opts.get("buttons", ["Accept", "Decline"]) if opts.get("buttons") is Array else ["Accept", "Decline"]
 	if labels.is_empty():
 		labels = ["Accept"]
 	for i: int in mini(labels.size(), 6):

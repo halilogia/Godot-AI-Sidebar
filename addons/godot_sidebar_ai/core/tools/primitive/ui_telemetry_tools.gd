@@ -160,11 +160,11 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 # --- 1. INSPECT UI LAYOUT ---
 
 static func _inspect_ui_layout(args: Dictionary) -> Dictionary:
-	var target_override: Node = args.get("target_node") as Node
+	var target_override: Node = args.get("target_node") if args.get("target_node") is Node else null
 	var root_path: String = str(args.get("root_path", "")).strip_edges()
-	var max_depth: int = clampi(int(args.get("max_depth", 4)), 1, 8)
-	var include_invisible: bool = bool(args.get("include_invisible", false))
-	var include_theme_details: bool = bool(args.get("include_theme_details", false))
+	var max_depth: int = clampi(str(args.get("max_depth", 4)).to_int(), 1, 8)
+	var include_invisible: bool = args.get("include_invisible", false) == true
+	var include_theme_details: bool = args.get("include_theme_details", false) == true
 	var target_node: Node = _resolve_target_node(root_path, target_override)
 	if not target_node:
 		var err_code: String = "EDITOR_SCENE_REQUIRED" if root_path.begins_with("@edited_scene") else "NODE_NOT_FOUND"
@@ -406,11 +406,14 @@ static func _audit_ui_layout(args: Dictionary) -> Dictionary:
 		owned_instance = packed.instantiate()
 		target_node = owned_instance
 	else:
-		target_node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
+		target_node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") if args.get("target_node") is Node else null)
 	if not target_node: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
-	var stats: Dictionary = {"total_controls": 0, "containers": 0, "texts": [] as Array[Control], "interactive": [] as Array[Control], "min_text_contrast": float(args.get("min_text_contrast", AISidebarUIAuditRules.CONTRAST_NORMAL))}
-	_audit_layout_recursive(target_node, 0, clampi(int(args.get("max_depth", 12)), 1, 16), bool(args.get("include_invisible", false)), issues, stats)
-	AISidebarUIAuditRules.check_overlaps(stats["texts"], stats["interactive"], issues)
+	var texts_arr: Array[Control] = []
+	var inter_arr: Array[Control] = []
+	var min_contrast: float = str(args.get("min_text_contrast", AISidebarUIAuditRules.CONTRAST_NORMAL)).to_float()
+	var stats: Dictionary = {"total_controls": 0, "containers": 0, "texts": texts_arr, "interactive": inter_arr, "min_text_contrast": min_contrast}
+	_audit_layout_recursive(target_node, 0, clampi(str(args.get("max_depth", 12)).to_int(), 1, 16), args.get("include_invisible", false) == true, issues, stats)
+	AISidebarUIAuditRules.check_overlaps(texts_arr, inter_arr, issues)
 	var root_label: String = scene_path if owned_instance else _get_safe_node_path(target_node)
 	if owned_instance: owned_instance.free()
 	var by_priority: Dictionary = _prioritize(issues)
@@ -421,7 +424,7 @@ static func _audit_ui_layout(args: Dictionary) -> Dictionary:
 		else: wrn_cnt += 1
 	return AISidebarToolResult.ok({
 		"schema_version": SCHEMA_VERSION, "root_path": root_label, "total_controls_audited": int(stats["total_controls"]),
-		"container_count": int(stats["containers"]), "text_controls_checked": (stats["texts"] as Array).size(), "passed": (int(by_priority["P0"]) + int(by_priority["P1"]) == 0),
+		"container_count": int(stats["containers"]), "text_controls_checked": texts_arr.size(), "passed": (str(by_priority.get("P0", 0)).to_int() + str(by_priority.get("P1", 0)).to_int() == 0),
 		"error_count": err_cnt, "warning_count": wrn_cnt, "by_priority": by_priority, "issues": issues
 	}, "UI layout denetimi tamamlandı (%d kontrol; P0=%d P1=%d P2=%d)." % [int(stats["total_controls"]), int(by_priority["P0"]), int(by_priority["P1"]), int(by_priority["P2"])])
 
@@ -518,9 +521,11 @@ static func _audit_screen_rules(ctrl: Control, is_root: bool, issues: Array[Dict
 	AISidebarUIAuditRules.check_outside_viewport(ctrl, is_root, issues)
 	AISidebarUIAuditRules.check_text_contrast(ctrl, float(stats.get("min_text_contrast", AISidebarUIAuditRules.CONTRAST_NORMAL)), issues)
 	if stats.has("texts") and AISidebarUIAuditRules.is_text_control(ctrl) and not _is_interactive(ctrl):
-		(stats["texts"] as Array).append(ctrl)
+		var t_arr: Array = stats["texts"] if stats["texts"] is Array else []
+		t_arr.append(ctrl)
 	if stats.has("interactive") and _is_interactive(ctrl):
-		(stats["interactive"] as Array).append(ctrl)
+		var i_arr: Array = stats["interactive"] if stats["interactive"] is Array else []
+		i_arr.append(ctrl)
 
 ## Etkileşimli düğümün gerçekten tıklanabilir olup olmadığı (P0 kuralları).
 static func _audit_interactive(ctrl: Control, issues: Array[Dictionary]) -> void:
@@ -536,13 +541,13 @@ static func _audit_interactive(ctrl: Control, issues: Array[Dictionary]) -> void
 # --- 3. AUDIT UI TOUCH ---
 
 static func _audit_ui_touch(args: Dictionary) -> Dictionary:
-	var target_node: Node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
+	var target_node: Node = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") if args.get("target_node") is Node else null)
 	if not target_node: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
 	var platform: String = AISidebarUIAuditRules.resolve_platform(args)
 	if platform.is_empty(): return AISidebarToolResult.err("INVALID_ARGUMENT", "Bilinmeyen platform: '%s' (desktop | mobile)." % str(args.get("platform", "")))
 	var limits: Dictionary = AISidebarUIAuditRules.touch_limits(args, platform)
-	var min_size: float = float(limits["min_touch_size"])
-	var min_spacing: float = float(limits["min_spacing"])
+	var min_size: float = str(limits.get("min_touch_size", 48.0)).to_float()
+	var min_spacing: float = str(limits.get("min_spacing", 8.0)).to_float()
 	var interactive: Array[Control] = []
 	var containers: Array[Control] = []
 	_collect_touch_candidates(target_node, bool(args.get("include_invisible", false)), interactive, containers)
@@ -626,10 +631,10 @@ static func _scaffold_ui_theme(args: Dictionary) -> Dictionary:
 	if not DirAccess.dir_exists_absolute(dp): DirAccess.make_dir_recursive_absolute(dp)
 	var err: Error = ResourceSaver.save(theme, tp)
 	if err != OK: return AISidebarToolResult.err("SAVE_FAILED", "Theme kaydedilemedi (hata: %d): %s" % [err, tp])
-	var tmap: Dictionary = args.get("token_map", {}) as Dictionary if args.get("token_map") is Dictionary else {}
+	var tmap: Dictionary = args.get("token_map", {}) if args.get("token_map") is Dictionary else {}
 	var tokens_json: Dictionary = AISidebarUIThemeScaffold.tokens_to_json(tokens, tmap)
 	var tokens_path: String = ""
-	if bool(args.get("write_tokens", true)):
+	if args.get("write_tokens", true) == true:
 		var cand: String = str(args.get("tokens_path", "")).strip_edges()
 		if cand.is_empty(): cand = tp.get_basename() + ".tokens.json"
 		var tchk: Dictionary = AISidebarPathPolicy.is_safe_to_write(cand)
@@ -639,11 +644,14 @@ static func _scaffold_ui_theme(args: Dictionary) -> Dictionary:
 				tf.store_string(JSON.stringify(tokens_json, "  "))
 				tf.close()
 				tokens_path = str(tchk["path"])
+	var rep_warns: Array = report.get("warnings", []) if report.get("warnings") is Array else []
+	var fs_dict: Dictionary = tokens.get("font_size", {}) if tokens.get("font_size") is Dictionary else {}
+	var body_fs: int = str(fs_dict.get("body", 14)).to_int()
 	return AISidebarToolResult.ok({
-		"theme_path": tp, "tokens_path": tokens_path, "preset": tokens["preset"], "default_font_size": int(tokens["font_size"]["body"]),
+		"theme_path": tp, "tokens_path": tokens_path, "preset": tokens["preset"], "default_font_size": body_fs,
 		"styled_classes": AISidebarUIThemeScaffold.styled_classes(), "type_variations": AISidebarUIThemeScaffold.VARIATIONS,
 		"tokens": tokens_json, "contrast": report, "contrast_passed": report["passed"]
-	}, "Theme şablonu oluşturuldu: %s (%d kontrast uyarısı)." % [tp, (report["warnings"] as Array).size()])
+	}, "Theme şablonu oluşturuldu: %s (%d kontrast uyarısı)." % [tp, rep_warns.size()])
 
 # --- 4b. SENARYO / GİZLİ PANELLER (audit_ui_layout / audit_ui_touch `states`, `scenario_path`) ---
 
@@ -672,7 +680,7 @@ static func _audit_with_states(tool_name: String, args: Dictionary) -> Dictionar
 		root = mounted["root"]
 		allow_calls = true
 	else:
-		root = _resolve_target_node(str(cfg.get("root_path", "")), cfg.get("target_node") as Node)
+		root = _resolve_target_node(str(cfg.get("root_path", "")), cfg.get("target_node") if cfg.get("target_node") is Node else null)
 	if root == null: return AISidebarToolResult.err("NODE_NOT_FOUND", "Hedef UI düğümü bulunamadı.")
 	var base: Dictionary = cfg.duplicate()
 	for k: String in ["states", "scenario_path", "scene", "viewport", "root_path", "target_node"]: base.erase(k)
@@ -683,18 +691,20 @@ static func _audit_with_states(tool_name: String, args: Dictionary) -> Dictionar
 	var result: Dictionary = await AISidebarUIAuditScenario.run(root, states, audit, allow_calls)
 	if holder != null: holder.queue_free()
 	var by_p: Dictionary = result["by_priority"]
+	var st_errs: Array = result.get("state_errors", []) if result.get("state_errors") is Array else []
 	return AISidebarToolResult.ok({
 		"schema_version": SCHEMA_VERSION, "tool": tool_name, "platform": AISidebarUIAuditRules.resolve_platform(cfg),
-		"state_count": states.size(), "passed": bool(result["passed"]), "by_priority": by_p, "states": result["states"],
+		"state_count": states.size(), "passed": result.get("passed", false) == true, "by_priority": by_p, "states": result["states"],
 		"state_errors": result["state_errors"], "issues": result["issues"]
-	}, "Senaryo denetimi: %d durum, P0=%d P1=%d P2=%d, %d durum hatası." % [states.size(), int(by_p["P0"]), int(by_p["P1"]), int(by_p["P2"]), (result["state_errors"] as Array).size()])
+	}, "Senaryo denetimi: %d durum, P0=%d P1=%d P2=%d, %d durum hatası." % [states.size(), str(by_p.get("P0", 0)).to_int(), str(by_p.get("P1", 0)).to_int(), str(by_p.get("P2", 0)).to_int(), st_errs.size()])
 
 # --- 5. CAPTURE UI PREVIEW ---
 
 static func _capture_ui_preview(args: Dictionary) -> Dictionary:
 	var prep: Dictionary = _preview_begin(args)
 	if prep.has("error"): return prep["error"]
-	return _preview_finish(prep["ctx"], args, false)
+	var ctx: Dictionary = prep.get("ctx", {}) if prep.get("ctx") is Dictionary else {}
+	return _preview_finish(ctx, args, false)
 
 ## Container yerleşimi bir sonraki karede oturur; bu yol iki kare bekleyip çizer (ajan yolu bunu kullanır).
 static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
@@ -706,11 +716,12 @@ static func execute_async(tool_name: String, args: Dictionary) -> Dictionary:
 	if prep.has("error"): return prep["error"]
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var settled: bool = false
-	if tree and prep["ctx"]["attached_root"]:
+	var ctx: Dictionary = prep.get("ctx", {}) if prep.get("ctx") is Dictionary else {}
+	if tree and ctx.get("attached_root"):
 		await tree.process_frame
 		await tree.process_frame
 		settled = true
-	return _preview_finish(prep["ctx"], args, settled)
+	return _preview_finish(ctx, args, settled)
 
 ## Önizleme sahnesini kurar. Hata: {"error": sonuç}; başarı: {"ctx": {...}}.
 static func _preview_begin(args: Dictionary) -> Dictionary:
@@ -723,7 +734,7 @@ static func _preview_begin(args: Dictionary) -> Dictionary:
 		"tablet": vp_size = Vector2i(1024, 768)
 		"desktop": vp_size = Vector2i(1920, 1080)
 		"square": vp_size = Vector2i(1080, 1080)
-		"custom": vp_size = Vector2i(maxi(int(args.get("width", 720)), 64), maxi(int(args.get("height", 1280)), 64))
+		"custom": vp_size = Vector2i(maxi(str(args.get("width", 720)).to_int(), 64), maxi(str(args.get("height", 1280)).to_int(), 64))
 	if int(vp_size.x) * int(vp_size.y) > (4096 * 4096):
 		return {"error": AISidebarToolResult.err("PREVIEW_TOO_LARGE", "İstenen önizleme çözünürlüğü (%dx%d) azami piksel sınırını (4096x4096) aşmaktadır." % [vp_size.x, vp_size.y])}
 	var spath: String = str(args.get("save_path", "")).strip_edges()
@@ -739,7 +750,7 @@ static func _preview_begin(args: Dictionary) -> Dictionary:
 		if not sc_res: return {"error": AISidebarToolResult.err("LOAD_FAILED", "UI sahnesi yüklenemedi: " + sc_path)}
 		ui_inst = sc_res.instantiate(); is_inst = true
 	else:
-		ui_inst = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") as Node)
+		ui_inst = _resolve_target_node(str(args.get("root_path", "")), args.get("target_node") if args.get("target_node") is Node else null)
 		if not ui_inst: return {"error": AISidebarToolResult.err("NODE_NOT_FOUND", "Önizleme yapılacak UI kök düğümü bulunamadı.")}
 	var vp: SubViewport = SubViewport.new()
 	vp.size = vp_size
@@ -766,11 +777,11 @@ static func _preview_finish(ctx: Dictionary, args: Dictionary, layout_settled: b
 	var prof: String = ctx["prof"]
 	var norm_p: String = ctx["norm_p"]
 	var telemetry: Dictionary = {}
-	if bool(args.get("include_telemetry", true)):
+	if args.get("include_telemetry", true) == true:
 		telemetry = _preview_telemetry(render_node, vp_size)
-	if bool(args.get("draw_bounds", false)):
+	if args.get("draw_bounds", false) == true:
 		_add_bounds_overlay(vp, render_node)
-	if bool(args.get("simulate_safe_area", true)) and prof in ["mobile_portrait", "mobile_landscape"]:
+	if (args.get("simulate_safe_area", true) == true) and prof in ["mobile_portrait", "mobile_landscape"]:
 		_add_safe_area_guides(vp, vp_size, prof)
 	if RenderingServer.has_method("force_draw"):
 		RenderingServer.force_draw(false)
@@ -809,7 +820,7 @@ static func _preview_telemetry(root: Node, vp_size: Vector2i) -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION, "coordinate_space": "viewport-global", "viewport": _bbox(vp_rect),
 		"node_count": nodes.size(), "nodes_truncated": nodes.size() >= MAX_FLAT_NODES, "nodes": nodes,
-		"overflow_viewport": overflow, "by_priority": by_priority, "passed": int(by_priority["P0"]) + int(by_priority["P1"]) == 0,
+		"overflow_viewport": overflow, "by_priority": by_priority, "passed": (str(by_priority.get("P0", 0)).to_int() + str(by_priority.get("P1", 0)).to_int() == 0),
 		"issues": issues.slice(0, 50)
 	}
 

@@ -47,11 +47,12 @@ static func resolve_tokens(args: Dictionary) -> Dictionary:
 	var preset: String = str(args.get("preset", "dark")).to_lower()
 	if not PRESETS.has(preset):
 		preset = "dark"
-	var overrides: Dictionary = args.get("tokens", {}) as Dictionary if args.get("tokens") is Dictionary else {}
-	var color_over: Dictionary = overrides.get("color", {}) as Dictionary if overrides.get("color") is Dictionary else {}
+	var overrides: Dictionary = args.get("tokens", {}) if args.get("tokens") is Dictionary else {}
+	var color_over: Dictionary = overrides.get("color", {}) if overrides.get("color") is Dictionary else {}
 	var colors: Dictionary = {}
-	for key: String in (PRESETS[preset] as Dictionary):
-		var hex: String = str(PRESETS[preset][key])
+	var preset_colors: Dictionary = PRESETS.get(preset, {}) if PRESETS.get(preset) is Dictionary else {}
+	for key: String in preset_colors:
+		var hex: String = str(preset_colors[key])
 		var legacy_arg: String = ""
 		for arg_name: String in LEGACY_COLOR_ARGS:
 			if LEGACY_COLOR_ARGS[arg_name] == key:
@@ -60,42 +61,45 @@ static func resolve_tokens(args: Dictionary) -> Dictionary:
 			hex = str(args[legacy_arg])
 		if color_over.has(key):
 			hex = str(color_over[key])
-		colors[key] = Color.from_string(hex, Color.from_string(str(PRESETS[preset][key]), Color.MAGENTA))
+		colors[key] = Color.from_string(hex, Color.from_string(str(preset_colors[key]), Color.MAGENTA))
 	var primary: Color = colors["primary"]
 	var on_primary: Color = Color.WHITE if _contrast(Color.WHITE, primary) >= _contrast(Color(0.04, 0.05, 0.09), primary) else Color(0.04, 0.05, 0.09)
 	colors["on_primary"] = on_primary
-	var radius_over: Dictionary = overrides.get("radius", {}) as Dictionary if overrides.get("radius") is Dictionary else {}
-	var rad_md: int = clampi(int(radius_over.get("md", args.get("corner_radius", 8))), 0, 32)
+	var radius_over: Dictionary = overrides.get("radius", {}) if overrides.get("radius") is Dictionary else {}
+	var rad_md: int = clampi(str(radius_over.get("md", args.get("corner_radius", 8))).to_int(), 0, 32)
 	var radius: Dictionary = {
-		"sm": clampi(int(radius_over.get("sm", maxi(2, rad_md / 2) if rad_md > 0 else 0)), 0, 32),
+		"sm": clampi(str(radius_over.get("sm", maxi(2, rad_md / 2) if rad_md > 0 else 0)).to_int(), 0, 32),
 		"md": rad_md,
-		"lg": clampi(int(radius_over.get("lg", rad_md * 2)), 0, 48)
+		"lg": clampi(str(radius_over.get("lg", rad_md * 2)).to_int(), 0, 48)
 	}
-	var space_over: Dictionary = overrides.get("spacing", {}) as Dictionary if overrides.get("spacing") is Dictionary else {}
-	var unit: int = clampi(int(args.get("spacing_unit", 4)), 1, 16)
+	var space_over: Dictionary = overrides.get("spacing", {}) if overrides.get("spacing") is Dictionary else {}
+	var unit: int = clampi(str(args.get("spacing_unit", 4)).to_int(), 1, 16)
 	var spacing: Dictionary = {}
 	var steps: Dictionary = {"xs": 1, "sm": 2, "md": 3, "lg": 4, "xl": 6}
 	for key: String in steps:
-		spacing[key] = clampi(int(space_over.get(key, int(steps[key]) * unit)), 0, 128)
-	var font_over: Dictionary = overrides.get("font_size", {}) as Dictionary if overrides.get("font_size") is Dictionary else {}
-	var body: int = clampi(int(font_over.get("body", args.get("font_size_body", 16))), 8, 72)
+		var step_mult: int = str(steps[key]).to_int()
+		spacing[key] = clampi(str(space_over.get(key, step_mult * unit)).to_int(), 0, 128)
+	var font_over: Dictionary = overrides.get("font_size", {}) if overrides.get("font_size") is Dictionary else {}
+	var body: int = clampi(str(font_over.get("body", args.get("font_size_body", 16))).to_int(), 8, 72)
 	var font_size: Dictionary = {
 		"body": body,
-		"small": clampi(int(font_over.get("small", args.get("font_size_small", roundi(body * 0.75)))), 6, 72),
-		"title": clampi(int(font_over.get("title", args.get("font_size_title", roundi(body * 1.375)))), 8, 96),
-		"heading": clampi(int(font_over.get("heading", roundi(body * 1.75))), 8, 128)
+		"small": clampi(str(font_over.get("small", args.get("font_size_small", roundi(body * 0.75)))).to_int(), 6, 72),
+		"title": clampi(str(font_over.get("title", args.get("font_size_title", roundi(body * 1.375)))).to_int(), 8, 96),
+		"heading": clampi(str(font_over.get("heading", roundi(body * 1.75))).to_int(), 8, 128)
 	}
 	return {
 		"preset": preset, "color": colors, "radius": radius, "spacing": spacing, "font_size": font_size,
-		"border_width": clampi(int(overrides.get("border_width", 1)), 0, 8)
+		"border_width": clampi(str(overrides.get("border_width", 1)).to_int(), 0, 8)
 	}
 
 static func tokens_to_json(tokens: Dictionary, token_map: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = tokens.duplicate(true)
 	var hex: Dictionary = {}
-	for key: String in (tokens["color"] as Dictionary):
+	var col_dict: Dictionary = tokens.get("color", {}) if tokens.get("color") is Dictionary else {}
+	for key: String in col_dict:
 		var mapped_key: String = str(token_map.get(key, key))
-		hex[mapped_key] = "#" + (tokens["color"][key] as Color).to_html(false)
+		var col_val: Color = col_dict[key] if col_dict[key] is Color else Color.MAGENTA
+		hex[mapped_key] = "#" + col_val.to_html(false)
 	out["color"] = hex
 	out["colors"] = hex.duplicate()
 	out["schema"] = "ui-tokens/1"
@@ -103,95 +107,117 @@ static func tokens_to_json(tokens: Dictionary, token_map: Dictionary = {}) -> Di
 	return out
 
 static func contrast_report(tokens: Dictionary) -> Dictionary:
-	var colors: Dictionary = tokens["color"]
+	var colors: Dictionary = tokens.get("color", {}) if tokens.get("color") is Dictionary else {}
 	var checks: Array[Dictionary] = []
 	var warnings: Array[String] = []
 	for pair: Array in CONTRAST_PAIRS:
-		var ratio: float = _contrast(colors[pair[0]], colors[pair[1]])
-		var ok: bool = ratio >= float(pair[2])
-		checks.append({"foreground": pair[0], "background": pair[1], "ratio": snappedf(ratio, 0.01), "minimum": pair[2], "passed": ok})
+		var fg_c: Color = colors.get(pair[0], Color.WHITE) if colors.get(pair[0]) is Color else Color.WHITE
+		var bg_c: Color = colors.get(pair[1], Color.BLACK) if colors.get(pair[1]) is Color else Color.BLACK
+		var req_min: float = str(pair[2]).to_float()
+		var ratio: float = _contrast(fg_c, bg_c)
+		var ok: bool = ratio >= req_min
+		checks.append({"foreground": pair[0], "background": pair[1], "ratio": snappedf(ratio, 0.01), "minimum": req_min, "passed": ok})
 		if not ok:
-			warnings.append("Düşük kontrast: '%s' / '%s' = %.2f:1 (asgari %.1f:1)." % [pair[0], pair[1], ratio, float(pair[2])])
+			warnings.append("Düşük kontrast: '%s' / '%s' = %.2f:1 (asgari %.1f:1)." % [pair[0], pair[1], ratio, req_min])
 	return {"checks": checks, "warnings": warnings, "passed": warnings.is_empty()}
 
 static func build_theme(tokens: Dictionary) -> Theme:
-	var c: Dictionary = tokens["color"]
-	var r: Dictionary = tokens["radius"]
-	var sp: Dictionary = tokens["spacing"]
-	var fs: Dictionary = tokens["font_size"]
-	var bw: int = int(tokens["border_width"])
-	var pri: Color = c["primary"]
-	var surf: Color = c["surface"]
-	var surf_h: Color = c["surface_hover"]
-	var bg: Color = c["background"]
-	var txt: Color = c["text"]
-	var muted: Color = c["text_muted"]
-	var on_pri: Color = c["on_primary"]
-	var rad: int = int(r["md"])
-	var mh: int = int(sp["md"]) + int(sp["xs"])
-	var mv: int = int(sp["sm"]) + int(sp["xs"])
+	var c: Dictionary = tokens.get("color", {}) if tokens.get("color") is Dictionary else {}
+	var r: Dictionary = tokens.get("radius", {}) if tokens.get("radius") is Dictionary else {}
+	var sp: Dictionary = tokens.get("spacing", {}) if tokens.get("spacing") is Dictionary else {}
+	var fs: Dictionary = tokens.get("font_size", {}) if tokens.get("font_size") is Dictionary else {}
+	var bw: int = str(tokens.get("border_width", 1)).to_int()
+	var pri: Color = c.get("primary", Color.PURPLE) if c.get("primary") is Color else Color.PURPLE
+	var surf: Color = c.get("surface", Color.DARK_GRAY) if c.get("surface") is Color else Color.DARK_GRAY
+	var surf_h: Color = c.get("surface_hover", Color.GRAY) if c.get("surface_hover") is Color else Color.GRAY
+	var bg: Color = c.get("background", Color.BLACK) if c.get("background") is Color else Color.BLACK
+	var txt: Color = c.get("text", Color.WHITE) if c.get("text") is Color else Color.WHITE
+	var muted: Color = c.get("text_muted", Color.DIM_GRAY) if c.get("text_muted") is Color else Color.DIM_GRAY
+	var on_pri: Color = c.get("on_primary", Color.WHITE) if c.get("on_primary") is Color else Color.WHITE
+	var danger: Color = c.get("danger", Color.RED) if c.get("danger") is Color else Color.RED
+	var success: Color = c.get("success", Color.GREEN) if c.get("success") is Color else Color.GREEN
+	var accent: Color = c.get("accent", Color.ORANGE) if c.get("accent") is Color else Color.ORANGE
+	var rad: int = str(r.get("md", 8)).to_int()
+	var rad_lg: int = str(r.get("lg", 16)).to_int()
+	var sp_xs: int = str(sp.get("xs", 4)).to_int()
+	var sp_sm: int = str(sp.get("sm", 8)).to_int()
+	var sp_md: int = str(sp.get("md", 12)).to_int()
+	var sp_lg: int = str(sp.get("lg", 16)).to_int()
+	var fs_body: int = str(fs.get("body", 16)).to_int()
+	var fs_small: int = str(fs.get("small", 12)).to_int()
+	var fs_title: int = str(fs.get("title", 20)).to_int()
+	var fs_heading: int = str(fs.get("heading", 28)).to_int()
+	var mh: int = sp_md + sp_xs
+	var mv: int = sp_sm + sp_xs
 	var th: Theme = Theme.new()
-	th.default_font_size = int(fs["body"])
+	th.default_font_size = fs_body
 	# Button (taban) ve üç varyasyonu
 	_button_set(th, "Button", surf, surf_h, pri, txt, muted, pri * Color(1, 1, 1, 0.4), bw, rad, mh, mv, fs, bg, sp)
 	_button_set(th, "PrimaryButton", pri, pri.lightened(0.12), pri.darkened(0.2), on_pri, muted, pri, 0, rad, mh, mv, fs, bg, sp)
 	th.set_type_variation("PrimaryButton", "Button")
-	_button_set(th, "DangerButton", c["danger"], (c["danger"] as Color).lightened(0.12), (c["danger"] as Color).darkened(0.2), Color.WHITE if _contrast(Color.WHITE, c["danger"]) >= 4.5 else Color(0.04, 0.05, 0.09), muted, c["danger"], 0, rad, mh, mv, fs, bg, sp)
+	_button_set(th, "DangerButton", danger, danger.lightened(0.12), danger.darkened(0.2), Color.WHITE if _contrast(Color.WHITE, danger) >= 4.5 else Color(0.04, 0.05, 0.09), muted, danger, 0, rad, mh, mv, fs, bg, sp)
 	th.set_type_variation("DangerButton", "Button")
 	_button_set(th, "GhostButton", Color.TRANSPARENT, surf_h, surf, txt, muted, Color.TRANSPARENT, 0, rad, mh, mv, fs, bg, sp)
 	th.set_type_variation("GhostButton", "Button")
 	# Kart / panel
-	var panel: StyleBoxFlat = _flat(surf, surf_h, bw, rad, int(sp["md"]), int(sp["md"]))
-	panel.shadow_size = int(sp["xs"]); panel.shadow_color = Color(0, 0, 0, 0.35)
+	var panel: StyleBoxFlat = _flat(surf, surf_h, bw, rad, sp_md, sp_md)
+	panel.shadow_size = sp_xs; panel.shadow_color = Color(0, 0, 0, 0.35)
 	th.set_stylebox("panel", "Panel", panel)
 	th.set_stylebox("panel", "PanelContainer", panel)
-	th.set_stylebox("panel", "Card", _flat(surf, surf_h, bw, int(r["lg"]), int(sp["lg"]), int(sp["lg"])))
+	th.set_stylebox("panel", "Card", _flat(surf, surf_h, bw, rad_lg, sp_lg, sp_lg))
 	th.set_type_variation("Card", "PanelContainer")
 	# Metin girişi
-	th.set_stylebox("normal", "LineEdit", _flat(bg, surf_h, bw, rad, int(sp["md"]), int(sp["sm"])))
-	th.set_stylebox("focus", "LineEdit", _flat(bg, pri, 2, rad, int(sp["md"]), int(sp["sm"])))
-	th.set_stylebox("read_only", "LineEdit", _flat(surf, surf_h, bw, rad, int(sp["md"]), int(sp["sm"])))
+	th.set_stylebox("normal", "LineEdit", _flat(bg, surf_h, bw, rad, sp_md, sp_sm))
+	th.set_stylebox("focus", "LineEdit", _flat(bg, pri, 2, rad, sp_md, sp_sm))
+	th.set_stylebox("read_only", "LineEdit", _flat(surf, surf_h, bw, rad, sp_md, sp_sm))
 	th.set_color("font_color", "LineEdit", txt)
 	th.set_color("font_placeholder_color", "LineEdit", muted)
-	th.set_color("caret_color", "LineEdit", c["accent"])
+	th.set_color("caret_color", "LineEdit", accent)
 	th.set_color("selection_color", "LineEdit", pri * Color(1, 1, 1, 0.5))
-	th.set_font_size("font_size", "LineEdit", int(fs["body"]))
+	th.set_font_size("font_size", "LineEdit", fs_body)
 	# İlerleme çubukları
 	var bar_r: int = clampi(rad / 2, 2, 8)
 	th.set_stylebox("background", "ProgressBar", _flat(bg, surf_h, bw, bar_r, 0, 0))
 	th.set_stylebox("fill", "ProgressBar", _flat(pri, Color.TRANSPARENT, 0, bar_r, 0, 0))
 	th.set_color("font_color", "ProgressBar", txt)
-	for pair: Array in [["HealthBar", c["success"]], ["DangerBar", c["danger"]], ["AccentBar", c["accent"]]]:
-		th.set_stylebox("background", str(pair[0]), _flat(bg, surf_h, bw, bar_r, 0, 0))
-		th.set_stylebox("fill", str(pair[0]), _flat(pair[1], Color.TRANSPARENT, 0, bar_r, 0, 0))
-		th.set_type_variation(str(pair[0]), "ProgressBar")
+	for pair: Array in [["HealthBar", success], ["DangerBar", danger], ["AccentBar", accent]]:
+		var p_name: String = str(pair[0])
+		var p_col: Color = pair[1] if pair[1] is Color else Color.WHITE
+		th.set_stylebox("background", p_name, _flat(bg, surf_h, bw, bar_r, 0, 0))
+		th.set_stylebox("fill", p_name, _flat(p_col, Color.TRANSPARENT, 0, bar_r, 0, 0))
+		th.set_type_variation(p_name, "ProgressBar")
 	# Etiketler
 	th.set_color("font_color", "Label", txt)
-	th.set_font_size("font_size", "Label", int(fs["body"]))
+	th.set_font_size("font_size", "Label", fs_body)
 	var label_sets: Array = [
-		["HeaderLarge", int(fs["heading"]), txt], ["HeaderMedium", int(fs["title"]), txt], ["Caption", int(fs["small"]), muted],
-		["AccentLabel", int(fs["body"]), c["accent"]], ["DangerLabel", int(fs["body"]), c["danger"]]
+		["HeaderLarge", fs_heading, txt], ["HeaderMedium", fs_title, txt], ["Caption", fs_small, muted],
+		["AccentLabel", fs_body, accent], ["DangerLabel", fs_body, danger]
 	]
 	for ls: Array in label_sets:
-		th.set_font_size("font_size", str(ls[0]), int(ls[1]))
-		th.set_color("font_color", str(ls[0]), ls[2])
-		th.set_type_variation(str(ls[0]), "Label")
+		var ls_name: String = str(ls[0])
+		var ls_size: int = str(ls[1]).to_int()
+		var ls_col: Color = ls[2] if ls[2] is Color else Color.WHITE
+		th.set_font_size("font_size", ls_name, ls_size)
+		th.set_color("font_color", ls_name, ls_col)
+		th.set_type_variation(ls_name, "Label")
 	th.set_color("default_color", "RichTextLabel", txt)
-	th.set_font_size("normal_font_size", "RichTextLabel", int(fs["body"]))
+	th.set_font_size("normal_font_size", "RichTextLabel", fs_body)
 	for cls: String in ["CheckBox", "CheckButton", "OptionButton"]:
 		th.set_color("font_color", cls, txt)
-		th.set_font_size("font_size", cls, int(fs["body"]))
+		th.set_font_size("font_size", cls, fs_body)
 	# Düzen sabitleri: ajan boşluğu elle yazmasın, tema versin
-	th.set_constant("separation", "VBoxContainer", int(sp["sm"]))
-	th.set_constant("separation", "HBoxContainer", int(sp["sm"]))
-	th.set_constant("h_separation", "GridContainer", int(sp["sm"]))
-	th.set_constant("v_separation", "GridContainer", int(sp["sm"]))
+	th.set_constant("separation", "VBoxContainer", sp_sm)
+	th.set_constant("separation", "HBoxContainer", sp_sm)
+	th.set_constant("h_separation", "GridContainer", sp_sm)
+	th.set_constant("v_separation", "GridContainer", sp_sm)
 	for side: String in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
-		th.set_constant(side, "MarginContainer", int(sp["md"]))
+		th.set_constant(side, "MarginContainer", sp_md)
 	var line: StyleBoxLine = StyleBoxLine.new()
 	line.color = surf_h; line.thickness = maxi(bw, 1)
 	th.set_stylebox("separator", "HSeparator", line)
-	th.set_stylebox("separator", "VSeparator", line.duplicate())
+	var line_v: StyleBoxLine = StyleBoxLine.new()
+	line_v.color = surf_h; line_v.thickness = maxi(bw, 1)
+	th.set_stylebox("separator", "VSeparator", line_v)
 	return th
 
 static func styled_classes() -> Array[String]:
@@ -210,8 +236,8 @@ static func _button_set(th: Theme, type_name: String, normal: Color, hover: Colo
 	th.set_color("font_pressed_color", type_name, font)
 	th.set_color("font_focus_color", type_name, font)
 	th.set_color("font_disabled_color", type_name, disabled_font)
-	th.set_font_size("font_size", type_name, int(fs["body"]))
-	th.set_constant("h_separation", type_name, int(sp["sm"]))
+	th.set_font_size("font_size", type_name, str(fs.get("body", 16)).to_int())
+	th.set_constant("h_separation", type_name, str(sp.get("sm", 8)).to_int())
 
 static func _flat(bg_c: Color, border_c: Color, bw: int, r: int, mh: int, mv: int) -> StyleBoxFlat:
 	var sb: StyleBoxFlat = StyleBoxFlat.new()

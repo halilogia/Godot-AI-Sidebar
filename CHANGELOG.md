@@ -9,6 +9,10 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+* **UI Araçlarında GDScript 2.0 Statik Tip Güvenliği ve Uyarı Cırcırı Düzeltmeleri (2026-11-02):**
+  - Altı UI aracı betiğinde (`ui_audit_rules.gd`, `ui_audit_scenario.gd`, `ui_component_builder.gd`, `ui_component_tools.gd`, `ui_telemetry_tools.gd`, `ui_theme_scaffold.gd`) `unsafe_call_argument` ve `unsafe_cast` uyarılarına neden olan dinamik `Variant` dönüşümleri güvenli primitif çağrılar ve tip denetimli yapılarla güncellendi.
+  - Strict typecheck ratchet ve 127 birim test paketi (943 assertion) eksiksiz doğrulandı.
+
 * **Masaüstü Oyun Arayüz Denetimi, Senaryo Koşucusu, Headless CLI ve Oyun Bileşenleri (2026-10-31):**
   - `audit_ui_touch`: Platform profili eklendi (`desktop`: 28 px hedef / 4 px aralık, `mobile`: 44 px / 8 px; proje varsayılanı `godot_ai_sidebar/ui_audit/platform` ayarından okunur).
   - `audit_ui_layout` (`ui_audit_rules.gd`): Görünüm dışına taşan kontroller için P1 `OUTSIDE_VIEWPORT` (kaydırılan/kırpılan ve dünya uzayı arayüzü muaf), gerçek yazı rengi ile en yakın StyleBoxFlat / StyleBoxTexture (ortalama doku rengi) / ColorRect arka planı arasındaki WCAG oranını ölçen `TEXT_LOW_CONTRAST` (`< 3:1` P1, `< 4.5:1` gövde metni P2, `>= 24 px` büyük metin `3:1`) ve etkileşimli düğmelerle çakışan metin/düğmeler için `TEXT_OVERLAPS_INTERACTIVE` (P1/P2) ile `INTERACTIVE_OVERLAP` (P1) kuralları eklendi.

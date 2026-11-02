@@ -44,8 +44,8 @@ static func touch_limits(args: Dictionary, platform: String) -> Dictionary:
 	var prof: Dictionary = PLATFORMS.get(platform, PLATFORMS[DEFAULT_PLATFORM])
 	return {
 		"platform": platform,
-		"min_touch_size": float(args.get("min_touch_size", prof["min_touch_size"])),
-		"min_spacing": float(args.get("min_spacing", prof["min_spacing"]))
+		"min_touch_size": str(args.get("min_touch_size", prof["min_touch_size"])).to_float(),
+		"min_spacing": str(args.get("min_spacing", prof["min_spacing"])).to_float()
 	}
 
 # --- Ekran dikdörtgeni ---
@@ -98,12 +98,16 @@ static func check_outside_viewport(ctrl: Control, is_audit_root: bool, issues: A
 	var pc: Control = ctrl.get_parent() as Control
 	if not is_audit_root and pc and not ctrl.top_level and pc.size.x > 0.0 and pc.size.y > 0.0 and not allowed.encloses(screen_rect(pc)):
 		return
+	var over_left: float = maxf(0.0, vp.position.x - r.position.x)
+	var over_top: float = maxf(0.0, vp.position.y - r.position.y)
+	var over_right: float = maxf(0.0, r.end.x - vp.end.x)
+	var over_bottom: float = maxf(0.0, r.end.y - vp.end.y)
 	var over: Dictionary = {
-		"left": maxf(0.0, vp.position.x - r.position.x), "top": maxf(0.0, vp.position.y - r.position.y),
-		"right": maxf(0.0, r.end.x - vp.end.x), "bottom": maxf(0.0, r.end.y - vp.end.y)
+		"left": over_left, "top": over_top,
+		"right": over_right, "bottom": over_bottom
 	}
 	var fully: bool = not r.intersects(vp)
-	var what: String = "tamamen ekran dışında" if fully else "ekrandan taşıyor (sol %d, üst %d, sağ %d, alt %d px)" % [int(over["left"]), int(over["top"]), int(over["right"]), int(over["bottom"])]
+	var what: String = "tamamen ekran dışında" if fully else "ekrandan taşıyor (sol %d, üst %d, sağ %d, alt %d px)" % [int(over_left), int(over_top), int(over_right), int(over_bottom)]
 	issues.append({
 		"rule_id": "OUTSIDE_VIEWPORT", "severity": "error", "node_path": str(ctrl.get_path()), "node_class": ctrl.get_class(),
 		"message": "'%s' %s; görünüm %dx%d." % [ctrl.name, what, int(vp.size.x), int(vp.size.y)],
@@ -156,7 +160,7 @@ static func stylebox_fill(sb: StyleBox) -> Variant:
 		var t: StyleBoxTexture = sb as StyleBoxTexture
 		if not t.draw_center: return null
 		var avg: Variant = texture_average(t.texture)
-		return (avg as Color) * t.modulate_color if avg != null else null
+		return (avg * t.modulate_color) if avg is Color else null
 	return null
 
 ## Dokunun ortalama rengi (kâğıt / parşömen gibi dokulu panel arka planı için); okunamazsa null.
@@ -193,8 +197,8 @@ static func control_fill(ctrl: Control) -> Variant:
 		fill = stylebox_fill(ctrl.get_theme_stylebox("normal"))
 	elif ctrl is LineEdit or ctrl is Label or ctrl is RichTextLabel:
 		fill = stylebox_fill(ctrl.get_theme_stylebox("normal"))
-	if fill == null: return null
-	var c: Color = fill as Color
+	if not (fill is Color): return null
+	var c: Color = fill
 	return c * ctrl.self_modulate
 
 ## Metnin arkasında görünen renk: kendi kutusu, sonra her düzeyde önce çizilen kardeşler (metni örten),
@@ -203,7 +207,9 @@ static func background_behind(ctrl: Control) -> Variant:
 	var layers: Array[Color] = []
 	var target: Rect2 = screen_rect(ctrl)
 	var own: Variant = control_fill(ctrl)
-	if own != null: layers.append(own as Color)
+	if own is Color:
+		var own_c: Color = own
+		layers.append(own_c)
 	var child: Node = ctrl
 	var p: Node = ctrl.get_parent()
 	while p and not _opaque(layers):
@@ -214,13 +220,16 @@ static func background_behind(ctrl: Control) -> Variant:
 			var sc: Control = sib as Control
 			if not screen_rect(sc).grow(EDGE_TOLERANCE).encloses(target): continue
 			var f: Variant = control_fill(sc)
-			if f != null:
-				layers.append(f as Color)
+			if f is Color:
+				var f_c: Color = f
+				layers.append(f_c)
 				if _opaque(layers): break
 		if _opaque(layers): break
 		if p is Control:
 			var pf: Variant = control_fill(p as Control)
-			if pf != null: layers.append(pf as Color)
+			if pf is Color:
+				var pf_c: Color = pf
+				layers.append(pf_c)
 		child = p
 		p = p.get_parent()
 	if not _opaque(layers): return null
@@ -241,8 +250,8 @@ static func check_text_contrast(ctrl: Control, min_ratio: float, issues: Array[D
 	if ctrl is BaseButton and (ctrl as BaseButton).disabled: return
 	if _has_outline(ctrl): return
 	var bg_v: Variant = background_behind(ctrl)
-	if bg_v == null: return
-	var bg: Color = bg_v as Color
+	if not (bg_v is Color): return
+	var bg: Color = bg_v
 	var fg_raw: Color = font_color(ctrl)
 	var fg: Color = bg.lerp(Color(fg_raw.r, fg_raw.g, fg_raw.b, 1.0), clampf(fg_raw.a, 0.0, 1.0))
 	var ratio: float = AISidebarUIThemeScaffold.contrast_ratio(fg, bg)

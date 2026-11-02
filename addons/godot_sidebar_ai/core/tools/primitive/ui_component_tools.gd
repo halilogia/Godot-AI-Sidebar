@@ -70,9 +70,10 @@ static func _scaffold(args: Dictionary) -> Dictionary:
 	var root: Node = built["root"]
 	if root == null:
 		return AISidebarToolResult.err("BUILD_FAILED", "Bileşen kurulamadı: " + component)
-	var theme_applied: String = _apply_theme(root, str(args.get("theme_path", "")).strip_edges(), built["parts"])
+	var parts_dict: Dictionary = built.get("parts", {}) if built.get("parts") is Dictionary else {}
+	var theme_applied: String = _apply_theme(root, str(args.get("theme_path", "")).strip_edges(), parts_dict)
 	var verification: Dictionary = verify_component(root)
-	if not bool(verification["passed"]):
+	if verification.get("passed", false) != true:
 		root.free()
 		return AISidebarToolResult.err("COMPONENT_VERIFICATION_FAILED", "Şablon kendi denetiminden geçmedi (P0/P1 bulgu), hiçbir dosya yazılmadı: " + JSON.stringify(verification["blocking"]))
 	var dir_path: String = scene_path.get_base_dir()
@@ -101,11 +102,12 @@ static func _scaffold(args: Dictionary) -> Dictionary:
 	if save_err != OK:
 		return AISidebarToolResult.err("SAVE_FAILED", "Sahne kaydedilemedi (hata: %d): %s" % [save_err, scene_path])
 	_refresh_editor_files([script_path, scene_path])
+	var api_list: Array = built.get("api", []) if built.get("api") is Array else []
 	return AISidebarToolResult.ok({
 		"component": component, "scene_path": scene_path, "script_path": script_path,
 		"node_count": node_count, "api": built["api"], "theme_applied": theme_applied,
 		"verification": verification,
-		"usage": "instantiate_scene ile ekle (Container içine koy: konumu Container belirler); API: " + ", ".join(PackedStringArray(built["api"]))
+		"usage": "instantiate_scene ile ekle (Container içine koy: konumu Container belirler); API: " + ", ".join(PackedStringArray(api_list))
 	}, "UI bileşeni üretildi ve doğrulandı (%s): %s" % [component, scene_path])
 
 ## Kaydetmeden önce: yerleşim + dokunma denetimi. P0/P1 bulgu engeller.
@@ -115,13 +117,13 @@ static func verify_component(root: Node) -> Dictionary:
 	var blocking: Array = []
 	var by_priority: Dictionary = {"P0": 0, "P1": 0, "P2": 0}
 	for res: Dictionary in [layout, touch]:
-		var data: Dictionary = res.get("data", {}) as Dictionary
+		var data: Dictionary = res.get("data", {}) if res.get("data") is Dictionary else {}
 		for iss: Dictionary in data.get("issues", []):
 			var p: String = str(iss.get("priority", "P2"))
-			by_priority[p] = int(by_priority.get(p, 0)) + 1
+			by_priority[p] = str(by_priority.get(p, 0)).to_int() + 1
 			if p == "P0" or p == "P1":
 				blocking.append({"rule_id": iss.get("rule_id", ""), "node_path": iss.get("node_path", ""), "message": iss.get("message", "")})
-	var ran: bool = bool(layout.get("success", false)) and bool(touch.get("success", false))
+	var ran: bool = (layout.get("success", false) == true) and (touch.get("success", false) == true)
 	return {"passed": ran and blocking.is_empty(), "by_priority": by_priority, "blocking": blocking}
 
 static func _apply_theme(root: Node, theme_path: String, parts: Dictionary) -> String:
