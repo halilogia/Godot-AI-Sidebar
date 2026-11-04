@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+- **CI autofix (`.github/workflows/ci-autofix.yml`):** when CI fails on a push, Claude reproduces the failure, fixes the root cause with a test and opens a PR from `ci-autofix/<sha>`. It never pushes to the default branch and may not skip tests, loosen checks or add suppression comments. Needs the `CLAUDE_CODE_OAUTH_TOKEN` secret; without it the job skips.
+
 * **UI Araçlarında GDScript 2.0 Statik Tip Güvenliği ve Uyarı Cırcırı Düzeltmeleri (2026-11-02):**
   - Altı UI aracı betiğinde (`ui_audit_rules.gd`, `ui_audit_scenario.gd`, `ui_component_builder.gd`, `ui_component_tools.gd`, `ui_telemetry_tools.gd`, `ui_theme_scaffold.gd`) `unsafe_call_argument` ve `unsafe_cast` uyarılarına neden olan dinamik `Variant` dönüşümleri güvenli primitif çağrılar ve tip denetimli yapılarla güncellendi.
   - Strict typecheck ratchet ve 127 birim test paketi (943 assertion) eksiksiz doğrulandı.
