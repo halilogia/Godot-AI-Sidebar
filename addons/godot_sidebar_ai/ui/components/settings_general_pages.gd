@@ -12,6 +12,7 @@ class_name AISidebarSettingsGeneralPages
 ## Pencere açılırken config'ten yüklenir (load_from), "Kaydet ve Kapat"ta config'e yazılır (write_to).
 
 const AISidebarThemeBuilder = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme_builder.gd")
+const AgyLogin = preload("res://addons/godot_sidebar_ai/core/providers/agy_login.gd")
 const AISidebarI18n = preload("res://addons/godot_sidebar_ai/core/i18n/i18n.gd")
 const AISidebarTheme = preload("res://addons/godot_sidebar_ai/ui/theme/sidebar_theme.gd")
 const AISidebarGoalSession = preload("res://addons/godot_sidebar_ai/core/agent/goal_session.gd")
@@ -43,6 +44,11 @@ var _profiles: Array[Dictionary] = []
 var _shown: int = 0
 var provider_opt: OptionButton
 var provider_hint: Label
+## AGY Google girişi: düğme satırı, durum etiketi ve doğrulama iş parçacığı.
+var agy_login_row: HBoxContainer
+var agy_verify_btn: Button
+var agy_status: Label
+var _agy_verify_thread: Thread = null
 var endpoint_box: VBoxContainer
 var base_url_edit: LineEdit
 var api_key_edit: LineEdit
@@ -95,6 +101,12 @@ func build_provider_page() -> VBoxContainer:
 	prov.add_child(provider_opt)
 	provider_hint = AISidebarSettingsUi.hint_label("")
 	prov.add_child(provider_hint)
+	agy_login_row = AISidebarSettingsUi.row(prov)
+	agy_login_row.add_child(AISidebarSettingsUi.primary_button(AISidebarI18n.get_text("btn_agy_login"), _on_agy_login))
+	agy_verify_btn = AISidebarSettingsUi.button(AISidebarI18n.get_text("btn_agy_verify"), _on_agy_verify)
+	agy_login_row.add_child(agy_verify_btn)
+	agy_status = AISidebarSettingsUi.status_label()
+	prov.add_child(agy_status)
 
 	endpoint_box = AISidebarSettingsUi.card(page, AISidebarI18n.get_text("settings_card_endpoint"), AISidebarI18n.get_text("settings_endpoint_hint"))
 	base_url_edit = AISidebarSettingsUi.line_edit("https://openrouter.ai/api/v1")
@@ -341,10 +353,43 @@ func _apply_provider_state() -> void:
 	else:
 		provider_hint.text = AISidebarI18n.get_text("hint_provider_openai")
 		provider_hint.add_theme_color_override("font_color", AISidebarTheme.COLOR_TEXT_SECONDARY)
+	agy_login_row.visible = is_cli
+	agy_status.visible = is_cli
 	base_url_edit.editable = not is_cli
 	api_key_edit.editable = not is_cli
 	var card := endpoint_box.get_parent() as Control
 	card.modulate = AISidebarTheme.MODULATE_DISABLED if is_cli else AISidebarTheme.COLOR_WHITE
+
+## agy'yi kendi konsol penceresinde açar; Google girişi tarayıcıda tamamlanır.
+func _on_agy_login() -> void:
+	if AgyLogin.start_login() > 0:
+		AISidebarSettingsUi.set_status(agy_status, AISidebarI18n.get_text("agy_login_started"))
+	else:
+		AISidebarSettingsUi.set_status(agy_status, AISidebarI18n.get_text("agy_not_found"), true)
+
+## En küçük istekle girişi doğrular; editörü bloklamamak için iş parçacığında çalışır.
+func _on_agy_verify() -> void:
+	if _agy_verify_thread != null:
+		return
+	agy_verify_btn.disabled = true
+	AISidebarSettingsUi.set_status(agy_status, AISidebarI18n.get_text("agy_verifying"))
+	_agy_verify_thread = Thread.new()
+	_agy_verify_thread.start(func() -> void:
+		var result := AgyLogin.verify_blocking()
+		_on_agy_verified.call_deferred(result))
+
+func _on_agy_verified(result: int) -> void:
+	if _agy_verify_thread != null:
+		_agy_verify_thread.wait_to_finish()
+		_agy_verify_thread = null
+	agy_verify_btn.disabled = false
+	match result:
+		AgyLogin.Result.OK:
+			AISidebarSettingsUi.set_status(agy_status, AISidebarI18n.get_text("agy_login_ok"))
+		AgyLogin.Result.NOT_FOUND:
+			AISidebarSettingsUi.set_status(agy_status, AISidebarI18n.get_text("agy_not_found"), true)
+		_:
+			AISidebarSettingsUi.set_status(agy_status, AISidebarI18n.get_text("agy_login_required"), true)
 
 func _on_temp_changed(val: float) -> void:
 	var v := snappedf(val, 0.05)
