@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+- **Otomatik Film Yapıcı & Oynanış Kaydı (`plugin.gd`, `debugger_plugin.gd`, `tools/record.bat`):** Eklenti açıldığında `editor/movie_writer/movie_file = "res://recordings/gameplay.avi"` ve 30 FPS varsayılanını projeye otomatik yapılandırır; böylece Godot film şeridi ikonuna tıklandığında çıkan "film dosyası yolu belirtilmedi" uyarısı önlenir. Oyun oturumu sonlandığında (`_on_session_stopped`) kaydedilen AVI dosyası FFmpeg ile otomatik olarak hafif H.264 MP4 formatına dönüştürülür. Ayrıca tek tıkla 30s oynanış kaydı alan `tools/record.bat` eklendi.
+
 - **Statik tip düzeltmesi (`agy_login.gd`):** `start_login` fonksiyonundaki dinamik sözlük `unsafe_cast` uyarısı giderildi, sıkı tip uyarı cırcırı ve 128 birim test paketi (951 assertion) %100 doğrulandı.
 
 - **AGY için Google hesabı girişi (`agy_login.gd`, Ayarlar → Sağlayıcı):** Antigravity sağlayıcısı seçiliyken "Google ile giriş yap" (agy'yi kendi konsol penceresinde açar, OAuth tarayıcıda tamamlanır) ve "Girişi doğrula" (iş parçacığında `agy --print ok --print-timeout 30s`; sonuç: giriş tamam / giriş gerekli / agy bulunamadı) düğmeleri eklendi. Önceden giriş yoksa agy headless modda sessizce bekliyor, kullanıcı nedenini göremiyordu. Kimlik bilgisi okunmaz/saklanmaz. `tests/test_agy_login.gd` eklendi, i18n golden güncellendi.

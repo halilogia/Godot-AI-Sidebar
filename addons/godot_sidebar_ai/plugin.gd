@@ -32,6 +32,7 @@ func _enter_tree() -> void:
 	add_autoload_singleton("GodotAIRuntimeBridge", "res://addons/godot_sidebar_ai/core/runtime/runtime_bridge.gd")
 	# manage_project_settings autoload'ı editörün kendi yoluyla ekler (betikler adı hemen tanısın).
 	AISidebarProjectSettingsTools.editor_plugin = self
+	_ensure_movie_writer_config()
 
 	# 2. Sidebar Dock (arayüz editörün ölçeğiyle büyür: yazı, boşluk, ikon)
 	AISidebarTheme.ui_scale = EditorInterface.get_editor_scale()
@@ -104,3 +105,20 @@ func _exit_tree() -> void:
 	if agent_host:
 		agent_host.queue_free()
 		agent_host = null
+
+
+## Film yapıcı modu varsayılanını (Movie Writer) otomatik yapılandırır.
+## Böylece kullanıcı Godot editöründeki film şeridi ikonuna bastığında
+## "Film dosyası yolu belirtilmedi" hatasıyla karşılaşmaz.
+func _ensure_movie_writer_config() -> void:
+	var movie_file: String = str(ProjectSettings.get_setting("editor/movie_writer/movie_file", ""))
+	if movie_file.strip_edges().is_empty():
+		var dir: String = "res://recordings"
+		var abs_dir: String = ProjectSettings.globalize_path(dir)
+		if not DirAccess.dir_exists_absolute(abs_dir):
+			DirAccess.make_dir_recursive_absolute(abs_dir)
+		ProjectSettings.set_setting("editor/movie_writer/movie_file", "res://recordings/gameplay.avi")
+		ProjectSettings.set_initial_value("editor/movie_writer/movie_file", "res://recordings/gameplay.avi")
+		ProjectSettings.set_setting("editor/movie_writer/fps", 30)
+		ProjectSettings.set_initial_value("editor/movie_writer/fps", 30)
+		ProjectSettings.save()

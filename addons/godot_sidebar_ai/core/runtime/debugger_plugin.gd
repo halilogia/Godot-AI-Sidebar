@@ -35,6 +35,7 @@ func _setup_session(session_id: int) -> void:
 	if session:
 		_sessions[session_id] = session
 		session.started.connect(func() -> void: apply_run_options(session))
+		session.stopped.connect(func() -> void: _on_session_stopped())
 
 ## Oyun bağlanınca (ve bağlantının oturması için bir saniye sonra yine) çalıştırma seçeneklerini gönderir.
 func apply_run_options(session: EditorDebuggerSession) -> void:
@@ -156,3 +157,32 @@ static func ready_check_result(ping: Dictionary) -> Dictionary:
 	if ping is Dictionary and bool(ping.get("success", false)):
 		return {"proceed": true, "result": {}}
 	return {"proceed": false, "result": {"success": false, "error": "BRIDGE_NOT_READY", "message": "Runtime bridge hazır değil (ping yanıtsız). Oyun yeni başladıysa bir saniye sonra tekrar deneyin."}}
+
+
+## Oyun oturumu kapandığında çalışır. Eğer kullanıcı Film Yapıcı (Movie Maker) moduyla
+## kayıt yaptıysa (res://recordings/gameplay.avi veya res://kayit.avi), bu dosyayı
+## otomatik olarak ffmpeg ile hemen oynatılabilir MP4 formatına dönüştürür.
+static func _on_session_stopped() -> void:
+	var avi_path: String = ProjectSettings.globalize_path("res://recordings/gameplay.avi")
+	if not FileAccess.file_exists(avi_path):
+		var root_avi: String = ProjectSettings.globalize_path("res://kayit.avi")
+		if FileAccess.file_exists(root_avi):
+			avi_path = root_avi
+		else:
+			return
+
+	var f: FileAccess = FileAccess.open(avi_path, FileAccess.READ)
+	if f == null or f.get_length() < 1000:
+		return
+	f.close()
+
+	var dir: String = avi_path.get_base_dir()
+	var mp4_path: String = dir.path_join("gameplay.mp4")
+	var args: PackedStringArray = PackedStringArray([
+		"-y", "-loglevel", "error", "-i", avi_path,
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18",
+		"-preset", "fast", "-movflags", "+faststart", mp4_path
+	])
+	var pid: int = OS.create_process("ffmpeg", args)
+	if pid > 0:
+		print_rich("[color=green][Godot AI][/color] [Movie Maker] Oynanış kaydı MP4 formatına dönüştürülüyor: [code]%s[/code]" % mp4_path)
