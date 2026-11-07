@@ -41,7 +41,10 @@ static func classify(exit_code: int, output: String) -> int:
 ## agy'yi kendi konsol penceresinde açar (Google girişi tarayıcıda tamamlanır). Başarı: süreç id > 0.
 static func start_login() -> int:
 	var cmd := login_command()
-	return OS.create_process(str(cmd["exe"]), cmd["args"] as PackedStringArray)
+	var args := PackedStringArray()
+	if OS.get_name() == "Windows":
+		args.append("agy")
+	return OS.create_process(str(cmd["exe"]), args)
 
 ## Bloklayan doğrulama; Thread içinden çağır. Çıktıyı ve sonucu döndürür.
 static func verify_blocking() -> int:

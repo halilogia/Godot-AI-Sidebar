@@ -33,7 +33,9 @@ addons/godot_sidebar_ai/config.json.tmp
 user_secrets.json
 
 # Agent Brain / Scratch
-brain/
+# brain/ tracked for core-docs
+brain/scratch/
+brain/.chat-history/
 .gemini/
 .antigravity/
 transcripts/

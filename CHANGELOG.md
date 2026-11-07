@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+- **Statik tip düzeltmesi (`agy_login.gd`):** `start_login` fonksiyonundaki dinamik sözlük `unsafe_cast` uyarısı giderildi, sıkı tip uyarı cırcırı ve 128 birim test paketi (951 assertion) %100 doğrulandı.
+
 - **AGY için Google hesabı girişi (`agy_login.gd`, Ayarlar → Sağlayıcı):** Antigravity sağlayıcısı seçiliyken "Google ile giriş yap" (agy'yi kendi konsol penceresinde açar, OAuth tarayıcıda tamamlanır) ve "Girişi doğrula" (iş parçacığında `agy --print ok --print-timeout 30s`; sonuç: giriş tamam / giriş gerekli / agy bulunamadı) düğmeleri eklendi. Önceden giriş yoksa agy headless modda sessizce bekliyor, kullanıcı nedenini göremiyordu. Kimlik bilgisi okunmaz/saklanmaz. `tests/test_agy_login.gd` eklendi, i18n golden güncellendi.
 
 - **CI autofix (`.github/workflows/ci-autofix.yml`):** when CI fails on a push, Claude reproduces the failure, fixes the root cause with a test and opens a PR from `ci-autofix/<sha>`. It never pushes to the default branch and may not skip tests, loosen checks or add suppression comments. Needs the `CLAUDE_CODE_OAUTH_TOKEN` secret; without it the job skips.
