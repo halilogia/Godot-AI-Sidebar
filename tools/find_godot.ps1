@@ -17,6 +17,17 @@ function Resolve-GodotBin([string]$GodotPath = "") {
     }
 
     if (-not $bin) {
+        # WinGet kurulumu: Packages\GodotEngine.GodotEngine_*\Godot_v*.exe (console surumu stdout verir)
+        $wg = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+        if (Test-Path $wg) {
+            $found = Get-ChildItem -Path $wg -Directory -Filter "GodotEngine.GodotEngine*" -ErrorAction SilentlyContinue |
+                ForEach-Object { Get-ChildItem -Path $_.FullName -Filter "Godot*.exe" -ErrorAction SilentlyContinue } |
+                Sort-Object @{Expression = { $_.Name -match 'console' }; Descending = $true}, Name -Descending | Select-Object -First 1
+            if ($found) { $bin = $found.FullName }
+        }
+    }
+
+    if (-not $bin) {
         # Search Desktop dynamically without hardcoded user paths
         $desktopPath = [System.Environment]::GetFolderPath('Desktop')
         # Prioritize 4.7+ binary if multiple versions exist on Desktop
