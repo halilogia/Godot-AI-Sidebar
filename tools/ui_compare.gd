@@ -42,7 +42,7 @@ func _initialize() -> void:
 			same.append(rel)
 		else:
 			changed.append(rel)
-			var sheet := side_by_side(a, b, diff)
+			var sheet := side_by_side(a, b, diff, diff_regions(a, b))
 			var target := out_dir.path_join(rel.replace("/", "__"))
 			sheet.save_png(target)
 	for rel: String in before:
@@ -93,8 +93,73 @@ static func diff_rect(a: Image, b: Image) -> Rect2i:
 		return Rect2i()
 	return Rect2i(min_p, max_p - min_p + Vector2i.ONE)
 
-## Solda önce, sağda sonra; farklı bölge iki tarafta da kırmızı çerçeveyle işaretlenir.
-static func side_by_side(a: Image, b: Image, diff: Rect2i) -> Image:
+## Farkı tek dış kutu yerine ayrı bölgeler olarak verir: görüntü CELL px hücrelere bölünür, en az
+## CELL_MIN pikseli değişen hücreler komşuluğa göre (MERGE hücre boşluk dahil) kümelenir. Canlı arka
+## plandan (parçacık, meşale) gelen küçük kümeler atılır: değişen pikseli NOISE_PX'ten ve en büyük kümenin
+## NOISE_RATIO'sundan az olanlar. Hiç küme kalmazsa boş döner (çağıran diff_rect'e düşer).
+const CELL := 8
+const CELL_MIN := 2
+const MERGE := 1
+const NOISE_PX := 24
+const NOISE_RATIO := 0.04
+## Bir kanalda bundan küçük oynama (ışık titreşimi, sis) bölge hesabında fark sayılmaz.
+const TOL := 0.05
+
+static func diff_regions(a: Image, b: Image) -> Array[Rect2i]:
+	var out: Array[Rect2i] = []
+	if a.get_size() != b.get_size():
+		return out
+	var gw := ceili(a.get_width() / float(CELL))
+	var gh := ceili(a.get_height() / float(CELL))
+	var counts := PackedInt32Array()
+	counts.resize(gw * gh)
+	for y in a.get_height():
+		for x in a.get_width():
+			var pa := a.get_pixel(x, y)
+			var pb := b.get_pixel(x, y)
+			if maxf(maxf(absf(pa.r - pb.r), absf(pa.g - pb.g)), maxf(absf(pa.b - pb.b), absf(pa.a - pb.a))) > TOL:
+				counts[(y / CELL) * gw + x / CELL] += 1
+	var seen := PackedByteArray()
+	seen.resize(gw * gh)
+	var clusters: Array[Dictionary] = []
+	for start in gw * gh:
+		if seen[start] == 1 or counts[start] < CELL_MIN:
+			continue
+		seen[start] = 1
+		var stack: Array[int] = [start]
+		var lo := Vector2i(start % gw, start / gw)
+		var hi := lo
+		var px := 0
+		while not stack.is_empty():
+			var c: int = stack.pop_back()
+			var cx := c % gw
+			var cy := c / gw
+			px += counts[c]
+			lo = Vector2i(mini(lo.x, cx), mini(lo.y, cy))
+			hi = Vector2i(maxi(hi.x, cx), maxi(hi.y, cy))
+			for dy in range(-1 - MERGE, 2 + MERGE):
+				for dx in range(-1 - MERGE, 2 + MERGE):
+					var nx := cx + dx
+					var ny := cy + dy
+					if nx < 0 or ny < 0 or nx >= gw or ny >= gh:
+						continue
+					var n := ny * gw + nx
+					if seen[n] == 0 and counts[n] >= CELL_MIN:
+						seen[n] = 1
+						stack.append(n)
+		var rect := Rect2i(lo * CELL, (hi - lo + Vector2i.ONE) * CELL)
+		clusters.append({"rect": rect.intersection(Rect2i(Vector2i.ZERO, a.get_size())), "px": px})
+	var biggest := 0
+	for c: Dictionary in clusters:
+		biggest = maxi(biggest, int(c["px"]))
+	for c: Dictionary in clusters:
+		if int(c["px"]) >= NOISE_PX and float(c["px"]) >= biggest * NOISE_RATIO:
+			out.append(c["rect"])
+	return out
+
+## Solda önce, sağda sonra; farklı bölgeler iki tarafta da kırmızı çerçeveyle işaretlenir. regions boşsa
+## tek dış kutu (diff) çizilir.
+static func side_by_side(a: Image, b: Image, diff: Rect2i, regions: Array[Rect2i] = []) -> Image:
 	a.convert(Image.FORMAT_RGBA8)
 	b.convert(Image.FORMAT_RGBA8)
 	var w := a.get_width() + GAP + b.get_width()
@@ -103,7 +168,11 @@ static func side_by_side(a: Image, b: Image, diff: Rect2i) -> Image:
 	sheet.fill(Color(0.3, 0.3, 0.32, 1.0))
 	sheet.blit_rect(a, Rect2i(Vector2i.ZERO, a.get_size()), Vector2i.ZERO)
 	sheet.blit_rect(b, Rect2i(Vector2i.ZERO, b.get_size()), Vector2i(a.get_width() + GAP, 0))
-	if diff.size != Vector2i.ZERO:
+	if not regions.is_empty():
+		for r: Rect2i in regions:
+			_frame(sheet, r.grow(3))
+			_frame(sheet, Rect2i(r.position + Vector2i(a.get_width() + GAP, 0), r.size).grow(3))
+	elif diff.size != Vector2i.ZERO:
 		_frame(sheet, diff.grow(3))
 		_frame(sheet, Rect2i(diff.position + Vector2i(a.get_width() + GAP, 0), diff.size).grow(3))
 	return sheet
