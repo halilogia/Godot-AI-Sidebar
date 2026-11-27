@@ -80,6 +80,9 @@ Anything brighter than the threshold blooms. Emission sprites (window glow, flam
 | `CanvasModulate` does not affect CanvasLayers | Put additive glow, glints, flames and particles in a `CanvasLayer` with `follow_viewport_enabled = true`; they move with the world and stay bright at night |
 | A window's light pool lights its own wall | Light masks: window `PointLight2D.range_item_cull_mask = 2` (ground, plants, people), wall sprites on mask 1 only, lit ground on mask 3 (both bits) |
 | Sprites shimmer by one pixel | `.round()` / `.floor()` positions; keep `snap_2d_*` on |
+| Wind / atlas shader looks too dark, or sprites vanish | In `fragment()` the incoming `COLOR` is already `texture(TEXTURE, UV) * vertex color`. After sampling your own UV, write `COLOR = c * tint`, where `tint = COLOR` is saved in `vertex()`. Writing `c * COLOR` squares the colours, and on an atlas cell (MultiMesh) it multiplies by the whole sheet's alpha, which is mostly 0 |
+| Wind shift never reaches 1 px | `round()` cuts sub-pixel motion. Short tufts in a 16 px cell only reach h ≈ 0.5, so scale the strength up until the tips move 1–2 px. Give gusts a calm floor (≈ 0.55) so calm areas still move. Check by accumulating frame differences over 1 s with `--write-movie` PNG frames |
+| Grass always behind the player | Draw the same MultiMesh a second time inside the y-sorted actor layer. Keep only tufts rooted just in front of the feet: degenerate the other `VERTEX`es. Every frame, set its sort node to feet y + 0.5 and its child offset to the inverse, so buildings in front still cover both |
 
 Window and hearth lights can come from the emission texture: bin pixels with `a > 0.5` into 28 px columns, one pool per column just south of the facade base.
 

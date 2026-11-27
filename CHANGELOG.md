@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+- **`godot-2d-pixel-lighting` tuzakları:** Fragment'teki `COLOR`'ın zaten doku × köşe rengi olduğu (`c * COLOR` renkleri karesine çıkarır, atlas hücresinde siler), alt-piksel rüzgârın `round()`'da kaybolması ve kalibrasyonu, çimenin oyuncunun önüne y-sıralı ikinci geçişle çizilmesi eklendi.
+
 - **`tools/game_playtest.gd` fiziksiz aktör:** `player` grubundaki düz `Node2D` / `Node3D` (kendi hareket kodlu, CharacterBody kullanmayan top-down oyunlar) artık aktör olarak bulunur; hareket ölçümü ve `-ExpectMove` bu oyunlarda da çalışır.
 
 - **`tools/typecheck.gd` autoload desteği:** Başka bir projede (`-- res://scripts`) çalışırken autoload singleton'larına (`Art`, `Daylight` vb.) başvuran betikler artık "Identifier not found" ile yanlış başarısız olmaz: doğrulama `_init` yerine autoload'lar kaydedildikten sonra `_initialize`'da koşar. Canlı örneği olan autoload betiğinin kendisi yerinde `reload()` edilemediğinde (`ERR_ALREADY_IN_USE`), kaynağı yolsuz yeni bir `GDScript`'te derlenip o hüküm kullanılır; gerçek parse hataları yine yakalanır.
