@@ -436,6 +436,9 @@ func _discover() -> void:
 			_buttons.append(n as Control)
 		elif n is CharacterBody2D or n is CharacterBody3D or n is RigidBody2D or n is RigidBody3D:
 			_bodies.append(n)
+		elif (n is Node2D or n is Node3D) and n.is_in_group("player"):
+			# Kendi hareket kodlu (fiziksiz) aktörler: "player" grubundaysa sayılır.
+			_bodies.append(n)
 		for c in n.get_children():
 			stack.append(c)
 	_pick_primary()
@@ -652,7 +655,7 @@ func _finish() -> void:
 	var moved := _actor_moved()
 	var move_actions: Dictionary = _acts["move"]
 	if _primary == null:
-		_warns.append("aktör (CharacterBody/RigidBody) bulunamadı: menü/UI sahnesi olabilir")
+		_warns.append("aktör (CharacterBody/RigidBody ya da \"player\" grubunda Node2D/3D) bulunamadı: menü/UI sahnesi olabilir")
 	elif not moved and not move_actions.is_empty():
 		_warns.append("aktör girdiyle hareket etmedi (actor_moved=false)")
 		if str(_args.get("expect_move", "")) != "":

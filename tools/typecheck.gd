@@ -4,8 +4,10 @@ extends SceneTree
 ## Godot AI Core - Headless GDScript Compilation & Scene Load Validator
 ## Eklenti (addons/godot_sidebar_ai), test (tests) ve araç (tools) altındaki tüm .gd ve .tscn dosyalarını
 ## Godot GUI açılmadan statik olarak yükleyip derler, sözdizimi ve sahne hatalarını yakalar.
+## `_initialize` kullanılır (`_init` değil): projenin autoload'ları ancak bu noktada kayıtlı olur,
+## yoksa `Art.x()` gibi autoload çağrıları "Identifier not found" diye yanlış hata verir.
 
-func _init() -> void:
+func _initialize() -> void:
 	print("==================================================")
 	print("  GDScript Static Typecheck & Compilation Validator")
 	print("==================================================")
@@ -39,7 +41,17 @@ func _init() -> void:
 			continue
 		var script = load(f)
 		var ok_load = script is GDScript
-		var ok_reload = ok_load and (script as GDScript).reload() == OK
+		var ok_reload = false
+		if ok_load:
+			var err := (script as GDScript).reload()
+			# Autoload betiklerinin canlı örneği vardır, yerinde reload edilemez
+			# (GDScript önbelleği CACHE_MODE_IGNORE'da da aynı nesneyi verir):
+			# kaynağı yolsuz yeni bir GDScript'te derleyip onun hükmüne bak.
+			if err == ERR_ALREADY_IN_USE:
+				var fresh := GDScript.new()
+				fresh.source_code = FileAccess.get_file_as_string(f)
+				err = fresh.reload()
+			ok_reload = err == OK
 		if ok_load and ok_reload:
 			passed_gd += 1
 		else:
