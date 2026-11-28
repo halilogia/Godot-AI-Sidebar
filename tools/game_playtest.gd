@@ -157,6 +157,10 @@ func _load_steps() -> Array:
 
 func _exec_step(s: Dictionary) -> void:
 	_step_log.append(JSON.stringify(s))
+	if s.has("press") or s.has("hold") or s.has("key"):
+		# Kare başına hizala: screenshot (frame_post_draw) veya zamanlayıcıdan sonra basılan tuş, o karenin
+		# _process'i bitmiş olduğundan `is_action_just_pressed` tarafından hiç görülmezdi.
+		await process_frame
 	if s.has("wait"):
 		await _sleep(float(s["wait"]))
 	elif s.has("autopilot"):

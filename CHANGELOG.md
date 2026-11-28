@@ -9,6 +9,8 @@ Sürümleme: [Semantic Versioning](https://semver.org/lang/tr/).
 
 ## [Unreleased]
 
+- **`tools/game_playtest.gd` yutulan tuş:** `screenshot` adımından hemen sonraki `press`/`hold`/`key` kaybolmuyor. `frame_post_draw`'dan dönen eşyordam tuşu, düğümlerin `_process`'i bittikten sonra basıyordu. Bu yüzden `is_action_just_pressed` onu hiç görmüyordu ve senaryo bir adım kayıyordu. Girdi adımları artık `process_frame` ile kare başına hizalanır.
+
 - **`godot-2d-pixel-lighting` tuzakları:** Fragment'teki `COLOR`'ın zaten doku × köşe rengi olduğu (`c * COLOR` renkleri karesine çıkarır, atlas hücresinde siler), alt-piksel rüzgârın `round()`'da kaybolması ve kalibrasyonu, çimenin oyuncunun önüne y-sıralı ikinci geçişle çizilmesi eklendi.
 
 - **`tools/game_playtest.gd` fiziksiz aktör:** `player` grubundaki düz `Node2D` / `Node3D` (kendi hareket kodlu, CharacterBody kullanmayan top-down oyunlar) artık aktör olarak bulunur; hareket ölçümü ve `-ExpectMove` bu oyunlarda da çalışır.
